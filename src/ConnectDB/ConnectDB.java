@@ -2,5 +2,7 @@ package ConnectDB;
 
 public class ConnectDB {
 	String id;
-	String ad;
+	int diem;
+	int abcd;
+	String datdeptrai;
 }
