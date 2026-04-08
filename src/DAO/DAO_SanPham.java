@@ -57,7 +57,43 @@ public class DAO_SanPham {
         return dsSanPham;
     }
 
-    // 2. Lấy danh sách Lô hàng theo Sản phẩm (Theo sơ đồ UML)
+    // [HÀM BỔ SUNG CHO TRA CỨU]: Lấy chi tiết 1 sản phẩm theo ID
+    public SanPham getSanPhamTheoMa(String id) {
+        SanPham sp = null;
+        String sql = "SELECT * FROM SanPham WHERE id = ?";
+        Connection con = ConnectDB.getInstance().getConnection();
+
+        try (PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setString(1, id);
+            try (ResultSet rs = pst.executeQuery()) {
+                if (rs.next()) {
+                    sp = new SanPham();
+                    sp.setId(rs.getString("id"));
+                    
+                    if (rs.getString("danhMuc") != null) sp.setDanhMuc(DanhMucSanPham.valueOf(rs.getString("danhMuc")));
+                    if (rs.getString("dang") != null) sp.setDang(DangBaoChe.valueOf(rs.getString("dang")));
+                    
+                    sp.setTen(rs.getString("ten"));
+                    sp.setTenVietTat(rs.getString("tenVietTat"));
+                    sp.setNhaSanXuat(rs.getString("nhaSanXuat"));
+                    sp.setHoatChat(rs.getString("hoatChat"));
+                    sp.setThueVAT(rs.getDouble("thueVAT"));
+                    sp.setHamLuong(rs.getString("hamLuong"));
+                    sp.setMoTa(rs.getString("moTa"));
+                    sp.setDonViDoCoBan(rs.getString("donViDoCoBan"));
+                    
+                    if (rs.getTimestamp("ngayTao") != null) {
+                        sp.setNgayTao(rs.getTimestamp("ngayTao").toLocalDateTime());
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return sp;
+    }
+
+    // 2. Lấy danh sách Lô hàng theo Sản phẩm (Đã FIX: Bổ sung lấy ngày hết hạn)
     public List<LoHang> layLoTheoSP(String maSP) {
         List<LoHang> dsLoHang = new ArrayList<>();
         String sql = "SELECT * FROM LoHang WHERE sanPhamId = ? AND soLuongLoHang > 0 AND trangThai != 'HET_HAN' ORDER BY ngayHetHan ASC";
@@ -74,6 +110,10 @@ public class DAO_SanPham {
                     lh.setGia(rs.getInt("gia"));
                     if (rs.getString("trangThai") != null) lh.setTrangThai(TrangThaiLoHang.valueOf(rs.getString("trangThai")));
                     
+                    // [BỔ SUNG QUAN TRỌNG]: Lấy ngày hết hạn để phục vụ thuật toán FEFO trừ kho
+                    if (rs.getTimestamp("ngayHetHan") != null) lh.setNgayHetHan(rs.getTimestamp("ngayHetHan").toLocalDateTime());
+                    if (rs.getTimestamp("ngayNhap") != null) lh.setNgayNhap(rs.getTimestamp("ngayNhap").toLocalDateTime());
+                    
                     // Gắn ID sản phẩm vào lô
                     SanPham sp = new SanPham(); sp.setId(rs.getString("sanPhamId"));
                     lh.setSanPhamId(sp);
@@ -87,7 +127,7 @@ public class DAO_SanPham {
         return dsLoHang;
     }
 
-    // 3. Cập nhật số lượng tồn kho (Theo sơ đồ UML)
+    // 3. Cập nhật số lượng tồn kho
     public boolean capNhatSoLuongTon(String maLoHang, int soLuongMoi) {
         String sql = "UPDATE LoHang SET soLuongLoHang = ? WHERE id = ?";
         Connection con = ConnectDB.getInstance().getConnection();
