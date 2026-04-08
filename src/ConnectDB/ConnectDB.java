@@ -6,11 +6,9 @@ import java.sql.DriverManager;
 public class ConnectDB {
     private static Connection con = null;
     private static ConnectDB instance = new ConnectDB();
-
     public static ConnectDB getInstance() {
         return instance;
     }
-
     public void connect() {
         String url = "jdbc:sqlserver://localhost:1433;databaseName=MYCAREPHARMACY;encrypt=false";
         String user = "sa";
@@ -26,7 +24,6 @@ public class ConnectDB {
             e.printStackTrace();
         }
     }
-
     public void disconnect() {
         if (con != null) {
             try {
@@ -37,7 +34,6 @@ public class ConnectDB {
             }
         }
     }
-
     public Connection getConnection() {
         return con;
     }
