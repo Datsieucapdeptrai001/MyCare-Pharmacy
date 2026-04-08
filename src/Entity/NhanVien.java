@@ -1,0 +1,106 @@
+package Entity;
+
+import java.util.Objects;
+
+import Enum.ChucVu;
+import Enum.TrangThaiLamViec;
+
+public class NhanVien {
+	private String nhanVien;
+	private String hoVaTen;
+	private String soChungChiHanhNghe;
+	private String sdt;
+	private String email;
+	private ChucVu chucVu;
+	private TrangThaiLamViec trangThaiLamViec;
+	
+	public NhanVien() {
+		super();
+		// TODO Auto-generated constructor stub
+	}
+	
+	public NhanVien(String nhanVien, String hoVaTen, String soChungChiHanhNghe, String sdt, String email, ChucVu chucVu,
+			TrangThaiLamViec trangThaiLamViec) {
+		super();
+		this.nhanVien = nhanVien;
+		this.hoVaTen = hoVaTen;
+		this.soChungChiHanhNghe = soChungChiHanhNghe;
+		this.sdt = sdt;
+		this.email = email;
+		this.chucVu = chucVu;
+		this.trangThaiLamViec = trangThaiLamViec;
+	}
+	
+	public String getNhanVien() {
+		return nhanVien;
+	}
+	public void setNhanVien(String nhanVien) {
+		this.nhanVien = nhanVien;
+	}
+	public String getHoVaTen() {
+		return hoVaTen;
+	}
+	public void setHoVaTen(String hoVaTen) {
+		this.hoVaTen = hoVaTen;
+	}
+	public String getSoChungChiHanhNghe() {
+		return soChungChiHanhNghe;
+	}
+	public void setSoChungChiHanhNghe(String soChungChiHanhNghe) {
+		this.soChungChiHanhNghe = soChungChiHanhNghe;
+	}
+	public String getSdt() {
+		return sdt;
+	}
+	public void setSdt(String sdt) {
+		this.sdt = sdt;
+	}
+	public String getEmail() {
+		return email;
+	}
+	public void setEmail(String email) {
+		this.email = email;
+	}
+	public ChucVu getChucVu() {
+		return chucVu;
+	}
+	public void setChucVu(ChucVu chucVu) {
+		this.chucVu = chucVu;
+	}
+	public TrangThaiLamViec getTrangThaiLamViec() {
+		return trangThaiLamViec;
+	}
+	public void setTrangThaiLamViec(TrangThaiLamViec trangThaiLamViec) {
+		this.trangThaiLamViec = trangThaiLamViec;
+	}
+
+	@Override
+	public int hashCode() {
+		return Objects.hash(chucVu, email, hoVaTen, nhanVien, sdt, soChungChiHanhNghe, trangThaiLamViec);
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		NhanVien other = (NhanVien) obj;
+		return chucVu == other.chucVu && Objects.equals(email, other.email) && Objects.equals(hoVaTen, other.hoVaTen)
+				&& Objects.equals(nhanVien, other.nhanVien) && Objects.equals(sdt, other.sdt)
+				&& Objects.equals(soChungChiHanhNghe, other.soChungChiHanhNghe)
+				&& trangThaiLamViec == other.trangThaiLamViec;
+	}
+
+	@Override
+	public String toString() {
+		return "NhanVien [nhanVien=" + nhanVien + ", hoVaTen=" + hoVaTen + ", soChungChiHanhNghe=" + soChungChiHanhNghe
+				+ ", sdt=" + sdt + ", email=" + email + ", chucVu=" + chucVu + ", trangThaiLamViec=" + trangThaiLamViec
+				+ "]";
+	}
+	
+	
+	
+}
