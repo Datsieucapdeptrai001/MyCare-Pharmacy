@@ -38,4 +38,27 @@ public class BUS_ThongKe {
         }
         return 0.0;
     }
+ // Tính giá trị trung bình trên mỗi đơn hàng
+    public double getGiaTriTBTrenDon(LocalDateTime tuNgay, LocalDateTime denNgay) {
+        if (kiemTraThoiGianHople(tuNgay, denNgay)) {
+            int tongSoDon = getTongSoDonHang(tuNgay, denNgay);
+            
+            // Tránh lỗi chia cho 0 nếu không có đơn hàng nào
+            if (tongSoDon == 0) {
+                return 0.0;
+            }
+            
+            double tongDoanhThu = getTongDoanhThu(tuNgay, denNgay);
+            return tongDoanhThu / tongSoDon;
+        }
+        return 0.0;
+    }
+ // Lấy tổng lợi nhuận
+    public double getTongLoiNhuan(LocalDateTime tuNgay, LocalDateTime denNgay) {
+        if (kiemTraThoiGianHople(tuNgay, denNgay)) {
+            // Gọi hàm tính lợi nhuận từ DAO
+            return daoThongKe.tinhLoiNhuan(tuNgay, denNgay); 
+        }
+        return 0.0;
+    }
 }
