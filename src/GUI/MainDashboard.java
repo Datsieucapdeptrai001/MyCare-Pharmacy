@@ -1,10 +1,18 @@
 package GUI;
 
 import javax.swing.*;
-import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class MainDashboard extends JFrame {
+
+    // Khai báo CardLayout và Panel chứa các màn hình
+    private CardLayout cardLayout;
+    private JPanel cardPanel;
+    
+    // Danh sách các nút menu để xử lý đổi màu khi click
+    private List<JButton> menuButtons;
 
     public MainDashboard() {
         setTitle("MYCARE PHARMACY - Dashboard");
@@ -13,16 +21,48 @@ public class MainDashboard extends JFrame {
         setLocationRelativeTo(null);
         setLayout(new BorderLayout());
 
+        menuButtons = new ArrayList<>();
+
+        // 1. Khởi tạo CardLayout cho phần bên phải
+        cardLayout = new CardLayout();
+        cardPanel = new JPanel(cardLayout);
+
+        // 2. TẠO CÁC MÀN HÌNH VÀ THÊM VÀO CARD_PANEL
+        // Đây là chỗ Pột sẽ thay bằng các Panel thật của Pột sau này nhé!
+        cardPanel.add(createDummyPanel("Đây là Màn hình chính"), "Màn hình chính");
+        
+        // Giả sử cậu đã code xong ManHinhBanHang, cậu gắn vào như sau:
+        // ManHinhBanHang formHoaDon = new ManHinhBanHang();
+        // cardPanel.add(formHoaDon, "Bán hàng & Đổi trả");
+        cardPanel.add(createDummyPanel("Đây là màn Bán hàng & Đổi trả"), "Bán hàng & Đổi trả");
+        cardPanel.add(createDummyPanel("Đây là màn Quản lý Sản phẩm"), "Sản phẩm");
+        cardPanel.add(createDummyPanel("Đây là màn Lô hàng"), "Lô hàng");
+        cardPanel.add(createDummyPanel("Đây là màn Khuyến mại"), "Khuyến mại");
+        cardPanel.add(createDummyPanel("Đây là màn Thống kê"), "Thống kê");
+        cardPanel.add(createDummyPanel("Đây là màn Nhân viên"), "Nhân viên");
+        cardPanel.add(createDummyPanel("Đây là màn Khách hàng"), "Khách hàng");
+        cardPanel.add(createDummyPanel("Đây là màn Hướng dẫn"), "Hướng dẫn");
+
+        // 3. Tạo Sidebar và Top Header
         JPanel sidebar = createSidebar();
         add(sidebar, BorderLayout.WEST);
 
         JPanel rightPanel = new JPanel(new BorderLayout());
         rightPanel.add(createTopHeader(), BorderLayout.NORTH);
-        
-        ManHinhBanHang formHoaDon = new ManHinhBanHang();
-        rightPanel.add(formHoaDon, BorderLayout.CENTER);
+        rightPanel.add(cardPanel, BorderLayout.CENTER); // Ném CardPanel vào giữa
 
         add(rightPanel, BorderLayout.CENTER);
+    }
+
+    // Hàm tạo nhanh một Panel giả để Pột test chuyển tab
+    private JPanel createDummyPanel(String text) {
+        JPanel pnl = new JPanel(new GridBagLayout());
+        pnl.setBackground(Color.decode("#F4F6F8"));
+        JLabel lbl = new JLabel(text);
+        lbl.setFont(new Font("Segoe UI", Font.BOLD, 30));
+        lbl.setForeground(Color.GRAY);
+        pnl.add(lbl);
+        return pnl;
     }
 
     private JPanel createTopHeader() {
@@ -45,11 +85,11 @@ public class MainDashboard extends JFrame {
         JPanel pnlRight = new JPanel(new FlowLayout(FlowLayout.RIGHT, 20, 10));
         pnlRight.setBackground(Color.WHITE);
 
-        JLabel lblTime = new JLabel("19:09:04 — T5 09/04/2026");
+        JLabel lblTime = new JLabel("20:27:44 — T5 09/04/2026");
         lblTime.setForeground(Color.decode("#637381"));
         lblTime.setFont(new Font("Segoe UI", Font.PLAIN, 13));
 
-        JButton btnUser = new JButton("VK  Võ Anh Kiệt  ▼");
+        JButton btnUser = new JButton("MK  Mai Trung Kiên  ▼");
         btnUser.setBackground(Color.decode("#1A73E8")); 
         btnUser.setForeground(Color.WHITE);
         btnUser.setFocusPainted(false);
@@ -73,29 +113,29 @@ public class MainDashboard extends JFrame {
         JPanel sidebar = new JPanel();
         sidebar.setLayout(new BoxLayout(sidebar, BoxLayout.Y_AXIS));
         sidebar.setBackground(Color.decode("#152A4B")); 
-        sidebar.setPreferredSize(new Dimension(200, 0));
+        sidebar.setPreferredSize(new Dimension(220, 0)); // Tăng xíu cho giống ảnh
 
         // Logo panel
         JPanel logoPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 10)); 
         logoPanel.setBackground(Color.decode("#152A4B")); 
         logoPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 70)); 
-        JLabel lblLogo = new JLabel("<html><b style='color:white; font-size:13px;'>MYCARE</b><br><span style='color:#00BFFF; font-size:9px;'>PHARMACY</span></html>");
+        JLabel lblLogo = new JLabel("<html><b style='color:white; font-size:14px;'>MYCARE</b><br><span style='color:#00BFFF; font-size:10px;'>PHARMACY</span></html>");
         logoPanel.add(lblLogo);
         sidebar.add(logoPanel);
 
-        // User profile panel
+        // User profile panel (Đổi thành Mai Trung Kiên - Dược sĩ)
         JPanel userPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 15));
         userPanel.setBackground(Color.decode("#152A4B"));
         userPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 70));
         
-        JLabel lblAvatar = new JLabel("VK", SwingConstants.CENTER);
+        JLabel lblAvatar = new JLabel("MK", SwingConstants.CENTER);
         lblAvatar.setOpaque(true);
         lblAvatar.setBackground(Color.decode("#1362B1"));
         lblAvatar.setForeground(Color.WHITE);
         lblAvatar.setFont(new Font("Segoe UI", Font.BOLD, 12));
         lblAvatar.setPreferredSize(new Dimension(35, 35));
 
-        JLabel lblUserInfo = new JLabel("<html><b style='color:white; font-size:11px;'>Võ Anh Kiệt</b><br><span style='color:#FFD700; font-size:9px;'>Quản lý</span></html>");
+        JLabel lblUserInfo = new JLabel("<html><b style='color:white; font-size:12px;'>Mai Trung Kiên</b><br><span style='color:#00BFFF; font-size:10px;'>Dược sĩ</span></html>");
         
         userPanel.add(lblAvatar);
         userPanel.add(lblUserInfo);
@@ -104,7 +144,8 @@ public class MainDashboard extends JFrame {
         sidebar.add(Box.createRigidArea(new Dimension(0, 10)));
 
         // Menu buttons
-        String[] menuItems = {"Màn hình chính", 
+        String[] menuItems = {
+                "Màn hình chính", 
                 "Bán hàng & Đổi trả", 
                 "Sản phẩm", 
                 "Lô hàng", 
@@ -112,40 +153,67 @@ public class MainDashboard extends JFrame {
                 "Thống kê", 
                 "Nhân viên", 
                 "Khách hàng", 
-                "Hướng dẫn"};
-        for (int i = 0; i < menuItems.length; i++) {
-            sidebar.add(createMenuButton(menuItems[i], i == 1, false)); 
+                "Hướng dẫn"
+        };
+        
+        for (String item : menuItems) {
+            JButton btn = createMenuButton(item, false);
+            menuButtons.add(btn); // Lưu vào list để quản lý màu sắc
+            sidebar.add(btn);
         }
+        
+        // Mặc định chọn màn hình chính
+        setActiveButton(menuButtons.get(0));
 
         sidebar.add(Box.createVerticalGlue());
-        sidebar.add(createMenuButton("Đăng xuất", false, true));
+        
+        // Nút Đăng xuất riêng
+        JButton btnLogout = createMenuButton("Đăng xuất", true);
+        btnLogout.addActionListener(e -> {
+            JOptionPane.showMessageDialog(this, "Thực hiện chức năng đăng xuất...");
+            // System.exit(0); hoặc gọi JFrame đăng nhập
+        });
+        sidebar.add(btnLogout);
         
         return sidebar;
     }
 
-
-    private JButton createMenuButton(String text, boolean isActive, boolean isLogout) {
+    private JButton createMenuButton(String text, boolean isLogout) {
         JButton btn = new JButton(text);
         btn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 45)); 
         btn.setAlignmentX(Component.LEFT_ALIGNMENT);
         btn.setHorizontalAlignment(SwingConstants.LEFT); 
-        btn.setFont(new Font("Segoe UI", Font.PLAIN, 13)); 
+        btn.setFont(new Font("Segoe UI", Font.BOLD, 13)); 
         btn.setFocusPainted(false);
         btn.setOpaque(true);
         btn.setBorderPainted(false);
+        btn.setBackground(Color.decode("#152A4B")); 
+        btn.setForeground(isLogout ? Color.decode("#FF4D4D") : Color.decode("#E8F0FE"));
+        btn.setBorder(BorderFactory.createEmptyBorder(0, 20, 0, 0));
 
-        if (isActive) {
-            btn.setBackground(Color.decode("#1A73E8")); 
-            btn.setForeground(Color.WHITE);
-        } else {
-            btn.setBackground(Color.decode("#152A4B")); 
-            btn.setForeground(isLogout ? Color.decode("#FF4D4D") : Color.decode("#E8F0FE"));
+        if (!isLogout) {
+            // Thêm sự kiện click cho các nút menu (trừ nút Đăng xuất)
+            btn.addActionListener(e -> {
+                setActiveButton(btn); // Đổi màu nút
+                cardLayout.show(cardPanel, text); // Chuyển màn hình tương ứng
+            });
         }
-        
-        btn.setBorder(BorderFactory.createEmptyBorder(0, 15, 0, 0)); // Left margin for alignment
+
         return btn;
     }
 
+    // Hàm xử lý đổi màu nút khi click
+    private void setActiveButton(JButton activeBtn) {
+        for (JButton btn : menuButtons) {
+            if (btn == activeBtn) {
+                btn.setBackground(Color.decode("#1A73E8")); // Màu xanh sáng (Active)
+                btn.setForeground(Color.WHITE);
+            } else {
+                btn.setBackground(Color.decode("#152A4B")); // Màu xanh đậm (Inactive)
+                btn.setForeground(Color.decode("#E8F0FE"));
+            }
+        }
+    }
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
