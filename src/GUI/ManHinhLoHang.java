@@ -1,37 +1,19 @@
 package GUI;
 
-import DAO.DAO_LoHang;
-import DAO.DAO_SanPham;
-import Entity.LoHang;
-import Entity.SanPham;
-import Enum.TrangThaiLoHang;
-
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
-import java.text.NumberFormat;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.*;
-import java.util.stream.Collectors;
 
 public class ManHinhLoHang extends JPanel {
 
-    private final DAO_LoHang daoLoHang = new DAO_LoHang();
-    private final DAO_SanPham daoSanPham = new DAO_SanPham();
-    private final NumberFormat numberVN = NumberFormat.getInstance(new Locale("vi", "VN"));
-    private final DateTimeFormatter dateFormat = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-
-    private final List<LoHang> dsTatCa = new ArrayList<>();
-    private final Map<String, SanPham> cacheSanPham = new HashMap<>();
+    private final List<BatchItem> dsTatCa = new ArrayList<>();
 
     private JTextField txtSearch;
     private JLabel lblExpired;
@@ -46,7 +28,7 @@ public class ManHinhLoHang extends JPanel {
     private JButton btnHetHan;
     private JButton btnTamNgung;
 
-    private JTable tblLoHang;
+    private JTable table;
     private DefaultTableModel tableModel;
 
     private TrangThaiFilter filter = TrangThaiFilter.TAT_CA;
@@ -59,8 +41,9 @@ public class ManHinhLoHang extends JPanel {
         add(createHeader(), BorderLayout.NORTH);
         add(createTablePanel(), BorderLayout.CENTER);
 
-        napCacheSanPham();
-        taiDuLieu();
+        loadMockData();
+        updateStats();
+        refreshTable();
     }
 
     private JPanel createHeader() {
@@ -105,7 +88,8 @@ public class ManHinhLoHang extends JPanel {
         btnRefresh.addActionListener(e -> {
             txtSearch.setText("");
             filter = TrangThaiFilter.TAT_CA;
-            taiDuLieu();
+            setActiveFilterButton(btnTatCa);
+            refreshTable();
         });
 
         JButton btnNear90 = createOutlineButton("■ Chỉ sắp hết hạn (≤90 ngày)");
@@ -183,6 +167,7 @@ public class ManHinhLoHang extends JPanel {
 
     private JScrollPane createTablePanel() {
         String[] cols = {"#", "Mã lô", "Tên sản phẩm", "Tồn kho", "Giá nhập", "Hạn sử dụng", "Còn lại", "Tình trạng", "Xóa"};
+
         tableModel = new DefaultTableModel(cols, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -190,121 +175,106 @@ public class ManHinhLoHang extends JPanel {
             }
         };
 
-        tblLoHang = new JTable(tableModel);
-        tblLoHang.setRowHeight(48);
-        tblLoHang.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        tblLoHang.setSelectionBackground(new Color(235, 244, 255));
-        tblLoHang.setGridColor(new Color(230, 235, 242));
-        tblLoHang.setShowVerticalLines(false);
-        tblLoHang.setDefaultRenderer(Object.class, new LoHangCellRenderer());
-        tblLoHang.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 14));
-        tblLoHang.getTableHeader().setBackground(new Color(214, 231, 246));
-        tblLoHang.getTableHeader().setForeground(new Color(55, 65, 81));
+        table = new JTable(tableModel);
+        table.setRowHeight(48);
+        table.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        table.setSelectionBackground(new Color(235, 244, 255));
+        table.setGridColor(new Color(230, 235, 242));
+        table.setShowVerticalLines(false);
+        table.setDefaultRenderer(Object.class, new LoHangCellRenderer());
+        table.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 14));
+        table.getTableHeader().setBackground(new Color(214, 231, 246));
+        table.getTableHeader().setForeground(new Color(55, 65, 81));
 
-        tblLoHang.addMouseListener(new MouseAdapter() {
+        table.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
-            public void mouseClicked(MouseEvent e) {
-                int row = tblLoHang.rowAtPoint(e.getPoint());
-                int col = tblLoHang.columnAtPoint(e.getPoint());
+            public void mouseClicked(java.awt.event.MouseEvent e) {
+                int row = table.rowAtPoint(e.getPoint());
+                int col = table.columnAtPoint(e.getPoint());
                 if (row >= 0 && col == 8) {
-                    String soLo = String.valueOf(tblLoHang.getValueAt(row, 1));
+                    String soLo = String.valueOf(table.getValueAt(row, 1));
                     xoaLo(soLo);
                 }
             }
         });
 
-        JScrollPane scroll = new JScrollPane(tblLoHang);
+        JScrollPane scroll = new JScrollPane(table);
         scroll.setBorder(new LineBorder(new Color(226, 232, 240), 1, true));
         scroll.getViewport().setBackground(Color.WHITE);
         return scroll;
     }
 
-    private void taiDuLieu() {
+    private void loadMockData() {
         dsTatCa.clear();
-        try {
-            List<LoHang> ds = daoLoHang.layDSLoHang();
-            if (ds != null) dsTatCa.addAll(ds);
-            updateStats();
-            refreshTable();
-            setActiveFilterButton(btnTatCa);
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(this,
-                    "Không tải được dữ liệu lô hàng.\n" + e.getMessage(),
-                    "Lỗi", JOptionPane.ERROR_MESSAGE);
-        }
-    }
-
-    private void napCacheSanPham() {
-        cacheSanPham.clear();
-        try {
-            List<SanPham> ds = daoSanPham.getDsThuoc();
-            if (ds != null) {
-                for (SanPham sp : ds) {
-                    cacheSanPham.put(sp.getId(), sp);
-                }
-            }
-        } catch (Exception e) {
-            System.out.println("Không tải được cache sản phẩm: " + e.getMessage());
-        }
+        dsTatCa.add(new BatchItem("OM001-2023", "Omega 3 Fish Oil", 900, 22000, "30/11/2025", "Quá 130 ngày", "Được bán"));
+        dsTatCa.add(new BatchItem("VC001-2023", "Vitamin C 1000mg", 2000, 4500, "31/12/2025", "Quá 99 ngày", "Được bán"));
+        dsTatCa.add(new BatchItem("PB001-2024", "Probiotic Lactomin Plus", 1800, 8000, "31/01/2026", "Quá 68 ngày", "Được bán"));
+        dsTatCa.add(new BatchItem("RO001-2024", "Thuốc nhỏ mắt Rohto", 1500, 28000, "28/02/2026", "Quá 40 ngày", "Được bán"));
+        dsTatCa.add(new BatchItem("DX001-2024", "Dextromethorphan 15mg", 2800, 900, "31/03/2026", "Quá 9 ngày", "Được bán"));
+        dsTatCa.add(new BatchItem("OR001-2024", "Thuốc bột ORS", 8000, 3500, "31/03/2026", "Quá 9 ngày", "Được bán"));
+        dsTatCa.add(new BatchItem("PR001-2024", "Siro ho Prospan", 800, 85000, "30/04/2026", "21 ngày", "Được bán"));
+        dsTatCa.add(new BatchItem("CF001-2024", "Cefuroxime 500mg", 2000, 18000, "30/04/2026", "21 ngày", "Được bán"));
+        dsTatCa.add(new BatchItem("AM001-2024", "Amlodipine 5mg", 5000, 1500, "31/05/2026", "52 ngày", "Được bán"));
+        dsTatCa.add(new BatchItem("VC002-2023", "Vitamin C 1000mg", 1500, 4800, "30/06/2026", "82 ngày", "Được bán"));
+        dsTatCa.add(new BatchItem("PA001-2024", "Paracetamol 500mg", 5000, 800, "30/06/2026", "82 ngày", "Được bán"));
+        dsTatCa.add(new BatchItem("AZ001-2024", "Azithromycin 250mg", 2500, 12000, "30/06/2026", "82 ngày", "Được bán"));
     }
 
     private void refreshTable() {
-        List<LoHang> filtered = dsTatCa.stream()
-                .filter(this::matchFilter)
-                .filter(this::matchKeyword)
-                .sorted(Comparator.comparing(this::getNgayHetHanSafe))
-                .collect(Collectors.toList());
+        String keyword = txtSearch.getText() == null ? "" : txtSearch.getText().trim().toLowerCase();
+
+        List<BatchItem> filtered = new ArrayList<>();
+        for (BatchItem item : dsTatCa) {
+            boolean matchKw = keyword.isEmpty()
+                    || item.soLo.toLowerCase().contains(keyword)
+                    || item.tenSanPham.toLowerCase().contains(keyword);
+
+            boolean matchFilter = switch (filter) {
+                case DUOC_BAN -> "Được bán".equals(item.trangThai);
+                case HET_HAN -> item.conLai.startsWith("Quá");
+                case TAM_NGUNG -> "Tạm ngừng".equals(item.trangThai);
+                case GAN_HET_HAN_90 -> !item.conLai.startsWith("Quá") && parseDays(item.conLai) <= 90;
+                default -> true;
+            };
+
+            if (matchKw && matchFilter) filtered.add(item);
+        }
 
         tableModel.setRowCount(0);
         int stt = 1;
-        for (LoHang lo : filtered) {
+        for (BatchItem item : filtered) {
             tableModel.addRow(new Object[]{
                     stt++,
-                    safe(lo.getSoLoHang()),
-                    getTenSanPham(lo),
-                    formatNumber(lo.getSoLuongLoHang()),
-                    formatCurrency(lo.getGia()),
-                    formatDate(lo.getNgayHetHan()),
-                    getConLaiText(lo),
-                    getTrangThaiText(lo),
+                    item.soLo,
+                    item.tenSanPham,
+                    formatNumber(item.tonKho),
+                    formatCurrency(item.giaNhap),
+                    item.hanSuDung,
+                    item.conLai,
+                    item.trangThai,
                     "🗑"
             });
         }
+
         lblTotal.setText(filtered.size() + " / " + dsTatCa.size() + " lô hàng");
     }
 
-    private boolean matchKeyword(LoHang lo) {
-        String kw = txtSearch.getText() == null ? "" : txtSearch.getText().trim().toLowerCase();
-        if (kw.isEmpty()) return true;
-        return safe(lo.getSoLoHang()).toLowerCase().contains(kw)
-                || getTenSanPham(lo).toLowerCase().contains(kw);
-    }
-
-    private boolean matchFilter(LoHang lo) {
-        long days = getRemainingDays(lo);
-        boolean expired = isExpired(lo);
-        boolean paused = isPaused(lo);
-        boolean available = !expired && !paused;
-
-        switch (filter) {
-            case DUOC_BAN:
-                return available;
-            case HET_HAN:
-                return expired;
-            case TAM_NGUNG:
-                return paused;
-            case GAN_HET_HAN_90:
-                return !expired && days <= 90;
-            default:
-                return true;
-        }
-    }
-
     private void updateStats() {
-        long expired = dsTatCa.stream().filter(this::isExpired).count();
-        long near = dsTatCa.stream().filter(lo -> !isExpired(lo) && getRemainingDays(lo) <= 30).count();
-        long warning = dsTatCa.stream().filter(lo -> !isExpired(lo) && getRemainingDays(lo) >= 31 && getRemainingDays(lo) <= 90).count();
-        long good = dsTatCa.stream().filter(lo -> !isExpired(lo) && getRemainingDays(lo) > 90).count();
+        int expired = 0;
+        int near = 0;
+        int warning = 0;
+        int good = 0;
+
+        for (BatchItem item : dsTatCa) {
+            if (item.conLai.startsWith("Quá")) {
+                expired++;
+            } else {
+                int days = parseDays(item.conLai);
+                if (days <= 30) near++;
+                else if (days <= 90) warning++;
+                else good++;
+            }
+        }
 
         lblExpired.setText(String.valueOf(expired));
         lblNear.setText(String.valueOf(near));
@@ -313,12 +283,19 @@ public class ManHinhLoHang extends JPanel {
         lblHeaderAlert.setText(" " + (near + warning) + " lô gần hết hạn! ");
     }
 
+    private int parseDays(String text) {
+        try {
+            return Integer.parseInt(text.replace("ngày", "").trim());
+        } catch (Exception e) {
+            return 999;
+        }
+    }
+
     private void openNhapLoDialog() {
         JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Nhập lô hàng mới", true);
         dialog.setSize(620, 430);
         dialog.setLocationRelativeTo(this);
         dialog.setLayout(new BorderLayout());
-        dialog.getRootPane().setBorder(new LineBorder(new Color(220, 226, 234), 1, true));
 
         JPanel header = new JPanel(new BorderLayout());
         header.setBackground(new Color(25, 66, 110));
@@ -328,105 +305,64 @@ public class ManHinhLoHang extends JPanel {
         lbl.setFont(new Font("Segoe UI", Font.BOLD, 24));
         header.add(lbl, BorderLayout.WEST);
 
-        JPanel form = new JPanel(new GridBagLayout());
-        form.setBackground(Color.WHITE);
+        JPanel form = new JPanel(new GridLayout(6, 2, 12, 12));
         form.setBorder(new EmptyBorder(18, 18, 18, 18));
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(8, 8, 8, 8);
-        gbc.fill = GridBagConstraints.HORIZONTAL;
+        form.setBackground(Color.WHITE);
 
-        JComboBox<String> cboSanPham = new JComboBox<>();
-        for (SanPham sp : cacheSanPham.values()) {
-            cboSanPham.addItem(sp.getId() + " - " + safe(sp.getTen()));
-        }
-
+        JTextField txtTenSP = new JTextField();
         JTextField txtSoLo = new JTextField();
-        JComboBox<String> cboTrangThai = new JComboBox<>(new String[]{"Được bán", "Tạm ngừng"});
         JTextField txtSoLuong = new JTextField("0");
         JTextField txtGiaNhap = new JTextField("0");
-        JTextField txtHanSuDung = new JTextField();
-        txtHanSuDung.setToolTipText("Định dạng: dd/MM/yyyy");
+        JTextField txtHanSuDung = new JTextField("dd/MM/yyyy");
+        JComboBox<String> cboTrangThai = new JComboBox<>(new String[]{"Được bán", "Tạm ngừng"});
 
-        addField(form, gbc, 0, "Sản phẩm *", cboSanPham, 2);
-        addField(form, gbc, 1, "Mã lô *", txtSoLo, 1);
-        addField(form, gbc, 1, "Tình trạng", cboTrangThai, 1, 1);
-        addField(form, gbc, 2, "Số lượng *", txtSoLuong, 1);
-        addField(form, gbc, 2, "Giá nhập (đ/ĐV)", txtGiaNhap, 1, 1);
-        addField(form, gbc, 3, "Hạn sử dụng *", txtHanSuDung, 2);
+        form.add(new JLabel("Tên sản phẩm *"));
+        form.add(txtTenSP);
+        form.add(new JLabel("Mã lô *"));
+        form.add(txtSoLo);
+        form.add(new JLabel("Số lượng *"));
+        form.add(txtSoLuong);
+        form.add(new JLabel("Giá nhập (đ/ĐV)"));
+        form.add(txtGiaNhap);
+        form.add(new JLabel("Hạn sử dụng *"));
+        form.add(txtHanSuDung);
+        form.add(new JLabel("Tình trạng"));
+        form.add(cboTrangThai);
 
         JPanel footer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 12));
         footer.setBackground(new Color(248, 250, 252));
+
         JButton btnHuy = createOutlineButton("Hủy");
-        JButton btnLuu = createBlueButton("+ Thêm lô hàng");
+        JButton btnThem = createBlueButton("+ Thêm lô hàng");
 
         btnHuy.addActionListener(e -> dialog.dispose());
-        btnLuu.addActionListener(e -> {
+        btnThem.addActionListener(e -> {
             try {
-                if (cboSanPham.getSelectedItem() == null) {
-                    throw new IllegalArgumentException("Chưa có dữ liệu sản phẩm để nhập lô.");
-                }
-                String selected = String.valueOf(cboSanPham.getSelectedItem());
-                String sanPhamId = selected.split(" - ")[0].trim();
+                String tenSP = txtTenSP.getText().trim();
                 String soLo = txtSoLo.getText().trim();
                 int soLuong = Integer.parseInt(txtSoLuong.getText().trim());
                 int gia = Integer.parseInt(txtGiaNhap.getText().trim());
-                LocalDate hsd = LocalDate.parse(txtHanSuDung.getText().trim(), dateFormat);
-                boolean tamNgung = "Tạm ngừng".equals(String.valueOf(cboTrangThai.getSelectedItem()));
+                String hsd = txtHanSuDung.getText().trim();
+                String trangThai = String.valueOf(cboTrangThai.getSelectedItem());
 
-                if (soLo.isEmpty()) throw new IllegalArgumentException("Mã lô không được rỗng.");
-                if (soLuong < 0) throw new IllegalArgumentException("Số lượng phải >= 0.");
-                if (gia < 0) throw new IllegalArgumentException("Giá nhập phải >= 0.");
-
-                LoHang lo = new LoHang();
-                lo.setId(UUID.randomUUID().toString());
-                lo.setSoLoHang(soLo);
-                lo.setSoLuongLoHang(soLuong);
-                lo.setGia(gia);
-                lo.setNgayNhap(LocalDateTime.now());
-                lo.setNgayHetHan(hsd.atStartOfDay());
-
-                SanPham sp = cacheSanPham.get(sanPhamId);
-                if (sp == null) {
-                    sp = new SanPham();
-                    sp.setId(sanPhamId);
-                }
-                lo.setSanPhamId(sp);
-
-                if (hsd.isBefore(LocalDate.now())) {
-                    lo.setTrangThai(TrangThaiLoHang.HET_HAN);
-                } else if (tamNgung || soLuong == 0) {
-                    lo.setTrangThai(TrangThaiLoHang.HET_HANG);
-                } else {
-                    lo.setTrangThai(TrangThaiLoHang.CON_HANG);
+                if (tenSP.isEmpty() || soLo.isEmpty() || hsd.isEmpty()) {
+                    JOptionPane.showMessageDialog(dialog, "Nhập đầy đủ thông tin bắt buộc.");
+                    return;
                 }
 
-                boolean inserted = false;
-                try {
-                    inserted = daoLoHang.themLoHang(lo);
-                } catch (Exception ex) {
-                    System.out.println("DAO_LoHang chưa có themLoHang(lo): " + ex.getMessage());
-                }
+                String conLai = tinhConLai(hsd);
+                dsTatCa.add(new BatchItem(soLo, tenSP, soLuong, gia, hsd, conLai, trangThai));
 
-                if (inserted) {
-                    JOptionPane.showMessageDialog(dialog, "Đã thêm lô hàng mới.");
-                    dialog.dispose();
-                    taiDuLieu();
-                } else {
-                    dsTatCa.add(lo);
-                    JOptionPane.showMessageDialog(dialog,
-                            "Đã thêm vào giao diện.\nNếu muốn lưu DB thật, thêm method DAO_LoHang.themLoHang(lo).",
-                            "Thông báo", JOptionPane.INFORMATION_MESSAGE);
-                    dialog.dispose();
-                    updateStats();
-                    refreshTable();
-                }
+                updateStats();
+                refreshTable();
+                dialog.dispose();
             } catch (Exception ex) {
-                JOptionPane.showMessageDialog(dialog, ex.getMessage(), "Lỗi nhập lô", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(dialog, "Dữ liệu không hợp lệ.");
             }
         });
 
         footer.add(btnHuy);
-        footer.add(btnLuu);
+        footer.add(btnThem);
 
         dialog.add(header, BorderLayout.NORTH);
         dialog.add(form, BorderLayout.CENTER);
@@ -434,33 +370,25 @@ public class ManHinhLoHang extends JPanel {
         dialog.setVisible(true);
     }
 
-    private void xoaLo(String soLo) {
-        LoHang lo = dsTatCa.stream().filter(x -> soLo.equals(x.getSoLoHang())).findFirst().orElse(null);
-        if (lo == null) return;
-
-        int choose = JOptionPane.showConfirmDialog(this,
-                "Ngừng bán / xóa lô " + soLo + "?",
-                "Xác nhận", JOptionPane.YES_NO_OPTION);
-        if (choose != JOptionPane.YES_OPTION) return;
-
-        boolean ok = false;
+    private String tinhConLai(String hsd) {
         try {
-            ok = daoLoHang.capNhatTrangThaiLo(lo.getId(), TrangThaiLoHang.HET_HANG);
-        } catch (Exception ex) {
-            System.out.println("DAO update trạng thái lỗi: " + ex.getMessage());
-        }
-
-        if (ok) {
-            taiDuLieu();
-        } else {
-            dsTatCa.remove(lo);
-            updateStats();
-            refreshTable();
+            LocalDate date = LocalDate.parse(hsd, DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+            long days = java.time.temporal.ChronoUnit.DAYS.between(LocalDate.now(), date);
+            if (days < 0) return "Quá " + Math.abs(days) + " ngày";
+            return days + " ngày";
+        } catch (Exception e) {
+            return "90 ngày";
         }
     }
 
+    private void xoaLo(String soLo) {
+        dsTatCa.removeIf(x -> x.soLo.equals(soLo));
+        updateStats();
+        refreshTable();
+    }
+
     private void switchFilter(TrangThaiFilter newFilter, JButton source) {
-        this.filter = newFilter;
+        filter = newFilter;
         setActiveFilterButton(source);
         refreshTable();
     }
@@ -477,67 +405,6 @@ public class ManHinhLoHang extends JPanel {
             active.setBackground(new Color(37, 99, 235));
             active.setForeground(Color.WHITE);
         }
-    }
-
-    private String getTenSanPham(LoHang lo) {
-        if (lo.getSanPhamId() == null || lo.getSanPhamId().getId() == null) return "Chưa có sản phẩm";
-        String id = lo.getSanPhamId().getId();
-        SanPham sp = cacheSanPham.get(id);
-        if (sp != null && sp.getTen() != null) return sp.getTen();
-        try {
-            sp = daoSanPham.getSanPhamTheoMa(id);
-            if (sp != null) {
-                cacheSanPham.put(id, sp);
-                return safe(sp.getTen());
-            }
-        } catch (Exception ignored) {}
-        return id;
-    }
-
-    private boolean isExpired(LoHang lo) {
-        return getRemainingDays(lo) < 0 || lo.getTrangThai() == TrangThaiLoHang.HET_HAN;
-    }
-
-    private boolean isPaused(LoHang lo) {
-        return lo.getSoLuongLoHang() <= 0 || lo.getTrangThai() == TrangThaiLoHang.HET_HANG;
-    }
-
-    private long getRemainingDays(LoHang lo) {
-        return ChronoUnit.DAYS.between(LocalDate.now(), getNgayHetHanSafe(lo));
-    }
-
-    private LocalDate getNgayHetHanSafe(LoHang lo) {
-        LocalDateTime dt = lo.getNgayHetHan();
-        return dt == null ? LocalDate.MAX : dt.toLocalDate();
-    }
-
-    private String getConLaiText(LoHang lo) {
-        long d = getRemainingDays(lo);
-        if (d < 0) return "Quá " + Math.abs(d) + " ngày";
-        return d + " ngày";
-    }
-
-    private String getTrangThaiText(LoHang lo) {
-        if (isExpired(lo)) return "Hết hạn";
-        if (isPaused(lo)) return "Tạm ngừng";
-        return "Được bán";
-    }
-
-    private String formatDate(LocalDateTime dt) {
-        if (dt == null) return "--/--/----";
-        return dt.toLocalDate().format(dateFormat);
-    }
-
-    private String formatCurrency(int value) {
-        return numberVN.format(value) + "đ";
-    }
-
-    private String formatNumber(int value) {
-        return numberVN.format(value);
-    }
-
-    private String safe(String s) {
-        return s == null ? "" : s;
     }
 
     private JPanel createStatCard(String title, JLabel value, Color bg, Color accent) {
@@ -614,44 +481,45 @@ public class ManHinhLoHang extends JPanel {
         return btn;
     }
 
-    private void addField(JPanel form, GridBagConstraints gbc, int row, String label, JComponent comp, int width) {
-        addField(form, gbc, row, label, comp, width, 0);
+    private String formatCurrency(int value) {
+        return String.format("%,dđ", value).replace(",", ",");
     }
 
-    private void addField(JPanel form, GridBagConstraints gbc, int row, String label, JComponent comp, int width, int colStart) {
-        gbc.gridx = colStart;
-        gbc.gridy = row * 2;
-        gbc.gridwidth = width;
-        JLabel lbl = new JLabel(label);
-        lbl.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        lbl.setForeground(new Color(75, 85, 99));
-        form.add(lbl, gbc);
-
-        gbc.gridy = row * 2 + 1;
-        comp.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        if (comp instanceof JTextField) {
-            ((JTextField) comp).setBorder(BorderFactory.createCompoundBorder(
-                    new LineBorder(new Color(203, 213, 225), 1, true),
-                    new EmptyBorder(10, 12, 10, 12)
-            ));
-        }
-        form.add(comp, gbc);
+    private String formatNumber(int value) {
+        return String.format("%,d", value).replace(",", ",");
     }
 
     private enum TrangThaiFilter {
-        TAT_CA,
-        DUOC_BAN,
-        HET_HAN,
-        TAM_NGUNG,
-        GAN_HET_HAN_90
+        TAT_CA, DUOC_BAN, HET_HAN, TAM_NGUNG, GAN_HET_HAN_90
     }
 
-    private class LoHangCellRenderer extends DefaultTableCellRenderer {
+    private static class BatchItem {
+        String soLo;
+        String tenSanPham;
+        int tonKho;
+        int giaNhap;
+        String hanSuDung;
+        String conLai;
+        String trangThai;
+
+        BatchItem(String soLo, String tenSanPham, int tonKho, int giaNhap, String hanSuDung, String conLai, String trangThai) {
+            this.soLo = soLo;
+            this.tenSanPham = tenSanPham;
+            this.tonKho = tonKho;
+            this.giaNhap = giaNhap;
+            this.hanSuDung = hanSuDung;
+            this.conLai = conLai;
+            this.trangThai = trangThai;
+        }
+    }
+
+    private static class LoHangCellRenderer extends DefaultTableCellRenderer {
         @Override
         public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
                                                        boolean hasFocus, int row, int column) {
             JLabel lbl = (JLabel) super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
             lbl.setBorder(new EmptyBorder(0, 10, 0, 10));
+
             if (!isSelected) {
                 lbl.setBackground(Color.WHITE);
                 lbl.setForeground(new Color(45, 55, 72));
@@ -669,15 +537,14 @@ public class ManHinhLoHang extends JPanel {
                 String text = String.valueOf(value);
                 lbl.setFont(new Font("Segoe UI", Font.BOLD, 14));
                 if ("Được bán".equals(text)) lbl.setForeground(new Color(22, 163, 74));
-                else if ("Hết hạn".equals(text)) lbl.setForeground(new Color(220, 38, 38));
                 else lbl.setForeground(new Color(245, 158, 11));
             } else if (column == 8) {
                 lbl.setForeground(new Color(239, 68, 68));
                 lbl.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 18));
                 lbl.setHorizontalAlignment(SwingConstants.CENTER);
             }
+
             return lbl;
         }
     }
 }
-
