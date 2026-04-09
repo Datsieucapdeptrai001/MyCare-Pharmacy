@@ -1,6 +1,6 @@
 package GUI;
 
-import Components.MenuIcon; // Thêm import class MenuIcon của bạn
+import Components.MenuIcon;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -28,7 +28,7 @@ public class ManHinhBanHang extends JPanel {
         this.setBackground(Color.WHITE);
         this.setBorder(new EmptyBorder(0, 30, 20, 30));
 
-        // --- 1. THANH TABS ---
+        // ==================== 1. THANH TABS ====================
         JPanel pnlTabs = new JPanel(new BorderLayout());
         pnlTabs.setBackground(Color.WHITE);
         pnlTabs.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, Color.decode("#DFE3E8")));
@@ -36,37 +36,34 @@ public class ManHinhBanHang extends JPanel {
         JPanel pnlLeftTabs = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
         pnlLeftTabs.setOpaque(false);
 
-        // GHÉP ICON CART
         JLabel lblBanHang = new JLabel("Bán hàng");
         lblBanHang.setIcon(new MenuIcon("CART"));
-        lblBanHang.setIconTextGap(8); // Tách icon và chữ
+        lblBanHang.setIconTextGap(8);
         lblBanHang.setFont(new Font("Segoe UI", Font.BOLD, 15));
-        lblBanHang.setForeground(Color.decode("#1967D2")); // Icon sẽ tự nhận màu xanh này
+        lblBanHang.setForeground(Color.decode("#1967D2"));
         lblBanHang.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createMatteBorder(0, 0, 4, 0, Color.decode("#1967D2")),
                 BorderFactory.createEmptyBorder(20, 0, 20, 40)));
 
-        // GHÉP ICON BOX
         JLabel lblDoiTra = new JLabel("Đổi / Trả hàng");
         lblDoiTra.setIcon(new MenuIcon("BOX"));
         lblDoiTra.setIconTextGap(8);
         lblDoiTra.setFont(new Font("Segoe UI", Font.PLAIN, 15));
-        lblDoiTra.setForeground(Color.decode("#6C757D")); // Icon sẽ tự nhận màu xám này
+        lblDoiTra.setForeground(Color.decode("#6C757D"));
         lblDoiTra.setBorder(BorderFactory.createEmptyBorder(20, 0, 20, 40));
 
         pnlLeftTabs.add(lblBanHang);
         pnlLeftTabs.add(lblDoiTra);
         pnlTabs.add(pnlLeftTabs, BorderLayout.WEST);
 
-        // GHÉP ICON USER hoặc CHART
         JLabel lblSetting = new JLabel("Quản lý  ");
         lblSetting.setIcon(new MenuIcon("USER"));
         lblSetting.setIconTextGap(8);
-        lblSetting.setForeground(Color.decode("#10B981")); // Icon sẽ tự nhận màu xanh lá
+        lblSetting.setForeground(Color.decode("#10B981"));
         lblSetting.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         pnlTabs.add(lblSetting, BorderLayout.EAST);
 
-        // --- 2. HEADER (TITLE & SEARCH) ---
+        // ==================== 2. HEADER (TITLE & SEARCH) ====================
         JPanel pnlHeader = new JPanel(new BorderLayout());
         pnlHeader.setOpaque(false);
         pnlHeader.setBorder(new EmptyBorder(25, 0, 15, 0));
@@ -79,63 +76,84 @@ public class ManHinhBanHang extends JPanel {
         JPanel pnlActions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 0));
         pnlActions.setOpaque(false);
 
-        txtSearch = new JTextField(" 🔍 Mã HD, khách hàng, SĐT...");
-        txtSearch.setPreferredSize(new Dimension(300, 45));
-        txtSearch.setForeground(Color.GRAY);
-        txtSearch.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        txtSearch.setBorder(BorderFactory.createCompoundBorder(
+        JPanel pnlSearchWrapper = new JPanel(new BorderLayout(8, 0));
+        pnlSearchWrapper.setBackground(Color.WHITE);
+        pnlSearchWrapper.setPreferredSize(new Dimension(300, 45));
+        pnlSearchWrapper.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(Color.decode("#DFE3E8"), 1, true),
                 BorderFactory.createEmptyBorder(0, 15, 0, 15)));
-        
+
+        JLabel lblSearchIcon = new JLabel(new MenuIcon("SEARCH")); 
+        lblSearchIcon.setForeground(Color.GRAY);
+        pnlSearchWrapper.add(lblSearchIcon, BorderLayout.WEST);
+
+        String placeholder = "Mã HD, khách hàng, SĐT...";
+        txtSearch = new JTextField(placeholder);
+        txtSearch.setForeground(Color.GRAY);
+        txtSearch.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        txtSearch.setBorder(null);
+        pnlSearchWrapper.add(txtSearch, BorderLayout.CENTER);
+
+        txtSearch.addFocusListener(new FocusAdapter() {
+            public void focusGained(FocusEvent e) {
+                if (txtSearch.getText().equals(placeholder)) {
+                    txtSearch.setText(""); txtSearch.setForeground(Color.BLACK);
+                }
+            }
+            public void focusLost(FocusEvent e) {
+                if (txtSearch.getText().trim().isEmpty()) {
+                    txtSearch.setForeground(Color.GRAY); txtSearch.setText(placeholder);
+                }
+            }
+        });
         txtSearch.addKeyListener(new KeyAdapter() {
             public void keyReleased(KeyEvent e) { applyFilter(); }
         });
 
         JButton btnReset = createActionBtn("Làm mới", "#6C757D");
-
-     // Gắn icon REFRESH vừa tạo
         btnReset.setIcon(new MenuIcon("REFRESH"));
-        btnReset.setIconTextGap(6); // Tạo khoảng cách giữa icon và chữ cho đẹp
-
+        btnReset.setIconTextGap(6);
         btnReset.addActionListener(e -> {
-         txtSearch.setText("");
-         xuLyStatus(statusBtns[0]);
-         xuLyCat(categoryBtns[0]);
+            txtSearch.setForeground(Color.GRAY);
+            txtSearch.setText(placeholder);
+            xuLyStatus(statusBtns[0]);
+            xuLyCat(categoryBtns[0]);
+            pnlHeader.requestFocus(); 
         });
 
         JButton btnCreate = createActionBtn("Tạo hóa đơn", "#E11D48");
-        btnCreate.setIcon(new MenuIcon("ADD")); // Sử dụng icon ADD vừa tạo
+        btnCreate.setIcon(new MenuIcon("ADD"));
         btnCreate.setIconTextGap(6);
         btnCreate.addActionListener(e -> {
+            // Lấy cửa sổ cha hiện tại
             Window p = SwingUtilities.getWindowAncestor(this);
-            // new TaoHoaDon((Frame) p).setVisible(true); // Đóng comment tạm nếu chưa có class TaoHoaDon
+            
+            // Mở JDialog TaoHoaDon
+            TaoHoaDon dialogTaoHoaDon = new TaoHoaDon((Frame) p);
+            dialogTaoHoaDon.setVisible(true);
         });
 
-        pnlActions.add(txtSearch);
+        pnlActions.add(pnlSearchWrapper);
         pnlActions.add(btnReset);
         pnlActions.add(btnCreate);
         pnlHeader.add(pnlActions, BorderLayout.EAST);
 
-        // --- 3. BỘ LỌC (FILTER) ---
+        // ==================== 3. BỘ LỌC (FILTER) ====================
         JPanel pnlFilters = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
         pnlFilters.setOpaque(false);
         pnlFilters.setBorder(new EmptyBorder(0, 0, 15, 0));
         
         pnlFilters.add(new JLabel("Trạng thái: "));
         statusBtns = new JButton[]{
-            createFilterBtn("Tất cả", true, false), 
-            createFilterBtn("Hoàn thành", false, false),
-            createFilterBtn("Đang xử lý", false, false), 
-            createFilterBtn("Đã hủy", false, false)
+            createFilterBtn("Tất cả", true, false), createFilterBtn("Hoàn thành", false, false),
+            createFilterBtn("Đang xử lý", false, false), createFilterBtn("Đã hủy", false, false)
         };
         for (JButton b : statusBtns) { pnlFilters.add(b); b.addActionListener(e -> xuLyStatus(b)); }
 
         pnlFilters.add(new JLabel("   |   Danh mục: "));
         categoryBtns = new JButton[]{
-            createFilterBtn("Tất cả", true, true), 
-            createFilterBtn("Thuốc kê đơn", false, true),
-            createFilterBtn("Thuốc không kê đơn", false, true), 
-            createFilterBtn("TPCN", false, true),
+            createFilterBtn("Tất cả", true, true), createFilterBtn("Thuốc kê đơn", false, true),
+            createFilterBtn("Thuốc không kê đơn", false, true), createFilterBtn("TPCN", false, true),
             createFilterBtn("Mỹ phẩm", false, true)
         };
         for (JButton b : categoryBtns) { pnlFilters.add(b); b.addActionListener(e -> xuLyCat(b)); }
@@ -147,7 +165,7 @@ public class ManHinhBanHang extends JPanel {
         pnlNorth.add(pnlFilters);
         this.add(pnlNorth, BorderLayout.NORTH);
 
-        // --- 4. BẢNG DỮ LIỆU ---
+        // ==================== 4. BẢNG DỮ LIỆU ====================
         String[] cols = {"Mã HD", "Ngày", "Khách hàng", "SĐT", "Thanh toán", "Tổng tiền", "Trạng thái", "Xem HD", "Hidden"};
         model = new DefaultTableModel(cols, 0) { public boolean isCellEditable(int r, int c) { return false; } };
         table = new JTable(model);
@@ -155,9 +173,17 @@ public class ManHinhBanHang extends JPanel {
         table.setRowSorter(sorter);
         
         table.setRowHeight(55); 
-        table.setShowVerticalLines(false);
-        table.setGridColor(Color.decode("#F1F3F5"));
         table.setFont(new Font("Segoe UI", Font.PLAIN, 15));
+
+        // --- CẤU HÌNH XÓA BỎ LƯỚI VÀ LÀM MƯỢT BẢNG ---
+        table.setShowGrid(false); // Xóa toàn bộ lưới mặc định
+        table.setShowHorizontalLines(true); // Chỉ bật đường kẻ ngang cho dễ nhìn
+        table.setIntercellSpacing(new Dimension(0, 0)); // Xóa khe hở trắng giữa các cột
+        table.setGridColor(Color.decode("#F1F3F5")); // Màu kẻ ngang nhạt
+        
+        // Cấu hình màu khi Click vào dòng (Bỏ màu xanh đậm xấu xí)
+        table.setSelectionBackground(Color.decode("#F8F9FA")); 
+        table.setSelectionForeground(Color.decode("#212B36"));
 
         JTableHeader header = table.getTableHeader();
         header.setPreferredSize(new Dimension(100, 50));
@@ -173,7 +199,7 @@ public class ManHinhBanHang extends JPanel {
         sp.setBorder(BorderFactory.createLineBorder(Color.decode("#DFE3E8")));
         this.add(sp, BorderLayout.CENTER);
 
-        // --- 5. PHÂN TRANG (FOOTER) ---
+        // ==================== 5. PHÂN TRANG ====================
         JPanel pnlSouth = new JPanel(new BorderLayout());
         pnlSouth.setOpaque(false);
         pnlSouth.setBorder(new EmptyBorder(15, 0, 0, 0));
@@ -194,9 +220,17 @@ public class ManHinhBanHang extends JPanel {
         loadData();
     }
 
-    // --- HÀM HỖ TRỢ ---
+    // ==================== CÁC HÀM HỖ TRỢ ====================
+
     private JButton createActionBtn(String txt, String hex) {
-        JButton btn = new JButton(txt);
+        JButton btn = new JButton(txt) {
+            @Override
+            public Dimension getPreferredSize() {
+                Dimension size = super.getPreferredSize();
+                size.height = 45; 
+                return size;
+            }
+        };
         btn.setBackground(Color.decode(hex));
         btn.setForeground(Color.WHITE);
         btn.setFocusPainted(false);
@@ -205,7 +239,7 @@ public class ManHinhBanHang extends JPanel {
         btn.setContentAreaFilled(true);
         btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        btn.setPreferredSize(new Dimension(180, 45));
+        btn.setBorder(BorderFactory.createEmptyBorder(0, 15, 0, 15)); 
         return btn;
     }
 
@@ -213,9 +247,7 @@ public class ManHinhBanHang extends JPanel {
         JButton btn = new JButton(text);
         btn.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         btn.setFocusPainted(false);
-        btn.setOpaque(true);
-        btn.setContentAreaFilled(true);
-        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btn.setCursor(new Cursor(Cursor.HAND_CURSOR)); 
         
         if (isActive) setBtnActive(btn, isPurple);
         else setBtnNormal(btn);
@@ -227,6 +259,9 @@ public class ManHinhBanHang extends JPanel {
         Color bgColor = Color.decode(isPurple ? "#9300D9" : "#1967D2");
         btn.setBackground(bgColor);
         btn.setForeground(Color.WHITE);
+        btn.setOpaque(true);
+        btn.setContentAreaFilled(true);
+        btn.setBorderPainted(true);
         btn.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createLineBorder(bgColor, 1),
             BorderFactory.createEmptyBorder(8, 18, 8, 18)
@@ -236,6 +271,8 @@ public class ManHinhBanHang extends JPanel {
     private void setBtnNormal(JButton btn) {
         btn.setBackground(Color.WHITE);
         btn.setForeground(Color.decode("#374151"));
+        btn.setOpaque(true);
+        btn.setContentAreaFilled(true);
         btn.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createLineBorder(Color.decode("#DFE3E8"), 1),
             BorderFactory.createEmptyBorder(7, 17, 7, 17)
@@ -261,7 +298,9 @@ public class ManHinhBanHang extends JPanel {
         if (!filterStatus.equals("Tất cả")) filters.add(RowFilter.regexFilter("^" + filterStatus + "$", 6));
         if (!filterCat.equals("Tất cả")) filters.add(RowFilter.regexFilter("^" + filterCat + "$", 8));
         String search = txtSearch.getText().trim();
-        if (!search.isEmpty() && !search.contains("🔍")) filters.add(RowFilter.regexFilter("(?i)" + search));
+        if (!search.isEmpty() && !search.equals("Mã HD, khách hàng, SĐT...")) {
+            filters.add(RowFilter.regexFilter("(?i)" + search));
+        }
 
         if (filters.isEmpty()) sorter.setRowFilter(null);
         else sorter.setRowFilter(RowFilter.andFilter(filters));
@@ -272,16 +311,23 @@ public class ManHinhBanHang extends JPanel {
             JLabel lbl = (JLabel) super.getTableCellRendererComponent(t, v, isSel, hasF, r, c);
             lbl.setHorizontalAlignment(CENTER);
 
-            if (!isSel) {
-                lbl.setBackground(Color.WHITE);
+            // Xóa cái khung nét đứt bao quanh ô khi click chuột vào
+            if (hasF) {
+                lbl.setBorder(new EmptyBorder(0, 0, 0, 0));
+            }
+
+            lbl.setOpaque(true);
+
+            if (c == 6) { 
+                // Cột trạng thái không đổi màu nền khi select dòng để giữ nguyên Tag màu
+                if (v.equals("Hoàn thành")) { lbl.setBackground(Color.decode("#DCFCE7")); lbl.setForeground(Color.decode("#10B981")); }
+                else if (v.equals("Đang xử lý")) { lbl.setBackground(Color.decode("#FEF3C7")); lbl.setForeground(Color.decode("#F59E0B")); }
+                else { lbl.setBackground(Color.decode("#FEE2E2")); lbl.setForeground(Color.decode("#EF4444")); }
+            } else {
+                // Các cột còn lại
+                lbl.setBackground(isSel ? Color.decode("#F8F9FA") : Color.WHITE);
                 lbl.setForeground(Color.decode("#212B36"));
-                if (c == 0) lbl.setForeground(Color.decode("#6A1B9A")); // Mã HD màu tím
-                if (c == 6) { // Trạng thái dạng Tag
-                    lbl.setOpaque(true);
-                    if (v.equals("Hoàn thành")) { lbl.setBackground(Color.decode("#DCFCE7")); lbl.setForeground(Color.decode("#10B981")); }
-                    else if (v.equals("Đang xử lý")) { lbl.setBackground(Color.decode("#FEF3C7")); lbl.setForeground(Color.decode("#F59E0B")); }
-                    else { lbl.setBackground(Color.decode("#FEE2E2")); lbl.setForeground(Color.decode("#EF4444")); }
-                }
+                if (c == 0) lbl.setForeground(Color.decode("#6A1B9A")); 
                 if (c == 7) { lbl.setForeground(Color.decode("#1967D2")); lbl.setText("👁 Xem"); }
             }
             return lbl;
