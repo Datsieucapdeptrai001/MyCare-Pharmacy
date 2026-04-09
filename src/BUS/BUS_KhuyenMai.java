@@ -1,16 +1,18 @@
 package BUS;
 
+import DAO.DAO_DieuKienKhuyenMai;
 import DAO.DAO_KhuyenMai;
 import Entity.KhuyenMai;
-
+import Entity.DieuKienKhuyenMai;
 import java.time.LocalDateTime;
 import java.util.List;
 
 public class BUS_KhuyenMai {
     private DAO_KhuyenMai daoKhuyenMai;
-
+    private DAO_DieuKienKhuyenMai daoDieuKienKhuyenMai;
     public BUS_KhuyenMai() {
         this.daoKhuyenMai = new DAO_KhuyenMai();
+        this.daoDieuKienKhuyenMai = new DAO_DieuKienKhuyenMai();
     }
 
     // Lấy danh sách (dùng cho giao diện quản lý)
@@ -49,17 +51,40 @@ public class BUS_KhuyenMai {
     // (Bổ sung tham số tongTienHoaDon để làm cơ sở xét điều kiện)
     public boolean kiemTraDieuKienKhuyenMai(String maKM, double tongTienHoaDon) {
         KhuyenMai km = daoKhuyenMai.layMaKM(maKM);
-        if (km == null) return false;
-        
+        if (km == null) {
+            return false;
+        }
+
         // 1. Kiểm tra thời hạn
         LocalDateTime now = LocalDateTime.now();
         if (now.isBefore(km.getNgayBatDau()) || now.isAfter(km.getNgayKetThuc())) {
             System.out.println("Khuyến mãi đã hết hạn hoặc chưa tới thời gian áp dụng.");
             return false;
         }
-        
-         
-        return true; // Tạm thời trả về true nếu còn hạn
+
+        // 2. Kiểm tra điều kiện áp dụng
+        List<DieuKienKhuyenMai> dsDieuKien = daoDieuKienKhuyenMai.layTheoKhuyenMaiId(maKM);
+
+        if (dsDieuKien == null || dsDieuKien.isEmpty()) {
+            return true;
+        }
+
+        for (DieuKienKhuyenMai dk : dsDieuKien) {
+            if (dk == null) {
+                continue;
+            }
+
+            if ("HOA_DON".equalsIgnoreCase(dk.getDoiTuongApDung())
+                    && "GIA_TRI".equalsIgnoreCase(dk.getLoaiDieuKien())) {
+
+                if (tongTienHoaDon < dk.getGiaTri()) {
+                    System.out.println("Hóa đơn chưa đủ điều kiện áp dụng khuyến mãi.");
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
 
 

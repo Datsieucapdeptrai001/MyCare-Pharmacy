@@ -32,13 +32,11 @@ public class DAO_KhachHang {
                 kh.setId(rs.getString("id"));
                 kh.setSdt(rs.getString("sdt"));
                 kh.setHoVaTen(rs.getString("hoVaTen"));
-                
+                kh.setDiemTichLuy(rs.getInt("diemTichLuy"));
+
                 if (rs.getTimestamp("ngayTao") != null) {
                     kh.setNgayTao(rs.getTimestamp("ngayTao").toLocalDateTime());
                 }
-                
-                // Nếu DB của bạn có thêm cột diemTichLuy, bạn gọi: 
-                // kh.setDiemTichLuy(rs.getInt("diemTichLuy"));
 
                 dsKhachHang.add(kh);
             }
@@ -50,7 +48,7 @@ public class DAO_KhachHang {
 
     // Thêm khách hàng mới
     public boolean themKhachHang(KhachHang kh) {
-        String sql = "INSERT INTO KhachHang (id, sdt, hoVaTen, ngayTao) VALUES (?, ?, ?, ?)";
+        String sql = "INSERT INTO KhachHang (id, sdt, hoVaTen, ngayTao, diemTichLuy) VALUES (?, ?, ?, ?, ?)";
         int n = 0;
         Connection con = ConnectDB.getInstance().getConnection();
 
@@ -58,9 +56,11 @@ public class DAO_KhachHang {
             pst.setString(1, kh.getId());
             pst.setString(2, kh.getSdt());
             pst.setString(3, kh.getHoVaTen());
-            
+
             LocalDateTime ngayTao = kh.getNgayTao() != null ? kh.getNgayTao() : LocalDateTime.now();
             pst.setTimestamp(4, Timestamp.valueOf(ngayTao));
+
+            pst.setInt(5, kh.getDiemTichLuy());
 
             n = pst.executeUpdate();
         } catch (SQLException e) {
@@ -69,16 +69,17 @@ public class DAO_KhachHang {
         return n > 0;
     }
 
-    // Cập nhật thông tin khách hàng (Thường chỉ cho phép cập nhật Tên hoặc SĐT)
+    // Cập nhật thông tin khách hàng
     public boolean capNhatKhachHang(KhachHang kh) {
-        String sql = "UPDATE KhachHang SET sdt = ?, hoVaTen = ? WHERE id = ?";
+        String sql = "UPDATE KhachHang SET sdt = ?, hoVaTen = ?, diemTichLuy = ? WHERE id = ?";
         int n = 0;
         Connection con = ConnectDB.getInstance().getConnection();
 
         try (PreparedStatement pst = con.prepareStatement(sql)) {
             pst.setString(1, kh.getSdt());
             pst.setString(2, kh.getHoVaTen());
-            pst.setString(3, kh.getId()); // ID là không đổi
+            pst.setInt(3, kh.getDiemTichLuy());
+            pst.setString(4, kh.getId());
 
             n = pst.executeUpdate();
         } catch (SQLException e) {
@@ -87,7 +88,7 @@ public class DAO_KhachHang {
         return n > 0;
     }
 
-    // Lấy thông tin khách hàng bằng Số điện thoại (Rất tiện khi khách đọc SĐT lúc thanh toán)
+    // Lấy thông tin khách hàng bằng số điện thoại
     public KhachHang getKhachHangTheoSDT(String sdt) {
         KhachHang kh = null;
         String sql = "SELECT * FROM KhachHang WHERE sdt = ?";
@@ -101,12 +102,34 @@ public class DAO_KhachHang {
                     kh.setId(rs.getString("id"));
                     kh.setSdt(rs.getString("sdt"));
                     kh.setHoVaTen(rs.getString("hoVaTen"));
-                    if (rs.getTimestamp("ngayTao") != null) kh.setNgayTao(rs.getTimestamp("ngayTao").toLocalDateTime());
+                    kh.setDiemTichLuy(rs.getInt("diemTichLuy"));
+
+                    if (rs.getTimestamp("ngayTao") != null) {
+                        kh.setNgayTao(rs.getTimestamp("ngayTao").toLocalDateTime());
+                    }
                 }
             }
         } catch (SQLException e) {
             e.printStackTrace();
         }
         return kh;
+    }
+
+    // Cập nhật điểm tích lũy
+    public boolean capNhatDiemTichLuy(String id, int diemMoi) {
+        String sql = "UPDATE KhachHang SET diemTichLuy = ? WHERE id = ?";
+        int n = 0;
+        Connection con = ConnectDB.getInstance().getConnection();
+
+        try (PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setInt(1, diemMoi);
+            pst.setString(2, id);
+
+            n = pst.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return n > 0;
     }
 }
