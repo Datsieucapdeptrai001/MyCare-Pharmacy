@@ -101,24 +101,115 @@ public class TaoHoaDon extends JDialog {
     }
 
     // Panel Khách hàng
+ // ========================================================
+    // PANEL KHÁCH HÀNG (FIX THEO ẢNH CHUẨN)
+    // ========================================================
     private JPanel createCustomerPanel() {
-        JPanel pnl = new JPanel(new GridBagLayout());
-        pnl.setBackground(Color.WHITE);
-        pnl.setBorder(new EmptyBorder(10, 10, 10, 10));
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.fill = GridBagConstraints.HORIZONTAL; gbc.insets = new Insets(5, 5, 5, 5);
+        // Tạo vỏ bọc ngoài cùng có viền xám nhạt bo góc
+        JPanel pnlWrapper = new JPanel(new BorderLayout(0, 15));
+        pnlWrapper.setBackground(Color.WHITE);
+        pnlWrapper.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(Color.decode("#DFE3E8"), 1, true),
+                BorderFactory.createEmptyBorder(15, 20, 15, 20)
+        ));
 
-        JTextField txtSearch = new JTextField(" Nhập SĐT hoặc mã KH...");
-        gbc.gridx = 0; gbc.gridy = 0; gbc.weightx = 0.8; pnl.add(txtSearch, gbc);
+        // --- 1. HEADER KHÁCH HÀNG ---
+        JPanel pnlHeader = new JPanel(new BorderLayout());
+        pnlHeader.setOpaque(false);
+
+        JPanel pnlTitle = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
+        pnlTitle.setOpaque(false);
+        JLabel lblIcon = new JLabel("👤"); 
+        lblIcon.setFont(new Font("Segoe UI", Font.PLAIN, 16));
+        lblIcon.setForeground(Color.decode("#6C757D"));
+        
+        JLabel lblTitleText = new JLabel("Tra cứu khách hàng");
+        lblTitleText.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        lblTitleText.setForeground(Color.decode("#212B36"));
+        
+        JLabel lblSubTitle = new JLabel("(tuỳ chọn)");
+        lblSubTitle.setFont(new Font("Segoe UI", Font.ITALIC, 14));
+        lblSubTitle.setForeground(Color.decode("#9CA3AF"));
+        
+        pnlTitle.add(lblIcon);
+        pnlTitle.add(lblTitleText);
+        pnlTitle.add(lblSubTitle);
+
+        // Nhãn "Khách lẻ" góc phải
+        JLabel lblBadge = new JLabel("Khách lẻ", SwingConstants.CENTER);
+        lblBadge.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        lblBadge.setForeground(Color.decode("#4B5563"));
+        lblBadge.setBackground(Color.decode("#F3F4F6"));
+        lblBadge.setOpaque(true);
+        lblBadge.setBorder(BorderFactory.createEmptyBorder(6, 14, 6, 14));
+
+        pnlHeader.add(pnlTitle, BorderLayout.WEST);
+        pnlHeader.add(lblBadge, BorderLayout.EAST);
+
+        // --- 2. BODY NHẬP LIỆU ---
+        JPanel pnlInput = new JPanel(new GridBagLayout());
+        pnlInput.setOpaque(false);
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.fill = GridBagConstraints.BOTH;
+        gbc.insets = new Insets(0, 0, 10, 10);
+
+        // Hàng 1: Ô tìm kiếm + Nút Tra cứu
+        JTextField txtSearch = createStyledTextField(" Nhập SĐT hoặc mã KH để liên kết điểm thưởng...");
+        gbc.gridx = 0; gbc.gridy = 0; gbc.weightx = 0.8; 
+        pnlInput.add(txtSearch, gbc);
 
         JButton btnSearch = new JButton("📞 Tra cứu");
-        btnSearch.setBackground(accentBlue); btnSearch.setForeground(Color.WHITE);
-        gbc.gridx = 1; gbc.weightx = 0.2; pnl.add(btnSearch, gbc);
+        btnSearch.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btnSearch.setBackground(Color.decode("#1967D2"));
+        btnSearch.setForeground(Color.WHITE);
+        btnSearch.setFocusPainted(false);
+        btnSearch.setOpaque(true);
+        btnSearch.setContentAreaFilled(true);
+        btnSearch.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        gbc.gridx = 1; gbc.weightx = 0.2; gbc.insets = new Insets(0, 0, 10, 0);
+        pnlInput.add(btnSearch, gbc);
 
-        pnl.add(new JTextField(" Tên khách (mặc định: Khách lẻ)"), getGbc(0, 1, 1));
-        pnl.add(new JTextField(" Số điện thoại (tuỳ chọn)"), getGbc(1, 1, 1));
+        // Hàng 2: Tên khách + SĐT
+        gbc.insets = new Insets(0, 0, 0, 15); // Lề phải 15px cho ô Tên khách
+        JTextField txtName = createStyledTextField(" Tên khách (bỏ trống = Khách lẻ)");
+        gbc.gridx = 0; gbc.gridy = 1; gbc.weightx = 0.5;
+        pnlInput.add(txtName, gbc);
 
-        return pnl;
+        JTextField txtPhone = createStyledTextField(" Số điện thoại (tuỳ chọn)");
+        gbc.gridx = 1; gbc.weightx = 0.5; gbc.insets = new Insets(0, 0, 0, 0);
+        pnlInput.add(txtPhone, gbc);
+
+        pnlWrapper.add(pnlHeader, BorderLayout.NORTH);
+        pnlWrapper.add(pnlInput, BorderLayout.CENTER);
+
+        return pnlWrapper;
+    }
+
+    // Hàm hỗ trợ tạo TextField đẹp (Tự ẩn chữ khi click)
+    private JTextField createStyledTextField(String placeholder) {
+        JTextField txt = new JTextField(placeholder);
+        txt.setPreferredSize(new Dimension(0, 42)); // Tăng chiều cao lên 42px
+        txt.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        txt.setForeground(Color.GRAY);
+        txt.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(Color.decode("#DFE3E8"), 1, true),
+            BorderFactory.createEmptyBorder(0, 10, 0, 10)
+        ));
+        
+        // Sự kiện placeholder
+        txt.addFocusListener(new java.awt.event.FocusAdapter() {
+            public void focusGained(java.awt.event.FocusEvent e) {
+                if (txt.getText().equals(placeholder)) {
+                    txt.setText(""); txt.setForeground(Color.BLACK);
+                }
+            }
+            public void focusLost(java.awt.event.FocusEvent e) {
+                if (txt.getText().isEmpty()) {
+                    txt.setForeground(Color.GRAY); txt.setText(placeholder);
+                }
+            }
+        });
+        return txt;
     }
 
     // Panel Sản phẩm & Bảng
