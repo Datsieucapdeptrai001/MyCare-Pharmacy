@@ -19,7 +19,7 @@ public class DAO_LoHang {
     public DAO_LoHang() {
     }
 
-    // 1. Hàm này đang bị thiếu trong file của bạn (Lấy toàn bộ danh sách)
+    // 1. Lấy toàn bộ danh sách lô hàng
     public List<LoHang> layDSLoHang() {
         List<LoHang> dsLoHang = new ArrayList<>();
         String sql = "SELECT * FROM LoHang";
@@ -34,11 +34,11 @@ public class DAO_LoHang {
                 lh.setSoLoHang(rs.getString("soLoHang"));
                 lh.setSoLuongLoHang(rs.getInt("soLuongLoHang"));
                 lh.setGia(rs.getInt("gia"));
-                
+
                 if (rs.getString("trangThai") != null) {
                     lh.setTrangThai(TrangThaiLoHang.valueOf(rs.getString("trangThai")));
                 }
-                
+
                 if (rs.getTimestamp("ngayHetHan") != null) {
                     lh.setNgayHetHan(rs.getTimestamp("ngayHetHan").toLocalDateTime());
                 }
@@ -46,11 +46,11 @@ public class DAO_LoHang {
                     lh.setNgayNhap(rs.getTimestamp("ngayNhap").toLocalDateTime());
                 }
 
-                SanPham sp = new SanPham(); 
+                SanPham sp = new SanPham();
                 sp.setId(rs.getString("sanPhamId"));
                 lh.setSanPhamId(sp);
 
-                KhoHang kho = new KhoHang(); 
+                KhoHang kho = new KhoHang();
                 kho.setId(rs.getString("khoHangId"));
                 lh.setKhoHangId(kho);
 
@@ -62,14 +62,24 @@ public class DAO_LoHang {
         return dsLoHang;
     }
 
-    // 2. Lấy danh sách các Lô hàng của một Sản phẩm cụ thể (Phục vụ FEFO)
+    // 2. Lấy danh sách các lô hàng của một sản phẩm cụ thể (Phục vụ FEFO)
+    // Hàm cũ
     public List<LoHang> layLoTheoSP(String maSP) {
-        List<LoHang> dsLoHang = new ArrayList<>();
-        String sql = "SELECT * FROM LoHang WHERE sanPhamId = ? AND soLuongLoHang > 0 AND trangThai != 'HET_HAN' ORDER BY ngayHetHan ASC";
         Connection con = ConnectDB.getInstance().getConnection();
+        return layLoTheoSP(con, maSP);
+    }
+
+    // Hàm mới dùng cho transaction
+    public List<LoHang> layLoTheoSP(Connection con, String maSP) {
+        List<LoHang> dsLoHang = new ArrayList<>();
+        String sql = "SELECT * FROM LoHang "
+                   + "WHERE sanPhamId = ? AND soLuongLoHang > 0 AND trangThai <> ? "
+                   + "ORDER BY ngayHetHan ASC";
 
         try (PreparedStatement pst = con.prepareStatement(sql)) {
             pst.setString(1, maSP);
+            pst.setString(2, TrangThaiLoHang.HET_HAN.name());
+
             try (ResultSet rs = pst.executeQuery()) {
                 while (rs.next()) {
                     LoHang lh = new LoHang();
@@ -77,14 +87,25 @@ public class DAO_LoHang {
                     lh.setSoLoHang(rs.getString("soLoHang"));
                     lh.setSoLuongLoHang(rs.getInt("soLuongLoHang"));
                     lh.setGia(rs.getInt("gia"));
-                    
-                    if (rs.getTimestamp("ngayHetHan") != null) lh.setNgayHetHan(rs.getTimestamp("ngayHetHan").toLocalDateTime());
-                    if (rs.getTimestamp("ngayNhap") != null) lh.setNgayNhap(rs.getTimestamp("ngayNhap").toLocalDateTime());
-                    if (rs.getString("trangThai") != null) lh.setTrangThai(TrangThaiLoHang.valueOf(rs.getString("trangThai")));
-                    
-                    SanPham sp = new SanPham(); sp.setId(rs.getString("sanPhamId"));
+
+                    if (rs.getTimestamp("ngayHetHan") != null) {
+                        lh.setNgayHetHan(rs.getTimestamp("ngayHetHan").toLocalDateTime());
+                    }
+                    if (rs.getTimestamp("ngayNhap") != null) {
+                        lh.setNgayNhap(rs.getTimestamp("ngayNhap").toLocalDateTime());
+                    }
+                    if (rs.getString("trangThai") != null) {
+                        lh.setTrangThai(TrangThaiLoHang.valueOf(rs.getString("trangThai")));
+                    }
+
+                    SanPham sp = new SanPham();
+                    sp.setId(rs.getString("sanPhamId"));
                     lh.setSanPhamId(sp);
-                    
+
+                    KhoHang kho = new KhoHang();
+                    kho.setId(rs.getString("khoHangId"));
+                    lh.setKhoHangId(kho);
+
                     dsLoHang.add(lh);
                 }
             }
@@ -94,11 +115,17 @@ public class DAO_LoHang {
         return dsLoHang;
     }
 
-    // 3. Cập nhật số lượng tồn của một lô cụ thể (Sau khi bán hoặc xuất kho)
+    // 3. Cập nhật số lượng tồn của một lô cụ thể
+    // Hàm cũ
     public boolean capNhatSoLuongTon(String maLoHang, int soLuongMoi) {
+        Connection con = ConnectDB.getInstance().getConnection();
+        return capNhatSoLuongTon(con, maLoHang, soLuongMoi);
+    }
+
+    // Hàm mới dùng cho transaction
+    public boolean capNhatSoLuongTon(Connection con, String maLoHang, int soLuongMoi) {
         String sql = "UPDATE LoHang SET soLuongLoHang = ? WHERE id = ?";
         int n = 0;
-        Connection con = ConnectDB.getInstance().getConnection();
 
         try (PreparedStatement pst = con.prepareStatement(sql)) {
             pst.setInt(1, soLuongMoi);
@@ -110,10 +137,17 @@ public class DAO_LoHang {
         return n > 0;
     }
 
-    // 4. Cập nhật trạng thái lô hàng (Ví dụ: Từ CON_HANG sang HET_HANG hoặc HET_HAN)
+    // 4. Cập nhật trạng thái lô hàng
+    // Hàm cũ
     public boolean capNhatTrangThaiLo(String maLoHang, TrangThaiLoHang trangThaiMoi) {
-        String sql = "UPDATE LoHang SET trangThai = ? WHERE id = ?";
         Connection con = ConnectDB.getInstance().getConnection();
+        return capNhatTrangThaiLo(con, maLoHang, trangThaiMoi);
+    }
+
+    // Hàm mới dùng cho transaction
+    public boolean capNhatTrangThaiLo(Connection con, String maLoHang, TrangThaiLoHang trangThaiMoi) {
+        String sql = "UPDATE LoHang SET trangThai = ? WHERE id = ?";
+
         try (PreparedStatement pst = con.prepareStatement(sql)) {
             pst.setString(1, trangThaiMoi.name());
             pst.setString(2, maLoHang);

@@ -60,4 +60,34 @@ public class DAO_ThongKe {
         }
         return doanhThu;
     }
+    public double tinhLoiNhuan(LocalDateTime tuNgay, LocalDateTime denNgay) {
+        double tongLoiNhuan = 0.0;
+        
+        // Câu SQL tính lợi nhuận: (Giá bán - Giá nhập) * Số lượng
+        // LƯU Ý: Bạn CẦN đổi tên bảng và tên cột cho khớp với Database thực tế của bạn
+        String sql = "SELECT SUM(ct.SoLuong * (ct.DonGia - sp.GiaNhap)) AS LoiNhuan "
+                   + "FROM HoaDon hd "
+                   + "JOIN ChiTietHoaDon ct ON hd.MaHoaDon = ct.MaHoaDon "
+                   + "JOIN SanPham sp ON ct.MaSanPham = sp.MaSanPham "
+                   + "WHERE hd.NgayLap BETWEEN ? AND ?";
+
+        // Thay ConnectDB.getConnection() bằng class kết nối DB của bạn
+        try (Connection con = ConnectDB.getConnection(); 
+             PreparedStatement pst = con.prepareStatement(sql)) {
+            
+            // Chuyển đổi LocalDateTime sang Timestamp để truyền vào SQL
+            pst.setTimestamp(1, Timestamp.valueOf(tuNgay));
+            pst.setTimestamp(2, Timestamp.valueOf(denNgay));
+            
+            try (ResultSet rs = pst.executeQuery()) {
+                if (rs.next()) {
+                    tongLoiNhuan = rs.getDouble("LoiNhuan");
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        
+        return tongLoiNhuan;
+    }
 }

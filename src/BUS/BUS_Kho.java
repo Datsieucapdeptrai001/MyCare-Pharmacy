@@ -4,9 +4,12 @@ import DAO.DAO_LoHang;
 import Entity.LoHang;
 import Enum.TrangThaiLoHang;
 
+import java.sql.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+
+import ConnectDB.ConnectDB;
 
 public class BUS_Kho {
     private DAO_LoHang daoLoHang;
@@ -52,37 +55,83 @@ public class BUS_Kho {
     // Trả về số lượng thuốc THỰC TẾ không thể đáp ứng (nếu kho không đủ hàng)
     // Nếu kho đủ hàng, nó sẽ trả về 0 và tự động trừ số lượng trong DB.
     public int xuLyXuatKhoFEFO(String maSP, int soLuongCanXuat) {
-        // 1. Lấy danh sách lô hàng của Sản phẩm này, đã được DAO order by NgayHetHan ASC
-        List<LoHang> dsLo = daoLoHang.layLoTheoSP(maSP);
-        
-        int soLuongConThieu = soLuongCanXuat;
+        Connection con = null;
 
-        // 2. Duyệt qua từng lô hàng, lấy từ lô cận Date nhất
-        for (LoHang lh : dsLo) {
-            if (soLuongConThieu <= 0) break; // Đã lấy đủ hàng
+        try {
+            con = ConnectDB.getInstance().getConnection();
+            con.setAutoCommit(false);
 
-            int soLuongTrongLo = lh.getSoLuongLoHang();
+            List<LoHang> dsLo = daoLoHang.layLoTheoSP(con, maSP);
+            int soLuongConThieu = soLuongCanXuat;
 
-            if (soLuongTrongLo >= soLuongConThieu) {
-                // Lô này đủ hàng để trừ
-                daoLoHang.capNhatSoLuongTon(lh.getId(), soLuongTrongLo - soLuongConThieu);
-                soLuongConThieu = 0;
-            } else {
-                // Lô này không đủ, lấy sạch lô này rồi đi qua lô tiếp theo
-                daoLoHang.capNhatSoLuongTon(lh.getId(), 0);
-                daoLoHang.capNhatTrangThaiLo(lh.getId(), TrangThaiLoHang.HET_HANG); // Cập nhật trạng thái
-                soLuongConThieu -= soLuongTrongLo;
+            for (LoHang lh : dsLo) {
+                if (soLuongConThieu <= 0) {
+                    break;
+                }
+
+                if (lh == null) {
+                    continue;
+                }
+
+                int soLuongTrongLo = lh.getSoLuongLoHang();
+
+                if (soLuongTrongLo >= soLuongConThieu) {
+                    boolean ok = daoLoHang.capNhatSoLuongTon(con, lh.getId(), soLuongTrongLo - soLuongConThieu);
+                    if (!ok) {
+                        throw new SQLException("Không cập nhật được số lượng tồn cho lô " + lh.getId());
+                    }
+
+                    if (soLuongTrongLo - soLuongConThieu == 0) {
+                        ok = daoLoHang.capNhatTrangThaiLo(con, lh.getId(), TrangThaiLoHang.HET_HANG);
+                        if (!ok) {
+                            throw new SQLException("Không cập nhật được trạng thái lô " + lh.getId());
+                        }
+                    }
+
+                    soLuongConThieu = 0;
+                } else {
+                    boolean ok = daoLoHang.capNhatSoLuongTon(con, lh.getId(), 0);
+                    if (!ok) {
+                        throw new SQLException("Không cập nhật được số lượng tồn cho lô " + lh.getId());
+                    }
+
+                    ok = daoLoHang.capNhatTrangThaiLo(con, lh.getId(), TrangThaiLoHang.HET_HANG);
+                    if (!ok) {
+                        throw new SQLException("Không cập nhật được trạng thái lô " + lh.getId());
+                    }
+
+                    soLuongConThieu -= soLuongTrongLo;
+                }
+            }
+
+            if (soLuongConThieu > 0) {
+                throw new SQLException("Kho không đủ hàng. Còn thiếu " + soLuongConThieu + " đơn vị.");
+            }
+
+            con.commit();
+            return 0;
+
+        } catch (Exception e) {
+            try {
+                if (con != null) {
+                    con.rollback();
+                }
+            } catch (SQLException ex) {
+                ex.printStackTrace();
+            }
+
+            e.printStackTrace();
+            return soLuongCanXuat;
+        } finally {
+            try {
+                if (con != null) {
+                    con.setAutoCommit(true);
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
             }
         }
-
-        // Nếu chạy xong mà soLuongConThieu > 0 nghĩa là kho không đủ hàng
-        if (soLuongConThieu > 0) {
-            System.out.println("Cảnh báo: Kho không đủ hàng. Còn thiếu " + soLuongConThieu + " đơn vị.");
-        }
-        
-        return soLuongConThieu; 
     }
-
     // Nghiệp vụ: Kiểm kê kho định kỳ (Quét và tự động chuyển trạng thái các lô hàng)
     public boolean kiemKeKho() {
         try {
@@ -90,12 +139,19 @@ public class BUS_Kho {
             LocalDateTime hienTai = LocalDateTime.now();
 
             for (LoHang lh : dsToanBo) {
-                // Nếu số lượng về 0 -> Chuyển thành HẾT HÀNG
-                if (lh.getSoLuongLoHang() == 0 && lh.getTrangThai() != TrangThaiLoHang.HET_HANG) {
-                    daoLoHang.capNhatTrangThaiLo(lh.getId(), TrangThaiLoHang.HET_HANG);
+                if (lh == null) {
+                    continue;
                 }
+
                 // Nếu qua ngày hết hạn -> Chuyển thành HẾT HẠN
-                else if (lh.getNgayHetHan().isBefore(hienTai) && lh.getTrangThai() != TrangThaiLoHang.HET_HANG) {
+                if (lh.getNgayHetHan() != null
+                        && lh.getNgayHetHan().isBefore(hienTai)
+                        && lh.getTrangThai() != TrangThaiLoHang.HET_HAN) {
+                    daoLoHang.capNhatTrangThaiLo(lh.getId(), TrangThaiLoHang.HET_HAN);
+                }
+                // Nếu số lượng về 0 -> Chuyển thành HẾT HÀNG
+                else if (lh.getSoLuongLoHang() == 0
+                        && lh.getTrangThai() != TrangThaiLoHang.HET_HANG) {
                     daoLoHang.capNhatTrangThaiLo(lh.getId(), TrangThaiLoHang.HET_HANG);
                 }
             }
