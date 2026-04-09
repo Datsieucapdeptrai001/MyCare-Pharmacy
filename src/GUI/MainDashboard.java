@@ -40,12 +40,15 @@ public class MainDashboard extends JFrame {
         cardLayout = new CardLayout();
         cardPanel = new JPanel(cardLayout);
 
-        // ==================== GẮN MÀN HÌNH VÀO ĐÂY ====================
-        cardPanel.add(createDummyPanel("Chào mừng đến với MyCare Pharmacy"), "Màn hình chính");
+        // GẮN MÀN HÌNH VÀO ĐÂY
+      
+        ManHinhChinh mhChinh = new ManHinhChinh();
+        cardPanel.add(mhChinh, "Màn hình chính");
         
         ManHinhBanHang mhBanHang = new ManHinhBanHang(); 
         cardPanel.add(mhBanHang, "Bán hàng & Đổi trả");
 
+        // Các màn hình chưa làm thì cứ để DummyPanel tạm
         cardPanel.add(createDummyPanel("Quản lý Sản phẩm"), "Sản phẩm");
         cardPanel.add(createDummyPanel("Quản lý Lô hàng"), "Lô hàng");
         cardPanel.add(createDummyPanel("Chương trình Khuyến mại"), "Khuyến mại");
@@ -53,7 +56,6 @@ public class MainDashboard extends JFrame {
         cardPanel.add(createDummyPanel("Quản lý Nhân viên"), "Nhân viên");
         cardPanel.add(createDummyPanel("Quản lý Khách hàng"), "Khách hàng");
         cardPanel.add(createDummyPanel("Hướng dẫn sử dụng"), "Hướng dẫn");
-        // ===============================================================
 
         JPanel sidebar = createSidebar();
         add(sidebar, BorderLayout.WEST);
@@ -63,6 +65,8 @@ public class MainDashboard extends JFrame {
         rightPanel.add(cardPanel, BorderLayout.CENTER);
 
         add(rightPanel, BorderLayout.CENTER);
+
+        cardLayout.show(cardPanel, "Màn hình chính");
     }
 
     private JPanel createDummyPanel(String text) {
