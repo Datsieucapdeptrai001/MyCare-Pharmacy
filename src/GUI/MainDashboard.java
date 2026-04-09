@@ -48,31 +48,26 @@ public class MainDashboard extends JFrame {
         // GẮN CÁC MÀN HÌNH VÀO CARD_PANEL Ở ĐÂY
         // ==========================================
         
-        // Màn hình chính
+     // --- KHỞI TẠO CÁC MÀN HÌNH THẬT ---
         ManHinhChinh mhChinh = new ManHinhChinh();
-        cardPanel.add(mhChinh, "Màn hình chính");
-        
-        // Bán hàng & Đổi trả
-        ManHinhBanHang mhBanHang = new ManHinhBanHang(); 
-        cardPanel.add(mhBanHang, "Bán hàng & Đổi trả");
-
-        // MÀN HÌNH KHUYẾN MẠI THẬT VÀO ĐÂY
+        ManHinhBanHang mhBanHang = new ManHinhBanHang();
         ManHinhKhuyenMai mhKhuyenMai = new ManHinhKhuyenMai();
-        cardPanel.add(mhKhuyenMai, "Khuyến mại");
-        
-        // 
         ManHinhLoHang mhLoHang = new ManHinhLoHang();
-        cardPanel.add(mhLoHang, "Lô hàng");
         ManHinhSanPham mhSanPham = new ManHinhSanPham();
+        ManHinhHuongDan mhHuongDan = new ManHinhHuongDan(); // Kiểm tra xem file này có lỗi không
+
+        // --- ADD VÀO CARDPANEL (MỖI KEY CHỈ XUẤT HIỆN 1 LẦN) ---
+        cardPanel.add(mhChinh, "Màn hình chính");
+        cardPanel.add(mhBanHang, "Bán hàng & Đổi trả");
         cardPanel.add(mhSanPham, "Sản phẩm");
-        // Các màn hình chưa làm thì cứ để DummyPanel tạm
-        // Các màn hình chưa code xong (Dùng Dummy)
-       
-        cardPanel.add(createDummyPanel("Quản lý Lô hàng"), "Lô hàng");
+        cardPanel.add(mhLoHang, "Lô hàng");
+        cardPanel.add(mhKhuyenMai, "Khuyến mại");
+        cardPanel.add(mhHuongDan, "Hướng dẫn"); // Tên này phải khớp 100% với mảng menuItems
+
+        // --- CÁC MÀN HÌNH CHƯA CÓ FILE THÌ DÙNG DUMMY ---
         cardPanel.add(createDummyPanel("Thống kê doanh thu"), "Thống kê");
         cardPanel.add(createDummyPanel("Quản lý Nhân viên"), "Nhân viên");
         cardPanel.add(createDummyPanel("Quản lý Khách hàng"), "Khách hàng");
-        cardPanel.add(createDummyPanel("Hướng dẫn sử dụng"), "Hướng dẫn");
 
         // ==========================================
 
