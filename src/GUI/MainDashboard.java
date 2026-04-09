@@ -50,8 +50,8 @@ public class MainDashboard extends JFrame {
         cardPanel.add(mhBanHang, "Bán hàng & Đổi trả");
 
         // MÀN HÌNH KHUYẾN MẠI THẬT VÀO ĐÂY
-//        ManHinhKhuyenMai mhKhuyenMai = new ManHinhKhuyenMai();
-//        cardPanel.add(mhKhuyenMai, "Khuyến mại");
+        ManHinhKhuyenMai mhKhuyenMai = new ManHinhKhuyenMai();
+        cardPanel.add(mhKhuyenMai, "Khuyến mại");
 
         ManHinhLoHang mhLoHang = new ManHinhLoHang();
         cardPanel.add(mhLoHang, "Lô hàng");
