@@ -40,14 +40,7 @@ public class MainDashboard extends JFrame {
         cardLayout = new CardLayout();
         cardPanel = new JPanel(cardLayout);
 
-
         // GẮN MÀN HÌNH VÀO ĐÂY
-      
-
-        // ==========================================
-        // GẮN CÁC MÀN HÌNH VÀO CARD_PANEL Ở ĐÂY
-        // ==========================================
-        
         // Màn hình chính
         ManHinhChinh mhChinh = new ManHinhChinh();
         cardPanel.add(mhChinh, "Màn hình chính");
@@ -59,15 +52,16 @@ public class MainDashboard extends JFrame {
         // MÀN HÌNH KHUYẾN MẠI THẬT VÀO ĐÂY
         ManHinhKhuyenMai mhKhuyenMai = new ManHinhKhuyenMai();
         cardPanel.add(mhKhuyenMai, "Khuyến mại");
-        
-        // 
+
         ManHinhLoHang mhLoHang = new ManHinhLoHang();
         cardPanel.add(mhLoHang, "Lô hàng");
+
+        ManHinhHuongDan mhHuongDan = new ManHinhHuongDan();
+        cardPanel.add(mhHuongDan, "Hướng dẫn");
         
         // Các màn hình chưa làm thì cứ để DummyPanel tạm
-        // Các màn hình chưa code xong (Dùng Dummy)
         cardPanel.add(createDummyPanel("Quản lý Sản phẩm"), "Sản phẩm");
-        cardPanel.add(createDummyPanel("Quản lý Lô hàng"), "Lô hàng");
+        cardPanel.add(createDummyPanel("Chương trình Khuyến mại"), "Khuyến mại");
         cardPanel.add(createDummyPanel("Thống kê doanh thu"), "Thống kê");
         cardPanel.add(createDummyPanel("Quản lý Nhân viên"), "Nhân viên");
         cardPanel.add(createDummyPanel("Quản lý Khách hàng"), "Khách hàng");
