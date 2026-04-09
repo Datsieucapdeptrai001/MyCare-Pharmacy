@@ -22,11 +22,20 @@ public class MenuIcon implements Icon {
         Graphics2D g2d = (Graphics2D) g.create();
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         
+
         // BÙA CHÚ TỰ ĐỔI MÀU THEO CHỮ CỦA COMPONENT
+        // Tự động lấy màu theo Foreground của Component gắn icon
+
         g2d.setColor(c.getForeground()); 
         g2d.setStroke(new BasicStroke(2, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
 
         switch (type) {
+
+            case "ADD": // Dấu cộng (Thêm mới/Tạo mới)
+                g2d.drawLine(x + 5, y + 11, x + 17, y + 11); // Thanh ngang
+                g2d.drawLine(x + 11, y + 5, x + 11, y + 17); // Thanh dọc
+                break;
+
             case "HOME": 
                 g2d.drawPolygon(new int[]{x + 11, x + 20, x + 2}, new int[]{y + 4, y + 12, y + 12}, 3);
                 g2d.drawRect(x + 5, y + 12, 12, 8);
@@ -55,7 +64,11 @@ public class MenuIcon implements Icon {
                 g2d.drawOval(x + 11, y + 2, 4, 3);
                 break;
             case "CHART": 
+
                 g2d.drawLine(x + 2, y + 18, x + 20, y + 18); 
+
+                g2d.drawLine(x + 2, y + 18, x + 20, y + 18);
+
                 g2d.drawRect(x + 4, y + 10, 4, 8);
                 g2d.drawRect(x + 9, y + 5, 4, 13);
                 g2d.drawRect(x + 14, y + 12, 4, 6);
@@ -84,6 +97,7 @@ public class MenuIcon implements Icon {
                 g2d.drawLine(x + 14, y + 11, x + 20, y + 11);
                 g2d.drawPolyline(new int[]{x + 17, x + 20, x + 17}, new int[]{y + 8, y + 11, y + 14}, 3);
                 break;
+
                 
             // ==========================================
             // CÁC ICON MỚI CHO MÀN HÌNH CHÍNH NÈ ĐẠT ƠI
@@ -104,6 +118,11 @@ public class MenuIcon implements Icon {
             case "CIRCLE_HOLLOW": // Vòng tròn có dấu chấm giữa cho nút Kết ca
                 g2d.drawOval(x + 4, y + 4, 14, 14);
                 g2d.fillOval(x + 9, y + 9, 4, 4);
+
+            case "REFRESH": 
+                g2d.drawArc(x + 4, y + 4, 14, 14, 90, -270);
+                g2d.drawPolyline(new int[]{x + 1, x + 4, x + 7}, new int[]{y + 14, y + 11, y + 14}, 3);
+
                 break;
         }
         g2d.dispose();
