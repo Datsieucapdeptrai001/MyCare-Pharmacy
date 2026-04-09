@@ -1,6 +1,6 @@
 package GUI;
 
-import Components.MenuIcon; // IMPORT CLASS VẼ ICON TỪ PACKAGE KHÁC VÀO NÈ!
+import Components.MenuIcon; 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.FocusAdapter;
@@ -16,7 +16,7 @@ public class MainDashboard extends JFrame {
     private JPanel cardPanel;
     private List<JButton> menuButtons;
 
-    // Mảng tên Menu sạch sẽ
+    // Mảng tên Menu sạch sẽ (Key để chuyển màn hình)
     private final String[] menuItems = {
         "Màn hình chính", 
         "Bán hàng & Đổi trả", 
@@ -40,34 +40,44 @@ public class MainDashboard extends JFrame {
         cardLayout = new CardLayout();
         cardPanel = new JPanel(cardLayout);
 
-        // GẮN MÀN HÌNH VÀO ĐÂY
-        // Màn hình chính
+        // ==========================================================
+        // KHU VỰC ĐÃ DỌN DẸP SẠCH SẼ - 1 MÀN HÌNH CHỈ CÓ 1 KEY
+        // ==========================================================
+        
+        // 1. Màn hình chính
         ManHinhChinh mhChinh = new ManHinhChinh();
         cardPanel.add(mhChinh, "Màn hình chính");
         
-        // Bán hàng & Đổi trả
+        // 2. Bán hàng & Đổi trả
         ManHinhBanHang mhBanHang = new ManHinhBanHang(); 
         cardPanel.add(mhBanHang, "Bán hàng & Đổi trả");
 
-        // MÀN HÌNH KHUYẾN MẠI THẬT VÀO ĐÂY
-        ManHinhKhuyenMai mhKhuyenMai = new ManHinhKhuyenMai();
-        cardPanel.add(mhKhuyenMai, "Khuyến mại");
+        // 3. Sản phẩm
+        ManHinhSanPham mhSanPham = new ManHinhSanPham();
+        cardPanel.add(mhSanPham, "Sản phẩm");
 
+        // 4. Lô hàng
         ManHinhLoHang mhLoHang = new ManHinhLoHang();
         cardPanel.add(mhLoHang, "Lô hàng");
 
+        // 5. Khuyến mại
+        ManHinhKhuyenMai mhKhuyenMai = new ManHinhKhuyenMai();
+        cardPanel.add(mhKhuyenMai, "Khuyến mại");
+
+        // 6. Thống kê (Chưa có -> Dùng Dummy)
+        cardPanel.add(createDummyPanel("Thống kê doanh thu"), "Thống kê");
+
+        // 7. Nhân viên (Chưa có -> Dùng Dummy)
+        cardPanel.add(createDummyPanel("Quản lý Nhân viên"), "Nhân viên");
+
+        // 8. Khách hàng (Chưa có -> Dùng Dummy)
+        cardPanel.add(createDummyPanel("Quản lý Khách hàng"), "Khách hàng");
+
+        // 9. Hướng dẫn
         ManHinhHuongDan mhHuongDan = new ManHinhHuongDan();
         cardPanel.add(mhHuongDan, "Hướng dẫn");
-        
-        // Các màn hình chưa làm thì cứ để DummyPanel tạm
-        cardPanel.add(createDummyPanel("Quản lý Sản phẩm"), "Sản phẩm");
-        cardPanel.add(createDummyPanel("Chương trình Khuyến mại"), "Khuyến mại");
-        cardPanel.add(createDummyPanel("Thống kê doanh thu"), "Thống kê");
-        cardPanel.add(createDummyPanel("Quản lý Nhân viên"), "Nhân viên");
-        cardPanel.add(createDummyPanel("Quản lý Khách hàng"), "Khách hàng");
-        cardPanel.add(createDummyPanel("Hướng dẫn sử dụng"), "Hướng dẫn");
 
-        // ==========================================
+        // ==========================================================
 
         JPanel sidebar = createSidebar();
         add(sidebar, BorderLayout.WEST);
@@ -78,6 +88,7 @@ public class MainDashboard extends JFrame {
 
         add(rightPanel, BorderLayout.CENTER);
 
+        // Hiển thị Màn hình chính đầu tiên khi chạy code
         cardLayout.show(cardPanel, "Màn hình chính");
     }
 
