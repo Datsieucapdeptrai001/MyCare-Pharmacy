@@ -49,6 +49,7 @@ public class MainDashboard extends JFrame {
         cardPanel.add(mhBanHang, "Bán hàng & Đổi trả");
 
 
+
         cardPanel.add(createDummyPanel("Quản lý Sản phẩm"), "Sản phẩm");
         cardPanel.add(createDummyPanel("Quản lý Lô hàng"), "Lô hàng");
         
@@ -57,10 +58,20 @@ public class MainDashboard extends JFrame {
         //cardPanel.add(mhKhuyenMai, "Khuyến mại");
         
         // Các màn hình chưa code xong (Dùng Dummy)
+
+        ManHinhLoHang mhLoHang = new ManHinhLoHang();
+        cardPanel.add(mhLoHang, "Lô hàng");
+
+        ManHinhHuongDan mhHuongDan = new ManHinhHuongDan();
+        cardPanel.add(mhHuongDan, "Hướng dẫn");
+        
+        // Các màn hình chưa làm thì cứ để DummyPanel tạm
+        cardPanel.add(createDummyPanel("Quản lý Sản phẩm"), "Sản phẩm");
+        cardPanel.add(createDummyPanel("Chương trình Khuyến mại"), "Khuyến mại");
+
         cardPanel.add(createDummyPanel("Thống kê doanh thu"), "Thống kê");
         cardPanel.add(createDummyPanel("Quản lý Nhân viên"), "Nhân viên");
         cardPanel.add(createDummyPanel("Quản lý Khách hàng"), "Khách hàng");
-        cardPanel.add(createDummyPanel("Hướng dẫn sử dụng"), "Hướng dẫn");
 
         // ==========================================
 
