@@ -22,34 +22,35 @@ public class MainDashboard extends JFrame {
         setLayout(new BorderLayout());
 
         menuButtons = new ArrayList<>();
-
-        // 1. Khởi tạo CardLayout cho phần bên phải
         cardLayout = new CardLayout();
         cardPanel = new JPanel(cardLayout);
 
-        // 2. TẠO CÁC MÀN HÌNH VÀ THÊM VÀO CARD_PANEL
-        // Đây là chỗ Pột sẽ thay bằng các Panel thật của Pột sau này nhé!
-        cardPanel.add(createDummyPanel("Đây là Màn hình chính"), "Màn hình chính");
+        // ==================== 1. GẮN MÀN HÌNH THẬT VÀO ĐÂY ====================
         
-        // Giả sử cậu đã code xong ManHinhBanHang, cậu gắn vào như sau:
-        // ManHinhBanHang formHoaDon = new ManHinhBanHang();
-        // cardPanel.add(formHoaDon, "Bán hàng & Đổi trả");
-        cardPanel.add(createDummyPanel("Đây là màn Bán hàng & Đổi trả"), "Bán hàng & Đổi trả");
-        cardPanel.add(createDummyPanel("Đây là màn Quản lý Sản phẩm"), "Sản phẩm");
-        cardPanel.add(createDummyPanel("Đây là màn Lô hàng"), "Lô hàng");
-        cardPanel.add(createDummyPanel("Đây là màn Khuyến mại"), "Khuyến mại");
-        cardPanel.add(createDummyPanel("Đây là màn Thống kê"), "Thống kê");
-        cardPanel.add(createDummyPanel("Đây là màn Nhân viên"), "Nhân viên");
-        cardPanel.add(createDummyPanel("Đây là màn Khách hàng"), "Khách hàng");
-        cardPanel.add(createDummyPanel("Đây là màn Hướng dẫn"), "Hướng dẫn");
+        // Màn hình chính (Vẫn để giả nếu bạn chưa code xong)
+        cardPanel.add(createDummyPanel("Chào mừng đến với MyCare Pharmacy"), "Màn hình chính");
+        
+        // Gắn ManHinhBanHang thật vào key "Bán hàng & Đổi trả"
+        ManHinhBanHang mhBanHang = new ManHinhBanHang(); 
+        cardPanel.add(mhBanHang, "Bán hàng & Đổi trả");
 
-        // 3. Tạo Sidebar và Top Header
+        // Các màn hình khác (Để tạm panel giả)
+        cardPanel.add(createDummyPanel("Quản lý Sản phẩm"), "Sản phẩm");
+        cardPanel.add(createDummyPanel("Quản lý Lô hàng"), "Lô hàng");
+        cardPanel.add(createDummyPanel("Chương trình Khuyến mại"), "Khuyến mại");
+        cardPanel.add(createDummyPanel("Thống kê doanh thu"), "Thống kê");
+        cardPanel.add(createDummyPanel("Quản lý Nhân viên"), "Nhân viên");
+        cardPanel.add(createDummyPanel("Quản lý Khách hàng"), "Khách hàng");
+        cardPanel.add(createDummyPanel("Hướng dẫn sử dụng"), "Hướng dẫn");
+        
+        // ======================================================================
+
         JPanel sidebar = createSidebar();
         add(sidebar, BorderLayout.WEST);
 
         JPanel rightPanel = new JPanel(new BorderLayout());
         rightPanel.add(createTopHeader(), BorderLayout.NORTH);
-        rightPanel.add(cardPanel, BorderLayout.CENTER); // Ném CardPanel vào giữa
+        rightPanel.add(cardPanel, BorderLayout.CENTER);
 
         add(rightPanel, BorderLayout.CENTER);
     }
