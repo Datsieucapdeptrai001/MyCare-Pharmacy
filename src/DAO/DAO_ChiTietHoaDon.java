@@ -2,6 +2,7 @@ package DAO;
 
 import ConnectDB.ConnectDB;
 import Entity.ChiTietHoaDon;
+import Entity.DonViDoLuong;
 import Entity.HoaDon;
 import Entity.SanPham;
 
@@ -19,13 +20,17 @@ public class DAO_ChiTietHoaDon {
     public boolean themCTHD(ChiTietHoaDon cthd) {
         String sql = "INSERT INTO ChiTietHoaDon (hoaDonId, donViDoLuongId, sanPhamId, soLuong) VALUES (?, ?, ?, ?)";
         Connection con = ConnectDB.getInstance().getConnection();
+
+        if (cthd == null
+                || cthd.getHoaDonId() == null
+                || cthd.getDonViDoLuongId() == null
+                || cthd.getSanPhamId() == null) {
+            return false;
+        }
+
         try (PreparedStatement pst = con.prepareStatement(sql)) {
             pst.setString(1, cthd.getHoaDonId().getId());
-            
-            // Giả định DonViDoLuong có hàm getId() hoặc bạn lưu tên đơn vị
-            // pst.setString(2, cthd.getDonViDoLuongId().getId()); 
-            pst.setString(2, null); // Tạm set null nếu chưa xử lý DonViDoLuong
-            
+            pst.setString(2, cthd.getDonViDoLuongId().getId());
             pst.setString(3, cthd.getSanPhamId().getId());
             pst.setInt(4, cthd.getSoLuong());
 
@@ -33,10 +38,10 @@ public class DAO_ChiTietHoaDon {
         } catch (SQLException e) {
             e.printStackTrace();
         }
+
         return false;
     }
 
-    // Cần truyền mã Hóa Đơn vào để lấy đúng danh sách chi tiết của Hóa Đơn đó
     public List<ChiTietHoaDon> layDSChiTietHD(String maHoaDon) {
         List<ChiTietHoaDon> dsCTHD = new ArrayList<>();
         String sql = "SELECT * FROM ChiTietHoaDon WHERE hoaDonId = ?";
@@ -44,15 +49,23 @@ public class DAO_ChiTietHoaDon {
 
         try (PreparedStatement pst = con.prepareStatement(sql)) {
             pst.setString(1, maHoaDon);
+
             try (ResultSet rs = pst.executeQuery()) {
                 while (rs.next()) {
                     ChiTietHoaDon ct = new ChiTietHoaDon();
-                    HoaDon hd = new HoaDon(); hd.setId(rs.getString("hoaDonId"));
+
+                    HoaDon hd = new HoaDon();
+                    hd.setId(rs.getString("hoaDonId"));
                     ct.setHoaDonId(hd);
-                    
-                    SanPham sp = new SanPham(); sp.setId(rs.getString("sanPhamId"));
+
+                    DonViDoLuong dvdl = new DonViDoLuong();
+                    dvdl.setId(rs.getString("donViDoLuongId"));
+                    ct.setDonViDoLuongId(dvdl);
+
+                    SanPham sp = new SanPham();
+                    sp.setId(rs.getString("sanPhamId"));
                     ct.setSanPhamId(sp);
-                    
+
                     ct.setSoLuong(rs.getInt("soLuong"));
                     dsCTHD.add(ct);
                 }
@@ -60,6 +73,7 @@ public class DAO_ChiTietHoaDon {
         } catch (SQLException e) {
             e.printStackTrace();
         }
+
         return dsCTHD;
     }
 }

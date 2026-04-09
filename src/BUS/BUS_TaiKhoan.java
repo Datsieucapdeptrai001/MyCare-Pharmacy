@@ -1,6 +1,7 @@
 package BUS;
 
 import DAO.DAO_TaiKhoan;
+import Entity.NhanVien;
 import Entity.TaiKhoan;
 
 public class BUS_TaiKhoan {
@@ -52,19 +53,27 @@ public class BUS_TaiKhoan {
     }
 
     // Nghiệp vụ: Xử lý khi người dùng chọn "Quên mật khẩu"
-    public boolean xuLyQuenMatKhau(String tenDangNhap, String emailXacNhan) {
-        TaiKhoan tk = daoTaiKhoan.getTaiKhoan(tenDangNhap);
-        
+    public boolean xuLyQuenMatKhau(String tenDangNhap, String email) {
+    	TaiKhoan tk = daoTaiKhoan.getTaiKhoan(tenDangNhap);
+
         if (tk == null) {
             System.out.println("Không tìm thấy tài khoản.");
             return false;
         }
-        
-        // TODO: Cần có DAO_NhanVien để đối chiếu emailXacNhan có khớp với email của Nhân viên sở hữu tài khoản không
-        // Nếu khớp, hệ thống sẽ tiến hành gửi email (JavaMail API) chứa mã OTP hoặc mật khẩu khôi phục
-        
-        System.out.println("Đã gửi yêu cầu khôi phục mật khẩu. Vui lòng kiểm tra email.");
-        return true; // Giả lập thành công
+
+        NhanVien nv = tk.getNhanVienId();
+        if (nv == null || nv.getEmail() == null || nv.getEmail().trim().isEmpty()) {
+            System.out.println("Tài khoản chưa có email để khôi phục mật khẩu.");
+            return false;
+        }
+
+        if (email == null || !nv.getEmail().equalsIgnoreCase(email.trim())) {
+            System.out.println("Email khôi phục không khớp.");
+            return false;
+        }
+
+        System.out.println("Chức năng quên mật khẩu chưa được triển khai gửi OTP/email.");
+        return false;
     }
 
     // Nghiệp vụ: Phân quyền sau khi đăng nhập thành công

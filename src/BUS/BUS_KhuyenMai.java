@@ -1,18 +1,23 @@
 package BUS;
 
 import DAO.DAO_DieuKienKhuyenMai;
+import DAO.DAO_HinhThucKhuyenMai;
 import DAO.DAO_KhuyenMai;
 import Entity.KhuyenMai;
 import Entity.DieuKienKhuyenMai;
 import java.time.LocalDateTime;
 import java.util.List;
-
+import Entity.HinhThucKhuyenMai;
+import Enum.DoiTuongApDung;
+import Enum.LoaiHinhThuc;
 public class BUS_KhuyenMai {
     private DAO_KhuyenMai daoKhuyenMai;
     private DAO_DieuKienKhuyenMai daoDieuKienKhuyenMai;
+    private DAO_HinhThucKhuyenMai daoHinhThucKhuyenMai;
     public BUS_KhuyenMai() {
         this.daoKhuyenMai = new DAO_KhuyenMai();
         this.daoDieuKienKhuyenMai = new DAO_DieuKienKhuyenMai();
+        this.daoHinhThucKhuyenMai = new DAO_HinhThucKhuyenMai();
     }
 
     // Lấy danh sách (dùng cho giao diện quản lý)
@@ -88,16 +93,33 @@ public class BUS_KhuyenMai {
     }
 
 
-    public double apDungKM(String maKM, double tongTienHoaDon, double phanTramGiamGia, double giamToiDa) {
-        if (kiemTraDieuKienKhuyenMai(maKM, tongTienHoaDon)) {
-            double soTienDuocGiam = tongTienHoaDon * (phanTramGiamGia / 100.0);
-            
-            // Nếu có mức giảm tối đa (ví dụ: Giảm 10% nhưng tối đa không quá 50.000đ)
-            if (giamToiDa > 0 && soTienDuocGiam > giamToiDa) {
-                return giamToiDa;
-            }
-            return soTienDuocGiam;
+    public double apDungKM(String maKM, double tongTienHoaDon) {
+        KhuyenMai km = daoKhuyenMai.layMaKM(maKM);
+        if (km == null) {
+            return tongTienHoaDon;
         }
-        return 0.0; // Không được giảm đồng nào nếu không đủ điều kiện
+
+        if (!kiemTraDieuKienKhuyenMai(maKM, tongTienHoaDon)) {
+            return tongTienHoaDon;
+        }
+
+        HinhThucKhuyenMai htkm = daoHinhThucKhuyenMai.layTheoMaKM(maKM);
+        if (htkm == null) {
+            return tongTienHoaDon;
+        }
+
+        if (htkm.getLoaiHinhThuc() == LoaiHinhThuc.GIAM_THEO_PHAN_TRAM
+                && htkm.getDoiTuongApDung() == DoiTuongApDung.HOA_DON) {
+
+            double tienGiam = tongTienHoaDon * htkm.getGiaTri() / 100.0;
+
+            if (htkm.getGiamToiDa() > 0 && tienGiam > htkm.getGiamToiDa()) {
+                tienGiam = htkm.getGiamToiDa();
+            }
+
+            return tongTienHoaDon - tienGiam;
+        }
+
+        return tongTienHoaDon;
     }
 }
