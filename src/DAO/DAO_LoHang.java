@@ -157,4 +157,25 @@ public class DAO_LoHang {
         }
         return false;
     }
+    public boolean themLoHang(LoHang lo) {
+        String sql = "INSERT INTO LoHang(id, soLoHang, soLuongLoHang, gia, ngayNhap, ngayHetHan, trangThai, sanPhamId, khoHangId) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        Connection con = ConnectDB.getConnection();
+        if (con == null) return false;
+
+        try (PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setString(1, lo.getId());
+            pst.setString(2, lo.getSoLoHang());
+            pst.setInt(3, lo.getSoLuongLoHang());
+            pst.setInt(4, lo.getGia());
+            pst.setTimestamp(5, java.sql.Timestamp.valueOf(lo.getNgayNhap()));
+            pst.setTimestamp(6, java.sql.Timestamp.valueOf(lo.getNgayHetHan()));
+            pst.setString(7, lo.getTrangThai().name());
+            pst.setString(8, lo.getSanPhamId() == null ? null : lo.getSanPhamId().getId());
+            pst.setString(9, lo.getKhoHangId() == null ? null : lo.getKhoHangId().getId());
+            return pst.executeUpdate() > 0;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
 }
