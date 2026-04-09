@@ -17,7 +17,7 @@ public class TaoHoaDon extends JDialog {
 
     public TaoHoaDon(Frame parent) {
         super(parent, "Tạo hóa đơn bán hàng mới", true);
-        setSize(1000, 900);
+        setSize(800, 700);
         setLocationRelativeTo(parent);
         setLayout(new BorderLayout());
 

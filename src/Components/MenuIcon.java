@@ -92,6 +92,11 @@ public class MenuIcon implements Icon {
                 g2d.drawArc(x + 4, y + 4, 14, 14, 90, -270);
                 g2d.drawPolyline(new int[]{x + 1, x + 4, x + 7}, new int[]{y + 14, y + 11, y + 14}, 3);
                 break;
+            case "SEARCH":
+                // Đã fix: Cộng thêm tọa độ x, y và căn chỉnh lại kích thước cho đẹp
+                g2d.drawOval(x + 5, y + 5, 9, 9); // Vòng tròn kính lúp
+                g2d.drawLine(x + 12, y + 12, x + 18, y + 18); // Cán kính lúp
+                break;
         }
         g2d.dispose();
     }
