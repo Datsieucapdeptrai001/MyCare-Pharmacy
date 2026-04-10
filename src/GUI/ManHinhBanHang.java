@@ -280,36 +280,68 @@ public class ManHinhBanHang extends JPanel {
     }
 
     private void xuLyStatus(JButton b) {
+        String text = b.getText().trim();
+        
+        // Nếu click lại đúng nút đang được lọc (khác nút "Tất cả") -> Hủy lọc, quay về "Tất cả"
+        if (filterStatus.equals(text) && !text.equals("Tất cả")) {
+            xuLyStatus(statusBtns[0]); // Tự động gọi lại nút "Tất cả"
+            return;
+        }
+
         for (JButton btn : statusBtns) setBtnNormal(btn);
         setBtnActive(b, false);
-        filterStatus = b.getText().trim();
+        filterStatus = text;
         applyFilter();
     }
 
     private void xuLyCat(JButton b) {
+        String text = b.getText().trim();
+        
+        // Nếu click lại đúng nút danh mục đang lọc -> Hủy lọc, quay về "Tất cả"
+        if (filterCat.equals(text) && !text.equals("Tất cả")) {
+            xuLyCat(categoryBtns[0]); 
+            return;
+        }
+
         for (JButton btn : categoryBtns) setBtnNormal(btn);
         setBtnActive(b, true);
-        filterCat = b.getText().trim();
+        filterCat = text;
         applyFilter();
     }
 
     private void applyFilter() {
         List<RowFilter<Object, Object>> filters = new ArrayList<>();
-        if (!filterStatus.equals("Tất cả")) filters.add(RowFilter.regexFilter("^" + filterStatus + "$", 6));
-        if (!filterCat.equals("Tất cả")) filters.add(RowFilter.regexFilter("^" + filterCat + "$", 8));
+        
+        if (!filterStatus.equals("Tất cả")) {
+            filters.add(RowFilter.regexFilter("^" + filterStatus + "$", 6)); // Lọc chính xác cột 6
+        }
+        
+        if (!filterCat.equals("Tất cả")) {
+            filters.add(RowFilter.regexFilter("^" + filterCat + "$", 8)); // Lọc chính xác cột 8
+        }
+        
         String search = txtSearch.getText().trim();
         if (!search.isEmpty() && !search.equals("Mã HD, khách hàng, SĐT...")) {
-            filters.add(RowFilter.regexFilter("(?i)" + search));
+            // FIX LỖI: Dùng Pattern.quote để bọc chuỗi tìm kiếm lại, 
+            // tránh sập bảng nếu người dùng vô tình gõ các ký tự đặc biệt của Regex (*, [, ?, +, ...)
+            filters.add(RowFilter.regexFilter("(?i)" + java.util.regex.Pattern.quote(search)));
         }
 
-        if (filters.isEmpty()) sorter.setRowFilter(null);
-        else sorter.setRowFilter(RowFilter.andFilter(filters));
+        // Nếu không có điều kiện lọc nào thì set null để hiện lại toàn bộ dữ liệu
+        if (filters.isEmpty()) {
+            sorter.setRowFilter(null);
+        } else {
+            sorter.setRowFilter(RowFilter.andFilter(filters));
+        }
     }
 
     class ModernTableRenderer extends DefaultTableCellRenderer {
         public Component getTableCellRendererComponent(JTable t, Object v, boolean isSel, boolean hasF, int r, int c) {
             JLabel lbl = (JLabel) super.getTableCellRendererComponent(t, v, isSel, hasF, r, c);
             lbl.setHorizontalAlignment(CENTER);
+            
+            // BẮT BUỘC: Reset lại icon để không bị dính icon sang các cột khác
+            lbl.setIcon(null); 
 
             // Xóa cái khung nét đứt bao quanh ô khi click chuột vào
             if (hasF) {
@@ -328,7 +360,12 @@ public class ManHinhBanHang extends JPanel {
                 lbl.setBackground(isSel ? Color.decode("#F8F9FA") : Color.WHITE);
                 lbl.setForeground(Color.decode("#212B36"));
                 if (c == 0) lbl.setForeground(Color.decode("#6A1B9A")); 
-                if (c == 7) { lbl.setForeground(Color.decode("#1967D2")); lbl.setText("👁 Xem"); }
+                if (c == 7) { 
+                    lbl.setForeground(Color.decode("#1967D2")); 
+                    lbl.setText("Xem"); // Bỏ cái emoji 👁 cũ đi
+                    lbl.setIcon(new MenuIcon("EYE")); // Bổ sung icon từ class MenuIcon của bạn
+                    lbl.setIconTextGap(6); // Chỉnh khoảng cách giữa chữ và icon cho thoáng
+                }
             }
             return lbl;
         }

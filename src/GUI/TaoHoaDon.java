@@ -4,7 +4,7 @@ import javax.swing.*;
 import javax.swing.border.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
-
+import Components.MenuIcon;
 public class TaoHoaDon extends JDialog {
 
     // Khai báo bảng màu chuẩn theo ảnh
@@ -17,27 +17,27 @@ public class TaoHoaDon extends JDialog {
 
     public TaoHoaDon(Frame parent) {
         super(parent, "Tạo hóa đơn bán hàng mới", true);
-        setSize(800, 700);
+        setSize(900, 700);
         setLocationRelativeTo(parent);
         setLayout(new BorderLayout());
 
         // --- 1. HEADER (Thanh tiêu đề xanh đậm) ---
+     // --- 1. HEADER (Thanh tiêu đề xanh đậm) ---
         JPanel pnlHeader = new JPanel(new BorderLayout());
         pnlHeader.setBackground(darkBlue);
         pnlHeader.setPreferredSize(new Dimension(0, 50));
+        pnlHeader.setBorder(new EmptyBorder(0, 15, 0, 15)); // Thêm lề cho đẹp
         
-        JLabel lblTitle = new JLabel("  🛒 Tạo hóa đơn bán hàng mới");
-        lblTitle.setForeground(Color.WHITE);
+        // --- SỬA TIÊU ĐỀ Ở ĐÂY ---
+        JLabel lblTitle = new JLabel("Tạo hóa đơn bán hàng mới"); // Đã xóa emoji 🛒
+        lblTitle.setIcon(new MenuIcon("CART")); // Gắn icon giỏ hàng vẽ tay vào
+        lblTitle.setIconTextGap(10); // Tạo khoảng cách giữa icon và chữ
+        lblTitle.setForeground(Color.WHITE); // Icon sẽ tự động thành màu trắng theo chữ
         lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 16));
         pnlHeader.add(lblTitle, BorderLayout.WEST);
         
-        JButton btnExit = new JButton("✕ ");
-        btnExit.setForeground(Color.WHITE);
-        btnExit.setBackground(darkBlue);
-        btnExit.setBorderPainted(false);
-        btnExit.setFocusPainted(false);
-        btnExit.addActionListener(e -> dispose());
-        pnlHeader.add(btnExit, BorderLayout.EAST);
+        
+        
         add(pnlHeader, BorderLayout.NORTH);
 
         // --- 2. BODY (Nội dung chính trong ScrollPane) ---
@@ -46,17 +46,17 @@ public class TaoHoaDon extends JDialog {
         pnlBody.setBackground(Color.WHITE);
         pnlBody.setBorder(new EmptyBorder(10, 25, 10, 25));
 
-        // Phần 1: Tra cứu khách hàng
-        pnlBody.add(createSectionPanel("👤 Tra cứu khách hàng (tuỳ chọn)", createCustomerPanel()));
-        pnlBody.add(Box.createRigidArea(new Dimension(0, 15)));
+        // Phần 1: Tra cứu khách hàng (Bản thân panel này đã có header riêng nên gọi thẳng)
+        pnlBody.add(createCustomerPanel());
+        pnlBody.add(Box.createRigidArea(new Dimension(0, 20)));
 
-        // Phần 2: Thêm sản phẩm
-        pnlBody.add(createSectionPanel("📦 Thêm sản phẩm", createProductPanel()));
-        pnlBody.add(Box.createRigidArea(new Dimension(0, 15)));
+        // Phần 2: Thêm sản phẩm (Gắn MenuIcon PACKAGE)
+        pnlBody.add(createSectionPanel("Thêm sản phẩm", "PACKAGE", createProductPanel()));
+        pnlBody.add(Box.createRigidArea(new Dimension(0, 20)));
 
-        // Phần 3: Khuyến mãi & Thanh toán (Hình ảnh 2)
-        pnlBody.add(createSectionPanel("🏷 Mã khuyến mãi", createVoucherPanel()));
-        pnlBody.add(Box.createRigidArea(new Dimension(0, 15)));
+        // Phần 3: Khuyến mãi & Thanh toán (Gắn MenuIcon GIFT)
+        pnlBody.add(createSectionPanel("Mã khuyến mãi", "GIFT", createVoucherPanel()));
+        pnlBody.add(Box.createRigidArea(new Dimension(0, 20)));
         
         // Phần 4: Tiền khách đưa & Tổng cộng
         pnlBody.add(createSummaryPanel());
@@ -87,40 +87,45 @@ public class TaoHoaDon extends JDialog {
         add(pnlFooter, BorderLayout.SOUTH);
     }
 
-    // Hàm tạo khung bao quanh mỗi Section
-    private JPanel createSectionPanel(String title, JPanel content) {
-        JPanel pnl = new JPanel(new BorderLayout());
+    
+ // Hàm tạo khung bao quanh mỗi Section có tích hợp MenuIcon
+    private JPanel createSectionPanel(String title, String iconType, JPanel content) {
+        JPanel pnl = new JPanel(new BorderLayout(0, 10)); // Khoảng cách giữa tiêu đề và nội dung là 10px
         pnl.setBackground(Color.WHITE);
-        pnl.setBorder(BorderFactory.createTitledBorder(
-            BorderFactory.createLineBorder(borderColor, 1, true), 
-            title, TitledBorder.LEFT, TitledBorder.TOP, 
-            new Font("Segoe UI", Font.BOLD, 13), Color.GRAY
-        ));
+
+        // Tạo tiêu đề
+        JLabel lblTitle = new JLabel(title);
+        if (iconType != null) {
+            lblTitle.setIcon(new MenuIcon(iconType)); // Gắn icon
+            lblTitle.setIconTextGap(8); // Chỉnh khoảng cách giữa icon và chữ
+        }
+        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        lblTitle.setForeground(Color.decode("#212B36"));
+
+        pnl.add(lblTitle, BorderLayout.NORTH);
         pnl.add(content, BorderLayout.CENTER);
         return pnl;
     }
 
-    // Panel Khách hàng
  // ========================================================
-    // PANEL KHÁCH HÀNG (FIX THEO ẢNH CHUẨN)
+    // PANEL KHÁCH HÀNG (Có hiệu ứng hiện cảnh báo khi tìm không thấy)
     // ========================================================
     private JPanel createCustomerPanel() {
-        // Tạo vỏ bọc ngoài cùng có viền xám nhạt bo góc
-        JPanel pnlWrapper = new JPanel(new BorderLayout(0, 15));
+        JPanel pnlWrapper = new JPanel(new BorderLayout(0, 8)); 
         pnlWrapper.setBackground(Color.WHITE);
         pnlWrapper.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(Color.decode("#DFE3E8"), 1, true),
-                BorderFactory.createEmptyBorder(15, 20, 15, 20)
+                BorderFactory.createEmptyBorder(10, 15, 10, 15)
         ));
 
         // --- 1. HEADER KHÁCH HÀNG ---
         JPanel pnlHeader = new JPanel(new BorderLayout());
-        pnlHeader.setOpaque(false);
+        pnlHeader.setBackground(Color.WHITE);
 
         JPanel pnlTitle = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
-        pnlTitle.setOpaque(false);
-        JLabel lblIcon = new JLabel("👤"); 
-        lblIcon.setFont(new Font("Segoe UI", Font.PLAIN, 16));
+        pnlTitle.setBackground(Color.WHITE);
+        
+        JLabel lblIcon = new JLabel(new MenuIcon("USER")); 
         lblIcon.setForeground(Color.decode("#6C757D"));
         
         JLabel lblTitleText = new JLabel("Tra cứu khách hàng");
@@ -135,60 +140,109 @@ public class TaoHoaDon extends JDialog {
         pnlTitle.add(lblTitleText);
         pnlTitle.add(lblSubTitle);
 
-        // Nhãn "Khách lẻ" góc phải
         JLabel lblBadge = new JLabel("Khách lẻ", SwingConstants.CENTER);
         lblBadge.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         lblBadge.setForeground(Color.decode("#4B5563"));
         lblBadge.setBackground(Color.decode("#F3F4F6"));
         lblBadge.setOpaque(true);
-        lblBadge.setBorder(BorderFactory.createEmptyBorder(6, 14, 6, 14));
+        lblBadge.setBorder(BorderFactory.createEmptyBorder(4, 10, 4, 10));
 
         pnlHeader.add(pnlTitle, BorderLayout.WEST);
         pnlHeader.add(lblBadge, BorderLayout.EAST);
 
-        // --- 2. BODY NHẬP LIỆU ---
+        // --- 2. BODY NHẬP LIỆU (GridBagLayout) ---
         JPanel pnlInput = new JPanel(new GridBagLayout());
-        pnlInput.setOpaque(false);
+        pnlInput.setBackground(Color.WHITE);
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.fill = GridBagConstraints.BOTH;
-        gbc.insets = new Insets(0, 0, 10, 10);
 
-        // Hàng 1: Ô tìm kiếm + Nút Tra cứu
-        JTextField txtSearch = createStyledTextField(" Nhập SĐT hoặc mã KH để liên kết điểm thưởng...");
-        gbc.gridx = 0; gbc.gridy = 0; gbc.weightx = 0.8; 
+        // ----------------------------------------------------
+        // HÀNG 0: Ô TÌM KIẾM + NÚT TRA CỨU
+        // ----------------------------------------------------
+        gbc.insets = new Insets(0, 0, 8, 10); 
+        JTextField txtSearch = createStyledTextField("Nhập SĐT hoặc mã KH để liên kết điểm thưởng...");
+        gbc.gridx = 0; gbc.gridy = 0; gbc.weightx = 0.75; 
         pnlInput.add(txtSearch, gbc);
 
-        JButton btnSearch = new JButton("📞 Tra cứu");
+        JButton btnSearch = new JButton("Tra cứu");
+        btnSearch.setIcon(new MenuIcon("SEARCH")); 
+        btnSearch.setIconTextGap(6);
         btnSearch.setFont(new Font("Segoe UI", Font.BOLD, 14));
         btnSearch.setBackground(Color.decode("#1967D2"));
-        btnSearch.setForeground(Color.WHITE);
+        btnSearch.setForeground(Color.WHITE); 
         btnSearch.setFocusPainted(false);
-        btnSearch.setOpaque(true);
-        btnSearch.setContentAreaFilled(true);
+        btnSearch.setBorderPainted(false);
         btnSearch.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        gbc.gridx = 1; gbc.weightx = 0.2; gbc.insets = new Insets(0, 0, 10, 0);
+        gbc.gridx = 1; gbc.weightx = 0.25; gbc.insets = new Insets(0, 0, 8, 0); 
         pnlInput.add(btnSearch, gbc);
 
-        // Hàng 2: Tên khách + SĐT
-        gbc.insets = new Insets(0, 0, 0, 15); // Lề phải 15px cho ô Tên khách
-        JTextField txtName = createStyledTextField(" Tên khách (bỏ trống = Khách lẻ)");
-        gbc.gridx = 0; gbc.gridy = 1; gbc.weightx = 0.5;
+        // ----------------------------------------------------
+        // HÀNG 1: THÔNG BÁO LỖI + NÚT TẠO MỚI (MẶC ĐỊNH ẨN)
+        // ----------------------------------------------------
+        gbc.insets = new Insets(0, 0, 8, 10); 
+        JLabel lblWarning = new JLabel("Không tìm thấy khách hàng. Bạn có muốn tạo mới?");
+        lblWarning.setIcon(new MenuIcon("WARNING"));
+        lblWarning.setIconTextGap(8);
+        lblWarning.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        lblWarning.setForeground(Color.decode("#DC2626")); // Màu chữ đỏ
+        lblWarning.setBackground(Color.decode("#FFFBEB")); // Màu nền vàng nhạt
+        lblWarning.setOpaque(true);
+        lblWarning.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(Color.decode("#FCA5A5"), 1, true), // Viền đỏ nhạt
+            BorderFactory.createEmptyBorder(0, 10, 0, 10)
+        ));
+        lblWarning.setVisible(false); // Cài đặt ẩn mặc định
+        gbc.gridx = 0; gbc.gridy = 1; gbc.weightx = 0.75;
+        pnlInput.add(lblWarning, gbc);
+
+        JButton btnAddCustomer = new JButton("Thêm KH mới");
+        btnAddCustomer.setIcon(new MenuIcon("USER_ADD"));
+        btnAddCustomer.setIconTextGap(6);
+        btnAddCustomer.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btnAddCustomer.setBackground(Color.decode("#E11D48")); // Màu hồng đỏ
+        btnAddCustomer.setForeground(Color.WHITE);
+        btnAddCustomer.setFocusPainted(false);
+        btnAddCustomer.setBorderPainted(false);
+        btnAddCustomer.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnAddCustomer.setVisible(false); // Cài đặt ẩn mặc định
+        gbc.gridx = 1; gbc.weightx = 0.25; gbc.insets = new Insets(0, 0, 8, 0); 
+        pnlInput.add(btnAddCustomer, gbc);
+
+        // ----------------------------------------------------
+        // HÀNG 2: TÊN KHÁCH + SĐT
+        // ----------------------------------------------------
+        gbc.insets = new Insets(0, 0, 0, 10); 
+        JTextField txtName = createStyledTextField("Tên khách (bỏ trống = Khách lẻ)");
+        gbc.gridx = 0; gbc.gridy = 2; gbc.weightx = 0.5; // Chuyển xuống dòng 2
         pnlInput.add(txtName, gbc);
 
-        JTextField txtPhone = createStyledTextField(" Số điện thoại (tuỳ chọn)");
+        JTextField txtPhone = createStyledTextField("Số điện thoại (tuỳ chọn)");
         gbc.gridx = 1; gbc.weightx = 0.5; gbc.insets = new Insets(0, 0, 0, 0);
         pnlInput.add(txtPhone, gbc);
+
+        btnSearch.addActionListener(e -> {
+            // Khi bấm nút, cho hiện thông báo và nút Tạo mới lên
+            lblWarning.setVisible(true);
+            btnAddCustomer.setVisible(true);
+            
+            // Cập nhật lại giao diện bên trong Panel
+            pnlInput.revalidate();
+            pnlInput.repaint();
+            
+            // ĐÃ XÓA dòng window.pack() để giữ nguyên kích thước cửa sổ 800x700
+        });
 
         pnlWrapper.add(pnlHeader, BorderLayout.NORTH);
         pnlWrapper.add(pnlInput, BorderLayout.CENTER);
 
         return pnlWrapper;
     }
-
-    // Hàm hỗ trợ tạo TextField đẹp (Tự ẩn chữ khi click)
     private JTextField createStyledTextField(String placeholder) {
         JTextField txt = new JTextField(placeholder);
-        txt.setPreferredSize(new Dimension(0, 42)); // Tăng chiều cao lên 42px
+        
+        // SỬA CHỖ NÀY: Giảm chiều cao từ 42 xuống 36 để các ô nhập liệu nhỏ gọn lại
+        txt.setPreferredSize(new Dimension(0, 36)); 
+        
         txt.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         txt.setForeground(Color.GRAY);
         txt.setBorder(BorderFactory.createCompoundBorder(
@@ -212,22 +266,170 @@ public class TaoHoaDon extends JDialog {
         return txt;
     }
 
-    // Panel Sản phẩm & Bảng
     private JPanel createProductPanel() {
-        JPanel pnl = new JPanel(new BorderLayout(0, 10));
+        JPanel pnl = new JPanel(new BorderLayout(0, 15));
         pnl.setBackground(Color.WHITE);
-        pnl.setBorder(new EmptyBorder(10, 10, 10, 10));
+        pnl.setBorder(new EmptyBorder(15, 20, 15, 20));
 
-        JTextField txtSp = new JTextField(" 🔍 Tìm tên sản phẩm...");
-        txtSp.setPreferredSize(new Dimension(0, 35));
-        pnl.add(txtSp, BorderLayout.NORTH);
+        // --- 1. THANH TÌM KIẾM SẢN PHẨM ---
+        JPanel pnlSearchWrapper = new JPanel(new BorderLayout(10, 0));
+        pnlSearchWrapper.setBackground(Color.WHITE);
+        pnlSearchWrapper.setPreferredSize(new Dimension(0, 42));
+        pnlSearchWrapper.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(Color.decode("#94A3B8"), 1, true),
+                BorderFactory.createEmptyBorder(0, 12, 0, 12)
+        ));
 
+        JLabel lblSearchIcon = new JLabel(new MenuIcon("SEARCH"));
+        lblSearchIcon.setForeground(Color.GRAY);
+        pnlSearchWrapper.add(lblSearchIcon, BorderLayout.WEST);
+
+        String placeholderText = "Tìm tên sản phẩm hoặc mã để thêm vào đơn hàng (Ấn Enter để thêm)...";
+        JTextField txtSearch = new JTextField(placeholderText);
+        txtSearch.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        txtSearch.setForeground(Color.GRAY);
+        txtSearch.setBorder(null); 
+        pnlSearchWrapper.add(txtSearch, BorderLayout.CENTER);
+
+        txtSearch.addFocusListener(new java.awt.event.FocusAdapter() {
+            public void focusGained(java.awt.event.FocusEvent e) {
+                if (txtSearch.getText().equals(placeholderText)) {
+                    txtSearch.setText("");
+                    txtSearch.setForeground(Color.BLACK);
+                    lblSearchIcon.setForeground(Color.decode("#1967D2")); 
+                    pnlSearchWrapper.setBorder(BorderFactory.createCompoundBorder(
+                        BorderFactory.createLineBorder(Color.decode("#1967D2"), 1, true),
+                        BorderFactory.createEmptyBorder(0, 12, 0, 12)
+                    ));
+                }
+            }
+            public void focusLost(java.awt.event.FocusEvent e) {
+                if (txtSearch.getText().trim().isEmpty()) {
+                    txtSearch.setForeground(Color.GRAY);
+                    txtSearch.setText(placeholderText);
+                    lblSearchIcon.setForeground(Color.GRAY); 
+                    pnlSearchWrapper.setBorder(BorderFactory.createCompoundBorder(
+                        BorderFactory.createLineBorder(Color.decode("#94A3B8"), 1, true),
+                        BorderFactory.createEmptyBorder(0, 12, 0, 12)
+                    ));
+                }
+            }
+        });
+
+        pnl.add(pnlSearchWrapper, BorderLayout.NORTH);
+
+        // --- 2. BẢNG DANH SÁCH SẢN PHẨM ---
         String[] cols = {"Sản phẩm", "ĐVT", "SL", "Đơn giá", "VAT%", "Thành tiền", ""};
-        DefaultTableModel model = new DefaultTableModel(cols, 0);
-        model.addRow(new Object[]{"Paracetamol 500mg", "Hộp", 1, "25.000", "5%", "25.000đ", "🗑"});
-        JTable tbl = new JTable(model);
-        tbl.setRowHeight(35);
-        pnl.add(new JScrollPane(tbl), BorderLayout.CENTER);
+        DefaultTableModel model = new DefaultTableModel(cols, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return column == 2 || column == 3; 
+            }
+        };
+
+        // BÍ QUYẾT FIX LỖI KHOẢNG TRẮNG: Ghi đè phương thức tính toán chiều cao của JTable
+        JTable tbl = new JTable(model) {
+            @Override
+            public Dimension getPreferredScrollableViewportSize() {
+                // Chiều cao tự động = số lượng dòng * chiều cao của 1 dòng (45px)
+                // Nếu bảng trống, chiều cao sẽ = 0 (chỉ hiện Header)
+                int tableHeight = getRowCount() * getRowHeight();
+                return new Dimension(getPreferredSize().width, tableHeight);
+            }
+        };
+        
+        tbl.setRowHeight(45); 
+        tbl.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        tbl.setShowGrid(false); 
+        tbl.setShowHorizontalLines(true); 
+        tbl.setGridColor(Color.decode("#F1F3F5"));
+
+        tbl.getTableHeader().setBackground(Color.decode("#D9EAF7")); 
+        tbl.getTableHeader().setForeground(Color.decode("#1E293B"));
+        tbl.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 13));
+        tbl.getTableHeader().setPreferredSize(new Dimension(0, 40));
+        tbl.getTableHeader().setBorder(BorderFactory.createEmptyBorder());
+
+        tbl.getColumnModel().getColumn(0).setPreferredWidth(250); 
+        tbl.getColumnModel().getColumn(1).setPreferredWidth(60);  
+        tbl.getColumnModel().getColumn(2).setPreferredWidth(50);  
+        tbl.getColumnModel().getColumn(3).setPreferredWidth(100); 
+        tbl.getColumnModel().getColumn(4).setPreferredWidth(50);  
+        tbl.getColumnModel().getColumn(5).setPreferredWidth(100); 
+        tbl.getColumnModel().getColumn(6).setPreferredWidth(40);  
+
+        javax.swing.table.DefaultTableCellRenderer centerRenderer = new javax.swing.table.DefaultTableCellRenderer();
+        centerRenderer.setHorizontalAlignment(JLabel.CENTER);
+        tbl.getColumnModel().getColumn(1).setCellRenderer(centerRenderer);
+        tbl.getColumnModel().getColumn(2).setCellRenderer(centerRenderer);
+        tbl.getColumnModel().getColumn(3).setCellRenderer(centerRenderer);
+        tbl.getColumnModel().getColumn(4).setCellRenderer(centerRenderer);
+        
+        tbl.getColumnModel().getColumn(5).setCellRenderer(new javax.swing.table.DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSel, boolean hasFocus, int r, int c) {
+                JLabel lbl = (JLabel) super.getTableCellRendererComponent(table, value, isSel, hasFocus, r, c);
+                lbl.setFont(new Font("Segoe UI", Font.BOLD, 14));
+                lbl.setForeground(Color.decode("#111827"));
+                lbl.setHorizontalAlignment(JLabel.RIGHT); 
+                return lbl;
+            }
+        });
+        
+        tbl.getColumnModel().getColumn(6).setCellRenderer(new javax.swing.table.DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSel, boolean hasFocus, int r, int c) {
+                JLabel lbl = (JLabel) super.getTableCellRendererComponent(table, value, isSel, hasFocus, r, c);
+                lbl.setForeground(Color.decode("#EF4444")); 
+                lbl.setHorizontalAlignment(JLabel.CENTER);
+                lbl.setCursor(new Cursor(Cursor.HAND_CURSOR));
+                return lbl;
+            }
+        });
+
+        JScrollPane sp = new JScrollPane(tbl);
+        sp.setBorder(BorderFactory.createLineBorder(Color.decode("#DFE3E8"), 1, true)); 
+        sp.getViewport().setBackground(Color.WHITE); 
+        pnl.add(sp, BorderLayout.CENTER);
+
+        // ========================================================
+        // SỰ KIỆN: ẤN ENTER ĐỂ THÊM SẢN PHẨM VÀO BẢNG
+        // ========================================================
+        txtSearch.addActionListener(e -> {
+            String keyword = txtSearch.getText().trim();
+            if (!keyword.isEmpty() && !keyword.equals(placeholderText)) {
+                model.addRow(new Object[]{
+                    keyword, 
+                    "Hộp", "1", "25000", "5%", "25.000đ", "🗑"
+                });
+                
+                txtSearch.setText("");
+                txtSearch.requestFocus();
+                
+                // Ép ScrollPane và Table tính toán lại chiều cao sau khi thêm dòng
+                sp.revalidate();
+                sp.repaint();
+            }
+        });
+
+        // ========================================================
+        // SỰ KIỆN: CLICK VÀO ICON THÙNG RÁC ĐỂ XÓA DÒNG
+        // ========================================================
+        tbl.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent e) {
+                int row = tbl.rowAtPoint(e.getPoint());
+                int col = tbl.columnAtPoint(e.getPoint());
+                
+                if (row >= 0 && col == 6) { 
+                    model.removeRow(row);
+                    
+                    // Ép ScrollPane và Table tính toán lại chiều cao sau khi xóa dòng
+                    sp.revalidate();
+                    sp.repaint();
+                }
+            }
+        });
 
         return pnl;
     }

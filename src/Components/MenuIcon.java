@@ -97,11 +97,34 @@ public class MenuIcon implements Icon {
                 g2d.drawLine(x + 14, y + 11, x + 20, y + 11);
                 g2d.drawPolyline(new int[]{x + 17, x + 20, x + 17}, new int[]{y + 8, y + 11, y + 14}, 3);
                 break;
+            case "EYE": // Icon con mắt (Thường dùng để Xem/Hiển thị)
+                // Vẽ viền ngoài của mắt (hình ellipse dẹt)
+                g2d.drawOval(x + 2, y + 7, 18, 8);
+                // Vẽ tròng đen (vòng tròn ở giữa)
+                g2d.drawOval(x + 8, y + 8, 6, 6);
+                // Vẽ đồng tử (chấm đặc nhỏ xíu ở giữa tròng đen)
+                g2d.fillOval(x + 10, y + 10, 2, 2);
+                break;
+            case "EYE_HIDE": // Icon con mắt bị gạch chéo (Thường dùng để Ẩn/Che)
+                g2d.drawOval(x + 2, y + 7, 18, 8);
+                g2d.drawOval(x + 8, y + 8, 6, 6);
+                // Dùng một đường thẳng chéo cắt ngang qua con mắt
+                g2d.drawLine(x + 3, y + 4, x + 19, y + 18);
+                break;
+            case "PACKAGE": // Icon hộp sản phẩm 3D (dành cho "Thêm sản phẩm")
+                // 1. Vẽ viền ngoài hình lục giác (Hexagon)
+                int[] hexX = {x + 11, x + 18, x + 18, x + 11, x + 4, x + 4};
+                int[] hexY = {y + 3, y + 7, y + 15, y + 19, y + 15, y + 7};
+                g2d.drawPolygon(hexX, hexY, 6);
 
-                
-            // ==========================================
-            // CÁC ICON MỚI CHO MÀN HÌNH CHÍNH NÈ ĐẠT ƠI
-            // ==========================================
+                // 2. Vẽ 3 đường thẳng nối từ tâm ra 3 góc (tạo khối 3D chữ Y)
+                g2d.drawLine(x + 11, y + 11, x + 4, y + 7);   // Tâm lên góc trên-trái
+                g2d.drawLine(x + 11, y + 11, x + 18, y + 7);  // Tâm lên góc trên-phải
+                g2d.drawLine(x + 11, y + 11, x + 11, y + 19); // Tâm thẳng xuống đáy
+
+                // 3. Vẽ đường nếp gấp / vạch băng keo vắt ngang trên nắp hộp
+                g2d.drawLine(x + 7, y + 5, x + 15, y + 9);
+                break;
             case "TAB_CHART": // Icon biểu đồ cột đặc ruột cho tab Tổng quan
                 g2d.drawLine(x + 2, y + 18, x + 20, y + 18); 
                 g2d.fillRect(x + 4, y + 10, 4, 8);
@@ -128,6 +151,32 @@ public class MenuIcon implements Icon {
                 // Đã fix: Cộng thêm tọa độ x, y và căn chỉnh lại kích thước cho đẹp
                 g2d.drawOval(x + 5, y + 5, 9, 9); // Vòng tròn kính lúp
                 g2d.drawLine(x + 12, y + 12, x + 18, y + 18); // Cán kính lúp
+                break;
+            case "TRASH": // Icon thùng rác (Dùng cho nút Xóa/Delete)
+                // Nắp thùng rác
+                g2d.drawLine(x + 6, y + 6, x + 18, y + 6); // Đường ngang
+                g2d.drawRect(x + 10, y + 3, 4, 3);         // Tay cầm nắp
+                
+                // Thân thùng rác (hơi vát chéo xuống)
+                g2d.drawPolyline(new int[]{x + 7, x + 8, x + 16, x + 17}, new int[]{y + 6, y + 19, y + 19, y + 6}, 4);
+                
+                // Các sọc dọc trên thân
+                g2d.drawLine(x + 10, y + 9, x + 10, y + 16);
+                g2d.drawLine(x + 14, y + 9, x + 14, y + 16);
+                break;
+            case "WARNING": // Biểu tượng cảnh báo (Tam giác có dấu chấm than)
+                g2d.drawPolygon(new int[]{x + 11, x + 20, x + 2}, new int[]{y + 3, y + 18, y + 18}, 3);
+                g2d.drawLine(x + 11, y + 8, x + 11, y + 13); // Thân dấu !
+                g2d.fillOval(x + 10, y + 15, 2, 2); // Chấm của dấu !
+                break;
+                
+            case "USER_ADD": // Biểu tượng thêm khách hàng mới (Người + Dấu cộng)
+                // Hình người bên trái
+                g2d.drawOval(x + 4, y + 4, 6, 6);
+                g2d.drawArc(x + 0, y + 12, 14, 14, 0, 180);
+                // Dấu cộng bên phải
+                g2d.drawLine(x + 15, y + 8, x + 21, y + 8);
+                g2d.drawLine(x + 18, y + 5, x + 18, y + 11);
                 break;
         }
         g2d.dispose();
