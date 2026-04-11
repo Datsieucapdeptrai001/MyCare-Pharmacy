@@ -1,6 +1,8 @@
 package GUI;
 
-import Components.MenuIcon; 
+import Components.MenuIcon;
+import ConnectDB.ConnectDB;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.FocusAdapter;
@@ -276,6 +278,7 @@ public class MainDashboard extends JFrame {
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
+            ConnectDB.getInstance().connect();
             new MainDashboard().setVisible(true);
         });
     }

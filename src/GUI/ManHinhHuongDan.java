@@ -1,28 +1,63 @@
-
 package GUI;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
-import javax.swing.border.LineBorder;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.List;
 
 public class ManHinhHuongDan extends JPanel {
 
     private JTextField txtSearch;
-    private final List<FaqBlock> dsFaq = new ArrayList<>();
-    private final List<DocumentCard> dsDocs = new ArrayList<>();
+    private JPanel contentPanel;
+    private JScrollPane scrollPane;
+
+    private final List<TaiLieuItem> dsTaiLieu = new ArrayList<>();
+    private final List<FaqItem> dsFaq = new ArrayList<>();
+
+    // ================== THEME ==================
+    private static final Color BG_APP = new Color(243, 246, 250);
+    private static final Color BG_CARD = Color.WHITE;
+    private static final Color BG_FAQ = new Color(248, 250, 252);
+    private static final Color PRIMARY = new Color(37, 99, 235);
+    private static final Color PRIMARY_SOFT = new Color(219, 234, 254);
+    private static final Color TEXT = new Color(15, 23, 42);
+    private static final Color SUBTEXT = new Color(100, 116, 139);
+    private static final Color BORDER = new Color(226, 232, 240);
+    private static final Color SHADOW = new Color(15, 23, 42, 16);
+
+    private static final Font FONT_TITLE = new Font("Segoe UI", Font.BOLD, 24);
+    private static final Font FONT_SECTION = new Font("Segoe UI", Font.BOLD, 17);
+    private static final Font FONT_BOLD_14 = new Font("Segoe UI", Font.BOLD, 14);
+    private static final Font FONT_BOLD_13 = new Font("Segoe UI", Font.BOLD, 13);
+    private static final Font FONT_PLAIN_14 = new Font("Segoe UI", Font.PLAIN, 14);
+    private static final Font FONT_PLAIN_13 = new Font("Segoe UI", Font.PLAIN, 13);
+    private static final Font FONT_PLAIN_12 = new Font("Segoe UI", Font.PLAIN, 12);
 
     public ManHinhHuongDan() {
-        setLayout(new BorderLayout(0, 16));
-        setBackground(Color.decode("#F4F6F8"));
-        setBorder(new EmptyBorder(16, 20, 16, 20));
+        initData();
+        initUI();
+        renderContent();
+    }
 
-        seedData();
+    // ================== INIT ==================
+    private void initUI() {
+        setLayout(new BorderLayout());
+        setBackground(BG_APP);
+        setBorder(new EmptyBorder(16, 18, 16, 18));
 
-        add(createHeader(), BorderLayout.NORTH);
-        add(createBody(), BorderLayout.CENTER);
+        RoundedPanel main = new RoundedPanel(24, BG_CARD, true);
+        main.setLayout(new BorderLayout(0, 16));
+        main.setBorder(new EmptyBorder(18, 18, 18, 18));
+
+        main.add(createHeader(), BorderLayout.NORTH);
+        main.add(createBody(), BorderLayout.CENTER);
+
+        add(main, BorderLayout.CENTER);
     }
 
     private JPanel createHeader() {
@@ -30,230 +65,468 @@ public class ManHinhHuongDan extends JPanel {
         header.setOpaque(false);
         header.setLayout(new BoxLayout(header, BoxLayout.Y_AXIS));
 
-        JLabel title = new JLabel("HƯỚNG DẪN SỬ DỤNG");
-        title.setFont(new Font("Segoe UI", Font.BOLD, 30));
-        title.setForeground(new Color(22, 54, 97));
+        JPanel top = new JPanel(new BorderLayout());
+        top.setOpaque(false);
 
-        JLabel sub = new JLabel("Tài liệu và câu hỏi thường gặp");
-        sub.setFont(new Font("Segoe UI", Font.PLAIN, 18));
-        sub.setForeground(new Color(100, 116, 139));
-        sub.setBorder(new EmptyBorder(0, 0, 12, 0));
+        JPanel titleBox = new JPanel();
+        titleBox.setOpaque(false);
+        titleBox.setLayout(new BoxLayout(titleBox, BoxLayout.Y_AXIS));
 
-        txtSearch = new JTextField();
-        txtSearch.setPreferredSize(new Dimension(520, 40));
-        txtSearch.setMaximumSize(new Dimension(560, 40));
-        txtSearch.setToolTipText("Tìm kiếm hướng dẫn, câu hỏi...");
-        txtSearch.setBorder(BorderFactory.createCompoundBorder(
-                new LineBorder(new Color(203, 213, 225), 1, true),
-                new EmptyBorder(0, 12, 0, 12)
-        ));
-        txtSearch.addActionListener(e -> reloadBody());
+        JLabel lblTitle = new JLabel("HƯỚNG DẪN SỬ DỤNG");
+        lblTitle.setFont(FONT_TITLE);
+        lblTitle.setForeground(TEXT);
 
-        header.add(title);
-        header.add(sub);
-        header.add(txtSearch);
+        JLabel lblSub = new JLabel("Tài liệu thao tác và câu hỏi thường gặp");
+        lblSub.setFont(FONT_PLAIN_13);
+        lblSub.setForeground(SUBTEXT);
+        lblSub.setBorder(new EmptyBorder(4, 0, 0, 0));
+
+        titleBox.add(lblTitle);
+        titleBox.add(lblSub);
+
+        JButton btnCollapse = createGhostButton("Thu gọn tất cả");
+        btnCollapse.addActionListener(e -> {
+            for (FaqItem faq : dsFaq) {
+                faq.expanded = false;
+            }
+            renderContent();
+        });
+
+        top.add(titleBox, BorderLayout.WEST);
+        top.add(btnCollapse, BorderLayout.EAST);
+
+        header.add(top);
+        header.add(Box.createVerticalStrut(12));
+        header.add(createSearchBox());
+
         return header;
     }
 
-    private JPanel createBody() {
-        JPanel body = new JPanel(new GridLayout(1, 2, 18, 0));
-        body.setOpaque(false);
-        body.add(createDocColumn());
-        body.add(createFaqColumn());
-        return body;
-    }
-
-    private JPanel createDocColumn() {
-        JPanel left = new JPanel();
-        left.setOpaque(false);
-        left.setLayout(new BoxLayout(left, BoxLayout.Y_AXIS));
-
-        JLabel title = new JLabel("📖 Tài liệu & Video");
-        title.setFont(new Font("Segoe UI", Font.BOLD, 18));
-        title.setForeground(new Color(35, 49, 66));
-        title.setBorder(new EmptyBorder(0, 0, 10, 0));
-        left.add(title);
-
-        String kw = txtSearch == null ? "" : txtSearch.getText().trim().toLowerCase();
-        for (DocumentCard doc : dsDocs) {
-            if (kw.isEmpty() || doc.title.toLowerCase().contains(kw) || doc.desc.toLowerCase().contains(kw)) {
-                left.add(createDocumentCard(doc));
-                left.add(Box.createVerticalStrut(10));
-            }
-        }
-        return left;
-    }
-
-    private JPanel createFaqColumn() {
-        JPanel right = new JPanel();
-        right.setOpaque(false);
-        right.setLayout(new BoxLayout(right, BoxLayout.Y_AXIS));
-
-        JLabel title = new JLabel("❔ Câu hỏi thường gặp");
-        title.setFont(new Font("Segoe UI", Font.BOLD, 18));
-        title.setForeground(new Color(35, 49, 66));
-        title.setBorder(new EmptyBorder(0, 0, 10, 0));
-        right.add(title);
-
-        String kw = txtSearch == null ? "" : txtSearch.getText().trim().toLowerCase();
-        for (FaqBlock faq : dsFaq) {
-            if (kw.isEmpty() || faq.question.toLowerCase().contains(kw) || faq.answer.toLowerCase().contains(kw)) {
-                right.add(createFaqCard(faq));
-                right.add(Box.createVerticalStrut(8));
-            }
-        }
-        return right;
-    }
-
-    private JPanel createDocumentCard(DocumentCard doc) {
-        JPanel card = new JPanel(new BorderLayout());
-        card.setBackground(Color.WHITE);
-        card.setBorder(BorderFactory.createCompoundBorder(
-                new LineBorder(doc.active ? new Color(96, 165, 250) : new Color(226, 232, 240), 1, true),
-                new EmptyBorder(14, 14, 14, 14)
+    private JComponent createSearchBox() {
+        txtSearch = new JTextField();
+        txtSearch.setFont(FONT_PLAIN_14);
+        txtSearch.setPreferredSize(new Dimension(420, 42));
+        txtSearch.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
+        txtSearch.setToolTipText("Tìm kiếm tài liệu hoặc câu hỏi...");
+        txtSearch.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(BORDER, 1, true),
+                new EmptyBorder(10, 12, 10, 12)
         ));
+
+        txtSearch.getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                renderContent();
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                renderContent();
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                renderContent();
+            }
+        });
+
+        return txtSearch;
+    }
+
+    private JComponent createBody() {
+        contentPanel = new JPanel();
+        contentPanel.setOpaque(false);
+        contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
+
+        scrollPane = new JScrollPane(
+                contentPanel,
+                JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
+                JScrollPane.HORIZONTAL_SCROLLBAR_NEVER
+        );
+        scrollPane.setBorder(null);
+        scrollPane.getViewport().setBackground(BG_CARD);
+        scrollPane.getVerticalScrollBar().setUnitIncrement(18);
+        scrollPane.getVerticalScrollBar().setPreferredSize(new Dimension(10, 0));
+        styleScrollBar(scrollPane);
+
+        return scrollPane;
+    }
+
+    // ================== RENDER ==================
+    private void renderContent() {
+        contentPanel.removeAll();
+
+        String keyword = txtSearch == null ? "" : txtSearch.getText().trim().toLowerCase();
+        int count = 0;
+
+        contentPanel.add(createSectionTitle("📘 TÀI LIỆU HƯỚNG DẪN"));
+        contentPanel.add(Box.createVerticalStrut(8));
+
+        for (TaiLieuItem item : dsTaiLieu) {
+            if (matchKeyword(keyword, item.title, item.description, item.tag)) {
+                contentPanel.add(createDocumentCard(item));
+                contentPanel.add(Box.createVerticalStrut(10));
+                count++;
+            }
+        }
+
+        contentPanel.add(Box.createVerticalStrut(8));
+        contentPanel.add(createSectionTitle("❓ CÂU HỎI THƯỜNG GẶP"));
+        contentPanel.add(Box.createVerticalStrut(8));
+
+        for (FaqItem faq : dsFaq) {
+            if (matchKeyword(keyword, faq.question, faq.answer)) {
+                contentPanel.add(createFaqCard(faq));
+                contentPanel.add(Box.createVerticalStrut(8));
+                count++;
+            }
+        }
+
+        if (count == 0) {
+            contentPanel.add(createEmptyState());
+        }
+
+        contentPanel.add(Box.createVerticalGlue());
+        contentPanel.revalidate();
+        contentPanel.repaint();
+    }
+
+    private JLabel createSectionTitle(String text) {
+        JLabel lbl = new JLabel(text);
+        lbl.setFont(FONT_SECTION);
+        lbl.setForeground(TEXT);
+        lbl.setBorder(new EmptyBorder(2, 0, 0, 0));
+        return lbl;
+    }
+
+    private JPanel createEmptyState() {
+        RoundedPanel panel = new RoundedPanel(16, BG_FAQ, false);
+        panel.setLayout(new BorderLayout());
+        panel.setBorder(new EmptyBorder(16, 16, 16, 16));
+        panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 58));
+
+        JLabel lbl = new JLabel("Không tìm thấy nội dung phù hợp");
+        lbl.setFont(FONT_PLAIN_13);
+        lbl.setForeground(SUBTEXT);
+
+        panel.add(lbl, BorderLayout.WEST);
+        return panel;
+    }
+
+    // ================== DOCUMENT CARD ==================
+    private JPanel createDocumentCard(TaiLieuItem item) {
+        HoverRoundedPanel card = new HoverRoundedPanel(18, BG_CARD, new Color(248, 250, 252));
+        card.setLayout(new BorderLayout(12, 0));
+        card.setBorder(new EmptyBorder(12, 12, 12, 12));
         card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 94));
+        card.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
-        JLabel icon = new JLabel(doc.icon, SwingConstants.CENTER);
-        icon.setOpaque(true);
-        icon.setBackground(doc.active ? new Color(37, 99, 235) : new Color(226, 232, 240));
-        icon.setForeground(doc.active ? Color.WHITE : new Color(37, 99, 235));
-        icon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 18));
-        icon.setPreferredSize(new Dimension(42, 42));
+        JLabel lblIcon = new JLabel(item.icon, SwingConstants.CENTER);
+        lblIcon.setOpaque(true);
+        lblIcon.setBackground(item.featured ? PRIMARY : new Color(241, 245, 249));
+        lblIcon.setForeground(item.featured ? Color.WHITE : PRIMARY);
+        lblIcon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 18));
+        lblIcon.setPreferredSize(new Dimension(46, 46));
 
-        JPanel center = new JPanel();
-        center.setOpaque(false);
-        center.setLayout(new BoxLayout(center, BoxLayout.Y_AXIS));
-        center.setBorder(new EmptyBorder(0, 12, 0, 0));
+        JPanel infoBox = new JPanel();
+        infoBox.setOpaque(false);
+        infoBox.setLayout(new BoxLayout(infoBox, BoxLayout.Y_AXIS));
 
-        JLabel t = new JLabel(doc.title);
-        t.setFont(new Font("Segoe UI", Font.BOLD, 16));
-        t.setForeground(new Color(30, 41, 59));
+        JLabel lblTitle = new JLabel(item.title);
+        lblTitle.setFont(FONT_BOLD_14);
+        lblTitle.setForeground(TEXT);
 
-        JLabel d = new JLabel(doc.desc);
-        d.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        d.setForeground(new Color(100, 116, 139));
+        JLabel lblDesc = new JLabel(item.description);
+        lblDesc.setFont(FONT_PLAIN_12);
+        lblDesc.setForeground(SUBTEXT);
 
-        JLabel time = new JLabel("⏱ " + doc.time);
-        time.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        time.setForeground(new Color(79, 70, 229));
+        JLabel lblMeta = new JLabel(item.duration + "  •  " + item.tag);
+        lblMeta.setFont(FONT_BOLD_13);
+        lblMeta.setForeground(new Color(79, 70, 229));
 
-        center.add(t);
-        center.add(Box.createVerticalStrut(4));
-        center.add(d);
-        center.add(Box.createVerticalStrut(6));
-        center.add(time);
+        infoBox.add(lblTitle);
+        infoBox.add(Box.createVerticalStrut(3));
+        infoBox.add(lblDesc);
+        infoBox.add(Box.createVerticalStrut(6));
+        infoBox.add(lblMeta);
 
-        card.add(icon, BorderLayout.WEST);
-        card.add(center, BorderLayout.CENTER);
+        JButton btnOpen = createPrimaryButton("Mở");
+        btnOpen.addActionListener(e ->
+                JOptionPane.showMessageDialog(
+                        this,
+                        "Bạn vừa chọn: " + item.title,
+                        "Thông báo",
+                        JOptionPane.INFORMATION_MESSAGE
+                )
+        );
+
+        JPanel rightBox = new JPanel(new BorderLayout());
+        rightBox.setOpaque(false);
+        rightBox.add(btnOpen, BorderLayout.NORTH);
+
+        card.add(lblIcon, BorderLayout.WEST);
+        card.add(infoBox, BorderLayout.CENTER);
+        card.add(rightBox, BorderLayout.EAST);
+
+        MouseAdapter clickOpen = new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                btnOpen.doClick();
+            }
+        };
+        card.addMouseListener(clickOpen);
+
         return card;
     }
 
-    private JPanel createFaqCard(FaqBlock faq) {
-        JPanel card = new JPanel(new BorderLayout());
-        card.setBackground(Color.WHITE);
-        card.setBorder(new LineBorder(new Color(226, 232, 240), 1, true));
-        card.setMaximumSize(new Dimension(Integer.MAX_VALUE, faq.expanded ? 120 : 54));
+    // ================== FAQ CARD ==================
+    private JPanel createFaqCard(FaqItem faq) {
+        RoundedPanel card = new RoundedPanel(16, BG_FAQ, false);
+        card.setLayout(new BorderLayout());
+        card.setMaximumSize(new Dimension(Integer.MAX_VALUE, faq.expanded ? 155 : 54));
 
-        JButton header = new JButton(faq.index + "    " + faq.question + (faq.expanded ? "      ▾" : "      ▸"));
-        header.setHorizontalAlignment(SwingConstants.LEFT);
+        JButton header = new JButton();
+        header.setLayout(new BorderLayout());
         header.setFocusPainted(false);
         header.setBorder(new EmptyBorder(12, 14, 12, 14));
         header.setBackground(Color.WHITE);
-        header.setFont(new Font("Segoe UI", Font.BOLD, 16));
-        header.setForeground(new Color(30, 41, 59));
+        header.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
-        JTextArea answer = new JTextArea(faq.answer);
-        answer.setLineWrap(true);
-        answer.setWrapStyleWord(true);
-        answer.setEditable(false);
-        answer.setVisible(faq.expanded);
-        answer.setBackground(new Color(241, 245, 249));
-        answer.setForeground(new Color(71, 85, 105));
-        answer.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        answer.setBorder(new EmptyBorder(10, 14, 12, 14));
+        JLabel lblQuestion = new JLabel(faq.index + ". " + faq.question);
+        lblQuestion.setFont(FONT_BOLD_14);
+        lblQuestion.setForeground(TEXT);
+
+        JLabel lblArrow = new JLabel(faq.expanded ? "▾" : "▸");
+        lblArrow.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        lblArrow.setForeground(SUBTEXT);
+
+        header.add(lblQuestion, BorderLayout.CENTER);
+        header.add(lblArrow, BorderLayout.EAST);
+
+        JTextArea txtAnswer = new JTextArea(faq.answer);
+        txtAnswer.setLineWrap(true);
+        txtAnswer.setWrapStyleWord(true);
+        txtAnswer.setEditable(false);
+        txtAnswer.setVisible(faq.expanded);
+        txtAnswer.setBackground(BG_FAQ);
+        txtAnswer.setForeground(new Color(71, 85, 105));
+        txtAnswer.setFont(FONT_PLAIN_13);
+        txtAnswer.setBorder(new EmptyBorder(0, 14, 12, 14));
 
         header.addActionListener(e -> {
-            faq.expanded = !faq.expanded;
-            removeAll();
-            setLayout(new BorderLayout(0, 16));
-            setBackground(Color.decode("#F4F6F8"));
-            setBorder(new EmptyBorder(16, 20, 16, 20));
-            add(createHeader(), BorderLayout.NORTH);
-            add(createBody(), BorderLayout.CENTER);
-            revalidate();
-            repaint();
+            boolean newState = !faq.expanded;
+            for (FaqItem item : dsFaq) {
+                item.expanded = false;
+            }
+            faq.expanded = newState;
+            renderContent();
         });
 
         card.add(header, BorderLayout.NORTH);
-        card.add(answer, BorderLayout.CENTER);
+        card.add(txtAnswer, BorderLayout.CENTER);
+
         return card;
     }
 
-    private void reloadBody() {
-        removeAll();
-        setLayout(new BorderLayout(0, 16));
-        setBackground(Color.decode("#F4F6F8"));
-        setBorder(new EmptyBorder(16, 20, 16, 20));
-        add(createHeader(), BorderLayout.NORTH);
-        add(createBody(), BorderLayout.CENTER);
-        revalidate();
-        repaint();
+    // ================== HELPERS ==================
+    private boolean matchKeyword(String keyword, String... values) {
+        if (keyword == null || keyword.isEmpty()) return true;
+        for (String value : values) {
+            if (value != null && value.toLowerCase().contains(keyword)) {
+                return true;
+            }
+        }
+        return false;
     }
 
-    private void seedData() {
-        dsDocs.add(new DocumentCard("📘", "Hướng dẫn sử dụng cơ bản", "Làm quen với giao diện và các tính năng chính", "10 phút", false));
-        dsDocs.add(new DocumentCard("🎥", "Video: Quản lý kho dược", "Hướng dẫn nhập/xuất kho, kiểm kê tồn kho", "15 phút", false));
-        dsDocs.add(new DocumentCard("📄", "Tài liệu kỹ thuật", "Cấu hình hệ thống, backup dữ liệu", "20 phút", true));
-        dsDocs.add(new DocumentCard("📖", "Quy trình bán hàng", "Từ tạo đơn đến hoàn thành, quản lý thanh toán", "8 phút", false));
-        dsDocs.add(new DocumentCard("🎥", "Video: Báo cáo & Thống kê", "Phân tích doanh thu, xuất báo cáo Excel/PDF", "12 phút", false));
-        dsDocs.add(new DocumentCard("📄", "Chính sách bảo mật", "Phân quyền, bảo mật tài khoản người dùng", "5 phút", false));
-
-        dsFaq.add(new FaqBlock(1, "Làm thế nào để thêm sản phẩm mới?",
-                "Vào menu 'Sản phẩm' → Click nút 'Thêm mới' (màu đỏ góc trên phải) → Điền đầy đủ thông tin sản phẩm → Click 'Thêm sản phẩm'. Mã sản phẩm sẽ được tự động tạo.", true));
-        dsFaq.add(new FaqBlock(2, "Cách xuất báo cáo Excel?",
-                "Mở màn hình Thống kê → chọn khoảng thời gian → bấm Xuất Excel. Nếu project đang dùng Apache POI/Jasper thì nối action tại đây.", false));
-        dsFaq.add(new FaqBlock(3, "Làm thế nào để cập nhật thông tin sản phẩm?",
-                "Tại màn hình Sản phẩm, chọn dòng cần sửa → bấm cập nhật → chỉnh thông tin → lưu lại.", false));
-        dsFaq.add(new FaqBlock(4, "Cách tạo khuyến mại mới?",
-                "Vào menu Khuyến mại → tạo chương trình mới → chọn điều kiện áp dụng và hình thức khuyến mại → lưu.", false));
-        dsFaq.add(new FaqBlock(5, "Làm sao để xem thống kê doanh thu?",
-                "Mở màn hình Thống kê → chọn ngày bắt đầu / kết thúc → xem biểu đồ và bảng tổng hợp doanh thu.", false));
-        dsFaq.add(new FaqBlock(6, "Cách phân quyền nhân viên?",
-                "Vào menu Nhân viên hoặc Tài khoản → chỉnh vai trò → cập nhật quyền truy cập theo chức vụ.", false));
-        dsFaq.add(new FaqBlock(7, "Làm thế nào để nhập hàng từ file Excel?",
-                "Bạn có thể tạo nút import tại màn hình lô hàng rồi dùng Apache POI đọc file Excel và map dữ liệu vào Entity/DTO.", false));
-        dsFaq.add(new FaqBlock(8, "Hệ thống hỗ trợ bao nhiêu đơn vị quy đổi?",
-                "Có thể mở rộng bằng cách tách bảng DonViQuyDoi và ChiTietQuyDoi thay vì lưu cứng trong bảng sản phẩm.", false));
+    private JButton createPrimaryButton(String text) {
+        JButton btn = new JButton(text);
+        btn.setFocusPainted(false);
+        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btn.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btn.setForeground(Color.WHITE);
+        btn.setBackground(PRIMARY);
+        btn.setBorder(new EmptyBorder(8, 14, 8, 14));
+        return btn;
     }
 
-    private static class DocumentCard {
+    private JButton createGhostButton(String text) {
+        JButton btn = new JButton(text);
+        btn.setFocusPainted(false);
+        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btn.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btn.setForeground(TEXT);
+        btn.setBackground(new Color(241, 245, 249));
+        btn.setBorder(new EmptyBorder(9, 14, 9, 14));
+        return btn;
+    }
+
+    private void styleScrollBar(JScrollPane pane) {
+        pane.getVerticalScrollBar().setUI(new javax.swing.plaf.basic.BasicScrollBarUI() {
+            @Override
+            protected void configureScrollBarColors() {
+                thumbColor = new Color(203, 213, 225);
+                trackColor = new Color(241, 245, 249);
+            }
+
+            @Override
+            protected JButton createDecreaseButton(int orientation) {
+                return createZeroButton();
+            }
+
+            @Override
+            protected JButton createIncreaseButton(int orientation) {
+                return createZeroButton();
+            }
+
+            private JButton createZeroButton() {
+                JButton button = new JButton();
+                button.setPreferredSize(new Dimension(0, 0));
+                button.setMinimumSize(new Dimension(0, 0));
+                button.setMaximumSize(new Dimension(0, 0));
+                return button;
+            }
+        });
+    }
+
+    // ================== DATA ==================
+    private void initData() {
+        dsTaiLieu.clear();
+        dsFaq.clear();
+
+        dsTaiLieu.add(new TaiLieuItem("📘", "Hướng dẫn sử dụng cơ bản",
+                "Làm quen giao diện và các chức năng chính của hệ thống", "10 phút", "Cơ bản", false));
+
+        dsTaiLieu.add(new TaiLieuItem("🎥", "Video quản lý kho dược",
+                "Hướng dẫn nhập kho, xuất kho và kiểm kê tồn", "15 phút", "Video", false));
+
+        dsTaiLieu.add(new TaiLieuItem("📄", "Tài liệu kỹ thuật",
+                "Cấu hình hệ thống, sao lưu và phục hồi dữ liệu", "20 phút", "Nâng cao", true));
+
+        dsTaiLieu.add(new TaiLieuItem("📖", "Quy trình bán hàng",
+                "Tạo đơn hàng, thanh toán và hoàn tất giao dịch", "8 phút", "Quy trình", false));
+
+        dsTaiLieu.add(new TaiLieuItem("📊", "Báo cáo và thống kê",
+                "Theo dõi doanh thu và xuất báo cáo Excel hoặc PDF", "12 phút", "Báo cáo", false));
+
+        dsTaiLieu.add(new TaiLieuItem("🔐", "Chính sách bảo mật",
+                "Phân quyền tài khoản và bảo vệ dữ liệu người dùng", "5 phút", "Bảo mật", false));
+
+        dsFaq.add(new FaqItem(1, "Làm thế nào để thêm sản phẩm mới?",
+                "Vào menu Sản phẩm, nhấn Thêm mới, nhập đầy đủ thông tin sản phẩm rồi bấm Lưu.", true));
+
+        dsFaq.add(new FaqItem(2, "Cách xuất báo cáo Excel?",
+                "Mở màn hình Thống kê, chọn khoảng thời gian cần xem rồi nhấn nút Xuất Excel.", false));
+
+        dsFaq.add(new FaqItem(3, "Làm thế nào để cập nhật thông tin sản phẩm?",
+                "Tại màn hình Sản phẩm, chọn dòng cần sửa, nhấn Cập nhật, chỉnh thông tin rồi bấm Lưu.", false));
+
+        dsFaq.add(new FaqItem(4, "Cách tạo khuyến mại mới?",
+                "Vào menu Khuyến mại, tạo chương trình mới, chọn điều kiện áp dụng rồi lưu lại.", false));
+
+        dsFaq.add(new FaqItem(5, "Làm sao để xem thống kê doanh thu?",
+                "Mở màn hình Thống kê, chọn ngày bắt đầu và ngày kết thúc để xem số liệu tổng hợp.", false));
+
+        dsFaq.add(new FaqItem(6, "Cách phân quyền nhân viên?",
+                "Vào menu Nhân viên hoặc Tài khoản, chọn vai trò tương ứng rồi cập nhật quyền truy cập.", false));
+    }
+
+    // ================== MODELS ==================
+    private static class TaiLieuItem {
         String icon;
         String title;
-        String desc;
-        String time;
-        boolean active;
+        String description;
+        String duration;
+        String tag;
+        boolean featured;
 
-        DocumentCard(String icon, String title, String desc, String time, boolean active) {
+        TaiLieuItem(String icon, String title, String description, String duration, String tag, boolean featured) {
             this.icon = icon;
             this.title = title;
-            this.desc = desc;
-            this.time = time;
-            this.active = active;
+            this.description = description;
+            this.duration = duration;
+            this.tag = tag;
+            this.featured = featured;
         }
     }
 
-    private static class FaqBlock {
+    private static class FaqItem {
         int index;
         String question;
         String answer;
         boolean expanded;
 
-        FaqBlock(int index, String question, String answer, boolean expanded) {
+        FaqItem(int index, String question, String answer, boolean expanded) {
             this.index = index;
             this.question = question;
             this.answer = answer;
             this.expanded = expanded;
+        }
+    }
+
+    // ================== CUSTOM PANEL ==================
+    static class RoundedPanel extends JPanel {
+        protected int radius;
+        protected Color bgColor;
+        protected boolean drawShadow;
+
+        RoundedPanel(int radius, Color bgColor, boolean drawShadow) {
+            this.radius = radius;
+            this.bgColor = bgColor;
+            this.drawShadow = drawShadow;
+            setOpaque(false);
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+            if (drawShadow) {
+                g2.setColor(SHADOW);
+                g2.fillRoundRect(2, 4, getWidth() - 4, getHeight() - 4, radius, radius);
+            }
+
+            g2.setColor(bgColor);
+            g2.fillRoundRect(0, 0, getWidth() - 2, getHeight() - 2, radius, radius);
+
+            g2.setColor(BORDER);
+            g2.drawRoundRect(0, 0, getWidth() - 2, getHeight() - 2, radius, radius);
+
+            g2.dispose();
+            super.paintComponent(g);
+        }
+    }
+
+    static class HoverRoundedPanel extends RoundedPanel {
+        private final Color normalColor;
+        private final Color hoverColor;
+        private boolean hovered = false;
+
+        HoverRoundedPanel(int radius, Color normalColor, Color hoverColor) {
+            super(radius, normalColor, false);
+            this.normalColor = normalColor;
+            this.hoverColor = hoverColor;
+
+            addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseEntered(MouseEvent e) {
+                    hovered = true;
+                    repaint();
+                }
+
+                @Override
+                public void mouseExited(MouseEvent e) {
+                    hovered = false;
+                    repaint();
+                }
+            });
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            bgColor = hovered ? hoverColor : normalColor;
+            super.paintComponent(g);
         }
     }
 }
