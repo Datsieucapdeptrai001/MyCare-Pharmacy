@@ -206,6 +206,10 @@ public class MenuIcon implements Icon {
                 g2d.drawLine(x + 8, y + 15, x + 14, y + 15);
                 g2d.drawLine(x + 8, y + 17, x + 14, y + 17);
                 break;
+            case "EDIT": 
+                g2d.drawRect(x + 4, y + 14, 12, 3); // Đế
+                g2d.drawLine(x + 6, y + 4, x + 15, y + 13); // Ngòi
+                break;
         }
         g2d.dispose();
     }

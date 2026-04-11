@@ -1,7 +1,10 @@
 package GUI;
 
 import Components.MenuIcon;
-
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.Cursor;
+import java.awt.Container;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.*;
@@ -28,7 +31,7 @@ public class ManHinhBanHang extends JPanel {
         this.setBackground(Color.WHITE);
         this.setBorder(new EmptyBorder(0, 30, 20, 30));
 
-        // ==================== 1. THANH TABS ====================
+     // ==================== 1. THANH TABS ====================
         JPanel pnlTabs = new JPanel(new BorderLayout());
         pnlTabs.setBackground(Color.WHITE);
         pnlTabs.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, Color.decode("#DFE3E8")));
@@ -36,6 +39,7 @@ public class ManHinhBanHang extends JPanel {
         JPanel pnlLeftTabs = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
         pnlLeftTabs.setOpaque(false);
 
+        // Tab Bán hàng (Đang hiển thị nên không cần bắt sự kiện click)
         JLabel lblBanHang = new JLabel("Bán hàng");
         lblBanHang.setIcon(new MenuIcon("CART"));
         lblBanHang.setIconTextGap(8);
@@ -45,6 +49,7 @@ public class ManHinhBanHang extends JPanel {
                 BorderFactory.createMatteBorder(0, 0, 4, 0, Color.decode("#1967D2")),
                 BorderFactory.createEmptyBorder(20, 0, 20, 40)));
 
+        // Tab Đổi / Trả hàng (Cần bắt sự kiện để chuyển sang)
         JLabel lblDoiTra = new JLabel("Đổi / Trả hàng");
         lblDoiTra.setIcon(new MenuIcon("BOX"));
         lblDoiTra.setIconTextGap(8);
@@ -52,16 +57,25 @@ public class ManHinhBanHang extends JPanel {
         lblDoiTra.setForeground(Color.decode("#6C757D"));
         lblDoiTra.setBorder(BorderFactory.createEmptyBorder(20, 0, 20, 40));
 
+        lblDoiTra.setCursor(new Cursor(Cursor.HAND_CURSOR)); 
+        lblDoiTra.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                Container parent = ManHinhBanHang.this.getParent(); 
+                if (parent != null) {
+                    // CÁCH AN TOÀN TUYỆT ĐỐI:
+                    parent.removeAll(); // Xóa sạch sẽ màn hình Bán Hàng cũ
+                    parent.setLayout(new BorderLayout()); // Ép khung cha về đúng layout
+                    parent.add(new ManHinhDoiTra(), BorderLayout.CENTER); // Gắn Đổi Trả vào
+                    parent.revalidate();
+                    parent.repaint();
+                }
+            }
+        });
+
         pnlLeftTabs.add(lblBanHang);
         pnlLeftTabs.add(lblDoiTra);
         pnlTabs.add(pnlLeftTabs, BorderLayout.WEST);
-
-        JLabel lblSetting = new JLabel("Quản lý  ");
-        lblSetting.setIcon(new MenuIcon("USER"));
-        lblSetting.setIconTextGap(8);
-        lblSetting.setForeground(Color.decode("#10B981"));
-        lblSetting.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        pnlTabs.add(lblSetting, BorderLayout.EAST);
 
         // ==================== 2. HEADER (TITLE & SEARCH) ====================
         JPanel pnlHeader = new JPanel(new BorderLayout());
@@ -122,14 +136,9 @@ public class ManHinhBanHang extends JPanel {
         });
 
         JButton btnCreate = createActionBtn("Tạo hóa đơn", "#E11D48");
-        btnCreate.setIcon(new MenuIcon("ADD"));
-        btnCreate.setIconTextGap(6);
         btnCreate.addActionListener(e -> {
-            // Lấy cửa sổ cha hiện tại
             Window p = SwingUtilities.getWindowAncestor(this);
-            
-            // Mở JDialog TaoHoaDon
-            TaoHoaDon dialogTaoHoaDon = new TaoHoaDon((Frame) p);
+            TaoHoaDon dialogTaoHoaDon = new TaoHoaDon((Frame) p, model); 
             dialogTaoHoaDon.setVisible(true);
         });
 
@@ -176,12 +185,10 @@ public class ManHinhBanHang extends JPanel {
         table.setFont(new Font("Segoe UI", Font.PLAIN, 15));
 
         // --- CẤU HÌNH XÓA BỎ LƯỚI VÀ LÀM MƯỢT BẢNG ---
-        table.setShowGrid(false); // Xóa toàn bộ lưới mặc định
-        table.setShowHorizontalLines(true); // Chỉ bật đường kẻ ngang cho dễ nhìn
-        table.setIntercellSpacing(new Dimension(0, 0)); // Xóa khe hở trắng giữa các cột
-        table.setGridColor(Color.decode("#F1F3F5")); // Màu kẻ ngang nhạt
-        
-        // Cấu hình màu khi Click vào dòng (Bỏ màu xanh đậm xấu xí)
+        table.setShowGrid(false); 
+        table.setShowHorizontalLines(true); 
+        table.setIntercellSpacing(new Dimension(0, 0)); 
+        table.setGridColor(Color.decode("#F1F3F5")); 
         table.setSelectionBackground(Color.decode("#F8F9FA")); 
         table.setSelectionForeground(Color.decode("#212B36"));
 
@@ -191,9 +198,41 @@ public class ManHinhBanHang extends JPanel {
         header.setForeground(Color.decode("#637381"));
         header.setFont(new Font("Segoe UI", Font.BOLD, 14));
 
+        // Ẩn cột danh mục (dùng để lọc)
         table.getColumnModel().getColumn(8).setMinWidth(0);
         table.getColumnModel().getColumn(8).setMaxWidth(0);
+        
         table.setDefaultRenderer(Object.class, new ModernTableRenderer());
+
+        // --- BỔ SUNG SỰ KIỆN CLICK CHUỘT MỞ CHI TIẾT HÓA ĐƠN ---
+     // --- TRONG FILE ManHinhBanHang.java ---
+
+        table.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                int viewRow = table.rowAtPoint(e.getPoint());
+                int col = table.columnAtPoint(e.getPoint());
+                
+                if (viewRow >= 0 && col == 7) { 
+                    int modelRow = table.convertRowIndexToModel(viewRow);
+                    String status = table.getValueAt(viewRow, 6).toString();
+                    String maHoaDon = table.getValueAt(viewRow, 0).toString();
+                    Window p = SwingUtilities.getWindowAncestor(ManHinhBanHang.this);
+
+                    if (status.equals("Đang xử lý")) {
+                        // FIX: Gọi đúng Constructor 2 tham số của TaoHoaDon (như file bạn gửi)
+                        // Nếu bạn muốn truyền thêm Tên/SĐT, bạn phải vào file TaoHoaDon.java để tạo thêm Constructor mới nhận 6 tham số.
+                        TaoHoaDon dialogSua = new TaoHoaDon((Frame) p, model); 
+                        dialogSua.setTitle("Sửa hóa đơn: " + maHoaDon);
+                        dialogSua.setVisible(true);
+                    } else {
+                        String phuongThuc = table.getValueAt(viewRow, 4).toString(); 
+                        ChiTietHoaDon dialogChiTiet = new ChiTietHoaDon((Frame) p, maHoaDon, phuongThuc);
+                        dialogChiTiet.setVisible(true);
+                    }
+                }
+            }
+        });
 
         JScrollPane sp = new JScrollPane(table);
         sp.setBorder(BorderFactory.createLineBorder(Color.decode("#DFE3E8")));
@@ -281,10 +320,8 @@ public class ManHinhBanHang extends JPanel {
 
     private void xuLyStatus(JButton b) {
         String text = b.getText().trim();
-        
-        // Nếu click lại đúng nút đang được lọc (khác nút "Tất cả") -> Hủy lọc, quay về "Tất cả"
         if (filterStatus.equals(text) && !text.equals("Tất cả")) {
-            xuLyStatus(statusBtns[0]); // Tự động gọi lại nút "Tất cả"
+            xuLyStatus(statusBtns[0]); 
             return;
         }
 
@@ -296,8 +333,6 @@ public class ManHinhBanHang extends JPanel {
 
     private void xuLyCat(JButton b) {
         String text = b.getText().trim();
-        
-        // Nếu click lại đúng nút danh mục đang lọc -> Hủy lọc, quay về "Tất cả"
         if (filterCat.equals(text) && !text.equals("Tất cả")) {
             xuLyCat(categoryBtns[0]); 
             return;
@@ -313,21 +348,18 @@ public class ManHinhBanHang extends JPanel {
         List<RowFilter<Object, Object>> filters = new ArrayList<>();
         
         if (!filterStatus.equals("Tất cả")) {
-            filters.add(RowFilter.regexFilter("^" + filterStatus + "$", 6)); // Lọc chính xác cột 6
+            filters.add(RowFilter.regexFilter("^" + filterStatus + "$", 6)); 
         }
         
         if (!filterCat.equals("Tất cả")) {
-            filters.add(RowFilter.regexFilter("^" + filterCat + "$", 8)); // Lọc chính xác cột 8
+            filters.add(RowFilter.regexFilter("^" + filterCat + "$", 8)); 
         }
         
         String search = txtSearch.getText().trim();
         if (!search.isEmpty() && !search.equals("Mã HD, khách hàng, SĐT...")) {
-            // FIX LỖI: Dùng Pattern.quote để bọc chuỗi tìm kiếm lại, 
-            // tránh sập bảng nếu người dùng vô tình gõ các ký tự đặc biệt của Regex (*, [, ?, +, ...)
             filters.add(RowFilter.regexFilter("(?i)" + java.util.regex.Pattern.quote(search)));
         }
 
-        // Nếu không có điều kiện lọc nào thì set null để hiện lại toàn bộ dữ liệu
         if (filters.isEmpty()) {
             sorter.setRowFilter(null);
         } else {
@@ -339,11 +371,8 @@ public class ManHinhBanHang extends JPanel {
         public Component getTableCellRendererComponent(JTable t, Object v, boolean isSel, boolean hasF, int r, int c) {
             JLabel lbl = (JLabel) super.getTableCellRendererComponent(t, v, isSel, hasF, r, c);
             lbl.setHorizontalAlignment(CENTER);
-            
-            // BẮT BUỘC: Reset lại icon để không bị dính icon sang các cột khác
             lbl.setIcon(null); 
 
-            // Xóa cái khung nét đứt bao quanh ô khi click chuột vào
             if (hasF) {
                 lbl.setBorder(new EmptyBorder(0, 0, 0, 0));
             }
@@ -351,20 +380,26 @@ public class ManHinhBanHang extends JPanel {
             lbl.setOpaque(true);
 
             if (c == 6) { 
-                // Cột trạng thái không đổi màu nền khi select dòng để giữ nguyên Tag màu
                 if (v.equals("Hoàn thành")) { lbl.setBackground(Color.decode("#DCFCE7")); lbl.setForeground(Color.decode("#10B981")); }
                 else if (v.equals("Đang xử lý")) { lbl.setBackground(Color.decode("#FEF3C7")); lbl.setForeground(Color.decode("#F59E0B")); }
                 else { lbl.setBackground(Color.decode("#FEE2E2")); lbl.setForeground(Color.decode("#EF4444")); }
             } else {
-                // Các cột còn lại
                 lbl.setBackground(isSel ? Color.decode("#F8F9FA") : Color.WHITE);
                 lbl.setForeground(Color.decode("#212B36"));
                 if (c == 0) lbl.setForeground(Color.decode("#6A1B9A")); 
                 if (c == 7) { 
                     lbl.setForeground(Color.decode("#1967D2")); 
-                    lbl.setText("Xem"); // Bỏ cái emoji 👁 cũ đi
-                    lbl.setIcon(new MenuIcon("EYE")); // Bổ sung icon từ class MenuIcon của bạn
-                    lbl.setIconTextGap(6); // Chỉnh khoảng cách giữa chữ và icon cho thoáng
+                    
+                    // KIỂM TRA TRẠNG THÁI Ở CỘT 6
+                    String status = t.getValueAt(r, 6).toString();
+                    if (status.equals("Đang xử lý")) {
+                        lbl.setText("Sửa"); 
+                        lbl.setIcon(new MenuIcon("EDIT")); // Đảm bảo class MenuIcon có case "EDIT"
+                    } else {
+                        lbl.setText("Xem"); 
+                        lbl.setIcon(new MenuIcon("EYE")); 
+                    }
+                    lbl.setIconTextGap(6);
                 }
             }
             return lbl;
