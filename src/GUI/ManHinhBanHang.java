@@ -62,13 +62,13 @@ public class ManHinhBanHang extends JPanel {
             @Override
             public void mouseClicked(MouseEvent e) {
                 Container parent = ManHinhBanHang.this.getParent(); 
-                if (parent != null) {
-                    // CÁCH AN TOÀN TUYỆT ĐỐI:
-                    parent.removeAll(); // Xóa sạch sẽ màn hình Bán Hàng cũ
-                    parent.setLayout(new BorderLayout()); // Ép khung cha về đúng layout
-                    parent.add(new ManHinhDoiTra(), BorderLayout.CENTER); // Gắn Đổi Trả vào
-                    parent.revalidate();
-                    parent.repaint();
+                // Kiểm tra xem khung cha có phải đang dùng CardLayout không
+                if (parent != null && parent.getLayout() instanceof CardLayout) {
+                    // Thêm màn hình Đổi Trả vào CardLayout và đặt tên là "DoiTra"
+                    parent.add(new ManHinhDoiTra(), "DoiTra"); 
+                    // Gọi CardLayout để chuyển sang màn hình Đổi Trả
+                    CardLayout cl = (CardLayout) parent.getLayout();
+                    cl.show(parent, "DoiTra");
                 }
             }
         });

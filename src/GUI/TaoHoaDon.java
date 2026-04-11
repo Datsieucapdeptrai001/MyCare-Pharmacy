@@ -59,7 +59,7 @@ public class TaoHoaDon extends JDialog {
     }
 
     private void initUI(Frame parent) {
-        setSize(900, 700);
+    	setSize(900, 800);
         setLocationRelativeTo(parent);
         setLayout(new BorderLayout());
 
@@ -200,11 +200,11 @@ public class TaoHoaDon extends JDialog {
     // PANEL KHÁCH HÀNG (GIỮ NGUYÊN 100% CỦA BẠN)
     // ========================================================
     private JPanel createCustomerPanel() {
-        JPanel pnlWrapper = new JPanel(new BorderLayout(0, 8)); 
+        JPanel pnlWrapper = new JPanel(new BorderLayout(0, 4)); 
         pnlWrapper.setBackground(Color.WHITE);
         pnlWrapper.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(Color.decode("#DFE3E8"), 1, true),
-                BorderFactory.createEmptyBorder(10, 15, 10, 15)
+                new EmptyBorder(5, 15, 8, 15)
         ));
 
         // --- 1. HEADER KHÁCH HÀNG ---
@@ -452,10 +452,43 @@ public class TaoHoaDon extends JDialog {
             }
         });
 
-        JScrollPane sp = new JScrollPane(tbl);
-        sp.setBorder(BorderFactory.createLineBorder(Color.decode("#DFE3E8"), 1, true)); 
-        sp.getViewport().setBackground(Color.WHITE); 
+        JScrollPane sp = new JScrollPane(tbl); // Hoặc pnlBody tùy file
+        
+        // --- NHÚNG TRỰC TIẾP CODE LÀM MỎNG THANH CUỘN VÀO ĐÂY ---
+        sp.getVerticalScrollBar().setUI(new javax.swing.plaf.basic.BasicScrollBarUI() {
+            @Override
+            protected JButton createDecreaseButton(int orientation) { return createZeroButton(); }
+            @Override
+            protected JButton createIncreaseButton(int orientation) { return createZeroButton(); }
+            private JButton createZeroButton() {
+                JButton btn = new JButton();
+                btn.setPreferredSize(new Dimension(0, 0));
+                return btn;
+            }
+            @Override
+            protected void paintTrack(Graphics g, JComponent c, Rectangle track) {
+                Graphics2D g2 = (Graphics2D) g;
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(Color.decode("#F8F9FA")); // Màu nền thanh cuộn
+                g2.fillRect(track.x, track.y, track.width, track.height);
+            }
+            @Override
+            protected void paintThumb(Graphics g, JComponent c, Rectangle thumb) {
+                if (thumb.isEmpty() || !scrollbar.isEnabled()) return;
+                Graphics2D g2 = (Graphics2D) g;
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                if (isDragging) g2.setColor(Color.decode("#94A3B8"));
+                else if (isThumbRollover()) g2.setColor(Color.decode("#CBD5E1"));
+                else g2.setColor(Color.decode("#E2E8F0")); // Màu cục cuộn
+                g2.fillRoundRect(thumb.x + 2, thumb.y + 2, thumb.width - 4, thumb.height - 4, 8, 8); // Bo góc
+            }
+        });
+        sp.getVerticalScrollBar().setPreferredSize(new Dimension(10, 0)); // Ép nhỏ lại còn 10px
+        // --------------------------------------------------------
+
+        sp.setBorder(BorderFactory.createLineBorder(Color.decode("#DFE3E8")));
         pnl.add(sp, BorderLayout.CENTER);
+        this.add(sp, BorderLayout.CENTER);
 
         // BỔ SUNG GỌI HÀM recalculateTotals KHI THÊM
         txtSearch.addActionListener(e -> {
