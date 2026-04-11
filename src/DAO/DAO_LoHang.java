@@ -24,7 +24,9 @@ public class DAO_LoHang {
         List<LoHang> dsLoHang = new ArrayList<>();
         String sql = "SELECT * FROM LoHang";
         Connection con = ConnectDB.getInstance().getConnection();
-
+        if (con == null) {
+            throw new RuntimeException("Không kết nối được database. Connection đang null.");
+        }
         try (Statement stmt = con.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
 
