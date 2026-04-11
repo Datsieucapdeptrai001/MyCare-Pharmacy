@@ -178,6 +178,34 @@ public class MenuIcon implements Icon {
                 g2d.drawLine(x + 15, y + 8, x + 21, y + 8);
                 g2d.drawLine(x + 18, y + 5, x + 18, y + 11);
                 break;
+            case "DOCUMENT": // Icon tờ giấy (Dành cho nút Lưu nháp)
+                g2d.drawRect(x + 5, y + 2, 12, 18); // Khung viền tờ giấy
+                g2d.drawLine(x + 8, y + 6, x + 14, y + 6); // Dòng 1
+                g2d.drawLine(x + 8, y + 10, x + 14, y + 10); // Dòng 2
+                g2d.drawLine(x + 8, y + 14, x + 12, y + 14); // Dòng 3 (ngắn hơn)
+                break;
+                
+            case "CHECK_CIRCLE": // Icon vòng tròn có dấu tích (Dành cho nút Thanh toán)
+                g2d.drawOval(x + 2, y + 2, 18, 18); // Vòng tròn ngoài
+                g2d.drawPolyline(new int[]{x + 6, x + 10, x + 16}, new int[]{y + 11, y + 15, y + 7}, 3); // Dấu check bên trong
+                break;
+            case "PRINT": // Icon Máy in
+                // 1. Khay giấy vào (Phía trên)
+                g2d.drawRect(x + 6, y + 3, 10, 5);
+                
+                // 2. Thân máy in (Bo góc cho mềm mại)
+                g2d.drawRoundRect(x + 3, y + 8, 16, 8, 4, 4);
+                
+                // 3. Khe giấy ra (Vẽ một đường ngang trên thân máy)
+                g2d.drawLine(x + 5, y + 12, x + 17, y + 12);
+                
+                // 4. Tờ giấy đang in ra (Phía dưới)
+                g2d.drawRect(x + 6, y + 12, 10, 7);
+                
+                // 5. Các nét mực trên tờ giấy
+                g2d.drawLine(x + 8, y + 15, x + 14, y + 15);
+                g2d.drawLine(x + 8, y + 17, x + 14, y + 17);
+                break;
         }
         g2d.dispose();
     }
