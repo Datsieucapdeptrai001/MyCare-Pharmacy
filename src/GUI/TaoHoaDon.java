@@ -22,7 +22,6 @@ public class TaoHoaDon extends JDialog {
         setLayout(new BorderLayout());
 
         // --- 1. HEADER (Thanh tiêu đề xanh đậm) ---
-     // --- 1. HEADER (Thanh tiêu đề xanh đậm) ---
         JPanel pnlHeader = new JPanel(new BorderLayout());
         pnlHeader.setBackground(darkBlue);
         pnlHeader.setPreferredSize(new Dimension(0, 50));

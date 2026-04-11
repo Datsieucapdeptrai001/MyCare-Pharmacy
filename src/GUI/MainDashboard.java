@@ -40,9 +40,7 @@ public class MainDashboard extends JFrame {
         cardLayout = new CardLayout();
         cardPanel = new JPanel(cardLayout);
 
-        // ==========================================================
         // KHU VỰC ĐÃ DỌN DẸP SẠCH SẼ - 1 MÀN HÌNH CHỈ CÓ 1 KEY
-        // ==========================================================
         
         // 1. Màn hình chính
         ManHinhChinh mhChinh = new ManHinhChinh();
@@ -64,8 +62,9 @@ public class MainDashboard extends JFrame {
         ManHinhKhuyenMai mhKhuyenMai = new ManHinhKhuyenMai();
         cardPanel.add(mhKhuyenMai, "Khuyến mại");
 
-        // 6. Thống kê (Chưa có -> Dùng Dummy)
-        cardPanel.add(createDummyPanel("Thống kê doanh thu"), "Thống kê");
+        // 6. Thống kê 
+        ManHinhThongKe mhThongKe = new ManHinhThongKe();
+        cardPanel.add(mhThongKe, "Thống kê");
 
         // 7. Nhân viên (Chưa có -> Dùng Dummy)
         cardPanel.add(createDummyPanel("Quản lý Nhân viên"), "Nhân viên");
@@ -76,8 +75,6 @@ public class MainDashboard extends JFrame {
         // 9. Hướng dẫn
         ManHinhHuongDan mhHuongDan = new ManHinhHuongDan();
         cardPanel.add(mhHuongDan, "Hướng dẫn");
-
-        // ==========================================================
 
         JPanel sidebar = createSidebar();
         add(sidebar, BorderLayout.WEST);
