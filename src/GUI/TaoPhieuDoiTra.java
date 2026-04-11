@@ -15,13 +15,17 @@ public class TaoPhieuDoiTra extends JDialog {
     private JLabel lblError;       // Dòng chữ đỏ báo lỗi
     private JTextField txtSearch;
     private JButton btnTraHang, btnDoiHang;
+    private DefaultTableModel mainModel;
+    private JComboBox<String> cboLyDo; 
+    
     
     private Color primaryRed = Color.decode("#DC2626"); // Đỏ chủ đạo
     private Color borderGray = Color.decode("#DFE3E8");
 
-    public TaoPhieuDoiTra(Frame parent) {
+    public TaoPhieuDoiTra(Frame parent,DefaultTableModel model) {
         super(parent, "Tạo phiếu đổi / trả hàng", true);
         setSize(750, 240);
+        this.mainModel = model;
         setLocationRelativeTo(parent);
         setUndecorated(true);
         setLayout(new BorderLayout());
@@ -42,6 +46,10 @@ public class TaoPhieuDoiTra extends JDialog {
         btnClose.setForeground(Color.WHITE);
         btnClose.setContentAreaFilled(false);
         btnClose.setBorderPainted(false);
+        
+        // --- THÊM DÒNG NÀY ĐỂ XÓA TRIỆT ĐỂ VIỀN FOCUS ---
+        btnClose.setFocusPainted(false); 
+        
         btnClose.setFont(new Font("Segoe UI", Font.BOLD, 16));
         btnClose.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnClose.addActionListener(e -> dispose());
@@ -93,7 +101,7 @@ public class TaoPhieuDoiTra extends JDialog {
         JButton btnTaoPhieu = new JButton("Tạo phiếu đổi/trả");
         btnTaoPhieu.setIcon(new MenuIcon("SYNC"));
         btnTaoPhieu.setIconTextGap(8);
-        btnTaoPhieu.setPreferredSize(new Dimension(180, 40));
+        btnTaoPhieu.setPreferredSize(new Dimension(220, 40));
         btnTaoPhieu.setBackground(primaryRed);
         btnTaoPhieu.setForeground(Color.WHITE);
         btnTaoPhieu.setFont(new Font("Segoe UI", Font.BOLD, 14));
@@ -101,14 +109,28 @@ public class TaoPhieuDoiTra extends JDialog {
         btnTaoPhieu.setFocusPainted(false);
 
         // LOGIC NÚT TẠO PHIẾU
+     // LOGIC NÚT TẠO PHIẾU
         btnTaoPhieu.addActionListener(e -> {
             if (!pnlDetailsForm.isVisible()) {
-                // Nếu form chưa hiện (tức là chưa tra cứu hợp lệ) -> Bật cảnh báo đỏ
                 lblError.setVisible(true);
             } else {
-                // Xử lý tạo phiếu thành công
-                JOptionPane.showMessageDialog(this, "Tạo phiếu thành công!", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
-                dispose();
+                // ĐẨY DỮ LIỆU XUỐNG BẢNG
+                if(mainModel != null) {
+                    String maPhieu = "DTH-" + (System.currentTimeMillis() % 1000);
+                    String hdGoc = txtSearch.getText().trim();
+                    String loai = btnTraHang.getBackground().equals(Color.decode("#FF3B30")) ? "Trả hàng" : "Đổi hàng";
+                    String loi = cboLyDo.getSelectedItem().toString();
+                    String ngay = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+                    
+                    // Thêm dòng mới vào bảng
+                    mainModel.addRow(new Object[]{
+                        maPhieu, hdGoc, "Khách lẻ", loai, loi, "25.000đ", "---", "Hoàn thành", ngay, ""
+                    });
+                }
+                
+                // ĐÃ XÓA DÒNG JOptionPane Ở ĐÂY
+                
+                dispose(); // Vẫn giữ lại dòng này để nó tự động tắt bảng Tạo Phiếu
             }
         });
 
@@ -189,7 +211,7 @@ public class TaoPhieuDoiTra extends JDialog {
         ));
         pnl.setMaximumSize(new Dimension(1000, 70));
 
-        JLabel lblMaHD = new JLabel("✓ Hóa đơn HD-2024-0015");
+        JLabel lblMaHD = new JLabel("Hóa đơn HD-2024-0015");
         lblMaHD.setFont(new Font("Segoe UI", Font.BOLD, 14));
         lblMaHD.setForeground(Color.decode("#16A34A")); // Chữ xanh đậm
 
@@ -244,7 +266,8 @@ public class TaoPhieuDoiTra extends JDialog {
         pnlLyDo.setBackground(Color.WHITE);
         pnlLyDo.add(new JLabel("<html><b>Nguyên nhân</b></html>"), BorderLayout.NORTH);
         
-        JComboBox<String> cboLyDo = new JComboBox<>(new String[]{"Lỗi nhà sản xuất", "Khách đổi ý", "Hết hạn sử dụng"});
+     // FIX CHUẨN: Chỉ gán trực tiếp vào biến toàn cục đã khai báo ở trên cùng
+        cboLyDo = new JComboBox<>(new String[]{"Lỗi nhà sản xuất", "Khách đổi ý", "Hết hạn sử dụng"});
         cboLyDo.setBackground(Color.WHITE);
         pnlLyDo.add(cboLyDo, BorderLayout.CENTER);
 
@@ -330,4 +353,5 @@ public class TaoPhieuDoiTra extends JDialog {
             btnTraHang.setForeground(Color.decode("#4B5563"));
         }
     }
+    
 }

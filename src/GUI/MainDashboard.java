@@ -68,9 +68,10 @@ public class MainDashboard extends JFrame {
 
         // 7. Nhân viên (Chưa có -> Dùng Dummy)
         cardPanel.add(createDummyPanel("Quản lý Nhân viên"), "Nhân viên");
-
+        
         // 8. Khách hàng (Chưa có -> Dùng Dummy)
-        cardPanel.add(createDummyPanel("Quản lý Khách hàng"), "Khách hàng");
+        ManHinhKhachHang mhKhachHang = new ManHinhKhachHang();
+        cardPanel.add(mhKhachHang, "Khách hàng"); // Thay DummyPanel bằng mhKhachHang
 
         // 9. Hướng dẫn
         ManHinhHuongDan mhHuongDan = new ManHinhHuongDan();

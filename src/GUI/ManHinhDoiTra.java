@@ -10,7 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ManHinhDoiTra extends JPanel {
-
+	
     private JTable table;
     private DefaultTableModel model;
     private TableRowSorter<DefaultTableModel> sorter;
@@ -43,17 +43,15 @@ public class ManHinhDoiTra extends JPanel {
         lblBanHang.setForeground(Color.decode("#6C757D"));
         lblBanHang.setBorder(BorderFactory.createEmptyBorder(20, 0, 20, 40));
         lblBanHang.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        
         lblBanHang.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
                 Container parent = ManHinhDoiTra.this.getParent();
-                if (parent != null) {
-                    // CÁCH AN TOÀN TUYỆT ĐỐI:
-                    parent.removeAll(); // Xóa sạch sẽ màn hình Đổi Trả cũ
-                    parent.setLayout(new BorderLayout()); // Ép khung cha về đúng layout
-                    parent.add(new ManHinhBanHang(), BorderLayout.CENTER); // Gắn Bán Hàng vào
-                    parent.revalidate();
-                    parent.repaint();
+                if (parent != null && parent.getLayout() instanceof CardLayout) {
+                    parent.add(new ManHinhBanHang(), "BanHang"); 
+                    CardLayout cl = (CardLayout) parent.getLayout();
+                    cl.show(parent, "BanHang");
                 }
             }
         });
@@ -68,7 +66,6 @@ public class ManHinhDoiTra extends JPanel {
                 BorderFactory.createMatteBorder(0, 0, 4, 0, Color.decode("#E11D48")),
                 BorderFactory.createEmptyBorder(20, 0, 20, 40)));
 
-        // FIX: Thêm các tab vào panel chứa (Bản cũ của bạn thiếu 2 dòng này)
         pnlLeftTabs.add(lblBanHang);
         pnlLeftTabs.add(lblDoiTra);
         pnlTabs.add(pnlLeftTabs, BorderLayout.WEST);
@@ -110,9 +107,10 @@ public class ManHinhDoiTra extends JPanel {
         btnReset.setIcon(new MenuIcon("REFRESH"));
         
         JButton btnCreate = createActionBtn("Tạo phiếu", "#E11D48"); 
+        
         btnCreate.addActionListener(e -> {
             Window p = SwingUtilities.getWindowAncestor(this);
-            TaoPhieuDoiTra dialogTaoPhieu = new TaoPhieuDoiTra((Frame) p);
+            TaoPhieuDoiTra dialogTaoPhieu = new TaoPhieuDoiTra((Frame) p, model);
             dialogTaoPhieu.setVisible(true);
         });
         pnlActions.add(pnlSearchWrapper);
@@ -148,6 +146,7 @@ public class ManHinhDoiTra extends JPanel {
         table.setShowGrid(false);
         table.setShowHorizontalLines(true);
         table.setGridColor(Color.decode("#F1F3F5"));
+        table.setSelectionBackground(Color.decode("#F8F9FA")); 
 
         JTableHeader header = table.getTableHeader();
         header.setPreferredSize(new Dimension(100, 50));
@@ -155,6 +154,41 @@ public class ManHinhDoiTra extends JPanel {
         header.setFont(new Font("Segoe UI", Font.BOLD, 14));
 
         table.setDefaultRenderer(Object.class, new DoiTraTableRenderer());
+        
+        // BỔ SUNG 1: Cấp chiều rộng cho cột cuối để chứa đủ 2 nút
+        table.getColumnModel().getColumn(9).setPreferredWidth(180);
+
+        // BỔ SUNG 2: Bắt sự kiện click chuột để xử lý Tiếp nhận / Từ chối
+        table.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                int row = table.rowAtPoint(e.getPoint());
+                int col = table.columnAtPoint(e.getPoint());
+                
+                // Cột số 9 là cột "Xử lý"
+                if (row >= 0 && col == 9) {
+                    int modelRow = table.convertRowIndexToModel(row);
+                    String status = model.getValueAt(modelRow, 7).toString(); // Cột 7 là Trạng thái
+                    
+                    if (status.equals("Chờ xử lý")) {
+                        // Tính tọa độ chuột để biết bấm nút trái hay phải
+                        Rectangle cellRect = table.getCellRect(row, col, false);
+                        int clickX = e.getX() - cellRect.x;
+                        
+                        if (clickX < cellRect.width / 2) {
+                            // Click nửa trái -> TIẾP NHẬN
+                            int opt = JOptionPane.showConfirmDialog(ManHinhDoiTra.this, "Xác nhận TIẾP NHẬN phiếu đổi/trả này?", "Tiếp nhận", JOptionPane.YES_NO_OPTION);
+                            if(opt == JOptionPane.YES_OPTION) model.setValueAt("Hoàn thành", modelRow, 7);
+                        } else {
+                            // Click nửa phải -> TỪ CHỐI
+                            int opt = JOptionPane.showConfirmDialog(ManHinhDoiTra.this, "Xác nhận TỪ CHỐI phiếu đổi/trả này?", "Từ chối", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+                            if(opt == JOptionPane.YES_OPTION) model.setValueAt("Từ chối", modelRow, 7);
+                        }
+                        table.repaint(); // Vẽ lại giao diện ngay
+                    }
+                }
+            }
+        });
 
         JScrollPane sp = new JScrollPane(table);
         sp.setBorder(BorderFactory.createLineBorder(Color.decode("#DFE3E8")));
@@ -163,35 +197,86 @@ public class ManHinhDoiTra extends JPanel {
         loadDummyData();
     }
 
-    // --- RENDERER TÙY CHỈNH CHO BẢNG ĐỔI TRẢ ---
+    // --- BỔ SUNG 3: RENDERER MỚI CÓ CHỨA NÚT BẤM VÀ MÀU SẮC MỚI ---
     class DoiTraTableRenderer extends DefaultTableCellRenderer {
+        
+        JPanel pnlAction = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 12));
+        JButton btnTiepNhan = new JButton("Tiếp nhận");
+        JButton btnTuChoi = new JButton("Từ chối");
+        
+        public DoiTraTableRenderer() {
+            pnlAction.setOpaque(true);
+            
+            btnTiepNhan.setBackground(Color.decode("#3B82F6")); // Màu xanh dương
+            btnTiepNhan.setForeground(Color.WHITE);
+            btnTiepNhan.setFont(new Font("Segoe UI", Font.BOLD, 12));
+            btnTiepNhan.setBorderPainted(false);
+            btnTiepNhan.setFocusPainted(false);
+            btnTiepNhan.setPreferredSize(new Dimension(85, 30));
+            btnTiepNhan.setCursor(new Cursor(Cursor.HAND_CURSOR));
+            
+            btnTuChoi.setBackground(Color.decode("#EF4444")); // Màu Đỏ
+            btnTuChoi.setForeground(Color.WHITE);
+            btnTuChoi.setFont(new Font("Segoe UI", Font.BOLD, 12));
+            btnTuChoi.setBorderPainted(false);
+            btnTuChoi.setFocusPainted(false);
+            btnTuChoi.setPreferredSize(new Dimension(75, 30));
+            btnTuChoi.setCursor(new Cursor(Cursor.HAND_CURSOR));
+            
+            pnlAction.add(btnTiepNhan);
+            pnlAction.add(btnTuChoi);
+        }
+
         public Component getTableCellRendererComponent(JTable t, Object v, boolean isSel, boolean hasF, int r, int c) {
+            
+            // Xử lý cột 9 (Nút bấm)
+            if (c == 9) {
+                String status = t.getValueAt(r, 7).toString(); 
+                pnlAction.setBackground(isSel ? Color.decode("#F8F9FA") : Color.WHITE);
+                
+                if (status.equals("Chờ xử lý")) {
+                    return pnlAction; 
+                } else {
+                    JLabel empty = new JLabel();
+                    empty.setOpaque(true);
+                    empty.setBackground(isSel ? Color.decode("#F8F9FA") : Color.WHITE);
+                    return empty;
+                }
+            }
+            
+            // Các cột chữ bình thường
             JLabel lbl = (JLabel) super.getTableCellRendererComponent(t, v, isSel, hasF, r, c);
             lbl.setHorizontalAlignment(CENTER);
             lbl.setOpaque(true);
             lbl.setBackground(isSel ? Color.decode("#F8F9FA") : Color.WHITE);
             lbl.setForeground(Color.decode("#212B36"));
 
-            if (c == 0) lbl.setForeground(Color.decode("#6A1B9A")); // Mã phiếu màu tím
+            if (c == 0) lbl.setForeground(Color.decode("#1967D2")); // Mã phiếu màu xanh dương
             
-            if (c == 3) { // Cột LOẠI (Trả hàng - Màu hồng nhạt)
-                lbl.setBackground(Color.decode("#FEE2E2"));
-                lbl.setForeground(Color.decode("#EF4444"));
+            if (c == 3 && v != null && !v.toString().equals("")) { // Cột LOẠI
+                lbl.setBackground(v.toString().equals("Trả hàng") ? Color.decode("#FEE2E2") : Color.decode("#E0F2FE"));
+                lbl.setForeground(v.toString().equals("Trả hàng") ? Color.decode("#EF4444") : Color.decode("#0284C7"));
             }
             
-            if (c == 4) { // Cột LỖI (Lỗi nhà sản xuất - Màu cam nhạt)
+            if (c == 4 && v != null && !v.toString().equals("")) { // Cột LỖI 
                 lbl.setBackground(Color.decode("#FFEDD5"));
                 lbl.setForeground(Color.decode("#D97706"));
             }
 
-            if (c == 5) { // Cột TIỀN HOÀN (Màu đỏ đậm)
+            if (c == 5 && v != null && !v.toString().equals("---")) { // Cột TIỀN HOÀN 
+                lbl.setFont(new Font("Segoe UI", Font.BOLD, 14));
+                lbl.setForeground(Color.decode("#DC2626"));
+            }
+            
+            if (c == 6 && v != null && !v.toString().equals("---")) { // Cột CHÊNH LỆCH ĐH
                 lbl.setFont(new Font("Segoe UI", Font.BOLD, 14));
                 lbl.setForeground(Color.decode("#DC2626"));
             }
 
             if (c == 7) { // Cột TRẠNG THÁI
                 if (v.equals("Hoàn thành")) { lbl.setBackground(Color.decode("#DCFCE7")); lbl.setForeground(Color.decode("#10B981")); }
-                else if (v.equals("Chờ xử lý")) { lbl.setBackground(Color.decode("#E0F2FE")); lbl.setForeground(Color.decode("#0284C7")); }
+                else if (v.equals("Chờ xử lý")) { lbl.setBackground(Color.decode("#FEF3C7")); lbl.setForeground(Color.decode("#D97706")); } // Vàng cam
+                else if (v.equals("Từ chối")) { lbl.setBackground(Color.decode("#FEE2E2")); lbl.setForeground(Color.decode("#EF4444")); } // Đỏ
                 else { lbl.setBackground(Color.decode("#F3F4F6")); lbl.setForeground(Color.decode("#6B7280")); }
             }
             return lbl;
@@ -224,16 +309,13 @@ public class ManHinhDoiTra extends JPanel {
         return btn;
     }
 
-    private JButton createFilterBtn(String text, boolean isActive) { // (Bên ManHinhBanHang có thể có 3 tham số)
+    private JButton createFilterBtn(String text, boolean isActive) {
         JButton btn = new JButton(text);
         btn.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        
-        // --- THÊM 2 DÒNG NÀY VÀO ĐỂ XÓA Ô VUÔNG VÀ HIỆN BÀN TAY ---
         btn.setFocusPainted(false); 
         btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        // ---------------------------------------------------------
 
-        if (isActive) setBtnActive(btn); // (hoặc setBtnActive(btn, isPurple) tùy file)
+        if (isActive) setBtnActive(btn); 
         else setBtnNormal(btn);
         
         return btn;
@@ -252,6 +334,9 @@ public class ManHinhDoiTra extends JPanel {
     }
 
     private void loadDummyData() {
+        // Mình thêm sẵn 1 dòng Chờ Xử Lý để bạn test nút bấm luôn nhé!
+        model.addRow(new Object[]{"DTH-003", "HD-2024-0007", "Đặng Văn Giang", "Trả hàng", "Lỗi nhà sản xuất", "660.000đ", "---", "Chờ xử lý", "11/04/2026", ""});
+        model.addRow(new Object[]{"DTH-002", "HD-2024-0003", "Lê Văn Cường", "Trả hàng", "Lỗi nhà sản xuất", "180.000đ", "---", "Hoàn thành", "11/04/2026", ""});
         model.addRow(new Object[]{"DTH-001", "HD-2024-0001", "Nguyễn Văn An", "Trả hàng", "Lỗi nhà sản xuất", "25.000đ", "---", "Hoàn thành", "08/04/2026", ""});
     }
 }
