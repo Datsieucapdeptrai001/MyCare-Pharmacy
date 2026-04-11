@@ -63,7 +63,7 @@ public class TaoHoaDon extends JDialog {
         setLocationRelativeTo(parent);
         setLayout(new BorderLayout());
 
-        // Header
+
         JPanel pnlHeader = new JPanel(new BorderLayout());
         pnlHeader.setBackground(darkBlue);
         pnlHeader.setPreferredSize(new Dimension(0, 50));
