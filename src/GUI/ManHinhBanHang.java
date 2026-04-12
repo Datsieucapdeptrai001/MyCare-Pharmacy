@@ -31,7 +31,7 @@ public class ManHinhBanHang extends JPanel {
         this.setBackground(Color.WHITE);
         this.setBorder(new EmptyBorder(0, 30, 20, 30));
 
-     // ==================== 1. THANH TABS ====================
+        // ==================== 1. THANH TABS ====================
         JPanel pnlTabs = new JPanel(new BorderLayout());
         pnlTabs.setBackground(Color.WHITE);
         pnlTabs.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, Color.decode("#DFE3E8")));
@@ -39,7 +39,6 @@ public class ManHinhBanHang extends JPanel {
         JPanel pnlLeftTabs = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
         pnlLeftTabs.setOpaque(false);
 
-        // Tab Bán hàng (Đang hiển thị nên không cần bắt sự kiện click)
         JLabel lblBanHang = new JLabel("Bán hàng");
         lblBanHang.setIcon(new MenuIcon("CART"));
         lblBanHang.setIconTextGap(8);
@@ -49,7 +48,6 @@ public class ManHinhBanHang extends JPanel {
                 BorderFactory.createMatteBorder(0, 0, 4, 0, Color.decode("#1967D2")),
                 BorderFactory.createEmptyBorder(20, 0, 20, 40)));
 
-        // Tab Đổi / Trả hàng (Cần bắt sự kiện để chuyển sang)
         JLabel lblDoiTra = new JLabel("Đổi / Trả hàng");
         lblDoiTra.setIcon(new MenuIcon("BOX"));
         lblDoiTra.setIconTextGap(8);
@@ -62,11 +60,8 @@ public class ManHinhBanHang extends JPanel {
             @Override
             public void mouseClicked(MouseEvent e) {
                 Container parent = ManHinhBanHang.this.getParent(); 
-                // Kiểm tra xem khung cha có phải đang dùng CardLayout không
                 if (parent != null && parent.getLayout() instanceof CardLayout) {
-                    // Thêm màn hình Đổi Trả vào CardLayout và đặt tên là "DoiTra"
                     parent.add(new ManHinhDoiTra(), "DoiTra"); 
-                    // Gọi CardLayout để chuyển sang màn hình Đổi Trả
                     CardLayout cl = (CardLayout) parent.getLayout();
                     cl.show(parent, "DoiTra");
                 }
@@ -77,7 +72,7 @@ public class ManHinhBanHang extends JPanel {
         pnlLeftTabs.add(lblDoiTra);
         pnlTabs.add(pnlLeftTabs, BorderLayout.WEST);
 
-        // ==================== 2. HEADER (TITLE & SEARCH) ====================
+        // ==================== 2. HEADER ====================
         JPanel pnlHeader = new JPanel(new BorderLayout());
         pnlHeader.setOpaque(false);
         pnlHeader.setBorder(new EmptyBorder(25, 0, 15, 0));
@@ -147,7 +142,7 @@ public class ManHinhBanHang extends JPanel {
         pnlActions.add(btnCreate);
         pnlHeader.add(pnlActions, BorderLayout.EAST);
 
-        // ==================== 3. BỘ LỌC (FILTER) ====================
+        // ==================== 3. BỘ LỌC ====================
         JPanel pnlFilters = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
         pnlFilters.setOpaque(false);
         pnlFilters.setBorder(new EmptyBorder(0, 0, 15, 0));
@@ -174,7 +169,7 @@ public class ManHinhBanHang extends JPanel {
         pnlNorth.add(pnlFilters);
         this.add(pnlNorth, BorderLayout.NORTH);
 
-        // ==================== 4. BẢNG DỮ LIỆU ====================
+        // ==================== 4. BẢNG DỮ LIỆU & SỰ KIỆN CLICK ====================
         String[] cols = {"Mã HD", "Ngày", "Khách hàng", "SĐT", "Thanh toán", "Tổng tiền", "Trạng thái", "Xem HD", "Hidden"};
         model = new DefaultTableModel(cols, 0) { public boolean isCellEditable(int r, int c) { return false; } };
         table = new JTable(model);
@@ -183,8 +178,6 @@ public class ManHinhBanHang extends JPanel {
         
         table.setRowHeight(55); 
         table.setFont(new Font("Segoe UI", Font.PLAIN, 15));
-
-        // --- CẤU HÌNH XÓA BỎ LƯỚI VÀ LÀM MƯỢT BẢNG ---
         table.setShowGrid(false); 
         table.setShowHorizontalLines(true); 
         table.setIntercellSpacing(new Dimension(0, 0)); 
@@ -198,15 +191,11 @@ public class ManHinhBanHang extends JPanel {
         header.setForeground(Color.decode("#637381"));
         header.setFont(new Font("Segoe UI", Font.BOLD, 14));
 
-        // Ẩn cột danh mục (dùng để lọc)
         table.getColumnModel().getColumn(8).setMinWidth(0);
         table.getColumnModel().getColumn(8).setMaxWidth(0);
-        
         table.setDefaultRenderer(Object.class, new ModernTableRenderer());
 
-        // --- BỔ SUNG SỰ KIỆN CLICK CHUỘT MỞ CHI TIẾT HÓA ĐƠN ---
-     // --- TRONG FILE ManHinhBanHang.java ---
-
+        // CHÍNH XÁC SỰ KIỆN CLICK MỞ CHI TIẾT
         table.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
@@ -215,19 +204,23 @@ public class ManHinhBanHang extends JPanel {
                 
                 if (viewRow >= 0 && col == 7) { 
                     int modelRow = table.convertRowIndexToModel(viewRow);
-                    String status = table.getValueAt(viewRow, 6).toString();
                     String maHoaDon = table.getValueAt(viewRow, 0).toString();
+                    String ngay = table.getValueAt(viewRow, 1).toString();
+                    String khach = table.getValueAt(viewRow, 2).toString();
+                    String sdt = table.getValueAt(viewRow, 3).toString();
+                    String phuongThuc = table.getValueAt(viewRow, 4).toString();
+                    String tongTien = table.getValueAt(viewRow, 5).toString();
+                    String status = table.getValueAt(viewRow, 6).toString();
+                    
                     Window p = SwingUtilities.getWindowAncestor(ManHinhBanHang.this);
 
                     if (status.equals("Đang xử lý")) {
-                        // FIX: Gọi đúng Constructor 2 tham số của TaoHoaDon (như file bạn gửi)
-                        // Nếu bạn muốn truyền thêm Tên/SĐT, bạn phải vào file TaoHoaDon.java để tạo thêm Constructor mới nhận 6 tham số.
-                        TaoHoaDon dialogSua = new TaoHoaDon((Frame) p, model); 
-                        dialogSua.setTitle("Sửa hóa đơn: " + maHoaDon);
+                        // Mở Sửa Hóa Đơn Nháp
+                        TaoHoaDon dialogSua = new TaoHoaDon((Frame) p, model, modelRow, maHoaDon, khach, sdt); 
                         dialogSua.setVisible(true);
                     } else {
-                        String phuongThuc = table.getValueAt(viewRow, 4).toString(); 
-                        ChiTietHoaDon dialogChiTiet = new ChiTietHoaDon((Frame) p, maHoaDon, phuongThuc);
+                        // Mở Xem Chi Tiết Hóa Đơn Hoàn Thành
+                        ChiTietHoaDon dialogChiTiet = new ChiTietHoaDon((Frame) p, maHoaDon, ngay, khach, sdt, phuongThuc, tongTien);
                         dialogChiTiet.setVisible(true);
                     }
                 }
@@ -245,13 +238,10 @@ public class ManHinhBanHang extends JPanel {
 
         JPanel pnlPage = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
         pnlPage.setOpaque(false);
-        JButton btnPrev = new JButton("< Trước");
-        JButton btnNext = new JButton("Tiếp >");
-        pnlPage.add(btnPrev); pnlPage.add(btnNext);
+        pnlPage.add(new JButton("< Trước")); pnlPage.add(new JButton("Tiếp >"));
 
         JLabel lblInfo = new JLabel("Trang 1/1 (3 HĐ)");
         lblInfo.setForeground(Color.GRAY);
-
         pnlSouth.add(pnlPage, BorderLayout.WEST);
         pnlSouth.add(lblInfo, BorderLayout.EAST);
         this.add(pnlSouth, BorderLayout.SOUTH);
@@ -259,124 +249,62 @@ public class ManHinhBanHang extends JPanel {
         loadData();
     }
 
-    // ==================== CÁC HÀM HỖ TRỢ ====================
-
     private JButton createActionBtn(String txt, String hex) {
         JButton btn = new JButton(txt) {
-            @Override
-            public Dimension getPreferredSize() {
-                Dimension size = super.getPreferredSize();
-                size.height = 45; 
-                return size;
-            }
+            public Dimension getPreferredSize() { Dimension size = super.getPreferredSize(); size.height = 45; return size; }
         };
-        btn.setBackground(Color.decode(hex));
-        btn.setForeground(Color.WHITE);
-        btn.setFocusPainted(false);
-        btn.setBorderPainted(false);
-        btn.setOpaque(true);
-        btn.setContentAreaFilled(true);
-        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        btn.setBorder(BorderFactory.createEmptyBorder(0, 15, 0, 15)); 
+        btn.setBackground(Color.decode(hex)); btn.setForeground(Color.WHITE);
+        btn.setFocusPainted(false); btn.setBorderPainted(false); btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btn.setFont(new Font("Segoe UI", Font.BOLD, 14)); btn.setBorder(BorderFactory.createEmptyBorder(0, 15, 0, 15)); 
         return btn;
     }
 
     private JButton createFilterBtn(String text, boolean isActive, boolean isPurple) {
         JButton btn = new JButton(text);
-        btn.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        btn.setFocusPainted(false);
-        btn.setCursor(new Cursor(Cursor.HAND_CURSOR)); 
-        
-        if (isActive) setBtnActive(btn, isPurple);
-        else setBtnNormal(btn);
-        
+        btn.setFont(new Font("Segoe UI", Font.PLAIN, 13)); btn.setFocusPainted(false); btn.setCursor(new Cursor(Cursor.HAND_CURSOR)); 
+        if (isActive) setBtnActive(btn, isPurple); else setBtnNormal(btn);
         return btn;
     }
 
     private void setBtnActive(JButton btn, boolean isPurple) {
         Color bgColor = Color.decode(isPurple ? "#9300D9" : "#1967D2");
-        btn.setBackground(bgColor);
-        btn.setForeground(Color.WHITE);
-        btn.setOpaque(true);
-        btn.setContentAreaFilled(true);
-        btn.setBorderPainted(true);
-        btn.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(bgColor, 1),
-            BorderFactory.createEmptyBorder(8, 18, 8, 18)
-        ));
+        btn.setBackground(bgColor); btn.setForeground(Color.WHITE);
+        btn.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(bgColor, 1), BorderFactory.createEmptyBorder(8, 18, 8, 18)));
     }
 
     private void setBtnNormal(JButton btn) {
-        btn.setBackground(Color.WHITE);
-        btn.setForeground(Color.decode("#374151"));
-        btn.setOpaque(true);
-        btn.setContentAreaFilled(true);
-        btn.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(Color.decode("#DFE3E8"), 1),
-            BorderFactory.createEmptyBorder(7, 17, 7, 17)
-        ));
+        btn.setBackground(Color.WHITE); btn.setForeground(Color.decode("#374151"));
+        btn.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(Color.decode("#DFE3E8"), 1), BorderFactory.createEmptyBorder(7, 17, 7, 17)));
     }
 
     private void xuLyStatus(JButton b) {
         String text = b.getText().trim();
-        if (filterStatus.equals(text) && !text.equals("Tất cả")) {
-            xuLyStatus(statusBtns[0]); 
-            return;
-        }
-
+        if (filterStatus.equals(text) && !text.equals("Tất cả")) { xuLyStatus(statusBtns[0]); return; }
         for (JButton btn : statusBtns) setBtnNormal(btn);
-        setBtnActive(b, false);
-        filterStatus = text;
-        applyFilter();
+        setBtnActive(b, false); filterStatus = text; applyFilter();
     }
 
     private void xuLyCat(JButton b) {
         String text = b.getText().trim();
-        if (filterCat.equals(text) && !text.equals("Tất cả")) {
-            xuLyCat(categoryBtns[0]); 
-            return;
-        }
-
+        if (filterCat.equals(text) && !text.equals("Tất cả")) { xuLyCat(categoryBtns[0]); return; }
         for (JButton btn : categoryBtns) setBtnNormal(btn);
-        setBtnActive(b, true);
-        filterCat = text;
-        applyFilter();
+        setBtnActive(b, true); filterCat = text; applyFilter();
     }
 
     private void applyFilter() {
         List<RowFilter<Object, Object>> filters = new ArrayList<>();
-        
-        if (!filterStatus.equals("Tất cả")) {
-            filters.add(RowFilter.regexFilter("^" + filterStatus + "$", 6)); 
-        }
-        
-        if (!filterCat.equals("Tất cả")) {
-            filters.add(RowFilter.regexFilter("^" + filterCat + "$", 8)); 
-        }
-        
+        if (!filterStatus.equals("Tất cả")) filters.add(RowFilter.regexFilter("^" + filterStatus + "$", 6)); 
+        if (!filterCat.equals("Tất cả")) filters.add(RowFilter.regexFilter("^" + filterCat + "$", 8)); 
         String search = txtSearch.getText().trim();
-        if (!search.isEmpty() && !search.equals("Mã HD, khách hàng, SĐT...")) {
-            filters.add(RowFilter.regexFilter("(?i)" + java.util.regex.Pattern.quote(search)));
-        }
-
-        if (filters.isEmpty()) {
-            sorter.setRowFilter(null);
-        } else {
-            sorter.setRowFilter(RowFilter.andFilter(filters));
-        }
+        if (!search.isEmpty() && !search.equals("Mã HD, khách hàng, SĐT...")) filters.add(RowFilter.regexFilter("(?i)" + java.util.regex.Pattern.quote(search)));
+        sorter.setRowFilter(filters.isEmpty() ? null : RowFilter.andFilter(filters));
     }
 
     class ModernTableRenderer extends DefaultTableCellRenderer {
         public Component getTableCellRendererComponent(JTable t, Object v, boolean isSel, boolean hasF, int r, int c) {
             JLabel lbl = (JLabel) super.getTableCellRendererComponent(t, v, isSel, hasF, r, c);
-            lbl.setHorizontalAlignment(CENTER);
-            lbl.setIcon(null); 
-
-            if (hasF) {
-                lbl.setBorder(new EmptyBorder(0, 0, 0, 0));
-            }
-
+            lbl.setHorizontalAlignment(CENTER); lbl.setIcon(null); 
+            if (hasF) lbl.setBorder(new EmptyBorder(0, 0, 0, 0));
             lbl.setOpaque(true);
 
             if (c == 6) { 
@@ -389,23 +317,32 @@ public class ManHinhBanHang extends JPanel {
                 if (c == 0) lbl.setForeground(Color.decode("#6A1B9A")); 
                 if (c == 7) { 
                     lbl.setForeground(Color.decode("#1967D2")); 
-                    
-                    // KIỂM TRA TRẠNG THÁI Ở CỘT 6
-                    String status = t.getValueAt(r, 6).toString();
-                    if (status.equals("Đang xử lý")) {
-                        lbl.setText("Sửa"); 
-                        lbl.setIcon(new MenuIcon("EDIT")); // Đảm bảo class MenuIcon có case "EDIT"
-                    } else {
-                        lbl.setText("Xem"); 
-                        lbl.setIcon(new MenuIcon("EYE")); 
-                    }
+                    if (t.getValueAt(r, 6).toString().equals("Đang xử lý")) { lbl.setText("Sửa"); lbl.setIcon(new MenuIcon("EDIT")); }
+                    else { lbl.setText("Xem"); lbl.setIcon(new MenuIcon("EYE")); }
                     lbl.setIconTextGap(6);
                 }
             }
             return lbl;
         }
     }
-
+    public void moFormThemMoi() {
+        // Giả sử nút "Thêm mới" của bạn tên là btnAdd
+        // Lệnh doClick() sẽ giả lập hành vi người dùng click vào nút đó
+        for (Component c : getComponents()) {
+            // Nếu bạn không đặt tên biến btnAdd toàn cục, ta có thể tìm nút theo chữ
+            if (c instanceof JPanel) {
+                for (Component child : ((JPanel) c).getComponents()) {
+                    if (child instanceof JButton && ((JButton) child).getText().contains("Thêm")) {
+                        ((JButton) child).doClick();
+                        return;
+                    }
+                }
+            }
+        }
+        
+        // Cách nhanh nhất: Nếu bạn có biến toàn cục JButton btnAdd, chỉ cần:
+        // btnAdd.doClick();
+    }
     private void loadData() {
         model.addRow(new Object[]{"HD-2024-0001", "05/04/2026", "Nguyễn An", "0912345678", "Tiền mặt", "104.000đ", "Hoàn thành", "", "Thuốc kê đơn"});
         model.addRow(new Object[]{"HD-2024-0002", "06/04/2026", "Trần Bình", "0987654321", "Chuyển khoản", "105.000đ", "Đang xử lý", "", "Thuốc không kê đơn"});

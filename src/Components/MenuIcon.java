@@ -178,7 +178,10 @@ public class MenuIcon implements Icon {
                 g2d.drawLine(x + 8, y + 10, x + 14, y + 10); // Dòng 2
                 g2d.drawLine(x + 8, y + 14, x + 12, y + 14); // Dòng 3 (ngắn hơn)
                 break;
-                
+            case "CLOSE": // Dấu X (Gỡ liên kết / Đóng)
+                g2d.drawLine(x + 6, y + 6, x + 16, y + 16); // Chéo trái sang phải
+                g2d.drawLine(x + 16, y + 6, x + 6, y + 16); // Chéo phải sang trái
+                break;
             case "CHECK_CIRCLE": // Icon vòng tròn có dấu tích (Dành cho nút Thanh toán)
                 g2d.drawOval(x + 2, y + 2, 18, 18); // Vòng tròn ngoài
                 g2d.drawPolyline(new int[]{x + 6, x + 10, x + 16}, new int[]{y + 11, y + 15, y + 7}, 3); // Dấu check bên trong
@@ -234,6 +237,32 @@ public class MenuIcon implements Icon {
                 g2d.setStroke(new BasicStroke(1.5f));
                 g2d.drawLine(x + 15, y + 5, x + 19, y + 5); // Ngang
                 g2d.drawLine(x + 17, y + 3, x + 17, y + 7); // Dọc
+                break;
+            case "CORRECT": // Dấu tích V (Thành công/Đã liên kết)
+                g2d.setColor(Color.WHITE); // <--- THÊM DÒNG NÀY ĐỂ ÉP CỨNG MÀU TRẮNG
+                g2d.drawLine(x + 5, y + 12, x + 9, y + 16); // Nét ngắn
+                g2d.drawLine(x + 9, y + 16, x + 17, y + 6); // Nét dài
+                break;
+             // 5 ICON MỚI THÊM VÀO ĐỂ PHỤC VỤ MÀN HÌNH SẢN PHẨM
+            case "CANCEL": // Dấu X (Dành cho nút Hủy)
+                g2d.drawLine(x+6, y+6, x+16, y+16);
+                g2d.drawLine(x+16, y+6, x+6, y+16);
+                break;
+            case "EXPORT": // Mũi tên trỏ xuống khay (Xuất Excel)
+                g2d.drawLine(x+11, y+4, x+11, y+14); 
+                g2d.drawLine(x+7, y+10, x+11, y+14); 
+                g2d.drawLine(x+15, y+10, x+11, y+14); 
+                g2d.drawLine(x+5, y+18, x+17, y+18); 
+                break;
+            case "IMPORT": // Mũi tên trỏ lên khỏi khay (Nhập Excel)
+                g2d.drawLine(x+11, y+14, x+11, y+4); 
+                g2d.drawLine(x+7, y+8, x+11, y+4); 
+                g2d.drawLine(x+15, y+8, x+11, y+4); 
+                g2d.drawLine(x+5, y+18, x+17, y+18); 
+                break;
+            case "LOCK": // ICON MỚI THÊM CHO TRƯỜNG MẬT KHẨU
+                g2d.drawRoundRect(x + 4, y + 8, size - 8, size / 2 - 2, 2, 2); 
+                g2d.drawArc(x + size / 2 - 4, y + 2, 8, 8, 0, 180); 
                 break;
         }
         g2d.dispose();

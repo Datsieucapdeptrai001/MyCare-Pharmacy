@@ -4,6 +4,8 @@ import Components.MenuIcon;
 import ConnectDB.ConnectDB;
 
 import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+
 import java.awt.*;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
@@ -91,7 +93,7 @@ public class MainDashboard extends JFrame {
         // Hiển thị Màn hình chính đầu tiên khi chạy code
         cardLayout.show(cardPanel, "Màn hình chính");
     }
-
+    
     private JPanel createDummyPanel(String text) {
         JPanel pnl = new JPanel(new GridBagLayout());
         pnl.setBackground(Color.decode("#F4F6F8"));
@@ -276,9 +278,42 @@ public class MainDashboard extends JFrame {
             }
         }
     }
+ // Sửa hàm cũ: Thêm tham số boolean vao
+    public void chuyenSangTabKhachHang(boolean moFormThem) {
+        cardLayout.show(cardPanel, "Khách hàng"); 
 
+        // Bôi xanh menu bên trái
+        for (JButton btn : menuButtons) {
+            if (btn.getText().contains("Khách hàng")) {
+                setActiveButton(btn); 
+                break;
+            }
+        }
+
+        // Kích hoạt form thêm mới
+        if (moFormThem) {
+            for (Component comp : cardPanel.getComponents()) {
+                // Phải kiểm tra đúng class ManHinhKhachHang
+                if (comp instanceof ManHinhKhachHang) {
+                    ((ManHinhKhachHang) comp).moFormThemMoi();
+                    break;
+                }
+            }
+        }
+    }
+ // Thêm hàm này vào MainDashboard
+    public DefaultTableModel getModelKhachHang() {
+        for (Component comp : cardPanel.getComponents()) {
+            if (comp instanceof ManHinhKhachHang) {
+                return ((ManHinhKhachHang) comp).getModel();
+            }
+        }
+        return null;
+    }
+    // --- HÀM CHẠY CHƯƠNG TRÌNH ---
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
+            // Đảm bảo bạn đã có class ConnectDB và hàm connect()
             ConnectDB.getInstance().connect();
             new MainDashboard().setVisible(true);
         });
