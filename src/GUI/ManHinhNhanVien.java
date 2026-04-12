@@ -30,6 +30,7 @@ public class ManHinhNhanVien extends JPanel {
     private JLabel lblDetPhone, lblDetEmail, lblDetAddress;
     private JLabel lblDetRole, lblDetCCHN, lblDetStatus;
     private JButton btnEdit;
+    private JButton btnDelete; // Sửa thành biến toàn cục để thêm sự kiện
     private JButton btnAdd;
 
     public ManHinhNhanVien() {
@@ -119,7 +120,6 @@ public class ManHinhNhanVien extends JPanel {
         JPanel pnlCenter = new JPanel(new BorderLayout(20, 0)); 
         pnlCenter.setOpaque(false);
 
-        // ĐÃ SỬA CỘT THEO DATABASE MỚI (Bỏ Giới tính/Ca làm, thêm Số CCHN)
         String[] cols = {"Mã NV", "Họ tên", "Số CCHN", "Điện thoại", "Email", "Chức vụ", "Trạng thái", "Thao tác"};
         model = new DefaultTableModel(cols, 0) { public boolean isCellEditable(int r, int c) { return false; } };
         table = new JTable(model);
@@ -412,7 +412,7 @@ public class ManHinhNhanVien extends JPanel {
         btnEdit.setFont(new Font("Segoe UI", Font.BOLD, 13));
         btnEdit.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
-        JButton btnDelete = new JButton("Xóa nhân viên");
+        btnDelete = new JButton("Xóa nhân viên");
         btnDelete.setIcon(new MenuIcon("TRASH"));
         btnDelete.setIconTextGap(8);
         btnDelete.setBackground(Color.decode("#FEF2F2")); 
@@ -421,6 +421,38 @@ public class ManHinhNhanVien extends JPanel {
         btnDelete.setBorder(BorderFactory.createLineBorder(Color.decode("#FECACA")));
         btnDelete.setFont(new Font("Segoe UI", Font.BOLD, 13));
         btnDelete.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+        // THÊM SỰ KIỆN XÓA (CẬP NHẬT TRẠNG THÁI NGHỈ VIỆC)
+        btnDelete.addActionListener(e -> {
+            int row = table.getSelectedRow();
+            if (row >= 0) {
+                int modelRow = table.convertRowIndexToModel(row);
+                String id = model.getValueAt(modelRow, 0).toString();
+                String name = model.getValueAt(modelRow, 1).toString();
+
+                int confirm = JOptionPane.showConfirmDialog(pnlDetail,
+                    "Bạn có chắc chắn muốn chuyển nhân viên [" + name + "] sang trạng thái Đã nghỉ việc?",
+                    "Xác nhận", JOptionPane.YES_NO_OPTION);
+
+                if (confirm == JOptionPane.YES_OPTION) {
+                    try {
+                        Connection con = ConnectDB.getInstance().getConnection();
+                        String sql = "UPDATE NhanVien SET trangThaiLamViec='DA_NGHI_VIEC' WHERE id=?";
+                        PreparedStatement stmt = con.prepareStatement(sql);
+                        stmt.setString(1, id);
+                        int affected = stmt.executeUpdate();
+                        if (affected > 0) {
+                            JOptionPane.showMessageDialog(pnlDetail, "Đã chuyển sang trạng thái Đã nghỉ việc.");
+                            loadDataFromDatabase();
+                            pnlDetail.setVisible(false);
+                        }
+                    } catch (SQLException ex) {
+                        ex.printStackTrace();
+                        JOptionPane.showMessageDialog(pnlDetail, "Lỗi khi cập nhật CSDL: " + ex.getMessage());
+                    }
+                }
+            }
+        });
 
         pnlFooterActions.add(btnEdit);
         pnlFooterActions.add(btnDelete);
@@ -640,12 +672,12 @@ class DialogThemNhanVien extends JDialog {
         cboChucVu = createComboBox(new String[]{"Quản lý", "Dược sĩ"});
         pnlBody.add(cboChucVu, gbc);
 
-        // Dòng 4: Trạng thái
+        // Dòng 4: Trạng thái (CHỈ CÒN ĐANG LÀM VIỆC VÀ NGHỈ PHÉP)
         gbc.gridx = 0; gbc.gridy = 6; gbc.gridwidth = 2;
         pnlBody.add(createLabel("Trạng thái", true), gbc);
 
         gbc.gridy = 7;
-        cboTrangThai = createComboBox(new String[]{"Đang làm việc", "Nghỉ phép", "Đã nghỉ việc"});
+        cboTrangThai = createComboBox(new String[]{"Đang làm việc", "Nghỉ phép"});
         pnlBody.add(cboTrangThai, gbc);
 
         add(pnlBody, BorderLayout.CENTER);
@@ -696,9 +728,7 @@ class DialogThemNhanVien extends JDialog {
 
             // MAP UI SANG DATABASE
             String dbChucVu = chucVuUI.equals("Quản lý") ? "QUAN_LY" : "DUOC_SI";
-            String dbTrangThai = "DANG_LAM_VIEC";
-            if (trangThaiUI.equals("Nghỉ phép")) dbTrangThai = "NGHI_PHEP";
-            if (trangThaiUI.equals("Đã nghỉ việc")) dbTrangThai = "DA_NGHI_VIEC";
+            String dbTrangThai = trangThaiUI.equals("Đang làm việc") ? "DANG_LAM_VIEC" : "NGHI_PHEP";
 
             DefaultTableModel mainModel = parentScreen.getModel();
 
