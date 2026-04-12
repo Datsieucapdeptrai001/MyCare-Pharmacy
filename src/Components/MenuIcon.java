@@ -238,31 +238,28 @@ public class MenuIcon implements Icon {
                 g2d.drawLine(x + 15, y + 5, x + 19, y + 5); // Ngang
                 g2d.drawLine(x + 17, y + 3, x + 17, y + 7); // Dọc
                 break;
-            case "CORRECT": // Dấu tích V (Thành công/Đã liên kết)
-                g2d.setColor(Color.WHITE); // <--- THÊM DÒNG NÀY ĐỂ ÉP CỨNG MÀU TRẮNG
-                g2d.drawLine(x + 5, y + 12, x + 9, y + 16); // Nét ngắn
-                g2d.drawLine(x + 9, y + 16, x + 17, y + 6); // Nét dài
+            case "IMPORT": // Icon Nhập Excel (Mũi tên hướng xuống khay)
+                g2d.drawLine(x + 11, y + 2, x + 11, y + 14); // Trục mũi tên dọc
+                g2d.drawLine(x + 7, y + 10, x + 11, y + 14); // Cánh mũi tên trái
+                g2d.drawLine(x + 15, y + 10, x + 11, y + 14); // Cánh mũi tên phải
+                g2d.drawLine(x + 4, y + 18, x + 18, y + 18); // Khay ngang
+                g2d.drawLine(x + 4, y + 15, x + 4, y + 18); // Mép khay trái
+                g2d.drawLine(x + 18, y + 15, x + 18, y + 18); // Mép khay phải
                 break;
-             // 5 ICON MỚI THÊM VÀO ĐỂ PHỤC VỤ MÀN HÌNH SẢN PHẨM
-            case "CANCEL": // Dấu X (Dành cho nút Hủy)
-                g2d.drawLine(x+6, y+6, x+16, y+16);
-                g2d.drawLine(x+16, y+6, x+6, y+16);
+                
+            case "EXPORT": // Icon Xuất Excel (Mũi tên hướng lên từ khay)
+                g2d.drawLine(x + 11, y + 14, x + 11, y + 2); // Trục mũi tên dọc
+                g2d.drawLine(x + 7, y + 6, x + 11, y + 2); // Cánh mũi tên trái
+                g2d.drawLine(x + 15, y + 6, x + 11, y + 2); // Cánh mũi tên phải
+                g2d.drawLine(x + 4, y + 18, x + 18, y + 18); // Khay ngang
+                g2d.drawLine(x + 4, y + 15, x + 4, y + 18); // Mép khay trái
+                g2d.drawLine(x + 18, y + 15, x + 18, y + 18); // Mép khay phải
                 break;
-            case "EXPORT": // Mũi tên trỏ xuống khay (Xuất Excel)
-                g2d.drawLine(x+11, y+4, x+11, y+14); 
-                g2d.drawLine(x+7, y+10, x+11, y+14); 
-                g2d.drawLine(x+15, y+10, x+11, y+14); 
-                g2d.drawLine(x+5, y+18, x+17, y+18); 
-                break;
-            case "IMPORT": // Mũi tên trỏ lên khỏi khay (Nhập Excel)
-                g2d.drawLine(x+11, y+14, x+11, y+4); 
-                g2d.drawLine(x+7, y+8, x+11, y+4); 
-                g2d.drawLine(x+15, y+8, x+11, y+4); 
-                g2d.drawLine(x+5, y+18, x+17, y+18); 
-                break;
-            case "LOCK": // ICON MỚI THÊM CHO TRƯỜNG MẬT KHẨU
-                g2d.drawRoundRect(x + 4, y + 8, size - 8, size / 2 - 2, 2, 2); 
-                g2d.drawArc(x + size / 2 - 4, y + 2, 8, 8, 0, 180); 
+
+            case "CANCEL": // Icon Hủy (Vòng tròn có dấu X bên trong)
+                g2d.drawOval(x + 3, y + 3, 16, 16); // Vòng tròn ngoài
+                g2d.drawLine(x + 8, y + 8, x + 14, y + 14); // Đường chéo 1
+                g2d.drawLine(x + 14, y + 8, x + 8, y + 14); // Đường chéo 2
                 break;
         }
         g2d.dispose();
