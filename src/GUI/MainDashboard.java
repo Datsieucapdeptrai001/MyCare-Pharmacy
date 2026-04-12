@@ -231,10 +231,98 @@ public class MainDashboard extends JFrame {
         
         JButton btnLogout = createMenuButton("Đăng xuất", true);
         btnLogout.setIcon(new MenuIcon("LOGOUT"));
-        btnLogout.addActionListener(e -> JOptionPane.showMessageDialog(this, "Thực hiện chức năng đăng xuất..."));
+        
+        // ĐÃ SỬA: CHỈ CẦN 1 DÒNG NÀY ĐỂ GỌI FORM XỊN XÒ CỦA BẠN
+        btnLogout.addActionListener(e -> hienThiThongBaoDangXuat());
+        
         sidebar.add(btnLogout);
         
         return sidebar;
+    }
+
+    private void hienThiThongBaoDangXuat() {
+        // Tạo một Dialog tùy chỉnh, làm mờ màn hình phía sau
+        JDialog dialog = new JDialog(this, "Xác nhận", true);
+        dialog.setSize(420, 200);
+        dialog.setLocationRelativeTo(this);
+        dialog.setUndecorated(true); // Câu lệnh này giúp tắt cái viền "lỏ" của Windows
+
+        // Panel chính bọc ngoài cùng (Tạo viền màu xanh đậm đồng bộ với Sidebar)
+        JPanel mainPanel = new JPanel(new BorderLayout());
+        mainPanel.setBorder(BorderFactory.createLineBorder(Color.decode("#152A4B"), 2));
+        mainPanel.setBackground(Color.WHITE);
+
+        // Header (Thanh tiêu đề màu xanh đậm)
+        JPanel header = new JPanel(new BorderLayout());
+        header.setBackground(Color.decode("#152A4B"));
+        header.setPreferredSize(new Dimension(0, 40));
+        JLabel lblTitle = new JLabel("   XÁC NHẬN ĐĂNG XUẤT");
+        lblTitle.setForeground(Color.WHITE);
+        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        
+        // Nút X để tắt nhanh trên góc
+        JButton btnClose = new JButton("✕ ");
+        btnClose.setFocusPainted(false);
+        btnClose.setBorderPainted(false);
+        btnClose.setContentAreaFilled(false);
+        btnClose.setForeground(Color.WHITE);
+        btnClose.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        btnClose.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnClose.addActionListener(e -> dialog.dispose());
+        
+        header.add(lblTitle, BorderLayout.WEST);
+        header.add(btnClose, BorderLayout.EAST);
+        mainPanel.add(header, BorderLayout.NORTH);
+
+        // Body (Chứa Icon cảnh báo và Lời nhắn)
+        JPanel body = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 35));
+        body.setBackground(Color.WHITE);
+        
+        // Tận dụng icon WARNING trong class MenuIcon của bạn
+        JLabel lblIcon = new JLabel(new MenuIcon("WARNING")); 
+        lblIcon.setForeground(Color.decode("#FF4D4D")); // Tô màu đỏ cho icon cảnh báo
+        
+        JLabel lblMessage = new JLabel("Bạn có chắc chắn muốn đăng xuất khỏi hệ thống?");
+        lblMessage.setFont(new Font("Segoe UI", Font.PLAIN, 15));
+        lblMessage.setForeground(Color.decode("#333333"));
+        
+        body.add(lblIcon);
+        body.add(lblMessage);
+        mainPanel.add(body, BorderLayout.CENTER);
+
+        // Footer (Chứa 2 nút Hủy và Đăng xuất)
+        JPanel footer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 12));
+        footer.setBackground(Color.decode("#F4F6F8")); // Màu xám nhạt đồng bộ với Header search
+        footer.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, Color.decode("#DFE3E8")));
+
+        JButton btnHuy = new JButton("Hủy");
+        btnHuy.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnHuy.setBackground(Color.WHITE);
+        btnHuy.setForeground(Color.decode("#637381"));
+        btnHuy.setFocusPainted(false);
+        btnHuy.setPreferredSize(new Dimension(90, 35));
+        btnHuy.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnHuy.addActionListener(e -> dialog.dispose()); // Tắt hộp thoại
+
+        JButton btnXacNhan = new JButton("Đăng xuất");
+        btnXacNhan.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnXacNhan.setBackground(Color.decode("#FF4D4D")); // Nút đỏ báo hiệu hành động nguy hiểm
+        btnXacNhan.setForeground(Color.WHITE);
+        btnXacNhan.setFocusPainted(false);
+        btnXacNhan.setPreferredSize(new Dimension(110, 35));
+        btnXacNhan.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnXacNhan.addActionListener(e -> {
+            dialog.dispose(); // Đóng thông báo
+            this.dispose();   // Đóng Dashboard
+            new ManHinhDangNhap().setVisible(true); // Về trang Login
+        });
+
+        footer.add(btnHuy);
+        footer.add(btnXacNhan);
+        mainPanel.add(footer, BorderLayout.SOUTH);
+
+        dialog.add(mainPanel);
+        dialog.setVisible(true);
     }
 
     private JButton createMenuButton(String text, boolean isLogout) {
@@ -315,7 +403,7 @@ public class MainDashboard extends JFrame {
         SwingUtilities.invokeLater(() -> {
             // Đảm bảo bạn đã có class ConnectDB và hàm connect()
             ConnectDB.getInstance().connect();
-            new MainDashboard().setVisible(true);
+            new ManHinhDangNhap().setVisible(true);
         });
     }
 }
