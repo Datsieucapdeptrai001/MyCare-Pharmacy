@@ -170,21 +170,18 @@ public class MenuIcon implements Icon {
                 g2d.fillOval(x + 10, y + 15, 2, 2); // Chấm của dấu !
                 break;
                 
-            case "USER_ADD": // Biểu tượng thêm khách hàng mới (Người + Dấu cộng)
-                // Hình người bên trái
-                g2d.drawOval(x + 4, y + 4, 6, 6);
-                g2d.drawArc(x + 0, y + 12, 14, 14, 0, 180);
-                // Dấu cộng bên phải
-                g2d.drawLine(x + 15, y + 8, x + 21, y + 8);
-                g2d.drawLine(x + 18, y + 5, x + 18, y + 11);
-                break;
+            
+                
             case "DOCUMENT": // Icon tờ giấy (Dành cho nút Lưu nháp)
                 g2d.drawRect(x + 5, y + 2, 12, 18); // Khung viền tờ giấy
                 g2d.drawLine(x + 8, y + 6, x + 14, y + 6); // Dòng 1
                 g2d.drawLine(x + 8, y + 10, x + 14, y + 10); // Dòng 2
                 g2d.drawLine(x + 8, y + 14, x + 12, y + 14); // Dòng 3 (ngắn hơn)
                 break;
-                
+            case "CLOSE": // Dấu X (Gỡ liên kết / Đóng)
+                g2d.drawLine(x + 6, y + 6, x + 16, y + 16); // Chéo trái sang phải
+                g2d.drawLine(x + 16, y + 6, x + 6, y + 16); // Chéo phải sang trái
+                break;
             case "CHECK_CIRCLE": // Icon vòng tròn có dấu tích (Dành cho nút Thanh toán)
                 g2d.drawOval(x + 2, y + 2, 18, 18); // Vòng tròn ngoài
                 g2d.drawPolyline(new int[]{x + 6, x + 10, x + 16}, new int[]{y + 11, y + 15, y + 7}, 3); // Dấu check bên trong
@@ -206,35 +203,40 @@ public class MenuIcon implements Icon {
                 g2d.drawLine(x + 8, y + 15, x + 14, y + 15);
                 g2d.drawLine(x + 8, y + 17, x + 14, y + 17);
                 break;
-             // 5 ICON MỚI THÊM VÀO ĐỂ PHỤC VỤ MÀN HÌNH SẢN PHẨM
-            case "EDIT": // Cây bút (Dành cho nút Cập nhật)
-                g2d.drawPolygon(new int[]{x+14, x+18, x+7, x+3, x+3}, new int[]{y+3, y+7, y+18, y+18, y+14}, 5);
-                g2d.drawLine(x+11, y+6, x+15, y+10);
+            case "EDIT": 
+                g2d.drawRect(x + 4, y + 14, 12, 3); // Đế
+                g2d.drawLine(x + 6, y + 4, x + 15, y + 13); // Ngòi
                 break;
-            case "SAVE": // Đĩa mềm (Dành cho nút Lưu)
-                g2d.drawPolyline(new int[]{x+4, x+15, x+18, x+18, x+4, x+4}, new int[]{y+3, y+3, y+6, y+19, y+19, y+3}, 6);
-                g2d.drawRect(x+7, y+13, 8, 6); 
-                g2d.drawRect(x+8, y+3, 5, 4);  
+            case "PHONE": // Icon Điện thoại
+                g2d.drawRoundRect(x + 5, y + 2, 10, 16, 4, 4);
+                g2d.drawLine(x + 8, y + 15, x + 12, y + 15);
                 break;
-            case "CANCEL": // Dấu X (Dành cho nút Hủy)
-                g2d.drawLine(x+6, y+6, x+16, y+16);
-                g2d.drawLine(x+16, y+6, x+6, y+16);
+            case "MAIL": // Icon Bức thư
+                g2d.drawRect(x + 2, y + 5, 16, 10);
+                g2d.drawLine(x + 2, y + 5, x + 10, y + 10);
+                g2d.drawLine(x + 18, y + 5, x + 10, y + 10);
                 break;
-            case "EXPORT": // Mũi tên trỏ xuống khay (Xuất Excel)
-                g2d.drawLine(x+11, y+4, x+11, y+14); 
-                g2d.drawLine(x+7, y+10, x+11, y+14); 
-                g2d.drawLine(x+15, y+10, x+11, y+14); 
-                g2d.drawLine(x+5, y+18, x+17, y+18); 
+            case "LOCATION": // Icon Vị trí
+                g2d.drawOval(x + 5, y + 2, 10, 10);
+                g2d.drawLine(x + 10, y + 12, x + 10, y + 18);
+                g2d.drawLine(x + 7, y + 18, x + 13, y + 18);
                 break;
-            case "IMPORT": // Mũi tên trỏ lên khỏi khay (Nhập Excel)
-                g2d.drawLine(x+11, y+14, x+11, y+4); 
-                g2d.drawLine(x+7, y+8, x+11, y+4); 
-                g2d.drawLine(x+15, y+8, x+11, y+4); 
-                g2d.drawLine(x+5, y+18, x+17, y+18); 
+            case "SAVE": // Vẽ biểu tượng lưu trữ (đĩa mềm mini)
+                g2d.drawRect(x + 3, y + 3, 14, 14);
+                g2d.drawRect(x + 6, y + 3, 8, 5);
+                g2d.drawLine(x + 5, y + 12, x + 15, y + 12);
+                g2d.drawLine(x + 5, y + 15, x + 15, y + 15);
                 break;
-            case "LOCK": // ICON MỚI THÊM CHO TRƯỜNG MẬT KHẨU
-                g2d.drawRoundRect(x + 4, y + 8, size - 8, size / 2 - 2, 2, 2); 
-                g2d.drawArc(x + size / 2 - 4, y + 2, 8, 8, 0, 180); 
+            case "USER_ADD": // Vẽ biểu tượng thêm người dùng
+                g2d.setStroke(new BasicStroke(2.0f));
+                // Vẽ đầu
+                g2d.drawOval(x + 5, y + 2, 8, 8);
+                // Vẽ thân (cung tròn)
+                g2d.drawArc(x + 2, y + 11, 14, 8, 0, 180);
+                // Vẽ dấu cộng nhỏ bên cạnh
+                g2d.setStroke(new BasicStroke(1.5f));
+                g2d.drawLine(x + 15, y + 5, x + 19, y + 5); // Ngang
+                g2d.drawLine(x + 17, y + 3, x + 17, y + 7); // Dọc
                 break;
         }
         g2d.dispose();

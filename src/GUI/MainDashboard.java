@@ -1,7 +1,11 @@
 package GUI;
 
-import Components.MenuIcon; 
+import Components.MenuIcon;
+import ConnectDB.ConnectDB;
+
 import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+
 import java.awt.*;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
@@ -40,9 +44,7 @@ public class MainDashboard extends JFrame {
         cardLayout = new CardLayout();
         cardPanel = new JPanel(cardLayout);
 
-        // ==========================================================
         // KHU VỰC ĐÃ DỌN DẸP SẠCH SẼ - 1 MÀN HÌNH CHỈ CÓ 1 KEY
-        // ==========================================================
         
         // 1. Màn hình chính
         ManHinhChinh mhChinh = new ManHinhChinh();
@@ -64,20 +66,20 @@ public class MainDashboard extends JFrame {
         ManHinhKhuyenMai mhKhuyenMai = new ManHinhKhuyenMai();
         cardPanel.add(mhKhuyenMai, "Khuyến mại");
 
-        // 6. Thống kê (Chưa có -> Dùng Dummy)
-        cardPanel.add(createDummyPanel("Thống kê doanh thu"), "Thống kê");
+        // 6. Thống kê 
+        ManHinhThongKe mhThongKe = new ManHinhThongKe();
+        cardPanel.add(mhThongKe, "Thống kê");
 
         // 7. Nhân viên (Chưa có -> Dùng Dummy)
         cardPanel.add(createDummyPanel("Quản lý Nhân viên"), "Nhân viên");
-
+        
         // 8. Khách hàng (Chưa có -> Dùng Dummy)
-        cardPanel.add(createDummyPanel("Quản lý Khách hàng"), "Khách hàng");
+        ManHinhKhachHang mhKhachHang = new ManHinhKhachHang();
+        cardPanel.add(mhKhachHang, "Khách hàng"); // Thay DummyPanel bằng mhKhachHang
 
         // 9. Hướng dẫn
         ManHinhHuongDan mhHuongDan = new ManHinhHuongDan();
         cardPanel.add(mhHuongDan, "Hướng dẫn");
-
-        // ==========================================================
 
         JPanel sidebar = createSidebar();
         add(sidebar, BorderLayout.WEST);
@@ -91,7 +93,7 @@ public class MainDashboard extends JFrame {
         // Hiển thị Màn hình chính đầu tiên khi chạy code
         cardLayout.show(cardPanel, "Màn hình chính");
     }
-
+    
     private JPanel createDummyPanel(String text) {
         JPanel pnl = new JPanel(new GridBagLayout());
         pnl.setBackground(Color.decode("#F4F6F8"));
@@ -276,10 +278,44 @@ public class MainDashboard extends JFrame {
             }
         }
     }
+ // Sửa hàm cũ: Thêm tham số boolean vao
+    public void chuyenSangTabKhachHang(boolean moFormThem) {
+        cardLayout.show(cardPanel, "Khách hàng"); 
 
+        // Bôi xanh menu bên trái
+        for (JButton btn : menuButtons) {
+            if (btn.getText().contains("Khách hàng")) {
+                setActiveButton(btn); 
+                break;
+            }
+        }
+
+        // Kích hoạt form thêm mới
+        if (moFormThem) {
+            for (Component comp : cardPanel.getComponents()) {
+                // Phải kiểm tra đúng class ManHinhKhachHang
+                if (comp instanceof ManHinhKhachHang) {
+                    ((ManHinhKhachHang) comp).moFormThemMoi();
+                    break;
+                }
+            }
+        }
+    }
+ // Thêm hàm này vào MainDashboard
+    public DefaultTableModel getModelKhachHang() {
+        for (Component comp : cardPanel.getComponents()) {
+            if (comp instanceof ManHinhKhachHang) {
+                return ((ManHinhKhachHang) comp).getModel();
+            }
+        }
+        return null;
+    }
+    // --- HÀM CHẠY CHƯƠNG TRÌNH ---
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
-        	new GUI.ManHinhDangNhap().setVisible(true);
+            // Đảm bảo bạn đã có class ConnectDB và hàm connect()
+            ConnectDB.getInstance().connect();
+            new MainDashboard().setVisible(true);
         });
     }
 }
