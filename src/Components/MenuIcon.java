@@ -178,7 +178,10 @@ public class MenuIcon implements Icon {
                 g2d.drawLine(x + 8, y + 10, x + 14, y + 10); // Dòng 2
                 g2d.drawLine(x + 8, y + 14, x + 12, y + 14); // Dòng 3 (ngắn hơn)
                 break;
-                
+            case "CLOSE": // Dấu X (Gỡ liên kết / Đóng)
+                g2d.drawLine(x + 6, y + 6, x + 16, y + 16); // Chéo trái sang phải
+                g2d.drawLine(x + 16, y + 6, x + 6, y + 16); // Chéo phải sang trái
+                break;
             case "CHECK_CIRCLE": // Icon vòng tròn có dấu tích (Dành cho nút Thanh toán)
                 g2d.drawOval(x + 2, y + 2, 18, 18); // Vòng tròn ngoài
                 g2d.drawPolyline(new int[]{x + 6, x + 10, x + 16}, new int[]{y + 11, y + 15, y + 7}, 3); // Dấu check bên trong

@@ -22,7 +22,7 @@ public class ManHinhKhachHang extends JPanel {
     private JLabel lblDetGenderDOB, lblDetPhone, lblDetEmail, lblDetAddress;
     private JLabel lblDetOrders, lblDetPoints, lblDetTotalSpend, lblDetLastVisit;
     private JButton btnEdit;
-
+    private JButton btnAdd;
     public ManHinhKhachHang() {
         initUI();
     }
@@ -31,7 +31,7 @@ public class ManHinhKhachHang extends JPanel {
         this.setLayout(new BorderLayout(0, 20));
         this.setBackground(Color.decode("#F3F4F6")); 
         this.setBorder(new EmptyBorder(20, 25, 20, 25));
-
+        btnAdd = new JButton("Thêm khách hàng");
         // ==================== 1. PHẦN ĐẦU ====================
         JPanel pnlHeader = new JPanel(new BorderLayout());
         pnlHeader.setOpaque(false);
@@ -488,7 +488,15 @@ public class ManHinhKhachHang extends JPanel {
         if (search.isEmpty() || search.equals("Tên, mã, SĐT...")) sorter.setRowFilter(null);
         else sorter.setRowFilter(RowFilter.regexFilter("(?i)" + search));
     }
-
+ // Thêm hàm này vào cuối class ManHinhKhachHang
+    public void moFormThemMoi() {
+        Window p = SwingUtilities.getWindowAncestor(this);
+        ThemKhachHang dialog = new ThemKhachHang((Frame) p, model);
+        dialog.setVisible(true);
+    }
+    public DefaultTableModel getModel() {
+        return model;
+    }
     private void loadData() {
         model.addRow(new Object[]{"KH2026-0001", "Nguyễn Văn An", "0910000000", "6", "1.600.000đ", "200", "01/01/2024", ""});
         model.addRow(new Object[]{"KH2026-0002", "Trần Thị Bình", "0911234567", "9", "3.000.000đ", "337", "02/02/2024", ""});
