@@ -315,7 +315,7 @@ public class MainDashboard extends JFrame {
         SwingUtilities.invokeLater(() -> {
             // Đảm bảo bạn đã có class ConnectDB và hàm connect()
             ConnectDB.getInstance().connect();
-            new MainDashboard().setVisible(true);
+            new ManHinhDangNhap().setVisible(true);
         });
     }
 }
