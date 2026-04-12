@@ -71,7 +71,8 @@ public class MainDashboard extends JFrame {
         cardPanel.add(mhThongKe, "Thống kê");
 
         // 7. Nhân viên (Chưa có -> Dùng Dummy)
-        cardPanel.add(createDummyPanel("Quản lý Nhân viên"), "Nhân viên");
+        ManHinhNhanVien mhNhanVien = new ManHinhNhanVien();
+        cardPanel.add(mhNhanVien, "Nhân viên");
         
         // 8. Khách hàng (Chưa có -> Dùng Dummy)
         ManHinhKhachHang mhKhachHang = new ManHinhKhachHang();
@@ -350,6 +351,17 @@ public class MainDashboard extends JFrame {
             btn.addActionListener(e -> {
                 setActiveButton(btn); 
                 cardLayout.show(cardPanel, text); 
+                
+                // --- BỔ SUNG: Nếu click vào "Nhân viên", ra lệnh cho màn hình đó tải lại dữ liệu từ DB ---
+                if (text.equals("Nhân viên")) {
+                    for (Component comp : cardPanel.getComponents()) {
+                        if (comp instanceof ManHinhNhanVien) {
+                            // Gọi hàm loadDataFromDatabase mà mình đã hướng dẫn bạn ở bước trước
+                            ((ManHinhNhanVien) comp).loadDataFromDatabase();
+                            break;
+                        }
+                    }
+                }
             });
         }
         return btn;
