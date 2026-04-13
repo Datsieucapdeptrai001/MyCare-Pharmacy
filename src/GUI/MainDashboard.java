@@ -68,12 +68,12 @@ public class MainDashboard extends JFrame {
         cardPanel.add(mhHuongDan,  "Hướng dẫn");
 
         // Phân quyền: STAFF bị readonly
-        if (!isAdmin) {
-            mhSanPham.setReadOnly(true);
-            mhLoHang.setReadOnly(true);
-            mhKhuyenMai.setReadOnly(true);
-            mhNhanVien.setReadOnly(true);
-        }
+//        if (!isAdmin) {
+//            mhSanPham.setReadOnly(true);
+//            mhLoHang.setReadOnly(true);
+//            mhKhuyenMai.setReadOnly(true);
+//            mhNhanVien.setReadOnly(true);
+//        }
 
         JPanel sidebar    = createSidebar();
         JPanel rightPanel = new JPanel(new BorderLayout());
@@ -327,7 +327,7 @@ public class MainDashboard extends JFrame {
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
             ConnectDB.getInstance().connect();
-            new ManHinhDangNhap().setVisible(true);
+            new MainDashboard().setVisible(true);
         });
     }
 }
