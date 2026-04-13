@@ -1,6 +1,5 @@
 package GUI;
 
-import Components.MenuIcon;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.Cursor;
@@ -8,6 +7,9 @@ import java.awt.Container;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.*;
+
+import Utils.MenuIcon;
+
 import java.awt.*;
 import java.awt.event.*;
 import java.util.ArrayList;

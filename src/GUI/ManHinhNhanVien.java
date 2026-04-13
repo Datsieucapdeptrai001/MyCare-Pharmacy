@@ -1,6 +1,6 @@
 package GUI;
 
-import Components.MenuIcon;
+import Utils.MenuIcon;
 import ConnectDB.ConnectDB; 
 
 import javax.swing.*;
@@ -566,6 +566,11 @@ public class ManHinhNhanVien extends JPanel {
         if (search.isEmpty() || search.equals("Tên, mã, SĐT...")) sorter.setRowFilter(null);
         else sorter.setRowFilter(RowFilter.regexFilter("(?i)" + search));
     }
+
+	public void setReadOnly(boolean b) {
+		// TODO Auto-generated method stub
+		
+	}
 }
 
 // ====================================================================================
@@ -827,4 +832,26 @@ class DialogThemNhanVien extends JDialog {
         cbo.setPreferredSize(new Dimension(0, 36));
         return cbo;
     }
+    /**
+     * Phân quyền: Ẩn nút Thêm/Sửa/Xóa cho STAFF.
+     */
+    public void setReadOnly(boolean readOnly) {
+        if (!readOnly) return;
+        if (btnThem != null) btnThem.setVisible(false);
+        disableButtonsByText(this, "Thêm mới", "Nhập Excel", "Thêm", "Xóa", "Sửa", "Lưu");
+    }
+
+    private void disableButtonsByText(java.awt.Container container, String... texts) {
+        for (java.awt.Component c : container.getComponents()) {
+            if (c instanceof javax.swing.JButton) {
+                javax.swing.JButton btn = (javax.swing.JButton) c;
+                for (String t : texts) {
+                    if (t.equals(btn.getText())) { btn.setVisible(false); break; }
+                }
+            } else if (c instanceof java.awt.Container) {
+                disableButtonsByText((java.awt.Container) c, texts);
+            }
+        }
+    }
+
 }

@@ -1,6 +1,11 @@
 package GUI;
 
-import Components.MenuIcon;
+import BUS.BUS_TaiKhoan;
+import java.util.prefs.Preferences;
+import Utils.MenuIcon;
+import DAO.DAO_TaiKhoan;
+import Entity.TaiKhoan;
+import Utils.UserSession;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
@@ -49,9 +54,9 @@ public class ManHinhDangNhap extends JFrame {
                 Graphics2D g2d = (Graphics2D) g.create();
                 g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2d.setColor(new Color(0, 0, 0, 40));
-                g2d.fillRoundRect(15, 15, 500, 670, 20, 20); 
+                g2d.fillRoundRect(15, 15, 500, 540, 20, 20); 
                 g2d.setColor(Color.WHITE);
-                g2d.fillRoundRect(10, 10, 500, 670, 20, 20);
+                g2d.fillRoundRect(10, 10, 500, 540, 20, 20);
                 g2d.setPaint(new GradientPaint(10, 10, COLOR_HEADER_DARK, 10, 580, COLOR_HEADER_LIGHT));
                 g2d.fillRoundRect(10, 10, 500, 210, 20, 20); 
                 g2d.fillRect(10, 110, 500, 100); 
@@ -60,7 +65,7 @@ public class ManHinhDangNhap extends JFrame {
                 g2d.dispose();
             }
         };
-        pnlWrapper.setPreferredSize(new Dimension(530, 700));
+        pnlWrapper.setPreferredSize(new Dimension(530, 560));
         pnlWrapper.setOpaque(false);
         
         GridBagConstraints gbcForm = new GridBagConstraints();
@@ -68,7 +73,7 @@ public class ManHinhDangNhap extends JFrame {
         pnlBackground.add(pnlWrapper, gbcForm);
 
         JPanel pnlContent = new JPanel(null);
-        pnlContent.setBounds(10, 10, 500, 670);
+        pnlContent.setBounds(10, 10, 500, 540);
         pnlContent.setOpaque(false);
         pnlWrapper.add(pnlContent);
 
@@ -184,31 +189,6 @@ public class ManHinhDangNhap extends JFrame {
         btnLogin.setCursor(new Cursor(Cursor.HAND_CURSOR));
         pnlContent.add(btnLogin);
 
-        JSeparator sep = new JSeparator();
-        sep.setBounds(50, 540, 400, 1);
-        sep.setForeground(Color.decode("#F3F4F6"));
-        pnlContent.add(sep);
-
-        JLabel lblSaved = new JLabel("TÀI KHOẢN ĐÃ LƯU — CLICK ĐỂ ĐIỀN NHANH", SwingConstants.CENTER);
-        lblSaved.setFont(new Font("Segoe UI", Font.BOLD, 11));
-        lblSaved.setForeground(Color.decode("#9CA3AF"));
-        lblSaved.setBounds(0, 555, 500, 20);
-        pnlContent.add(lblSaved);
-
-        JPanel card1 = createAccountCard("VK", "admin", "Quản lý", "Toàn quyền", Color.decode("#FEF08A"), Color.decode("#B45309"));
-        card1.setBounds(40, 585, 205, 75);
-        card1.addMouseListener(new MouseAdapter() {
-            public void mouseClicked(MouseEvent e) { txtTaiKhoan.setText("admin"); txtMatKhau.setText("admin"); }
-        });
-        pnlContent.add(card1);
-
-        JPanel card2 = createAccountCard("MK", "duocsi", "Dược sĩ", "Dược sĩ", Color.decode("#DBEAFE"), Color.decode("#1D4ED8"));
-        card2.setBounds(255, 585, 205, 75);
-        card2.addMouseListener(new MouseAdapter() {
-            public void mouseClicked(MouseEvent e) { txtTaiKhoan.setText("duocsi"); txtMatKhau.setText("123"); }
-        });
-        pnlContent.add(card2);
-
         // FOOTER
         JLabel lblFooter = new JLabel("© 2024 MYCARE Pharmacy Management System", SwingConstants.CENTER);
         lblFooter.setFont(new Font("Segoe UI", Font.PLAIN, 12));
@@ -225,14 +205,63 @@ public class ManHinhDangNhap extends JFrame {
             btnEye.setIcon(visible ? new MenuIcon("EYE_HIDE") : new MenuIcon("EYE"));
         });
 
+        // Tự điền nếu đã ghi nhớ
+        Preferences prefs = Preferences.userNodeForPackage(ManHinhDangNhap.class);
+        String savedUser = prefs.get("saved_username", "");
+        if (!savedUser.isEmpty()) {
+            txtTaiKhoan.setText(savedUser);
+            cbGhiNho.setSelected(true);
+        }
+
         btnLogin.addActionListener(e -> {
-            String u = txtTaiKhoan.getText();
-            String p = new String(txtMatKhau.getPassword());
-            if ((u.equals("admin") && p.equals("admin")) || (u.equals("duocsi") && p.equals("123"))) {
+            String u = txtTaiKhoan.getText().trim();
+            String p = new String(txtMatKhau.getPassword()).trim();
+            if (u.isEmpty() || p.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Vui lòng nhập tên đăng nhập và mật khẩu!",
+                        "Thiếu thông tin", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            BUS_TaiKhoan bus = new BUS_TaiKhoan();
+            if (bus.authenticate(u, p)) {
+                // Ghi nhớ đăng nhập
+                if (cbGhiNho.isSelected()) prefs.put("saved_username", u);
+                else                        prefs.remove("saved_username");
+
+                // Lưu session đầy đủ
+                DAO_TaiKhoan dao = new DAO_TaiKhoan();
+                TaiKhoan tk = dao.getTaiKhoan(u);
+                UserSession.getInstance().setTaiKhoan(tk);
+
+                // STAFF → mở Dialog Mở Ca
+                if (!UserSession.getInstance().isAdmin()) {
+                    DialogMoCa dlg = new DialogMoCa(this);
+                    dlg.setVisible(true);
+                    if (!dlg.isConfirmed()) {
+                        UserSession.getInstance().logout();
+                        return;
+                    }
+                    // Lưu thông tin ca vào session
+                    UserSession.getInstance().setLoaiCa(dlg.getSelectedCa());
+                    UserSession.getInstance().setTienDauCa(dlg.getTongTienDauCa());
+
+                    // Ghi ca vào DB
+                    Entity.CaLamViec ca = new Entity.CaLamViec();
+                    ca.setId("Ca-" + System.currentTimeMillis());
+                    ca.setNhanVienId(tk.getNhanVienId());
+                    ca.setThoiGianBatDau(java.time.LocalDateTime.now());
+                    ca.setTienDauCa(dlg.getTongTienDauCa());
+                    ca.setTienHeThongGhiNhan(0);
+                    ca.setTienKetCa(0);
+                    new DAO.DAO_CaLamViec().themCa(ca);
+                    UserSession.getInstance().setCaHienTai(ca);
+                }
+
                 new MainDashboard().setVisible(true);
-                dispose(); 
+                dispose();
             } else {
-                JOptionPane.showMessageDialog(this, "Sai tài khoản hoặc mật khẩu!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(this,
+                        "Sai tài khoản hoặc mật khẩu!\nVui lòng kiểm tra lại.",
+                        "Đăng nhập thất bại", JOptionPane.ERROR_MESSAGE);
             }
         });
         getRootPane().setDefaultButton(btnLogin); 
@@ -252,28 +281,6 @@ public class ManHinhDangNhap extends JFrame {
         return p;
     }
 
-    private JPanel createAccountCard(String initials, String name, String role, String badgeTxt, Color bgBadge, Color fgBadge) {
-        JPanel p = new JPanel(null) {
-            @Override protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(Color.WHITE); g2.fillRoundRect(0, 0, getWidth()-1, getHeight()-1, 10, 10);
-                g2.setColor(Color.decode("#E5E7EB")); g2.drawRoundRect(0, 0, getWidth()-1, getHeight()-1, 10, 10);
-                g2.setColor(COLOR_HEADER_DARK);
-                g2.fillOval(10, 18, 38, 38); 
-                g2.setColor(Color.WHITE); g2.setFont(new Font("Segoe UI", Font.BOLD, 14));
-                FontMetrics fm = g2.getFontMetrics();
-                g2.drawString(initials, 10 + (38 - fm.stringWidth(initials)) / 2, 18 + ((38 - fm.getHeight()) / 2) + fm.getAscent());
-                g2.setColor(Color.decode("#111827")); g2.setFont(new Font("Segoe UI", Font.BOLD, 14)); g2.drawString(name, 58, 25);
-                g2.setColor(Color.decode("#6B7280")); g2.setFont(new Font("Segoe UI", Font.PLAIN, 12)); g2.drawString(role, 58, 42);
-                g2.setColor(bgBadge); g2.fillRoundRect(58, 50, 85, 18, 4, 4); 
-                g2.setColor(fgBadge); g2.setFont(new Font("Segoe UI", Font.BOLD, 10)); g2.drawString(badgeTxt, 63, 63);
-                g2.dispose();
-            }
-        };
-        p.setOpaque(false); p.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        return p;
-    }
 
     static class WatermarkJTextField extends JTextField {
         private String watermark; public WatermarkJTextField(String watermark) { this.watermark = watermark; setOpaque(false); }

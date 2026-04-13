@@ -1,9 +1,11 @@
 package GUI;
 
-import Components.MenuIcon;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.*;
+
+import Utils.MenuIcon;
+
 import java.awt.*;
 import java.awt.event.*;
 import java.util.ArrayList;

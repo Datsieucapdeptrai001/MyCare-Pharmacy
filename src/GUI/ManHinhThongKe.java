@@ -1,5 +1,11 @@
 package GUI;
 
+import Utils.UserSession;
+import Entity.CaLamViec;
+import ConnectDB.ConnectDB;
+import java.sql.*;
+import java.io.*;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.*;
@@ -13,42 +19,33 @@ public class ManHinhThongKe extends JPanel {
     // ==========================================
     // DỮ LIỆU MẪU
     // ==========================================
-    static final String[] NV_NAMES  = {"Nguyễn Thu Hà","Trần Minh Tuấn","Phạm Văn Đức","Võ Thị Lan","Lê Thị Mai","Hoàng Minh Khoa"};
-    static final String[] NV_ROLES  = {"Dược sĩ","Dược sĩ","Dược sĩ","Dược sĩ","Thu ngân","Dược sĩ"};
-    static final String[] NV_SHORT  = {"Hà","Tuấn","Đức","Lan","Mai","Khoa"};
-    static final Color[]  NV_COLORS = {
+    // ── Dữ liệu NV load từ DB ──────────────────────────────
+    static String[] NV_NAMES  = {};
+    static String[] NV_IDS    = {};
+    static String[] NV_ROLES  = {};
+    static String[] NV_SHORT  = {};
+    static Color[]  NV_COLORS = {};
+    static int[]    NV_HD_S   = {};
+    static int[]    NV_HD_C   = {};
+    static double[] NV_DT_S   = {};
+    static double[] NV_DT_C   = {};
+    static String[] DATES_10  = {};
+    static int[][]  NV_DAILY  = {};
+    static int[]    DT_DATA   = new int[12];
+    static int[]    CP_DATA   = new int[12];
+    static final String[] THANG = {"T1","T2","T3","T4","T5","T6","T7","T8","T9","T10","T11","T12"};
+    static int[]    DONUT_VALS   = {1,1,1,1};
+    static final String[] DONUT_LABELS = {"Thuốc KĐ","Thuốc KKĐ","TPCN","Mỹ phẩm"};
+    static final Color[]  DONUT_COLORS = {
+        Color.decode("#FF5630"), Color.decode("#1A73E8"),
+        Color.decode("#00A76F"), Color.decode("#FFAB00")
+    };
+    static final Color[] PALETTE = {
         Color.decode("#1A73E8"), Color.decode("#00A76F"),
         Color.decode("#FFAB00"), Color.decode("#9C27B0"),
-        Color.decode("#FF5630"), Color.decode("#00BCD4")
-    };
-    // HĐ sáng / chiều / DT sáng / DT chiều (triệu đ)
-    static final int[]    NV_HD_S   = {78, 70, 45, 40, 55, 34};
-    static final int[]    NV_HD_C   = {67, 62, 42, 36, 43, 30};
-    static final double[] NV_DT_S   = {20.8,18.9,12.2,10.5,15.4, 9.1};
-    static final double[] NV_DT_C   = {17.7,16.3,11.2, 9.3,13.2, 7.8};
-
-    // Dữ liệu 10 ngày: mỗi nhân viên
-    static final String[] DATES_10 = {"26/04","27/04","28/04","29/04","30/04","01/05","02/05","03/05","04/05","05/05"};
-    static final int[][] NV_DAILY = {
-        {8,7,13,8,5,13,11,10,11,8},
-        {7,6,7,7,3,8,8,7,6,7},
-        {6,8,6,7,4,7,7,8,7,6},
-        {5,4,5,4,4,6,6,5,5,5},
-        {6,5,7,6,3,7,7,6,6,5},
-        {4,3,4,4,2,5,4,4,4,3}
-    };
-
-    // Dữ liệu doanh thu 12 tháng (M đ)
-    static final int[] DT_DATA  = {42,52,48,60,55,65,72,76,78,82,80,95};
-    static final int[] CP_DATA  = {28,33,30,38,35,42,46,48,50,52,51,60};
-    static final String[] THANG = {"T1","T2","T3","T4","T5","T6","T7","T8","T9","T10","T11","T12"};
-
-    // Dữ liệu Donut SP
-    static final int[]    DONUT_VALS    = {42, 28, 18, 12};
-    static final String[] DONUT_LABELS  = {"TPCN","Thuốc KKĐ","Thuốc KĐ","Mỹ phẩm"};
-    static final Color[]  DONUT_COLORS  = {
-        Color.decode("#00A76F"), Color.decode("#1A73E8"),
-        Color.decode("#FF5630"), Color.decode("#FFAB00")
+        Color.decode("#FF5630"), Color.decode("#00BCD4"),
+        Color.decode("#E91E63"), Color.decode("#FF7043"),
+        Color.decode("#607D8B")
     };
 
     // ==========================================
@@ -78,6 +75,12 @@ public class ManHinhThongKe extends JPanel {
         setBackground(Color.decode("#F4F6F8"));
         setBorder(new EmptyBorder(16, 16, 16, 16));
 
+        // ── Phân quyền: STAFF không được xem Thống kê ──
+        if (!UserSession.getInstance().isAdmin()) {
+            showAccessDenied();
+            return;
+        }
+
         add(buildHeader(), BorderLayout.NORTH);
 
         JPanel center = new JPanel(new BorderLayout(0, 10));
@@ -97,6 +100,129 @@ public class ManHinhThongKe extends JPanel {
         add(center, BorderLayout.CENTER);
 
         setupEvents();
+        loadDataFromDB();
+    }
+
+    // ── LOAD DỮ LIỆU TỪ DATABASE ────────────────────────────
+    private void loadDataFromDB() {
+        try {
+            Connection con = ConnectDB.getInstance().getConnection();
+            if (con == null) return;
+
+            // 1. Load nhân viên STAFF
+            java.util.List<String[]> nvList = new java.util.ArrayList<>();
+            try (Statement st = con.createStatement();
+                 ResultSet rs = st.executeQuery(
+                    "SELECT nv.id, nv.hoVaTen, nv.chucVu FROM NhanVien nv " +
+                    "JOIN TaiKhoan tk ON tk.nhanVienId=nv.id WHERE tk.vaiTro='STAFF' ORDER BY nv.hoVaTen")) {
+                while (rs.next()) nvList.add(new String[]{rs.getString("id"), rs.getString("hoVaTen"), rs.getString("chucVu")});
+            }
+            int n = nvList.size();
+            NV_NAMES = new String[n]; NV_IDS = new String[n];
+            NV_ROLES = new String[n]; NV_SHORT = new String[n];
+            NV_COLORS = new Color[n];
+            NV_HD_S = new int[n]; NV_HD_C = new int[n];
+            NV_DT_S = new double[n]; NV_DT_C = new double[n];
+            NV_DAILY = new int[n][10];
+
+            for (int i=0;i<n;i++) {
+                NV_IDS[i]   = nvList.get(i)[0];
+                NV_NAMES[i] = nvList.get(i)[1];
+                NV_ROLES[i] = nvList.get(i)[2] != null ? nvList.get(i)[2] : "Dược sĩ";
+                String[] parts = NV_NAMES[i].trim().split("\\s+");
+                NV_SHORT[i] = parts[parts.length-1];
+                NV_COLORS[i] = PALETTE[i % PALETTE.length];
+
+                // Hóa đơn và doanh thu
+                String id = NV_IDS[i];
+                try (PreparedStatement ps = con.prepareStatement(
+                    "SELECT COUNT(*) cnt, ISNULL(SUM(ct.soLuong*dvl.gia),0) dt FROM HoaDon hd " +
+                    "JOIN ChiTietHoaDon ct ON hd.id=ct.hoaDonId " +
+                    "JOIN DonViDoLuong dvl ON ct.donViDoLuongId=dvl.id AND ct.sanPhamId=dvl.sanPhamId " +
+                    "WHERE hd.nhanVienId=? AND YEAR(hd.ngayLapHD)=YEAR(GETDATE()) AND hd.loaiHD='BAN_HANG' " +
+                    "AND DATEPART(HOUR,hd.ngayLapHD) BETWEEN 6 AND 13")) {
+                    ps.setString(1,id);
+                    ResultSet rs2 = ps.executeQuery();
+                    if (rs2.next()) { NV_HD_S[i]=rs2.getInt("cnt"); NV_DT_S[i]=rs2.getDouble("dt")/1_000_000; }
+                }
+                try (PreparedStatement ps = con.prepareStatement(
+                    "SELECT COUNT(*) cnt, ISNULL(SUM(ct.soLuong*dvl.gia),0) dt FROM HoaDon hd " +
+                    "JOIN ChiTietHoaDon ct ON hd.id=ct.hoaDonId " +
+                    "JOIN DonViDoLuong dvl ON ct.donViDoLuongId=dvl.id AND ct.sanPhamId=dvl.sanPhamId " +
+                    "WHERE hd.nhanVienId=? AND YEAR(hd.ngayLapHD)=YEAR(GETDATE()) AND hd.loaiHD='BAN_HANG' " +
+                    "AND DATEPART(HOUR,hd.ngayLapHD) BETWEEN 14 AND 21")) {
+                    ps.setString(1,id);
+                    ResultSet rs2 = ps.executeQuery();
+                    if (rs2.next()) { NV_HD_C[i]=rs2.getInt("cnt"); NV_DT_C[i]=rs2.getDouble("dt")/1_000_000; }
+                }
+            }
+
+            // 2. Doanh thu 12 tháng
+            try (Statement st = con.createStatement();
+                 ResultSet rs = st.executeQuery(
+                    "SELECT MONTH(hd.ngayLapHD) m, ISNULL(SUM(ct.soLuong*dvl.gia),0)/1000000 dt FROM HoaDon hd " +
+                    "JOIN ChiTietHoaDon ct ON hd.id=ct.hoaDonId " +
+                    "JOIN DonViDoLuong dvl ON ct.donViDoLuongId=dvl.id AND ct.sanPhamId=dvl.sanPhamId " +
+                    "WHERE YEAR(hd.ngayLapHD)=YEAR(GETDATE()) AND hd.loaiHD='BAN_HANG' GROUP BY MONTH(hd.ngayLapHD)")) {
+                while (rs.next()) { int m=rs.getInt("m"); if(m>=1&&m<=12) DT_DATA[m-1]=(int)rs.getDouble("dt"); }
+            }
+
+            // 3. Donut phân loại SP
+            String[] catDB = {"THUOC_KE_DON","THUOC_KHONG_KE_DON","THUC_PHAM_CHUC_NANG","MY_PHAM"};
+            for (int i=0;i<4;i++) {
+                try (PreparedStatement ps = con.prepareStatement("SELECT COUNT(*) FROM SanPham WHERE danhMuc=?")) {
+                    ps.setString(1,catDB[i]);
+                    ResultSet rs = ps.executeQuery();
+                    if (rs.next()) DONUT_VALS[i]=rs.getInt(1);
+                }
+            }
+
+            // 4. 10 ngày gần nhất
+            java.util.List<String> dates = new java.util.ArrayList<>();
+            try (Statement st = con.createStatement();
+                 ResultSet rs = st.executeQuery(
+                    "SELECT DISTINCT CONVERT(NVARCHAR,CONVERT(DATE,ngayLapHD),103) d FROM HoaDon " +
+                    "WHERE loaiHD='BAN_HANG' ORDER BY d DESC")) {
+                while (rs.next() && dates.size()<10) dates.add(0, rs.getString("d"));
+            }
+            if (dates.isEmpty()) for (int i=9;i>=0;i--) {
+                java.time.LocalDate ld = java.time.LocalDate.now().minusDays(i);
+                dates.add(ld.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM")));
+            }
+            DATES_10 = dates.toArray(new String[0]);
+            int days = DATES_10.length;
+            NV_DAILY = new int[n][days];
+            for (int i=0;i<n;i++) {
+                String id = NV_IDS[i];
+                for (int j=0;j<days;j++) {
+                    String d = DATES_10[j]; // dd/MM or dd/MM/yyyy
+                    final String id2=id; final String date=d;
+                    try (PreparedStatement ps = con.prepareStatement(
+                        "SELECT COUNT(*) FROM HoaDon WHERE nhanVienId=? AND CONVERT(NVARCHAR,CONVERT(DATE,ngayLapHD),103) LIKE ? AND loaiHD='BAN_HANG'")) {
+                        ps.setString(1,id2); ps.setString(2,date+"%");
+                        ResultSet rs2=ps.executeQuery();
+                        if(rs2.next()) NV_DAILY[i][j]=rs2.getInt(1);
+                    } catch (Exception ignored2) {}
+                }
+            }
+
+            // Update cboNhanVien
+            if (cboNhanVien != null) {
+                cboNhanVien.removeAllItems();
+                cboNhanVien.addItem("Tất cả");
+                for (String nm : NV_NAMES) cboNhanVien.addItem(nm);
+            }
+
+            // Refresh charts
+            if (chartBarMain   != null) chartBarMain.repaint();
+            if (chartLineDaily != null) chartLineDaily.repaint();
+            if (chartDonut     != null) chartDonut.repaint();
+            if (chartNVDaily   != null) chartNVDaily.repaint();
+            if (chartNVShift   != null) chartNVShift.repaint();
+            if (tblNVDetail    != null) tblNVDetail.refreshData();
+            if (pnlBody        != null) { pnlBody.revalidate(); pnlBody.repaint(); }
+
+        } catch (Exception e) { e.printStackTrace(); }
     }
 
     // ==========================================
@@ -129,8 +255,15 @@ public class ManHinhThongKe extends JPanel {
         btnXuat.setBorder(new EmptyBorder(8, 16, 8, 16));
         btnXuat.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         JPopupMenu menu = new JPopupMenu();
-        menu.add(new JMenuItem("Xuất Excel (.xlsx)"));
-        menu.add(new JMenuItem("Xuất PDF (.pdf)"));
+
+        JMenuItem miExcel = new JMenuItem("Xuất Excel (.xlsx)");
+        miExcel.addActionListener(ev -> xuatExcel());
+
+        JMenuItem miPDF = new JMenuItem("Xuất PDF (.pdf)");
+        miPDF.addActionListener(ev -> xuatPDF());
+
+        menu.add(miExcel);
+        menu.add(miPDF);
         btnXuat.addActionListener(e -> menu.show(btnXuat, 0, btnXuat.getHeight()));
 
         p.add(left, BorderLayout.WEST);
@@ -154,10 +287,7 @@ public class ManHinhThongKe extends JPanel {
 
         cboKyLoc = new JComboBox<>(new String[]{"Cả năm","Tháng","Quý","Tùy chỉnh"});
 
-        String[] nvList = new String[NV_NAMES.length + 1];
-        nvList[0] = "Tất cả";
-        System.arraycopy(NV_NAMES, 0, nvList, 1, NV_NAMES.length);
-        cboNhanVien = new JComboBox<>(nvList);
+        cboNhanVien = new JComboBox<>(new String[]{"Tất cả"});
 
         JButton btnThucHien = new JButton("📊 Thực hiện thống kê");
         btnThucHien.setBackground(Color.decode("#EF4444"));
@@ -196,13 +326,23 @@ public class ManHinhThongKe extends JPanel {
             BorderFactory.createLineBorder(Color.decode("#A5D6A7"), 1, true),
             new EmptyBorder(10, 16, 10, 16)));
 
+        // Lấy dữ liệu thật từ UserSession
+        long tienDau = UserSession.getInstance().getTienDauCa();
+        String tenNV = UserSession.getInstance().getTenHienThi();
+        String chucVu = UserSession.getInstance().getChucVuHienThi();
+        String thoiGian = new java.text.SimpleDateFormat("dd/MM/yyyy HH:mm").format(new java.util.Date());
+        Entity.CaLamViec ca = UserSession.getInstance().getCaHienTai();
+        if (ca != null) thoiGian = new java.text.SimpleDateFormat("dd/MM/yyyy HH:mm")
+            .format(java.sql.Timestamp.valueOf(ca.getThoiGianBatDau()));
+        String tienFmt = new java.text.DecimalFormat("###,###,###").format(tienDau) + "đ";
+
         JPanel left = new JPanel(new GridLayout(2, 1, 0, 2));
         left.setOpaque(false);
         JLabel lbl1 = new JLabel("<html><b style='font-size:13px;'>TIỀN ĐẦU CA</b>" +
             " <span style='background:#fff;border:1px solid #A5D6A7;border-radius:8px;" +
-            "padding:1px 8px;font-size:11px;color:#2E7D32;'>11/04/2026 19:31</span>" +
-            " · Mai Trung Kiên (Dược sĩ)</html>");
-        JLabel lbl2 = new JLabel("200.000đ × 1");
+            "padding:1px 8px;font-size:11px;color:#2E7D32;'>" + thoiGian + "</span>" +
+            " · " + tenNV + " (" + chucVu + ")</html>");
+        JLabel lbl2 = new JLabel(tienFmt + " × 1");
         lbl2.setFont(new Font("Segoe UI", Font.PLAIN, 11));
         lbl2.setForeground(Color.decode("#888888"));
         left.add(lbl1); left.add(lbl2);
@@ -212,7 +352,7 @@ public class ManHinhThongKe extends JPanel {
         JLabel r1 = new JLabel("Tổng tiền đầu ca", SwingConstants.RIGHT);
         r1.setFont(new Font("Segoe UI", Font.PLAIN, 11));
         r1.setForeground(Color.decode("#888888"));
-        JLabel r2 = new JLabel("200.000đ", SwingConstants.RIGHT);
+        JLabel r2 = new JLabel(tienFmt, SwingConstants.RIGHT);
         r2.setFont(new Font("Segoe UI", Font.BOLD, 22));
         r2.setForeground(Color.decode("#00796B"));
         JLabel r3 = new JLabel("↗ Tiền mặt kiểm đếm khi vào ca", SwingConstants.RIGHT);
@@ -417,6 +557,47 @@ public class ManHinhThongKe extends JPanel {
         wrapper.setOpaque(false);
         wrapper.add(sp, BorderLayout.CENTER);
         return wrapper;
+    }
+
+    // ==========================================
+    // PHÂN QUYỀN
+    // ==========================================
+    private void showAccessDenied() {
+        JPanel pnl = new JPanel(new GridBagLayout());
+        pnl.setBackground(Color.decode("#F4F6F8"));
+
+        JPanel card = new JPanel();
+        card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
+        card.setBackground(Color.WHITE);
+        card.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(Color.decode("#FFCDD2"), 2),
+                new EmptyBorder(40, 60, 40, 60)));
+
+        JLabel lblIcon = new JLabel("🔒", SwingConstants.CENTER);
+        lblIcon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 48));
+        lblIcon.setAlignmentX(CENTER_ALIGNMENT);
+
+        JLabel lblTitle = new JLabel("Không có quyền truy cập", SwingConstants.CENTER);
+        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 22));
+        lblTitle.setForeground(Color.decode("#C62828"));
+        lblTitle.setAlignmentX(CENTER_ALIGNMENT);
+
+        JLabel lblDesc = new JLabel(
+                "<html><center>Chức năng Thống kê chỉ dành cho <b>Quản lý</b>.<br>"
+                + "Vui lòng liên hệ quản lý để được hỗ trợ.</center></html>",
+                SwingConstants.CENTER);
+        lblDesc.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        lblDesc.setForeground(Color.decode("#637381"));
+        lblDesc.setAlignmentX(CENTER_ALIGNMENT);
+
+        card.add(lblIcon);
+        card.add(Box.createRigidArea(new Dimension(0, 16)));
+        card.add(lblTitle);
+        card.add(Box.createRigidArea(new Dimension(0, 10)));
+        card.add(lblDesc);
+
+        pnl.add(card);
+        add(pnl, BorderLayout.CENTER);
     }
 
     // ==========================================
@@ -1291,5 +1472,100 @@ public class ManHinhThongKe extends JPanel {
         b.setForeground(active ? Color.decode("#1A73E8") : Color.decode("#444444"));
         if (active) b.setFont(new Font("Segoe UI", Font.BOLD, 12));
         return b;
+    }
+
+    // ==========================================
+    // XUẤT BÁO CÁO CSV (thay thế xlsx – không cần thư viện ngoài)
+    // ==========================================
+    private void xuatExcel() {
+        JFileChooser fc = new JFileChooser();
+        fc.setDialogTitle("Lưu báo cáo Excel (CSV)");
+        fc.setSelectedFile(new File("BaoCaoThongKe_" + new java.text.SimpleDateFormat("yyyyMMdd").format(new java.util.Date()) + ".csv"));
+        fc.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("CSV Files (*.csv)", "csv"));
+        if (fc.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) return;
+
+        File file = fc.getSelectedFile();
+        if (!file.getName().toLowerCase().endsWith(".csv"))
+            file = new File(file.getAbsolutePath() + ".csv");
+
+        try (java.io.PrintWriter pw = new java.io.PrintWriter(
+                new java.io.OutputStreamWriter(new java.io.FileOutputStream(file), "UTF-8"))) {
+            // BOM for Excel
+            pw.print('\uFEFF');
+            pw.println("BÁO CÁO THỐNG KÊ - MYCARE PHARMACY");
+            pw.println("Ngày xuất:," + new java.text.SimpleDateFormat("dd/MM/yyyy HH:mm").format(new java.util.Date()));
+            pw.println("Năm:," + cboNam.getSelectedItem());
+            pw.println();
+            pw.println("DOANH THU THEO THÁNG");
+            pw.println("Tháng,Doanh thu (triệu đ),Chi phí (triệu đ),Lợi nhuận (triệu đ)");
+            for (int i = 0; i < 12; i++) {
+                int dt = DT_DATA[i], cp = CP_DATA[i];
+                pw.println(THANG[i] + "," + dt + "," + cp + "," + (dt - cp));
+            }
+            pw.println();
+            pw.println("THỐNG KÊ NHÂN VIÊN");
+            pw.println("Tên,Chức vụ,HĐ Ca Sáng,HĐ Ca Chiều,DT Sáng (M đ),DT Chiều (M đ),Tổng DT (M đ)");
+            for (int i = 0; i < NV_NAMES.length; i++) {
+                pw.println(NV_NAMES[i] + "," + NV_ROLES[i] + "," + NV_HD_S[i] + "," + NV_HD_C[i]
+                    + "," + String.format("%.1f", NV_DT_S[i]) + "," + String.format("%.1f", NV_DT_C[i])
+                    + "," + String.format("%.1f", NV_DT_S[i] + NV_DT_C[i]));
+            }
+            JOptionPane.showMessageDialog(this,
+                "✓ Xuất CSV thành công!\n" + file.getAbsolutePath(),
+                "Xuất báo cáo", JOptionPane.INFORMATION_MESSAGE);
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Lỗi xuất file: " + ex.getMessage(),
+                "Lỗi", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void xuatPDF() {
+        // Tạo HTML report rồi mở trình duyệt (không cần thư viện PDF)
+        JFileChooser fc = new JFileChooser();
+        fc.setDialogTitle("Lưu báo cáo PDF (HTML)");
+        fc.setSelectedFile(new File("BaoCaoThongKe_" + new java.text.SimpleDateFormat("yyyyMMdd").format(new java.util.Date()) + ".html"));
+        fc.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("HTML Files (*.html)", "html"));
+        if (fc.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) return;
+
+        File file = fc.getSelectedFile();
+        if (!file.getName().toLowerCase().endsWith(".html"))
+            file = new File(file.getAbsolutePath() + ".html");
+
+        try (java.io.PrintWriter pw = new java.io.PrintWriter(
+                new java.io.OutputStreamWriter(new java.io.FileOutputStream(file), "UTF-8"))) {
+            pw.println("<!DOCTYPE html><html><head><meta charset='UTF-8'>");
+            pw.println("<title>Báo cáo thống kê - MYCARE PHARMACY</title>");
+            pw.println("<style>body{font-family:Arial,sans-serif;margin:30px;} h1{color:#152A4B;} h2{color:#1A73E8;} table{border-collapse:collapse;width:100%;margin:10px 0;} th{background:#152A4B;color:white;padding:8px;} td{border:1px solid #ddd;padding:6px;text-align:right;} td:first-child{text-align:left;} .green{color:#00A76F;font-weight:bold;} @media print{button{display:none;}}</style>");
+            pw.println("</head><body>");
+            pw.println("<h1>🏥 BÁO CÁO THỐNG KÊ - MYCARE PHARMACY</h1>");
+            pw.println("<p><b>Ngày xuất:</b> " + new java.text.SimpleDateFormat("dd/MM/yyyy HH:mm").format(new java.util.Date()) + " &nbsp;|&nbsp; <b>Năm:</b> " + cboNam.getSelectedItem() + "</p>");
+            pw.println("<button onclick='window.print()' style='background:#1A73E8;color:white;padding:8px 16px;border:none;cursor:pointer;border-radius:4px;'>🖨 In / Lưu PDF</button>");
+            pw.println("<h2>Doanh thu theo tháng</h2>");
+            pw.println("<table><tr><th>Tháng</th><th>Doanh thu (M đ)</th><th>Chi phí (M đ)</th><th>Lợi nhuận (M đ)</th></tr>");
+            int totalDT = 0, totalCP = 0;
+            for (int i = 0; i < 12; i++) {
+                totalDT += DT_DATA[i]; totalCP += CP_DATA[i];
+                pw.println("<tr><td>" + THANG[i] + "</td><td>" + DT_DATA[i] + "</td><td>" + CP_DATA[i] + "</td><td class='green'>" + (DT_DATA[i]-CP_DATA[i]) + "</td></tr>");
+            }
+            pw.println("<tr style='background:#f5f5f5;font-weight:bold;'><td>TỔNG</td><td>" + totalDT + "</td><td>" + totalCP + "</td><td class='green'>" + (totalDT-totalCP) + "</td></tr>");
+            pw.println("</table>");
+            pw.println("<h2>Thống kê nhân viên</h2>");
+            pw.println("<table><tr><th>Tên</th><th>Chức vụ</th><th>HĐ Ca Sáng</th><th>HĐ Ca Chiều</th><th>DT Sáng (M đ)</th><th>DT Chiều (M đ)</th><th>Tổng DT (M đ)</th></tr>");
+            for (int i = 0; i < NV_NAMES.length; i++) {
+                pw.println("<tr><td>" + NV_NAMES[i] + "</td><td>" + NV_ROLES[i] + "</td><td>" + NV_HD_S[i] + "</td><td>" + NV_HD_C[i]
+                    + "</td><td>" + String.format("%.1f", NV_DT_S[i]) + "</td><td>" + String.format("%.1f", NV_DT_C[i])
+                    + "</td><td class='green'>" + String.format("%.1f", NV_DT_S[i]+NV_DT_C[i]) + "</td></tr>");
+            }
+            pw.println("</table></body></html>");
+
+            // Mở trình duyệt
+            try { java.awt.Desktop.getDesktop().open(file); } catch (Exception ignored) {}
+            JOptionPane.showMessageDialog(this,
+                "✓ Đã tạo báo cáo HTML!\nMở trình duyệt → nhấn Ctrl+P để in/lưu PDF.\n" + file.getAbsolutePath(),
+                "Xuất báo cáo", JOptionPane.INFORMATION_MESSAGE);
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Lỗi xuất file: " + ex.getMessage(),
+                "Lỗi", JOptionPane.ERROR_MESSAGE);
+        }
     }
 }

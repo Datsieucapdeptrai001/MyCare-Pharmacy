@@ -106,4 +106,24 @@ public class BUS_TaiKhoan {
         }
         return false;
     }
+    public TaiKhoan getTaiKhoanDayDu(String tenDangNhap) {
+        TaiKhoan tk = daoTaiKhoan.getTaiKhoan(tenDangNhap);
+        if (tk == null || tk.getNhanVienId() == null) return tk;
+
+        // Load thông tin đầy đủ của NhanVien
+        try {
+            DAO.DAO_NhanVien daoNV = new DAO.DAO_NhanVien();
+            String maNV = tk.getNhanVienId().getNhanVien();
+            java.util.List<Entity.NhanVien> dsNV = daoNV.layDSNhanVien();
+            for (Entity.NhanVien nv : dsNV) {
+                if (nv.getNhanVien().equals(maNV)) {
+                    tk.setNhanVienId(nv);
+                    break;
+                }
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return tk;
+    }
 }

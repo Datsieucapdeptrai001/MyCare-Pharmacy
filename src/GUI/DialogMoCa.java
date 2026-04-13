@@ -1,0 +1,654 @@
+package GUI;
+
+import Utils.MenuIcon;
+import Utils.UserSession;
+
+import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+import java.awt.*;
+import java.awt.event.*;
+import java.text.DecimalFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
+/**
+ * Dialog Mở Ca – hiện ra sau khi Nhân Viên (STAFF) đăng nhập thành công.
+ * Thiết kế theo mẫu Figma: chọn loại ca → kiểm đếm tiền đầu ca → xác nhận.
+ */
+public class DialogMoCa extends JDialog {
+
+    // ======================== CONSTANTS ========================
+    private static final Color COLOR_GREEN   = Color.decode("#00A76F");
+    private static final Color COLOR_ORANGE  = Color.decode("#FF6B00");
+    private static final Color COLOR_INDIGO  = Color.decode("#3D52A0");
+    private static final Color COLOR_HEADER  = Color.decode("#00A76F");
+    private static final Color COLOR_BG      = Color.decode("#F8FAFB");
+    private static final Color COLOR_CARD    = Color.WHITE;
+    private static final Color COLOR_BORDER  = Color.decode("#E5E9EF");
+    private static final Color COLOR_CONFIRM = Color.decode("#00A76F");
+
+    private static final String[] CA_LABELS  = { "Ca Sáng", "Ca Chiều", "Ca Tối" };
+    private static final String[] CA_TIMES   = { "06:00 – 14:00", "14:00 – 22:00", "22:00 – 06:00" };
+    private static final String[] CA_ICONS   = { "☀", "🌅", "🌙" };
+    private static final Color[]  CA_BG      = {
+        Color.decode("#FFF3E0"),
+        Color.decode("#FFF8F0"),
+        Color.decode("#EEF2FF")
+    };
+    private static final Color[]  CA_FG      = {
+        Color.decode("#E65100"),
+        Color.decode("#BF360C"),
+        Color.decode("#3D52A0")
+    };
+
+    // Mệnh giá VND
+    private static final long[]   MENH_GIA     = { 500000, 200000, 100000, 50000, 20000, 10000, 5000, 2000, 1000 };
+    private static final String[] MENH_GIA_STR = { "500.000đ","200.000đ","100.000đ","50.000đ","20.000đ","10.000đ","5.000đ","2.000đ","1.000đ" };
+    private static final Color[]  BOX_COLORS   = {
+        Color.decode("#1A73E8"), Color.decode("#9C27B0"), Color.decode("#4CAF50"),
+        Color.decode("#FF9800"), Color.decode("#F44336"), Color.decode("#E91E63"),
+        Color.decode("#FF7043"), Color.decode("#1A73E8"), Color.decode("#607D8B")
+    };
+
+    // ======================== STATE ========================
+    private int selectedCa = 0;          // 0=sáng,1=chiều,2=tối
+    private int[] soLuong  = new int[9]; // số tờ mỗi mệnh giá
+    private boolean confirmed = false;
+
+    // ======================== UI REFS ========================
+    private JButton[] btnCa      = new JButton[3];
+    private JLabel[]  lblCount   = new JLabel[9];
+    private JLabel    lblTongTien;
+    private JLabel    lblCaSubInfo;
+    private CardLayout stepCard;
+    private JPanel    stepPanel;
+
+    // ======================== CONSTRUCTOR ========================
+    public DialogMoCa(Frame parent) {
+        super(parent, "Mở ca làm việc", true);
+        setUndecorated(true);
+        setSize(680, 620);
+        setLocationRelativeTo(parent);
+        setBackground(new Color(0, 0, 0, 0));
+        buildUI();
+    }
+
+    private void buildUI() {
+        JPanel root = new JPanel(new BorderLayout()) {
+            @Override protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                // shadow
+                g2.setColor(new Color(0, 0, 0, 30));
+                g2.fillRoundRect(6, 6, getWidth() - 6, getHeight() - 6, 20, 20);
+                g2.setColor(Color.WHITE);
+                g2.fillRoundRect(0, 0, getWidth() - 8, getHeight() - 8, 20, 20);
+                g2.dispose();
+            }
+        };
+        root.setOpaque(false);
+        root.setBorder(new EmptyBorder(0, 0, 8, 8));
+        setContentPane(root);
+
+        root.add(buildHeader(), BorderLayout.NORTH);
+
+        stepCard  = new CardLayout();
+        stepPanel = new JPanel(stepCard);
+        stepPanel.setOpaque(false);
+        stepPanel.add(buildStep1(), "step1");
+        stepPanel.add(buildStep2(), "step2");
+        root.add(stepPanel, BorderLayout.CENTER);
+
+        root.add(buildFooter(), BorderLayout.SOUTH);
+    }
+
+    // ─── HEADER ──────────────────────────────────────────────
+    private JPanel buildHeader() {
+        JPanel hdr = new JPanel(new BorderLayout()) {
+            @Override protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setPaint(new GradientPaint(0, 0,
+                        Color.decode("#00A76F"), getWidth(), 0, Color.decode("#00C98A")));
+                // rounded only top corners
+                g2.fillRoundRect(0, 0, getWidth(), getHeight() + 20, 20, 20);
+                g2.dispose();
+            }
+        };
+        hdr.setOpaque(false);
+        hdr.setPreferredSize(new Dimension(0, 70));
+        hdr.setBorder(new EmptyBorder(0, 20, 0, 20));
+
+        // Logo + title
+        JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 0));
+        left.setOpaque(false);
+
+        JPanel logoBox = new JPanel() {
+            @Override protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(new Color(255, 255, 255, 60));
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 12, 12);
+                g2.setColor(Color.WHITE);
+                g2.setStroke(new BasicStroke(2.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                int cx = getWidth() / 2, cy = getHeight() / 2;
+                g2.rotate(Math.toRadians(-45), cx, cy);
+                g2.drawRoundRect(cx - 11, cy - 5, 22, 10, 8, 8);
+                g2.drawLine(cx, cy - 5, cx, cy + 5);
+                g2.dispose();
+            }
+        };
+        logoBox.setOpaque(false);
+        logoBox.setPreferredSize(new Dimension(44, 44));
+
+        JLabel lblName = new JLabel("<html><b style='color:white;font-size:15px;'>MYCARE PHARMACY</b><br>"
+                + "<span style='color:rgba(255,255,255,0.8);font-size:11px;'>⏰ Mở ca làm việc — "
+                + new SimpleDateFormat("dd/MM/yyyy HH:mm").format(new Date())
+                + "</span></html>");
+
+        left.add(logoBox);
+        left.add(lblName);
+
+        // User badge
+        String initials  = UserSession.getInstance().getInitials();
+        String tenNV     = UserSession.getInstance().getTenHienThi();
+        String chucVu    = UserSession.getInstance().getChucVuHienThi();
+
+        JPanel userBadge = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 8)) {
+            @Override protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(new Color(255, 255, 255, 40));
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 12, 12);
+                g2.dispose();
+            }
+        };
+        userBadge.setOpaque(false);
+
+        JLabel avatar = new JLabel(initials, SwingConstants.CENTER);
+        avatar.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        avatar.setForeground(Color.WHITE);
+        avatar.setOpaque(true);
+        avatar.setBackground(Color.decode("#007A52"));
+        avatar.setPreferredSize(new Dimension(34, 34));
+
+        JLabel lblUser = new JLabel("<html><b style='color:white;'>" + tenNV + "</b><br>"
+                + "<span style='color:rgba(255,255,255,0.75);font-size:10px;'>" + chucVu + "</span></html>");
+
+        userBadge.add(avatar);
+        userBadge.add(lblUser);
+
+        hdr.add(left, BorderLayout.WEST);
+        hdr.add(userBadge, BorderLayout.EAST);
+
+        JPanel wrapper = new JPanel(new BorderLayout());
+        wrapper.setOpaque(false);
+        wrapper.add(hdr, BorderLayout.CENTER);
+        return wrapper;
+    }
+
+    // ─── STEP 1: Chọn Ca ─────────────────────────────────────
+    private JPanel buildStep1() {
+        JPanel pnl = new JPanel();
+        pnl.setLayout(new BoxLayout(pnl, BoxLayout.Y_AXIS));
+        pnl.setBackground(COLOR_BG);
+        pnl.setBorder(new EmptyBorder(20, 24, 10, 24));
+
+        // Section title
+        JLabel secTitle1 = makeSectionTitle("ℹ  BƯỚC 1 — CHỌN LOẠI CA LÀM VIỆC");
+        pnl.add(secTitle1);
+        pnl.add(Box.createRigidArea(new Dimension(0, 12)));
+
+        // Ca buttons
+        JPanel rowCa = new JPanel(new GridLayout(1, 3, 12, 0));
+        rowCa.setOpaque(false);
+        rowCa.setAlignmentX(LEFT_ALIGNMENT);
+        rowCa.setMaximumSize(new Dimension(Integer.MAX_VALUE, 100));
+
+        for (int i = 0; i < 3; i++) {
+            btnCa[i] = buildCaButton(i);
+            rowCa.add(btnCa[i]);
+        }
+        pnl.add(rowCa);
+        pnl.add(Box.createRigidArea(new Dimension(0, 20)));
+
+        // Section title 2
+        JLabel secTitle2 = makeSectionTitle("💵  BƯỚC 2 — KIỂM ĐẾM TIỀN ĐẦU CA");
+        pnl.add(secTitle2);
+        pnl.add(Box.createRigidArea(new Dimension(0, 12)));
+
+        // Grid tiền
+        JPanel gridTien = new JPanel(new GridLayout(3, 3, 12, 10));
+        gridTien.setOpaque(false);
+        gridTien.setAlignmentX(LEFT_ALIGNMENT);
+        gridTien.setMaximumSize(new Dimension(Integer.MAX_VALUE, 195));
+
+        for (int i = 0; i < 9; i++) {
+            gridTien.add(buildMoneyBox(i));
+        }
+        pnl.add(gridTien);
+        pnl.add(Box.createRigidArea(new Dimension(0, 12)));
+
+        // Tổng tiền đầu ca
+        JPanel totalBox = new JPanel(new BorderLayout());
+        totalBox.setBackground(Color.WHITE);
+        totalBox.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(COLOR_BORDER),
+                new EmptyBorder(10, 14, 10, 14)));
+        totalBox.setAlignmentX(LEFT_ALIGNMENT);
+        totalBox.setMaximumSize(new Dimension(Integer.MAX_VALUE, 55));
+
+        JPanel leftInfo = new JPanel();
+        leftInfo.setOpaque(false);
+        leftInfo.setLayout(new BoxLayout(leftInfo, BoxLayout.Y_AXIS));
+        JLabel lblTongLabel = new JLabel("Tổng tiền đầu ca:");
+        lblTongLabel.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        lblCaSubInfo = new JLabel("Ca Sáng · 06:00 – 14:00");
+        lblCaSubInfo.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        lblCaSubInfo.setForeground(Color.GRAY);
+        leftInfo.add(lblTongLabel);
+        leftInfo.add(lblCaSubInfo);
+
+        lblTongTien = new JLabel("0đ", SwingConstants.RIGHT);
+        lblTongTien.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        lblTongTien.setForeground(Color.decode("#212B36"));
+
+        totalBox.add(leftInfo, BorderLayout.WEST);
+        totalBox.add(lblTongTien, BorderLayout.EAST);
+        pnl.add(totalBox);
+        pnl.add(Box.createRigidArea(new Dimension(0, 8)));
+
+        // Hint
+        JPanel hint = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 6));
+        hint.setBackground(Color.decode("#FFFBE6"));
+        hint.setBorder(BorderFactory.createLineBorder(Color.decode("#FFD666")));
+        hint.setAlignmentX(LEFT_ALIGNMENT);
+        hint.setMaximumSize(new Dimension(Integer.MAX_VALUE, 34));
+        JLabel lblHint = new JLabel("ℹ  Có thể bỏ qua nếu chưa có tiền mặt đầu ca — nhấn \"Tiếp tục\" để xác nhận 0đ");
+        lblHint.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        lblHint.setForeground(Color.decode("#7A5800"));
+        hint.add(lblHint);
+        pnl.add(hint);
+
+        // Set default selection
+        selectCa(0);
+        return pnl;
+    }
+
+    // ─── STEP 2: Xem lại & Xác nhận ─────────────────────────
+    private JPanel buildStep2() {
+        JPanel pnl = new JPanel(new BorderLayout());
+        pnl.setBackground(COLOR_BG);
+        pnl.setBorder(new EmptyBorder(24, 24, 16, 24));
+
+        JPanel card = new JPanel() {
+            @Override protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                // teal tint border
+                g2.setColor(Color.decode("#E6F7F2"));
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 14, 14);
+                g2.setColor(Color.decode("#B2DFDB"));
+                g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 14, 14);
+                g2.dispose();
+            }
+        };
+        card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
+        card.setOpaque(false);
+        card.setBorder(new EmptyBorder(20, 24, 20, 24));
+        card.setAlignmentX(LEFT_ALIGNMENT);
+
+        // Title + time
+        JLabel lblTitle = new JLabel("PHIẾU XÁC NHẬN MỞ CA", SwingConstants.CENTER);
+        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        lblTitle.setForeground(Color.decode("#006250"));
+        lblTitle.setAlignmentX(CENTER_ALIGNMENT);
+        card.add(lblTitle);
+
+        JLabel lblTime = new JLabel(new SimpleDateFormat("⏰ dd/MM/yyyy HH:mm").format(new Date()),
+                SwingConstants.CENTER);
+        lblTime.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        lblTime.setForeground(Color.decode("#00A76F"));
+        lblTime.setAlignmentX(CENTER_ALIGNMENT);
+        card.add(Box.createRigidArea(new Dimension(0, 4)));
+        card.add(lblTime);
+        card.add(Box.createRigidArea(new Dimension(0, 16)));
+
+        // Nhân viên
+        JPanel nvRow = buildConfirmRow("👤", UserSession.getInstance().getTenHienThi()
+                + "  •  " + UserSession.getInstance().getChucVuHienThi());
+        card.add(nvRow);
+        card.add(Box.createRigidArea(new Dimension(0, 10)));
+
+        // Ca làm
+        JPanel caRow = buildConfirmCaRow();
+        card.add(caRow);
+        card.add(Box.createRigidArea(new Dimension(0, 10)));
+
+        // Chi tiết mệnh giá
+        JLabel lblChiTiet = new JLabel("CHI TIẾT MỆNH GIÁ:");
+        lblChiTiet.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        lblChiTiet.setForeground(Color.GRAY);
+        lblChiTiet.setAlignmentX(LEFT_ALIGNMENT);
+        card.add(lblChiTiet);
+        card.add(Box.createRigidArea(new Dimension(0, 6)));
+
+        JPanel chiTietPanel = new JPanel();
+        chiTietPanel.setLayout(new BoxLayout(chiTietPanel, BoxLayout.Y_AXIS));
+        chiTietPanel.setOpaque(false);
+        chiTietPanel.setAlignmentX(LEFT_ALIGNMENT);
+
+        long tongTien = 0;
+        for (int i = 0; i < 9; i++) {
+            if (soLuong[i] > 0) {
+                long subtotal = soLuong[i] * MENH_GIA[i];
+                tongTien += subtotal;
+                JPanel row = new JPanel(new BorderLayout());
+                row.setOpaque(false);
+                row.setAlignmentX(LEFT_ALIGNMENT);
+                JLabel lLeft = new JLabel(MENH_GIA_STR[i] + "  ×  " + soLuong[i] + " tờ");
+                lLeft.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+                JLabel lRight = new JLabel(formatMoney(subtotal), SwingConstants.RIGHT);
+                lRight.setFont(new Font("Segoe UI", Font.BOLD, 13));
+                row.add(lLeft, BorderLayout.WEST);
+                row.add(lRight, BorderLayout.EAST);
+                chiTietPanel.add(row);
+                chiTietPanel.add(Box.createRigidArea(new Dimension(0, 3)));
+            }
+        }
+        if (tongTien == 0) {
+            JLabel empty = new JLabel("(Không có tiền mặt đầu ca)");
+            empty.setForeground(Color.GRAY);
+            empty.setFont(new Font("Segoe UI", Font.ITALIC, 12));
+            chiTietPanel.add(empty);
+        }
+        card.add(chiTietPanel);
+
+        // Total
+        card.add(Box.createRigidArea(new Dimension(0, 12)));
+        JPanel totalRow = new JPanel(new BorderLayout());
+        totalRow.setOpaque(false);
+        totalRow.setAlignmentX(LEFT_ALIGNMENT);
+        JLabel lTotal  = new JLabel("TỔNG TIỀN ĐẦU CA:");
+        lTotal.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        JLabel lAmount = new JLabel(formatMoney(tongTien), SwingConstants.RIGHT);
+        lAmount.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        lAmount.setForeground(Color.decode("#006250"));
+        totalRow.add(lTotal, BorderLayout.WEST);
+        totalRow.add(lAmount, BorderLayout.EAST);
+        card.add(totalRow);
+
+        pnl.add(card, BorderLayout.CENTER);
+        return pnl;
+    }
+
+    // ─── FOOTER ──────────────────────────────────────────────
+    private JPanel buildFooter() {
+        JPanel footer = new JPanel(new BorderLayout());
+        footer.setBackground(Color.WHITE);
+        footer.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(1, 0, 0, 0, COLOR_BORDER),
+                new EmptyBorder(12, 20, 12, 20)));
+
+        JButton btnReset = new JButton("↺  Nhập lại");
+        btnReset.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnReset.setForeground(Color.decode("#637381"));
+        btnReset.setBackground(Color.WHITE);
+        btnReset.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(COLOR_BORDER),
+                new EmptyBorder(8, 16, 8, 16)));
+        btnReset.setFocusPainted(false);
+        btnReset.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnReset.addActionListener(e -> {
+            soLuong = new int[9];
+            refreshCounts();
+            refreshTotal();
+            stepCard.show(stepPanel, "step1");
+        });
+
+        JButton btnNext = new JButton("Xem lại & Xác nhận  >");
+        btnNext.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnNext.setForeground(Color.WHITE);
+        btnNext.setBackground(COLOR_CONFIRM);
+        btnNext.setBorder(new EmptyBorder(10, 22, 10, 22));
+        btnNext.setFocusPainted(false);
+        btnNext.setOpaque(true);
+        btnNext.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnNext.addActionListener(e -> {
+            // Rebuild step2 with fresh data
+            stepPanel.remove(1);
+            stepPanel.add(buildStep2(), "step2", 1);
+            stepCard.show(stepPanel, "step2");
+
+            // Swap buttons
+            footer.removeAll();
+            buildConfirmFooter(footer);
+            footer.revalidate();
+            footer.repaint();
+        });
+
+        footer.add(btnReset, BorderLayout.WEST);
+        footer.add(btnNext, BorderLayout.EAST);
+        return footer;
+    }
+
+    private void buildConfirmFooter(JPanel footer) {
+        JButton btnSua = new JButton("← Sửa lại");
+        btnSua.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnSua.setForeground(Color.decode("#637381"));
+        btnSua.setBackground(Color.WHITE);
+        btnSua.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(COLOR_BORDER),
+                new EmptyBorder(8, 16, 8, 16)));
+        btnSua.setFocusPainted(false);
+        btnSua.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnSua.addActionListener(e -> {
+            stepCard.show(stepPanel, "step1");
+            footer.removeAll();
+            footer.add(btnSua, BorderLayout.WEST); // will be replaced
+            // Rebuild original footer
+            JPanel orig = buildFooter();
+            for (Component c : orig.getComponents()) {
+                footer.add(c, ((BorderLayout) orig.getLayout()).getConstraints(c));
+            }
+            footer.revalidate();
+            footer.repaint();
+        });
+
+        JButton btnXacNhan = new JButton("✓  Xác nhận vào ca");
+        btnXacNhan.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnXacNhan.setForeground(Color.WHITE);
+        btnXacNhan.setBackground(COLOR_CONFIRM);
+        btnXacNhan.setBorder(new EmptyBorder(10, 22, 10, 22));
+        btnXacNhan.setFocusPainted(false);
+        btnXacNhan.setOpaque(true);
+        btnXacNhan.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnXacNhan.addActionListener(e -> {
+            confirmed = true;
+            dispose();
+        });
+
+        footer.add(btnSua,     BorderLayout.WEST);
+        footer.add(btnXacNhan, BorderLayout.EAST);
+    }
+
+    // ─── HELPERS ─────────────────────────────────────────────
+
+    private JLabel makeSectionTitle(String text) {
+        JLabel lbl = new JLabel(text);
+        lbl.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        lbl.setForeground(Color.decode("#454F5B"));
+        lbl.setAlignmentX(LEFT_ALIGNMENT);
+        return lbl;
+    }
+
+    private JButton buildCaButton(int idx) {
+        JButton btn = new JButton() {
+            @Override protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                boolean sel = (selectedCa == idx);
+                g2.setColor(sel ? CA_BG[idx] : Color.WHITE);
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 12, 12);
+                if (sel) {
+                    g2.setStroke(new BasicStroke(2));
+                    g2.setColor(CA_FG[idx]);
+                    g2.drawRoundRect(1, 1, getWidth() - 2, getHeight() - 2, 12, 12);
+                } else {
+                    g2.setColor(COLOR_BORDER);
+                    g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 12, 12);
+                }
+                g2.dispose();
+            }
+        };
+
+        btn.setLayout(new BoxLayout(btn, BoxLayout.Y_AXIS));
+        btn.setOpaque(false);
+        btn.setContentAreaFilled(false);
+        btn.setBorderPainted(false);
+        btn.setFocusPainted(false);
+        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btn.setPreferredSize(new Dimension(0, 90));
+
+        JLabel icon = new JLabel(CA_ICONS[idx], SwingConstants.CENTER);
+        icon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 22));
+        icon.setAlignmentX(CENTER_ALIGNMENT);
+
+        JLabel name = new JLabel(CA_LABELS[idx], SwingConstants.CENTER);
+        name.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        name.setForeground(CA_FG[idx]);
+        name.setAlignmentX(CENTER_ALIGNMENT);
+
+        JLabel time = new JLabel(CA_TIMES[idx], SwingConstants.CENTER);
+        time.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        time.setForeground(CA_FG[idx]);
+        time.setAlignmentX(CENTER_ALIGNMENT);
+
+        btn.add(Box.createVerticalGlue());
+        btn.add(icon);
+        btn.add(name);
+        btn.add(time);
+        btn.add(Box.createVerticalGlue());
+
+        final int fi = idx;
+        btn.addActionListener(e -> selectCa(fi));
+        return btn;
+    }
+
+    private JPanel buildMoneyBox(int idx) {
+        JPanel box = new JPanel(new BorderLayout(0, 4)) {
+            @Override protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(Color.WHITE);
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 10, 10);
+                g2.setColor(BOX_COLORS[idx]);
+                g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 10, 10);
+                g2.dispose();
+            }
+        };
+        box.setOpaque(false);
+        box.setBorder(new EmptyBorder(8, 6, 8, 6));
+        box.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+        JLabel lblGia = new JLabel(MENH_GIA_STR[idx], SwingConstants.CENTER);
+        lblGia.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        lblGia.setForeground(BOX_COLORS[idx]);
+
+        lblCount[idx] = new JLabel("0", SwingConstants.CENTER);
+        lblCount[idx].setFont(new Font("Segoe UI", Font.BOLD, 18));
+        lblCount[idx].setForeground(Color.decode("#212B36"));
+
+        JLabel lblTip = new JLabel("T: tăng  |  P: giảm", SwingConstants.CENTER);
+        lblTip.setFont(new Font("Segoe UI", Font.PLAIN, 9));
+        lblTip.setForeground(Color.LIGHT_GRAY);
+
+        box.add(lblGia,   BorderLayout.NORTH);
+        box.add(lblCount[idx], BorderLayout.CENTER);
+        box.add(lblTip,   BorderLayout.SOUTH);
+
+        box.addMouseListener(new MouseAdapter() {
+            @Override public void mouseClicked(MouseEvent e) {
+                if (SwingUtilities.isLeftMouseButton(e)) {
+                    soLuong[idx]++;
+                } else if (SwingUtilities.isRightMouseButton(e)) {
+                    if (soLuong[idx] > 0) soLuong[idx]--;
+                }
+                lblCount[idx].setText(String.valueOf(soLuong[idx]));
+                refreshTotal();
+            }
+        });
+        return box;
+    }
+
+    private JPanel buildConfirmRow(String icon, String text) {
+        JPanel row = new JPanel(new BorderLayout());
+        row.setBackground(Color.WHITE);
+        row.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(COLOR_BORDER),
+                new EmptyBorder(10, 14, 10, 14)));
+        row.setAlignmentX(LEFT_ALIGNMENT);
+        JLabel lbl = new JLabel(icon + "  " + text);
+        lbl.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        row.add(lbl);
+        return row;
+    }
+
+    private JPanel buildConfirmCaRow() {
+        JPanel row = new JPanel(new BorderLayout());
+        row.setBackground(CA_BG[selectedCa]);
+        row.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(Color.decode("#DFE3E8")),
+                new EmptyBorder(10, 14, 10, 14)));
+        row.setAlignmentX(LEFT_ALIGNMENT);
+
+        JLabel lLeft = new JLabel(CA_ICONS[selectedCa] + "  " + CA_LABELS[selectedCa]);
+        lLeft.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        lLeft.setForeground(CA_FG[selectedCa]);
+
+        JLabel lRight = new JLabel(CA_TIMES[selectedCa], SwingConstants.RIGHT);
+        lRight.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        lRight.setForeground(CA_FG[selectedCa]);
+
+        row.add(lLeft,  BorderLayout.WEST);
+        row.add(lRight, BorderLayout.EAST);
+        return row;
+    }
+
+    // ─── LOGIC ───────────────────────────────────────────────
+
+    private void selectCa(int idx) {
+        selectedCa = idx;
+        for (int i = 0; i < 3; i++) btnCa[i].repaint();
+        lblCaSubInfo.setText(CA_LABELS[idx] + " · " + CA_TIMES[idx]);
+    }
+
+    private void refreshCounts() {
+        for (int i = 0; i < 9; i++) {
+            lblCount[i].setText("0");
+        }
+    }
+
+    private void refreshTotal() {
+        long tong = 0;
+        for (int i = 0; i < 9; i++) tong += soLuong[i] * MENH_GIA[i];
+        lblTongTien.setText(formatMoney(tong));
+    }
+
+    private String formatMoney(long amount) {
+        DecimalFormat df = new DecimalFormat("###,###,###");
+        return df.format(amount) + "đ";
+    }
+
+    // ─── PUBLIC API ──────────────────────────────────────────
+
+    public boolean isConfirmed()    { return confirmed; }
+    public int     getSelectedCa()  { return selectedCa; }
+    public String  getCaLabel()     { return CA_LABELS[selectedCa]; }
+    public String  getCaTimes()     { return CA_TIMES[selectedCa]; }
+    public long getTongTienDauCa() {
+        long t = 0;
+        for (int i = 0; i < 9; i++) t += soLuong[i] * MENH_GIA[i];
+        return t;
+    }
+}
