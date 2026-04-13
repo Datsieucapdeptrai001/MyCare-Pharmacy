@@ -220,4 +220,63 @@ public class DAO_SanPham {
         }
         return false;
     }
+ // =====================================================================
+    // CÁC HÀM BỔ SUNG ĐỂ THÊM/SỬA/XÓA/TẠO MÃ TỰ ĐỘNG XUỐNG DATABASE
+    // =====================================================================
+    
+    // 1. Tự động sinh mã SP mới nhất (VD: Từ SP2024-0032 -> SP2024-0033)
+    public String layMaSanPhamMoiNhat() {
+        String sql = "SELECT TOP 1 id FROM SanPham ORDER BY id DESC";
+        Connection con = ConnectDB.getConnection();
+        try (PreparedStatement pst = con.prepareStatement(sql);
+             ResultSet rs = pst.executeQuery()) {
+            if (rs.next()) {
+                String lastId = rs.getString("id"); // VD: SP2024-0042
+                int number = Integer.parseInt(lastId.split("-")[1]);
+                return String.format("SP2024-%04d", number + 1);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return "SP2024-0001"; // Trả về mã đầu tiên nếu bảng rỗng
+    }
+
+    // 2. Thêm Sản Phẩm mới thẳng vào DB
+    public boolean themSanPhamNhanh(String id, String danhMuc, String dang, String ten, String vietTat, String nsx, String hoatChat, double vat, String hamLuong, String moTa, String dvt) {
+        String sql = "INSERT INTO SanPham (id, danhMuc, dang, ten, tenVietTat, nhaSanXuat, hoatChat, thueVAT, hamLuong, moTa, donViDoCoBan, ngayTao) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, GETDATE())";
+        Connection con = ConnectDB.getConnection();
+        try (PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setString(1, id); pst.setString(2, danhMuc); pst.setString(3, dang);
+            pst.setString(4, ten); pst.setString(5, vietTat); pst.setString(6, nsx);
+            pst.setString(7, hoatChat); pst.setDouble(8, vat); pst.setString(9, hamLuong);
+            pst.setString(10, moTa); pst.setString(11, dvt);
+            return pst.executeUpdate() > 0;
+        } catch (Exception e) { e.printStackTrace(); }
+        return false;
+    }
+
+    // 3. Cập nhật Sản Phẩm
+    public boolean capNhatSanPhamNhanh(String id, String danhMuc, String dang, String ten, String vietTat, String nsx, String hoatChat, double vat, String hamLuong, String moTa, String dvt) {
+        String sql = "UPDATE SanPham SET danhMuc=?, dang=?, ten=?, tenVietTat=?, nhaSanXuat=?, hoatChat=?, thueVAT=?, hamLuong=?, moTa=?, donViDoCoBan=? WHERE id=?";
+        Connection con = ConnectDB.getConnection();
+        try (PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setString(1, danhMuc); pst.setString(2, dang); pst.setString(3, ten);
+            pst.setString(4, vietTat); pst.setString(5, nsx); pst.setString(6, hoatChat);
+            pst.setDouble(7, vat); pst.setString(8, hamLuong); pst.setString(9, moTa);
+            pst.setString(10, dvt); pst.setString(11, id);
+            return pst.executeUpdate() > 0;
+        } catch (Exception e) { e.printStackTrace(); }
+        return false;
+    }
+
+    // 4. Xóa Sản Phẩm
+    public boolean xoaSanPham(String id) {
+        String sql = "DELETE FROM SanPham WHERE id=?";
+        Connection con = ConnectDB.getConnection();
+        try (PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setString(1, id);
+            return pst.executeUpdate() > 0;
+        } catch (Exception e) { e.printStackTrace(); }
+        return false;
+    }
 }
