@@ -1,7 +1,7 @@
 package Enum;
 
 public enum TrangThaiLamViec {
-	THOI_VIEC,
+	DA_NGHI_VIEC,
 	NGHI_PHEP,
 	DANG_LAM_VIEC
 }

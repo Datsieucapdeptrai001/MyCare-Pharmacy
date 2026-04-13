@@ -70,12 +70,13 @@ public class MainDashboard extends JFrame {
         ManHinhThongKe mhThongKe = new ManHinhThongKe();
         cardPanel.add(mhThongKe, "Thống kê");
 
-        // 7. Nhân viên (Chưa có -> Dùng Dummy)
-        cardPanel.add(createDummyPanel("Quản lý Nhân viên"), "Nhân viên");
+        // 7. Nhân viên (ĐÃ FIX: Đưa Màn Hình Nhân Viên thật vào đây)
+        ManHinhNhanVien mhNhanVien = new ManHinhNhanVien();
+        cardPanel.add(mhNhanVien, "Nhân viên");
         
-        // 8. Khách hàng (Chưa có -> Dùng Dummy)
+        // 8. Khách hàng
         ManHinhKhachHang mhKhachHang = new ManHinhKhachHang();
-        cardPanel.add(mhKhachHang, "Khách hàng"); // Thay DummyPanel bằng mhKhachHang
+        cardPanel.add(mhKhachHang, "Khách hàng"); 
 
         // 9. Hướng dẫn
         ManHinhHuongDan mhHuongDan = new ManHinhHuongDan();
@@ -278,7 +279,8 @@ public class MainDashboard extends JFrame {
             }
         }
     }
- // Sửa hàm cũ: Thêm tham số boolean vao
+    
+    // Sửa hàm cũ: Thêm tham số boolean vao
     public void chuyenSangTabKhachHang(boolean moFormThem) {
         cardLayout.show(cardPanel, "Khách hàng"); 
 
@@ -301,7 +303,8 @@ public class MainDashboard extends JFrame {
             }
         }
     }
- // Thêm hàm này vào MainDashboard
+    
+    // Thêm hàm này vào MainDashboard
     public DefaultTableModel getModelKhachHang() {
         for (Component comp : cardPanel.getComponents()) {
             if (comp instanceof ManHinhKhachHang) {
@@ -310,6 +313,7 @@ public class MainDashboard extends JFrame {
         }
         return null;
     }
+    
     // --- HÀM CHẠY CHƯƠNG TRÌNH ---
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
