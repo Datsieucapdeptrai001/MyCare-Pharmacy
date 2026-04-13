@@ -20,6 +20,15 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.List;
 
+// Đã thêm các import thư viện Excel (POI) lên đầu cho chuẩn
+import org.apache.poi.ss.usermodel.DataFormatter;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 public class ManHinhSanPham extends JPanel {
 
     public enum ProductCategory { OTC, ETC, SUPPLEMENT }
@@ -263,6 +272,16 @@ public class ManHinhSanPham extends JPanel {
         JPanel pnlRight = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0)); pnlRight.setOpaque(false);
         pnlRight.add(new JLabel("Tìm kiếm: "));
         txtTimKiem = new WatermarkTextField("Tên, mã, hoạt chất..."); txtTimKiem.setPreferredSize(new Dimension(180, 36)); pnlRight.add(txtTimKiem);
+     // --- ĐOẠN CODE NÂNG CẤP TÌM KIẾM LIVE (THÊM VÀO) ---
+        txtTimKiem.getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) { doSearch(); }
+            @Override
+            public void removeUpdate(DocumentEvent e) { doSearch(); }
+            @Override
+            public void changedUpdate(DocumentEvent e) { doSearch(); }
+        });
+        // ---------------------------------------------------
 
         JButton btnTim    = createBtnWithIcon("Tìm",        "#1D68B2", new MenuIcon("SEARCH"));  btnTim.setPreferredSize(new Dimension(95, 36));
         JButton btnLamMoi = createBtnWithIcon("Làm mới",    "#64748B", new MenuIcon("REFRESH")); btnLamMoi.setPreferredSize(new Dimension(115, 36));
@@ -721,12 +740,10 @@ public class ManHinhSanPham extends JPanel {
     }
 
     private boolean exportExcelAction(String path, List<Object[]> data) {
-        /*
-        // Code mẫu khi bạn đã thêm thư viện Apache POI (poi-ooxml):
-        try (org.apache.poi.xssf.usermodel.XSSFWorkbook workbook = new org.apache.poi.xssf.usermodel.XSSFWorkbook()) {
-            org.apache.poi.ss.usermodel.Sheet sheet = workbook.createSheet("Danh Sach San Pham");
+        try (Workbook workbook = new XSSFWorkbook()) {
+            Sheet sheet = workbook.createSheet("Danh Sach San Pham");
             for (int i = 0; i < data.size(); i++) {
-                org.apache.poi.ss.usermodel.Row row = sheet.createRow(i);
+                Row row = sheet.createRow(i);
                 Object[] rowData = data.get(i);
                 for (int j = 0; j < rowData.length; j++) {
                     row.createCell(j).setCellValue(rowData[j] != null ? rowData[j].toString() : "");
@@ -740,11 +757,6 @@ public class ManHinhSanPham extends JPanel {
             ex.printStackTrace();
             return false;
         }
-        */
-        
-        // Hiện tại trả về true để bạn test UI, khi có POI hãy mở comment block phía trên
-        System.out.println("Đã xuất " + data.size() + " dòng ra file: " + path);
-        return true; 
     }
 
     // ========================================================================
@@ -790,29 +802,32 @@ public class ManHinhSanPham extends JPanel {
                 return; 
             } 
             
-            JOptionPane.showMessageDialog(dlg, "Đang đọc dữ liệu từ file Excel...\n(Cần tích hợp thư viện Apache POI để đọc thật)", "Thông báo", JOptionPane.INFORMATION_MESSAGE); 
-            
-            /*
-            // Code mẫu khi bạn đã thêm thư viện Apache POI (poi-ooxml):
             try (java.io.FileInputStream fis = new java.io.FileInputStream(selectedFileArr[0]);
-                 org.apache.poi.xssf.usermodel.XSSFWorkbook workbook = new org.apache.poi.xssf.usermodel.XSSFWorkbook(fis)) {
+                 Workbook workbook = new XSSFWorkbook(fis)) {
                 
-                org.apache.poi.ss.usermodel.Sheet sheet = workbook.getSheetAt(0);
+                Sheet sheet = workbook.getSheetAt(0);
+                DataFormatter formatter = new DataFormatter(); // Sử dụng DataFormatter để fix lỗi crash khi đọc số
+                
                 for (int i = 1; i <= sheet.getLastRowNum(); i++) { // Bỏ qua dòng header
-                    org.apache.poi.ss.usermodel.Row row = sheet.getRow(i);
+                    Row row = sheet.getRow(i);
                     if (row != null) {
-                        String ma = row.getCell(0).getStringCellValue();
-                        String ten = row.getCell(1).getStringCellValue();
-                        String loai = row.getCell(2).getStringCellValue();
-                        String hoatChat = row.getCell(3).getStringCellValue();
-                        String dang = row.getCell(4).getStringCellValue();
-                        allDataMock.add(0, new Object[]{ma, ten, loai, hoatChat, dang});
+                        String ma = formatter.formatCellValue(row.getCell(0));
+                        String ten = formatter.formatCellValue(row.getCell(1));
+                        String loai = formatter.formatCellValue(row.getCell(2));
+                        String hoatChat = formatter.formatCellValue(row.getCell(3));
+                        String dang = formatter.formatCellValue(row.getCell(4));
+                        
+                        // Kiểm tra nếu dòng có dữ liệu mới add vào bảng
+                        if (!ma.trim().isEmpty() || !ten.trim().isEmpty()) {
+                            allDataMock.add(0, new Object[]{ma, ten, loai, hoatChat, dang});
+                        }
                     }
                 }
+                JOptionPane.showMessageDialog(dlg, "Đã nhập dữ liệu thành công!", "Thành công", JOptionPane.INFORMATION_MESSAGE);
             } catch (Exception ex) {
                 ex.printStackTrace();
+                JOptionPane.showMessageDialog(dlg, "Lỗi đọc file: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
             }
-            */
 
             doSearch(); // Làm mới bảng sau khi nạp dữ liệu
             dlg.dispose(); 
