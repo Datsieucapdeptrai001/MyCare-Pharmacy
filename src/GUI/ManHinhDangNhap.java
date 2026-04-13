@@ -1,6 +1,6 @@
 package GUI;
 
-import Components.MenuIcon;
+import Utils.*;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.event.DocumentEvent;
@@ -459,6 +459,6 @@ public class ManHinhDangNhap extends JFrame {
     }
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> new ManHinhDangNhap().setVisible(true));
+        SwingUtilities.invokeLater(() -> new MainDashboard().setVisible(true));
     }
 }
