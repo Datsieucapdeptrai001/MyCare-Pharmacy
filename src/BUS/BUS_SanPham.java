@@ -2,82 +2,97 @@ package BUS;
 
 import Entity.SanPham;
 import Entity.LoHang;
+import DAO.DAO_SanPham; // Đã thêm kết nối với tầng DAO
 import java.util.ArrayList;
 import java.util.List;
 
 public class BUS_SanPham {
-    // Không khởi tạo DAO để tránh lỗi kết nối Database
-    // private DAO_SanPham daoSanPham; 
+    // 1. KHỞI TẠO ĐỐI TƯỢNG DAO ĐỂ TƯƠNG TÁC DB THẬT
+    private DAO_SanPham daoSanPham = new DAO_SanPham(); 
 
     public BUS_SanPham() {
-        // Constructor để trống vì chạy ảo
     }
 
-    // 1. Nghiệp vụ: Trả về danh sách dữ liệu giả (Mock Data)
-    // Giúp hiển thị lên bảng mà không cần Database
+    // ============================================================
+    // PHẦN 1: CÁC HÀM CŨ (GIỮ NGUYÊN THEO YÊU CẦU)
+    // ============================================================
+
     public List<SanPham> traCuuSanPham(String tuKhoa) {
         List<SanPham> dsFake = new ArrayList<>();
-
-        // Tạo SP 1: Vitamin C
         SanPham sp1 = new SanPham();
-        sp1.setId("PRO2023-0001");
-        sp1.setTen("Vitamin C 1000mg");
-        sp1.setHoatChat("Ascorbic Acid");
-        sp1.setDonViDoCoBan("Viên");
-        sp1.setThueVAT(10);
+        sp1.setId("PRO2023-0001"); sp1.setTen("Vitamin C 1000mg"); sp1.setHoatChat("Ascorbic Acid"); sp1.setDonViDoCoBan("Viên"); sp1.setThueVAT(10);
         
-        // Tạo SP 2: Siro tăng sức đề kháng
         SanPham sp2 = new SanPham();
-        sp2.setId("PRO2023-0005");
-        sp2.setTen("Siro tăng sức đề kháng");
-        sp2.setHoatChat("Various");
-        sp2.setDonViDoCoBan("Chai");
-        sp2.setThueVAT(10);
+        sp2.setId("PRO2023-0005"); sp2.setTen("Siro tăng sức đề kháng"); sp2.setHoatChat("Various"); sp2.setDonViDoCoBan("Chai"); sp2.setThueVAT(10);
 
-        // Tạo SP 3: Paracetamol
         SanPham sp3 = new SanPham();
-        sp3.setId("PRO2023-0006");
-        sp3.setTen("Paracetamol 500mg");
-        sp3.setHoatChat("Paracetamol");
-        sp3.setDonViDoCoBan("Vỉ");
-        sp3.setThueVAT(5);
+        sp3.setId("PRO2023-0006"); sp3.setTen("Paracetamol 500mg"); sp3.setHoatChat("Paracetamol"); sp3.setDonViDoCoBan("Vỉ"); sp3.setThueVAT(5);
 
-        // Thêm vào danh sách
-        dsFake.add(sp1);
-        dsFake.add(sp2);
-        dsFake.add(sp3);
+        dsFake.add(sp1); dsFake.add(sp2); dsFake.add(sp3);
 
-        // Logic tìm kiếm ảo
-        if (tuKhoa == null || tuKhoa.trim().isEmpty()) {
-            return dsFake;
-        }
+        if (tuKhoa == null || tuKhoa.trim().isEmpty()) return dsFake;
 
         List<SanPham> ketQuaTimKiem = new ArrayList<>();
         String tuKhoaLower = tuKhoa.toLowerCase();
         for (SanPham sp : dsFake) {
-            if (sp.getTen().toLowerCase().contains(tuKhoaLower) || 
-                sp.getHoatChat().toLowerCase().contains(tuKhoaLower)) {
+            if (sp.getTen().toLowerCase().contains(tuKhoaLower) || sp.getHoatChat().toLowerCase().contains(tuKhoaLower)) {
                 ketQuaTimKiem.add(sp);
             }
         }
         return ketQuaTimKiem;
     }
 
-    // 2. Nghiệp vụ: Kiểm tra thông tin (Luôn trả về true để bạn thao tác mượt)
     public boolean kiemTraThongTinSP(SanPham sp) {
         return true; 
     }
 
-    // 3. Nghiệp vụ: Tính giá bán (Trả về giá giả định)
     public double tinhGiaBanTheoDonVi(String maSP, String donViMuonBan) {
-        // Trả về một con số bất kỳ để giao diện hiển thị được giá
         return 5000.0; 
     }
     
-    // Bổ sung hàm này nếu ManHinhSanPham có gọi để lấy lô hàng ảo
     public List<LoHang> layLoTheoSP(String maSP) {
-        List<LoHang> dsLoFake = new ArrayList<>();
-        // Bạn có thể thêm dữ liệu LoHang giả ở đây nếu cần
-        return dsLoFake;
+        return daoSanPham.layLoTheoSP(maSP); // Đã chuyển sang gọi DAO thật để lấy dữ liệu lô
+    }
+
+    // ============================================================
+    // PHẦN 2: CÁC HÀM MỚI (TƯƠNG TÁC DATABASE THẬT)
+    // ============================================================
+
+    /**
+     * Tự động sinh mã sản phẩm mới dựa trên DB (Fix lỗi trùng ID)
+     */
+    public String taoMaMoi() {
+        return daoSanPham.layMaSanPhamMoiNhat();
+    }
+
+    /**
+     * Thêm sản phẩm mới vào SQL Server
+     */
+    public boolean themSP(String id, String danhMuc, String dang, String ten, String vietTat, String nsx, String hoatChat, double vat, String hamLuong, String moTa, String dvt) {
+        // Có thể thêm logic kiểm tra dữ liệu ở đây trước khi gọi DAO
+        if (ten == null || ten.trim().isEmpty()) return false;
+        return daoSanPham.themSanPhamNhanh(id, danhMuc, dang, ten, vietTat, nsx, hoatChat, vat, hamLuong, moTa, dvt);
+    }
+
+    /**
+     * Cập nhật thông tin sản phẩm đã có trong DB
+     */
+    public boolean capNhatSP(String id, String danhMuc, String dang, String ten, String vietTat, String nsx, String hoatChat, double vat, String hamLuong, String moTa, String dvt) {
+        return daoSanPham.capNhatSanPhamNhanh(id, danhMuc, dang, ten, vietTat, nsx, hoatChat, vat, hamLuong, moTa, dvt);
+    }
+
+    /**
+     * Xóa vĩnh viễn sản phẩm khỏi Database
+     */
+    public boolean xoaSP(String id) {
+        if (id == null || id.isEmpty()) return false;
+        return daoSanPham.xoaSanPham(id);
+    }
+    
+    /**
+     * Lấy toàn bộ danh sách định dạng bảng để hiển thị giao diện
+     */
+    public List<Object[]> layDanhSachChoBang() {
+        return daoSanPham.layDanhSachSanPhamChoBang();
     }
 }
