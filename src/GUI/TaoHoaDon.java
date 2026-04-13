@@ -7,7 +7,7 @@ import javax.swing.table.DefaultTableModel;
 import Utils.*;
 
 import java.awt.*;
-
+import DAO.DAO_SanPham;
 public class TaoHoaDon extends JDialog {
     // --- BIẾN QUẢN LÝ UI KHÁCH HÀNG ---
     private JPanel pnlInputFields, pnlLinkedCustomer;
@@ -673,17 +673,23 @@ public class TaoHoaDon extends JDialog {
                 suggestionPopup.removeAll();
                 boolean hasResult = false;
 
-                // --- DỮ LIỆU MÔ PHỎNG THEO ẢNH DESIGN CỦA BẠN ---
-                if ("viên sủi plusssz gold".contains(text) || text.contains("sủi")) {
-                    suggestionPopup.add(createSuggestionItem(suggestionPopup, txtSearchProduct, "PILL", "Viên sủi Plusssz Gold", "Tuýp", "45000", "120"));
-                    hasResult = true;
-                }
-                if ("băng cá nhân urgo".contains(text) || text.contains("băng") || text.contains("urgo")) {
-                    suggestionPopup.add(createSuggestionItem(suggestionPopup, txtSearchProduct, "MED_BOX", "Băng cá nhân Urgo", "Hộp", "32000", "45"));
-                    hasResult = true;
-                }
-                if ("panadol extra".contains(text) || text.contains("pana")) {
-                    suggestionPopup.add(createSuggestionItem(suggestionPopup, txtSearchProduct, "PILL", "Panadol Extra", "Vỉ", "15000", "300"));
+                // --- TÌM KIẾM SẢN PHẨM TỪ DATABASE ---
+                DAO_SanPham daoSP = new DAO_SanPham();
+                // Khai báo java.util.List để tránh nhầm với java.awt.List
+                java.util.List<Object[]> ketQua = daoSP.timKiemSanPhamBan(text);
+
+                if (ketQua != null && !ketQua.isEmpty()) {
+                    for (Object[] row : ketQua) {
+                        String id = row[0].toString();
+                        String ten = row[1].toString();
+                        String donVi = row[2].toString();
+                        String gia = row[3].toString();
+                        String tonKho = row[4].toString();
+
+                        // Thêm từng sản phẩm tìm được vào Popup Gợi ý
+                        // Tham số: Popup, TextBox, Icon mặc định ("PILL"), Tên, ĐVT, Giá, Tồn kho
+                        suggestionPopup.add(createSuggestionItem(suggestionPopup, txtSearchProduct, "PILL", ten, donVi, gia, tonKho));
+                    }
                     hasResult = true;
                 }
 
@@ -693,7 +699,13 @@ public class TaoHoaDon extends JDialog {
                     suggestionPopup.show(pnlSearchWrapper, 0, pnlSearchWrapper.getHeight());
                     txtSearchProduct.requestFocus(); 
                 } else {
-                    suggestionPopup.setVisible(false);
+                    // Nếu không tìm thấy, có thể hiện một thông báo nhỏ hoặc ẩn đi
+                    JMenuItem emptyItem = new JMenuItem("Không tìm thấy sản phẩm nào phù hợp...");
+                    emptyItem.setEnabled(false);
+                    suggestionPopup.add(emptyItem);
+                    suggestionPopup.setPreferredSize(new Dimension(pnlSearchWrapper.getWidth(), suggestionPopup.getPreferredSize().height));
+                    suggestionPopup.show(pnlSearchWrapper, 0, pnlSearchWrapper.getHeight());
+                    txtSearchProduct.requestFocus();
                 }
             }
         });

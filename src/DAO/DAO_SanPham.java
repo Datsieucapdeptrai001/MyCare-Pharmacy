@@ -126,7 +126,48 @@ public class DAO_SanPham {
         }
         return dsLoHang;
     }
+ // Nhớ import các thư viện: java.util.List, java.util.ArrayList, java.sql.*
+    public List<Object[]> timKiemSanPhamBan(String tuKhoa) {
+        List<Object[]> list = new ArrayList<>();
+        
+        // Truy vấn: Tìm theo Tên hoặc Mã SP. Chỉ lấy SP còn tồn kho > 0
+        String sql = "SELECT sp.id, sp.ten, dv.tenDonVi, dv.gia, ISNULL(SUM(lh.soLuongLoHang), 0) AS tonKho " +
+                     "FROM SanPham sp " +
+                     "JOIN DonViDoLuong dv ON sp.id = dv.sanPhamId " +
+                     "LEFT JOIN LoHang lh ON sp.id = lh.sanPhamId AND lh.trangThai = 'CON_HANG' " +
+                     "WHERE sp.ten LIKE ? OR sp.id LIKE ? " +
+                     "GROUP BY sp.id, sp.ten, dv.tenDonVi, dv.gia " +
+                     "HAVING ISNULL(SUM(lh.soLuongLoHang), 0) > 0"; 
 
+        // [ĐÃ SỬA]: Kéo Connection ra ngoài khối try() để tránh bị tự động close()
+        // Vì trong ConnectDB.java của bạn, getConnection() là hàm static nên gọi trực tiếp luôn
+        Connection con = ConnectDB.getConnection();
+
+        // Chỉ đưa PreparedStatement vào try-with-resources để tự động giải phóng bộ nhớ câu lệnh SQL
+        try (PreparedStatement pst = con.prepareStatement(sql)) {
+
+            // Thêm % vào 2 đầu để tìm kiếm gần đúng (chứa từ khóa)
+            String searchPattern = "%" + tuKhoa + "%";
+            pst.setString(1, searchPattern);
+            pst.setString(2, searchPattern);
+
+            try (ResultSet rs = pst.executeQuery()) {
+                while (rs.next()) {
+                    String id = rs.getString("id");
+                    String ten = rs.getString("ten");
+                    String donVi = rs.getString("tenDonVi");
+                    String gia = String.valueOf(Math.round(rs.getDouble("gia"))); // Bỏ phần thập phân .0
+                    String tonKho = String.valueOf(rs.getInt("tonKho"));
+
+                    // Đưa vào mảng Object để trả về
+                    list.add(new Object[]{id, ten, donVi, gia, tonKho});
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
     // 3. Cập nhật số lượng tồn kho
     public boolean capNhatSoLuongTon(String maLoHang, int soLuongMoi) {
         String sql = "UPDATE LoHang SET soLuongLoHang = ? WHERE id = ?";
