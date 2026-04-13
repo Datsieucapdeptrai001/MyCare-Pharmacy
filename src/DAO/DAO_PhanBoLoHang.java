@@ -15,7 +15,7 @@ public class DAO_PhanBoLoHang {
             pst.setString(2, pb.getSanPhamId().getId());
             
             // ĐÃ SỬA: Thêm dòng truyền giá trị Mã Đơn Vị Đo Lường xuống CSDL
-            pst.setString(3, pb.getDonViDoLuongId().getId()); 
+            pst.setString(3, pb.getDonViDoLuong().getId()); 
             
             pst.setString(4, pb.getLoHangId().getId());
             pst.setInt(5, pb.getSoLuong());
