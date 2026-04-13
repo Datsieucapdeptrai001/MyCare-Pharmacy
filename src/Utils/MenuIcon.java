@@ -1,4 +1,4 @@
-package Components;
+package Utils;
 
 import javax.swing.Icon;
 import java.awt.*;
@@ -237,6 +237,29 @@ public class MenuIcon implements Icon {
                 g2d.setStroke(new BasicStroke(1.5f));
                 g2d.drawLine(x + 15, y + 5, x + 19, y + 5); // Ngang
                 g2d.drawLine(x + 17, y + 3, x + 17, y + 7); // Dọc
+                break;
+            case "IMPORT": // Icon Nhập Excel (Mũi tên hướng xuống khay)
+                g2d.drawLine(x + 11, y + 2, x + 11, y + 14); // Trục mũi tên dọc
+                g2d.drawLine(x + 7, y + 10, x + 11, y + 14); // Cánh mũi tên trái
+                g2d.drawLine(x + 15, y + 10, x + 11, y + 14); // Cánh mũi tên phải
+                g2d.drawLine(x + 4, y + 18, x + 18, y + 18); // Khay ngang
+                g2d.drawLine(x + 4, y + 15, x + 4, y + 18); // Mép khay trái
+                g2d.drawLine(x + 18, y + 15, x + 18, y + 18); // Mép khay phải
+                break;
+                
+            case "EXPORT": // Icon Xuất Excel (Mũi tên hướng lên từ khay)
+                g2d.drawLine(x + 11, y + 14, x + 11, y + 2); // Trục mũi tên dọc
+                g2d.drawLine(x + 7, y + 6, x + 11, y + 2); // Cánh mũi tên trái
+                g2d.drawLine(x + 15, y + 6, x + 11, y + 2); // Cánh mũi tên phải
+                g2d.drawLine(x + 4, y + 18, x + 18, y + 18); // Khay ngang
+                g2d.drawLine(x + 4, y + 15, x + 4, y + 18); // Mép khay trái
+                g2d.drawLine(x + 18, y + 15, x + 18, y + 18); // Mép khay phải
+                break;
+
+            case "CANCEL": // Icon Hủy (Vòng tròn có dấu X bên trong)
+                g2d.drawOval(x + 3, y + 3, 16, 16); // Vòng tròn ngoài
+                g2d.drawLine(x + 8, y + 8, x + 14, y + 14); // Đường chéo 1
+                g2d.drawLine(x + 14, y + 8, x + 8, y + 14); // Đường chéo 2
                 break;
         }
         g2d.dispose();

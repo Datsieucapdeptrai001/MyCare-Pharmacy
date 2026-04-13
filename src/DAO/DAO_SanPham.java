@@ -19,7 +19,46 @@ public class DAO_SanPham {
 
     public DAO_SanPham() {
     }
-
+    public List<Object[]> layDanhSachSanPhamChoBang() {
+        List<Object[]> ds = new ArrayList<>();
+        // Câu lệnh lấy danh sách sản phẩm. Tùy vào CSDL của bạn có cột nhaSanXuat, thueVAT không, 
+        // ở đây dùng ISNULL để đảm bảo không bị lỗi nếu cột bị trống
+        String sql = "SELECT id, ten, danhMuc, ISNULL(hoatChat, '') AS hoatChat, dang, " +
+                     "ISNULL(nhaSanXuat, 'Khác') AS nhaSanXuat, ISNULL(thueVAT, 0) AS thueVAT " +
+                     "FROM SanPham";
+        
+        try (Connection con = ConnectDB.getInstance().getConnection();
+             PreparedStatement pst = con.prepareStatement(sql);
+             ResultSet rs = pst.executeQuery()) {
+             
+            while (rs.next()) {
+                String ma = rs.getString("id");
+                String ten = rs.getString("ten");
+                
+                // 1. Chuyển đổi Danh Mục (Enum) sang Tiếng Việt
+                String danhMucDB = rs.getString("danhMuc");
+                String loai = "Sản phẩm chức năng"; // Mặc định
+                if ("THUOC_KE_DON".equals(danhMucDB)) loai = "Thuốc kê đơn";
+                else if ("THUOC_KHONG_KE_DON".equals(danhMucDB)) loai = "Thuốc không kê đơn";
+                
+                String hoatChat = rs.getString("hoatChat");
+                
+                // 2. Chuyển đổi Dạng Bào Chế (Enum)
+                String dangDB = rs.getString("dang");
+                String dang = "Viên nén"; 
+                if ("DANG_LONG".equals(dangDB)) dang = "Dung dịch";
+                
+                String nsx = rs.getString("nhaSanXuat");
+                String vat = rs.getDouble("thueVAT") + "%";
+                
+                // 3. Gom vào mảng Object theo đúng thứ tự 7 cột của Bảng
+                ds.add(new Object[]{ma, ten, loai, hoatChat, dang, nsx, vat});
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return ds;
+    }
     // 1. Lấy danh sách toàn bộ Thuốc/Sản phẩm theo đúng tên hàm trong sơ đồ
     public List<SanPham> getDsThuoc() {
         List<SanPham> dsSanPham = new ArrayList<>();
@@ -126,7 +165,48 @@ public class DAO_SanPham {
         }
         return dsLoHang;
     }
+ // Nhớ import các thư viện: java.util.List, java.util.ArrayList, java.sql.*
+    public List<Object[]> timKiemSanPhamBan(String tuKhoa) {
+        List<Object[]> list = new ArrayList<>();
+        
+        // Truy vấn: Tìm theo Tên hoặc Mã SP. Chỉ lấy SP còn tồn kho > 0
+        String sql = "SELECT sp.id, sp.ten, dv.tenDonVi, dv.gia, ISNULL(SUM(lh.soLuongLoHang), 0) AS tonKho " +
+                     "FROM SanPham sp " +
+                     "JOIN DonViDoLuong dv ON sp.id = dv.sanPhamId " +
+                     "LEFT JOIN LoHang lh ON sp.id = lh.sanPhamId AND lh.trangThai = 'CON_HANG' " +
+                     "WHERE sp.ten LIKE ? OR sp.id LIKE ? " +
+                     "GROUP BY sp.id, sp.ten, dv.tenDonVi, dv.gia " +
+                     "HAVING ISNULL(SUM(lh.soLuongLoHang), 0) > 0"; 
 
+        // [ĐÃ SỬA]: Kéo Connection ra ngoài khối try() để tránh bị tự động close()
+        // Vì trong ConnectDB.java của bạn, getConnection() là hàm static nên gọi trực tiếp luôn
+        Connection con = ConnectDB.getConnection();
+
+        // Chỉ đưa PreparedStatement vào try-with-resources để tự động giải phóng bộ nhớ câu lệnh SQL
+        try (PreparedStatement pst = con.prepareStatement(sql)) {
+
+            // Thêm % vào 2 đầu để tìm kiếm gần đúng (chứa từ khóa)
+            String searchPattern = "%" + tuKhoa + "%";
+            pst.setString(1, searchPattern);
+            pst.setString(2, searchPattern);
+
+            try (ResultSet rs = pst.executeQuery()) {
+                while (rs.next()) {
+                    String id = rs.getString("id");
+                    String ten = rs.getString("ten");
+                    String donVi = rs.getString("tenDonVi");
+                    String gia = String.valueOf(Math.round(rs.getDouble("gia"))); // Bỏ phần thập phân .0
+                    String tonKho = String.valueOf(rs.getInt("tonKho"));
+
+                    // Đưa vào mảng Object để trả về
+                    list.add(new Object[]{id, ten, donVi, gia, tonKho});
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
     // 3. Cập nhật số lượng tồn kho
     public boolean capNhatSoLuongTon(String maLoHang, int soLuongMoi) {
         String sql = "UPDATE LoHang SET soLuongLoHang = ? WHERE id = ?";

@@ -1,6 +1,6 @@
 package GUI;
 
-import Components.MenuIcon;
+import Utils.MenuIcon;
 import ConnectDB.ConnectDB;
 
 import javax.swing.*;
@@ -1262,4 +1262,26 @@ public class ManHinhKhuyenMai extends JPanel {
             lblCount.setText(visible + " / " + tableModel.getRowCount() + " chương trình");
         }
     }
+    /**
+     * Phân quyền: Ẩn nút Thêm/Sửa/Xóa cho STAFF.
+     */
+    public void setReadOnly(boolean readOnly) {
+        if (!readOnly) return;
+
+        disableButtonsByText(this, "Thêm mới", "Nhập Excel", "Thêm", "Xóa", "Sửa", "Lưu", "+ Thêm mới", "Chỉnh sửa", "Xóa chương trình", "Lưu chương trình", "Cập nhật");
+    }
+
+    private void disableButtonsByText(java.awt.Container container, String... texts) {
+        for (java.awt.Component c : container.getComponents()) {
+            if (c instanceof javax.swing.JButton) {
+                javax.swing.JButton btn = (javax.swing.JButton) c;
+                for (String t : texts) {
+                    if (t.equals(btn.getText())) { btn.setVisible(false); break; }
+                }
+            } else if (c instanceof java.awt.Container) {
+                disableButtonsByText((java.awt.Container) c, texts);
+            }
+        }
+    }
+
 }

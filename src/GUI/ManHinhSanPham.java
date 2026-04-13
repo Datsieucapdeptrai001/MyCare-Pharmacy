@@ -1,7 +1,7 @@
 package GUI;
 
 import BUS.BUS_SanPham;
-import Components.MenuIcon;
+import Utils.*;
 import Entity.LoHang;
 import Entity.SanPham;
 
@@ -20,6 +20,15 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.List;
 
+// Đã thêm các import thư viện Excel (POI) lên đầu cho chuẩn
+import org.apache.poi.ss.usermodel.DataFormatter;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 public class ManHinhSanPham extends JPanel {
 
     public enum ProductCategory { OTC, ETC, SUPPLEMENT }
@@ -151,7 +160,7 @@ public class ManHinhSanPham extends JPanel {
 
         add(pnlBody, BorderLayout.CENTER);
 
-        khoiTaoDuLieuAo();
+        loadDataFromDatabase();
         currentFilteredData.addAll(allDataMock);
         // Mặc định: detail ẩn, bảng mở rộng 7 cột
         setDetailVisible(false);
@@ -263,6 +272,16 @@ public class ManHinhSanPham extends JPanel {
         JPanel pnlRight = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0)); pnlRight.setOpaque(false);
         pnlRight.add(new JLabel("Tìm kiếm: "));
         txtTimKiem = new WatermarkTextField("Tên, mã, hoạt chất..."); txtTimKiem.setPreferredSize(new Dimension(180, 36)); pnlRight.add(txtTimKiem);
+     // --- ĐOẠN CODE NÂNG CẤP TÌM KIẾM LIVE (THÊM VÀO) ---
+        txtTimKiem.getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) { doSearch(); }
+            @Override
+            public void removeUpdate(DocumentEvent e) { doSearch(); }
+            @Override
+            public void changedUpdate(DocumentEvent e) { doSearch(); }
+        });
+        // ---------------------------------------------------
 
         JButton btnTim    = createBtnWithIcon("Tìm",        "#1D68B2", new MenuIcon("SEARCH"));  btnTim.setPreferredSize(new Dimension(95, 36));
         JButton btnLamMoi = createBtnWithIcon("Làm mới",    "#64748B", new MenuIcon("REFRESH")); btnLamMoi.setPreferredSize(new Dimension(115, 36));
@@ -721,12 +740,10 @@ public class ManHinhSanPham extends JPanel {
     }
 
     private boolean exportExcelAction(String path, List<Object[]> data) {
-        /*
-        // Code mẫu khi bạn đã thêm thư viện Apache POI (poi-ooxml):
-        try (org.apache.poi.xssf.usermodel.XSSFWorkbook workbook = new org.apache.poi.xssf.usermodel.XSSFWorkbook()) {
-            org.apache.poi.ss.usermodel.Sheet sheet = workbook.createSheet("Danh Sach San Pham");
+        try (Workbook workbook = new XSSFWorkbook()) {
+            Sheet sheet = workbook.createSheet("Danh Sach San Pham");
             for (int i = 0; i < data.size(); i++) {
-                org.apache.poi.ss.usermodel.Row row = sheet.createRow(i);
+                Row row = sheet.createRow(i);
                 Object[] rowData = data.get(i);
                 for (int j = 0; j < rowData.length; j++) {
                     row.createCell(j).setCellValue(rowData[j] != null ? rowData[j].toString() : "");
@@ -740,11 +757,6 @@ public class ManHinhSanPham extends JPanel {
             ex.printStackTrace();
             return false;
         }
-        */
-        
-        // Hiện tại trả về true để bạn test UI, khi có POI hãy mở comment block phía trên
-        System.out.println("Đã xuất " + data.size() + " dòng ra file: " + path);
-        return true; 
     }
 
     // ========================================================================
@@ -790,29 +802,32 @@ public class ManHinhSanPham extends JPanel {
                 return; 
             } 
             
-            JOptionPane.showMessageDialog(dlg, "Đang đọc dữ liệu từ file Excel...\n(Cần tích hợp thư viện Apache POI để đọc thật)", "Thông báo", JOptionPane.INFORMATION_MESSAGE); 
-            
-            /*
-            // Code mẫu khi bạn đã thêm thư viện Apache POI (poi-ooxml):
             try (java.io.FileInputStream fis = new java.io.FileInputStream(selectedFileArr[0]);
-                 org.apache.poi.xssf.usermodel.XSSFWorkbook workbook = new org.apache.poi.xssf.usermodel.XSSFWorkbook(fis)) {
+                 Workbook workbook = new XSSFWorkbook(fis)) {
                 
-                org.apache.poi.ss.usermodel.Sheet sheet = workbook.getSheetAt(0);
+                Sheet sheet = workbook.getSheetAt(0);
+                DataFormatter formatter = new DataFormatter(); // Sử dụng DataFormatter để fix lỗi crash khi đọc số
+                
                 for (int i = 1; i <= sheet.getLastRowNum(); i++) { // Bỏ qua dòng header
-                    org.apache.poi.ss.usermodel.Row row = sheet.getRow(i);
+                    Row row = sheet.getRow(i);
                     if (row != null) {
-                        String ma = row.getCell(0).getStringCellValue();
-                        String ten = row.getCell(1).getStringCellValue();
-                        String loai = row.getCell(2).getStringCellValue();
-                        String hoatChat = row.getCell(3).getStringCellValue();
-                        String dang = row.getCell(4).getStringCellValue();
-                        allDataMock.add(0, new Object[]{ma, ten, loai, hoatChat, dang});
+                        String ma = formatter.formatCellValue(row.getCell(0));
+                        String ten = formatter.formatCellValue(row.getCell(1));
+                        String loai = formatter.formatCellValue(row.getCell(2));
+                        String hoatChat = formatter.formatCellValue(row.getCell(3));
+                        String dang = formatter.formatCellValue(row.getCell(4));
+                        
+                        // Kiểm tra nếu dòng có dữ liệu mới add vào bảng
+                        if (!ma.trim().isEmpty() || !ten.trim().isEmpty()) {
+                            allDataMock.add(0, new Object[]{ma, ten, loai, hoatChat, dang});
+                        }
                     }
                 }
+                JOptionPane.showMessageDialog(dlg, "Đã nhập dữ liệu thành công!", "Thành công", JOptionPane.INFORMATION_MESSAGE);
             } catch (Exception ex) {
                 ex.printStackTrace();
+                JOptionPane.showMessageDialog(dlg, "Lỗi đọc file: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
             }
-            */
 
             doSearch(); // Làm mới bảng sau khi nạp dữ liệu
             dlg.dispose(); 
@@ -847,48 +862,21 @@ public class ManHinhSanPham extends JPanel {
     private void setupTableStyle(JTable t) { t.setRowHeight(30); t.setFont(FONT_NORMAL); t.getTableHeader().setFont(FONT_BOLD); t.getTableHeader().setBackground(COLOR_LIGHT_BLUE); t.setGridColor(COLOR_BORDER); t.setSelectionBackground(COLOR_LIGHT_BLUE); t.setSelectionForeground(Color.BLACK); }
     private JLabel createLabelFilter(String t) { JLabel l = new JLabel(t); l.setFont(new Font("Segoe UI", Font.BOLD, 14)); l.setBorder(new EmptyBorder(10, 15, 5, 0)); return l; }
 
-    private void khoiTaoDuLieuAo() {
-        allDataMock.add(new Object[]{"PRO2023-0001", "Vitamin C 1000mg", "Sản phẩm chức năng", "Ascorbic Acid", "Viên sủi"});
-        allDataMock.add(new Object[]{"PRO2023-0002", "Calcium + Vitamin D3", "Sản phẩm chức năng", "Calcium", "Viên nén"});
-        allDataMock.add(new Object[]{"PRO2023-0003", "Omega 3 Fish Oil", "Sản phẩm chức năng", "EPA, DHA", "Viên nang"});
-        allDataMock.add(new Object[]{"PRO2023-0004", "Siro tăng sức đề kháng", "Sản phẩm chức năng", "Various", "Si rô"});
-        allDataMock.add(new Object[]{"PRO2023-0005", "Paracetamol 500mg", "Thuốc không kê đơn", "Paracetamol", "Viên nén"});
-        allDataMock.add(new Object[]{"PRO2023-0006", "Ibuprofen 400mg", "Thuốc không kê đơn", "Ibuprofen", "Viên nén"});
-        allDataMock.add(new Object[]{"PRO2023-0007", "Amoxicillin 500mg", "Thuốc kê đơn", "Amoxicillin", "Viên nang"});
-        allDataMock.add(new Object[]{"PRO2023-0008", "Loratadine 10mg", "Thuốc không kê đơn", "Loratadine", "Viên nén"});
-        allDataMock.add(new Object[]{"PRO2023-0009", "Siro ho Prospan", "Thuốc không kê đơn", "Cao lá thường xuân", "Si rô"});
-        allDataMock.add(new Object[]{"PRO2023-0010", "Smecta", "Thuốc không kê đơn", "Diosmectite", "Thuốc bột"});
-        allDataMock.add(new Object[]{"PRO2023-0011", "Oresol", "Thuốc không kê đơn", "Điện giải", "Thuốc bột"});
-        allDataMock.add(new Object[]{"PRO2023-0012", "Berberin", "Thuốc không kê đơn", "Berberin clorid", "Viên nén"});
-        allDataMock.add(new Object[]{"PRO2023-0013", "Strepsils", "Thuốc không kê đơn", "Amylmetacresol", "Kẹo ngậm"});
-        allDataMock.add(new Object[]{"PRO2023-0014", "Betadine", "Thuốc không kê đơn", "Povidone-Iodine", "Dung dịch"});
-        allDataMock.add(new Object[]{"PRO2023-0015", "Vitamin E 400IU", "Sản phẩm chức năng", "Alpha Tocopherol", "Viên nang"});
-        allDataMock.add(new Object[]{"PRO2023-0016", "Sắt + Folic Acid", "Sản phẩm chức năng", "Sắt, Folic", "Viên nén"});
-        allDataMock.add(new Object[]{"PRO2023-0017", "Ceftriaxone 500mg", "Thuốc kê đơn", "Ceftriaxone", "Viên nang"});
-        allDataMock.add(new Object[]{"PRO2023-0018", "Azithromycin 500mg", "Thuốc kê đơn", "Azithromycin", "Viên nang"});
-        allDataMock.add(new Object[]{"PRO2023-0019", "Omeprazole 20mg", "Thuốc kê đơn", "Omeprazole", "Viên nang"});
-        allDataMock.add(new Object[]{"PRO2023-0020", "Natri Clorid 0.9%", "Thuốc không kê đơn", "NaCl", "Dung dịch"});
-        allDataMock.add(new Object[]{"PRO2023-0021", "Thuốc nhỏ mắt V.Rohto", "Thuốc không kê đơn", "Tetrahydrozoline", "Thuốc nhỏ giọt"});
-        allDataMock.add(new Object[]{"PRO2023-0022", "Súc miệng Listerine", "Thuốc không kê đơn", "Menthol", "Súc miệng"});
-        allDataMock.add(new Object[]{"PRO2023-0023", "Men tiêu hóa Enterogermina", "Thuốc không kê đơn", "Bacillus clausii", "Hỗn dịch"});
-        allDataMock.add(new Object[]{"PRO2023-0024", "Vitamin B Complex", "Sản phẩm chức năng", "Vitamin B", "Viên nén"});
-        allDataMock.add(new Object[]{"PRO2023-0025", "Ginkgo Biloba 120mg", "Sản phẩm chức năng", "Ginkgo", "Viên nang"});
-        allDataMock.add(new Object[]{"PRO2023-0026", "Cefuroxime 1g", "Thuốc kê đơn", "Cefuroxime", "Viên nang"});
-        allDataMock.add(new Object[]{"PRO2023-0027", "Diclofenac 50mg", "Thuốc kê đơn", "Diclofenac", "Viên nén"});
-        allDataMock.add(new Object[]{"PRO2023-0028", "Meloxicam 7.5mg", "Thuốc kê đơn", "Meloxicam", "Viên nén"});
-        allDataMock.add(new Object[]{"PRO2023-0029", "Aspirin 400mg", "Thuốc không kê đơn", "Aspirin", "Viên nén"});
-        allDataMock.add(new Object[]{"PRO2023-0030", "Fexofenadine 10mg", "Thuốc không kê đơn", "Fexofenadine", "Viên nén"});
-        allDataMock.add(new Object[]{"PRO2023-0031", "Salbutamol 4mg", "Thuốc kê đơn", "Salbutamol", "Viên nén"});
-        allDataMock.add(new Object[]{"PRO2023-0032", "Prednisone 5mg", "Thuốc kê đơn", "Prednisone", "Viên nén"});
-        allDataMock.add(new Object[]{"PRO2023-0033", "Ciprofloxacin 500mg", "Thuốc kê đơn", "Ciprofloxacin", "Viên nang"});
-        allDataMock.add(new Object[]{"PRO2023-0034", "Vitamin A 400IU", "Sản phẩm chức năng", "Vitamin A", "Viên nang"});
-        allDataMock.add(new Object[]{"PRO2023-0035", "Kẽm ZinC", "Sản phẩm chức năng", "Kẽm", "Viên nén"});
-        allDataMock.add(new Object[]{"PRO2023-0036", "Collagen 1000mg", "Sản phẩm chức năng", "Collagen", "Viên nang"});
-        allDataMock.add(new Object[]{"PRO2023-0037", "Glucosamine 500mg", "Sản phẩm chức năng", "Glucosamine", "Viên nang"});
-        allDataMock.add(new Object[]{"PRO2023-0038", "Nước muối sinh lý", "Thuốc không kê đơn", "NaCl", "Dung dịch"});
-        allDataMock.add(new Object[]{"PRO2023-0039", "Cồn Iod", "Thuốc không kê đơn", "Iodine", "Dung dịch"});
-        allDataMock.add(new Object[]{"PRO2023-0040", "Oxy già", "Thuốc không kê đơn", "H2O2", "Dung dịch"});
-        allDataMock.add(new Object[]{"PRO2023-0041", "Băng cá nhân", "Sản phẩm chức năng", "Gạc", "Hộp"});
-        allDataMock.add(new Object[]{"PRO2023-0042", "Nhiệt kế thủy ngân", "Sản phẩm chức năng", "Thủy ngân", "Hộp"});
+    private void loadDataFromDatabase() {
+        // Xóa sạch dữ liệu mock cũ
+        allDataMock.clear();
+        
+        // Gọi CSDL để lấy dữ liệu thực tế
+        DAO.DAO_SanPham daoSP = new DAO.DAO_SanPham();
+        List<Object[]> dsSP = daoSP.layDanhSachSanPhamChoBang();
+        
+        if (dsSP != null) {
+            allDataMock.addAll(dsSP);
+        }
+        
+        // Nạp vào list hiển thị và cập nhật phân trang
+        currentFilteredData.clear();
+        currentFilteredData.addAll(allDataMock);
+        updatePagination();
     }
 }

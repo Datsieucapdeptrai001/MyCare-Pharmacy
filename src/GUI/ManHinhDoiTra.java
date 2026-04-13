@@ -1,9 +1,11 @@
 package GUI;
 
-import Components.MenuIcon;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.*;
+
+import Utils.MenuIcon;
+
 import java.awt.*;
 import java.awt.event.*;
 import java.util.ArrayList;
@@ -193,10 +195,10 @@ public class ManHinhDoiTra extends JPanel {
         JScrollPane sp = new JScrollPane(table);
         sp.setBorder(BorderFactory.createLineBorder(Color.decode("#DFE3E8")));
         this.add(sp, BorderLayout.CENTER);
-
-        loadDummyData();
+        
+        
     }
-
+    
     // --- BỔ SUNG 3: RENDERER MỚI CÓ CHỨA NÚT BẤM VÀ MÀU SẮC MỚI ---
     class DoiTraTableRenderer extends DefaultTableCellRenderer {
         
@@ -333,10 +335,5 @@ public class ManHinhDoiTra extends JPanel {
         btn.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(Color.decode("#DFE3E8"), 1), BorderFactory.createEmptyBorder(8, 15, 8, 15)));
     }
 
-    private void loadDummyData() {
-        // Mình thêm sẵn 1 dòng Chờ Xử Lý để bạn test nút bấm luôn nhé!
-        model.addRow(new Object[]{"DTH-003", "HD-2024-0007", "Đặng Văn Giang", "Trả hàng", "Lỗi nhà sản xuất", "660.000đ", "---", "Chờ xử lý", "11/04/2026", ""});
-        model.addRow(new Object[]{"DTH-002", "HD-2024-0003", "Lê Văn Cường", "Trả hàng", "Lỗi nhà sản xuất", "180.000đ", "---", "Hoàn thành", "11/04/2026", ""});
-        model.addRow(new Object[]{"DTH-001", "HD-2024-0001", "Nguyễn Văn An", "Trả hàng", "Lỗi nhà sản xuất", "25.000đ", "---", "Hoàn thành", "08/04/2026", ""});
-    }
+    
 }

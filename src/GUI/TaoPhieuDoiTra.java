@@ -1,10 +1,12 @@
 package GUI;
 
-import Components.MenuIcon;
 import javax.swing.*;
 import javax.swing.border.*;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
+
+import Utils.MenuIcon;
+
 import java.awt.*;
 import java.awt.event.*;
 

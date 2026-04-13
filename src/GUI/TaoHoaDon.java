@@ -3,9 +3,11 @@ package GUI;
 import javax.swing.*;
 import javax.swing.border.*;
 import javax.swing.table.DefaultTableModel;
-import java.awt.*;
-import Components.*;
 
+import Utils.*;
+
+import java.awt.*;
+import DAO.DAO_SanPham;
 public class TaoHoaDon extends JDialog {
     // --- BIẾN QUẢN LÝ UI KHÁCH HÀNG ---
     private JPanel pnlInputFields, pnlLinkedCustomer;
@@ -671,17 +673,23 @@ public class TaoHoaDon extends JDialog {
                 suggestionPopup.removeAll();
                 boolean hasResult = false;
 
-                // --- DỮ LIỆU MÔ PHỎNG THEO ẢNH DESIGN CỦA BẠN ---
-                if ("viên sủi plusssz gold".contains(text) || text.contains("sủi")) {
-                    suggestionPopup.add(createSuggestionItem(suggestionPopup, txtSearchProduct, "PILL", "Viên sủi Plusssz Gold", "Tuýp", "45000", "120"));
-                    hasResult = true;
-                }
-                if ("băng cá nhân urgo".contains(text) || text.contains("băng") || text.contains("urgo")) {
-                    suggestionPopup.add(createSuggestionItem(suggestionPopup, txtSearchProduct, "MED_BOX", "Băng cá nhân Urgo", "Hộp", "32000", "45"));
-                    hasResult = true;
-                }
-                if ("panadol extra".contains(text) || text.contains("pana")) {
-                    suggestionPopup.add(createSuggestionItem(suggestionPopup, txtSearchProduct, "PILL", "Panadol Extra", "Vỉ", "15000", "300"));
+                // --- TÌM KIẾM SẢN PHẨM TỪ DATABASE ---
+                DAO_SanPham daoSP = new DAO_SanPham();
+                // Khai báo java.util.List để tránh nhầm với java.awt.List
+                java.util.List<Object[]> ketQua = daoSP.timKiemSanPhamBan(text);
+
+                if (ketQua != null && !ketQua.isEmpty()) {
+                    for (Object[] row : ketQua) {
+                        String id = row[0].toString();
+                        String ten = row[1].toString();
+                        String donVi = row[2].toString();
+                        String gia = row[3].toString();
+                        String tonKho = row[4].toString();
+
+                        // Thêm từng sản phẩm tìm được vào Popup Gợi ý
+                        // Tham số: Popup, TextBox, Icon mặc định ("PILL"), Tên, ĐVT, Giá, Tồn kho
+                        suggestionPopup.add(createSuggestionItem(suggestionPopup, txtSearchProduct, "PILL", ten, donVi, gia, tonKho));
+                    }
                     hasResult = true;
                 }
 
@@ -691,7 +699,13 @@ public class TaoHoaDon extends JDialog {
                     suggestionPopup.show(pnlSearchWrapper, 0, pnlSearchWrapper.getHeight());
                     txtSearchProduct.requestFocus(); 
                 } else {
-                    suggestionPopup.setVisible(false);
+                    // Nếu không tìm thấy, có thể hiện một thông báo nhỏ hoặc ẩn đi
+                    JMenuItem emptyItem = new JMenuItem("Không tìm thấy sản phẩm nào phù hợp...");
+                    emptyItem.setEnabled(false);
+                    suggestionPopup.add(emptyItem);
+                    suggestionPopup.setPreferredSize(new Dimension(pnlSearchWrapper.getWidth(), suggestionPopup.getPreferredSize().height));
+                    suggestionPopup.show(pnlSearchWrapper, 0, pnlSearchWrapper.getHeight());
+                    txtSearchProduct.requestFocus();
                 }
             }
         });
@@ -912,62 +926,60 @@ public class TaoHoaDon extends JDialog {
         pnl.setBackground(Color.WHITE);
         pnl.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createLineBorder(Color.decode(hexColor), 1, true),
-            new EmptyBorder(3, 10, 3, 5)
+            new EmptyBorder(8, 10, 8, 10) // Nới lỏng padding cho ô to đẹp hơn
         ));
+        
+        // Biến toàn bộ ô thành nút bấm (hiện con trỏ bàn tay)
+        pnl.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
         JLabel lblValue = new JLabel(labelText);
-        lblValue.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        lblValue.setFont(new Font("Segoe UI", Font.BOLD, 13));
         lblValue.setForeground(Color.decode(hexColor));
 
-        JPanel pnlControls = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 5));
-        pnlControls.setOpaque(false);
-        
-        JLabel lblMinus = new JLabel("−"); 
-        lblMinus.setFont(new Font("Segoe UI", Font.BOLD, 16));
-        lblMinus.setForeground(Color.decode("#9CA3AF")); 
-        lblMinus.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        
+        // Chỉ giữ lại con số đếm số lượng, bỏ hẳn chữ + và -
         JLabel lblCount = new JLabel("0"); 
-        lblCount.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        lblCount.setFont(new Font("Segoe UI", Font.BOLD, 14));
         lblCount.setForeground(Color.decode("#111827"));
         
-        JLabel lblPlus = new JLabel("+"); 
-        lblPlus.setFont(new Font("Segoe UI", Font.BOLD, 16));
-        lblPlus.setForeground(Color.decode("#10B981")); 
-        lblPlus.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        
+        JPanel pnlRight = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+        pnlRight.setOpaque(false);
+        pnlRight.add(lblCount);
+
         final int[] count = {0}; 
 
-        lblPlus.addMouseListener(new java.awt.event.MouseAdapter() {
+        // --- XỬ LÝ SỰ KIỆN CHUỘT TRÁI / PHẢI ---
+        java.awt.event.MouseAdapter clickAdapter = new java.awt.event.MouseAdapter() {
+            @Override
             public void mouseClicked(java.awt.event.MouseEvent e) {
-                count[0]++;
-                lblCount.setText(String.valueOf(count[0]));
-                tongTienMat += faceValue;
-                capNhatTongTien();
-            }
-        });
-
-        lblMinus.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseClicked(java.awt.event.MouseEvent e) {
-                if (count[0] > 0) { 
-                    count[0]--;
+                if (SwingUtilities.isLeftMouseButton(e)) {
+                    // CLICK CHUỘT TRÁI -> CỘNG
+                    count[0]++;
                     lblCount.setText(String.valueOf(count[0]));
-                    tongTienMat -= faceValue;
-                    capNhatTongTien(); 
+                    tongTienMat += faceValue;
+                    capNhatTongTien();
+                } else if (SwingUtilities.isRightMouseButton(e)) {
+                    // CLICK CHUỘT PHẢI -> TRỪ
+                    if (count[0] > 0) { 
+                        count[0]--;
+                        lblCount.setText(String.valueOf(count[0]));
+                        tongTienMat -= faceValue;
+                        capNhatTongTien(); 
+                    }
                 }
             }
-        });
+        };
 
-        pnlControls.add(lblMinus);
-        pnlControls.add(lblCount);
-        pnlControls.add(lblPlus);
+        // Gắn sự kiện click cho toàn bộ Panel và các thành phần con (để click góc nào cũng nhận)
+        pnl.addMouseListener(clickAdapter);
+        lblValue.addMouseListener(clickAdapter);
+        lblCount.addMouseListener(clickAdapter);
+        pnlRight.addMouseListener(clickAdapter);
 
         pnl.add(lblValue, BorderLayout.WEST);
-        pnl.add(pnlControls, BorderLayout.EAST);
+        pnl.add(pnlRight, BorderLayout.EAST);
         
         return pnl;
     }
-
     private void capNhatTongTien() {
         if (lblTotalValue != null) {
             String formattedString = String.format("%,d", tongTienMat).replace(',', '.');

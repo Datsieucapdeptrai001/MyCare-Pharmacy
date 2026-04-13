@@ -1,6 +1,5 @@
 package GUI;
 
-import Components.MenuIcon;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.Cursor;
@@ -8,6 +7,10 @@ import java.awt.Container;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.*;
+
+import DAO.DAO_HoaDon;
+import Utils.MenuIcon;
+
 import java.awt.*;
 import java.awt.event.*;
 import java.util.ArrayList;
@@ -21,9 +24,10 @@ public class ManHinhBanHang extends JPanel {
     private JButton[] statusBtns, categoryBtns;
     private String filterStatus = "Tất cả", filterCat = "Tất cả";
     private JTextField txtSearch;
-
+    private DAO_HoaDon dao_HoaDon;
     public ManHinhBanHang() {
         initUI();
+        loadData();
     }
 
     private void initUI() {
@@ -246,9 +250,25 @@ public class ManHinhBanHang extends JPanel {
         pnlSouth.add(lblInfo, BorderLayout.EAST);
         this.add(pnlSouth, BorderLayout.SOUTH);
 
-        loadData();
+        
     }
-
+    private void loadData() {
+        // Xóa dữ liệu cũ trong bảng trước khi tải mới
+        model.setRowCount(0);
+        
+        // Gọi DAO để lấy dữ liệu thực tế
+        DAO_HoaDon daoHD = new DAO_HoaDon();
+        List<Object[]> dsHoaDon = daoHD.layDanhSachHoaDonChoBang();
+        
+        // Thêm từng dòng vào model
+        for (Object[] row : dsHoaDon) {
+            model.addRow(row);
+        }
+        
+        // Cập nhật nhãn hiển thị thông tin số lượng hóa đơn
+        // Giả sử bạn có JLabel lblInfo để hiện "Trang 1/1 (X HĐ)"
+        // lblInfo.setText("Trang 1/1 (" + model.getRowCount() + " HĐ)");
+    }
     private JButton createActionBtn(String txt, String hex) {
         JButton btn = new JButton(txt) {
             public Dimension getPreferredSize() { Dimension size = super.getPreferredSize(); size.height = 45; return size; }
@@ -343,9 +363,5 @@ public class ManHinhBanHang extends JPanel {
         // Cách nhanh nhất: Nếu bạn có biến toàn cục JButton btnAdd, chỉ cần:
         // btnAdd.doClick();
     }
-    private void loadData() {
-        model.addRow(new Object[]{"HD-2024-0001", "05/04/2026", "Nguyễn An", "0912345678", "Tiền mặt", "104.000đ", "Hoàn thành", "", "Thuốc kê đơn"});
-        model.addRow(new Object[]{"HD-2024-0002", "06/04/2026", "Trần Bình", "0987654321", "Chuyển khoản", "105.000đ", "Đang xử lý", "", "Thuốc không kê đơn"});
-        model.addRow(new Object[]{"HD-2024-0003", "09/04/2026", "Lê Cường", "0901234567", "Tiền mặt", "206.250đ", "Đã hủy", "", "TPCN"});
-    }
+    
 }

@@ -1,9 +1,11 @@
 package GUI;
 
-import Components.MenuIcon;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
+
+import Utils.MenuIcon;
+
 import java.awt.*;
 import java.awt.event.*;
 
@@ -106,7 +108,7 @@ public class ThemKhachHang extends JDialog {
         txtNgaySinh.addMouseListener(new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent e) {
-                new Components.ModernDatePicker(ThemKhachHang.this, txtNgaySinh).setVisible(true);
+                new Utils.ModernDatePicker(ThemKhachHang.this, txtNgaySinh).setVisible(true);
             }
         });
         pnlBody.add(txtNgaySinh, gbc);
