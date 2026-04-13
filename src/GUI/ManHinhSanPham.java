@@ -1,7 +1,7 @@
 package GUI;
 
 import BUS.BUS_SanPham;
-import Components.MenuIcon;
+import Utils.MenuIcon;
 import Entity.LoHang;
 import Entity.SanPham;
 
@@ -890,5 +890,32 @@ public class ManHinhSanPham extends JPanel {
         allDataMock.add(new Object[]{"PRO2023-0040", "Oxy già", "Thuốc không kê đơn", "H2O2", "Dung dịch"});
         allDataMock.add(new Object[]{"PRO2023-0041", "Băng cá nhân", "Sản phẩm chức năng", "Gạc", "Hộp"});
         allDataMock.add(new Object[]{"PRO2023-0042", "Nhiệt kế thủy ngân", "Sản phẩm chức năng", "Thủy ngân", "Hộp"});
+    }
+
+    /**
+     * Phân quyền: Ẩn/disable các nút Thêm, Nhập Excel, Sửa, Xóa cho STAFF.
+     */
+    public void setReadOnly(boolean readOnly) {
+        if (!readOnly) return;
+        if (btnCapNhatBottom != null) btnCapNhatBottom.setVisible(false);
+        if (btnXoaBottom     != null) btnXoaBottom.setVisible(false);
+        if (btnLuuBottom     != null) btnLuuBottom.setVisible(false);
+        if (btnXacNhanThem   != null) btnXacNhanThem.setVisible(false);
+        disableButtonsByText(this, "Thêm mới", "Nhập Excel", "Thêm", "Xóa",
+                             "Sửa", "Lưu", "Cập nhật", "Xác nhận thêm");
+    }
+
+    /** Duyệt đệ quy tất cả component, tìm JButton theo text rồi ẩn đi. */
+    private void disableButtonsByText(Container container, String... texts) {
+        for (Component c : container.getComponents()) {
+            if (c instanceof JButton) {
+                JButton btn = (JButton) c;
+                for (String t : texts) {
+                    if (t.equals(btn.getText())) { btn.setVisible(false); break; }
+                }
+            } else if (c instanceof Container) {
+                disableButtonsByText((Container) c, texts);
+            }
+        }
     }
 }

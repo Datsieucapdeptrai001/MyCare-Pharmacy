@@ -3,8 +3,10 @@ package GUI;
 import javax.swing.*;
 import javax.swing.border.*;
 import javax.swing.table.DefaultTableModel;
+
+import Utils.*;
+
 import java.awt.*;
-import Components.*;
 
 public class TaoHoaDon extends JDialog {
     // --- BIẾN QUẢN LÝ UI KHÁCH HÀNG ---

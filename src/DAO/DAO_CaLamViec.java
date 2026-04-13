@@ -4,145 +4,87 @@ import ConnectDB.ConnectDB;
 import Entity.CaLamViec;
 import Entity.NhanVien;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.sql.Timestamp;
-import java.time.LocalDateTime;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * DAO_CaLamViec – tương thích DB mới có cột loaiCa, ghiChuKetCa.
+ */
 public class DAO_CaLamViec {
 
-    public DAO_CaLamViec() {
-    }
+    public DAO_CaLamViec() {}
 
-    // Thêm ca làm việc mới (Mở ca)
     public boolean themCa(CaLamViec ca) {
-        String sql = "INSERT INTO CaLamViec (id, nhanVienId, thoiGianBatDau, thoiGianKetThuc, tienHeThongGhiNhan, tienDauCa, tienKetCa) VALUES (?, ?, ?, ?, ?, ?, ?)";
-        int n = 0;
+        String sql = "INSERT INTO CaLamViec (id, nhanVienId, thoiGianBatDau, thoiGianKetThuc, " +
+                     "tienHeThongGhiNhan, tienDauCa, tienKetCa, loaiCa, ghiChuKetCa) " +
+                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
         Connection con = ConnectDB.getInstance().getConnection();
-
-        try (PreparedStatement pst = con.prepareStatement(sql)) {
-            pst.setString(1, ca.getId());
-            pst.setString(2, ca.getNhanVienId().getNhanVien()); // Lấy mã nhân viên
-            
-            // Thời gian bắt đầu bắt buộc phải có
-            pst.setTimestamp(3, Timestamp.valueOf(ca.getThoiGianBatDau()));
-            
-            // Thời gian kết thúc ban đầu có thể null
-            if (ca.getThoiGianKetThuc() != null) {
-                pst.setTimestamp(4, Timestamp.valueOf(ca.getThoiGianKetThuc()));
-            } else {
-                pst.setNull(4, java.sql.Types.TIMESTAMP);
-            }
-            
-            pst.setDouble(5, ca.getTienHeThongGhiNhan());
-            pst.setDouble(6, ca.getTienDauCa());
-            pst.setDouble(7, ca.getTienKetCa());
-
-            n = pst.executeUpdate();
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return n > 0;
+        try (PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, ca.getId());
+            ps.setString(2, ca.getNhanVienId().getNhanVien()); // nhanVienId = NhanVien.id
+            ps.setTimestamp(3, Timestamp.valueOf(ca.getThoiGianBatDau()));
+            if (ca.getThoiGianKetThuc() != null)
+                ps.setTimestamp(4, Timestamp.valueOf(ca.getThoiGianKetThuc()));
+            else ps.setNull(4, Types.TIMESTAMP);
+            ps.setDouble(5, ca.getTienHeThongGhiNhan());
+            ps.setDouble(6, ca.getTienDauCa());
+            ps.setDouble(7, ca.getTienKetCa());
+            ps.setInt(8, 0); // loaiCa default
+            ps.setNull(9, Types.NVARCHAR); // ghiChuKetCa
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) { e.printStackTrace(); return false; }
     }
 
-    // Cập nhật ca (Dùng khi Chốt ca/Kết thúc ca)
     public boolean capNhatCa(CaLamViec ca) {
-        String sql = "UPDATE CaLamViec SET thoiGianKetThuc=?, tienHeThongGhiNhan=?, tienKetCa=? WHERE id=?";
-        int n = 0;
+        String sql = "UPDATE CaLamViec SET thoiGianKetThuc=?, tienHeThongGhiNhan=?, tienKetCa=?, ghiChuKetCa=? WHERE id=?";
         Connection con = ConnectDB.getInstance().getConnection();
-
-        try (PreparedStatement pst = con.prepareStatement(sql)) {
-            if (ca.getThoiGianKetThuc() != null) {
-                pst.setTimestamp(1, Timestamp.valueOf(ca.getThoiGianKetThuc()));
-            } else {
-                pst.setNull(1, java.sql.Types.TIMESTAMP);
-            }
-            
-            pst.setDouble(2, ca.getTienHeThongGhiNhan());
-            pst.setDouble(3, ca.getTienKetCa());
-            pst.setString(4, ca.getId()); // Điều kiện cập nhật theo ID ca
-
-            n = pst.executeUpdate();
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return n > 0;
+        try (PreparedStatement ps = con.prepareStatement(sql)) {
+            if (ca.getThoiGianKetThuc() != null)
+                ps.setTimestamp(1, Timestamp.valueOf(ca.getThoiGianKetThuc()));
+            else ps.setNull(1, Types.TIMESTAMP);
+            ps.setDouble(2, ca.getTienHeThongGhiNhan());
+            ps.setDouble(3, ca.getTienKetCa());
+            ps.setNull(4, Types.NVARCHAR);
+            ps.setString(5, ca.getId());
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) { e.printStackTrace(); return false; }
     }
 
-    // Lấy ca đang diễn ra của một nhân viên (Ca chưa có thời gian kết thúc)
     public CaLamViec getCaHienTai(String maNhanVien) {
-        CaLamViec ca = null;
-        String sql = "SELECT * FROM CaLamViec WHERE nhanVienId=? AND thoiGianKetThuc IS NULL";
+        String sql = "SELECT * FROM CaLamViec WHERE nhanVienId=? AND thoiGianKetThuc IS NULL ORDER BY thoiGianBatDau DESC";
         Connection con = ConnectDB.getInstance().getConnection();
-
-        try (PreparedStatement pst = con.prepareStatement(sql)) {
-            pst.setString(1, maNhanVien);
-            try (ResultSet rs = pst.executeQuery()) {
-                if (rs.next()) {
-                    ca = new CaLamViec();
-                    ca.setId(rs.getString("id"));
-                    
-                    NhanVien nv = new NhanVien();
-                    nv.setNhanVien(rs.getString("nhanVienId"));
-                    ca.setNhanVienId(nv);
-                    
-                    ca.setThoiGianBatDau(rs.getTimestamp("thoiGianBatDau").toLocalDateTime());
-                    
-                    // Xử lý an toàn nếu thoiGianKetThuc null
-                    Timestamp thoiGianKetThuc = rs.getTimestamp("thoiGianKetThuc");
-                    if (thoiGianKetThuc != null) {
-                        ca.setThoiGianKetThuc(thoiGianKetThuc.toLocalDateTime());
-                    }
-                    
-                    ca.setTienHeThongGhiNhan(rs.getDouble("tienHeThongGhiNhan"));
-                    ca.setTienDauCa(rs.getDouble("tienDauCa"));
-                    ca.setTienKetCa(rs.getDouble("tienKetCa"));
-                }
+        try (PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, maNhanVien);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return mapRow(rs);
             }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return ca;
+        } catch (SQLException e) { e.printStackTrace(); }
+        return null;
     }
 
-    // Lấy danh sách toàn bộ lịch sử ca làm việc (Sắp xếp mới nhất lên đầu)
     public List<CaLamViec> getLichSuCa() {
-        List<CaLamViec> dsCa = new ArrayList<>();
-        String sql = "SELECT * FROM CaLamViec ORDER BY thoiGianBatDau DESC";
+        List<CaLamViec> ds = new ArrayList<>();
         Connection con = ConnectDB.getInstance().getConnection();
+        try (Statement st = con.createStatement();
+             ResultSet rs = st.executeQuery("SELECT * FROM CaLamViec ORDER BY thoiGianBatDau DESC")) {
+            while (rs.next()) ds.add(mapRow(rs));
+        } catch (SQLException e) { e.printStackTrace(); }
+        return ds;
+    }
 
-        try (Statement stmt = con.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
-
-            while (rs.next()) {
-                CaLamViec ca = new CaLamViec();
-                ca.setId(rs.getString("id"));
-                
-                NhanVien nv = new NhanVien();
-                nv.setNhanVien(rs.getString("nhanVienId"));
-                ca.setNhanVienId(nv);
-                
-                ca.setThoiGianBatDau(rs.getTimestamp("thoiGianBatDau").toLocalDateTime());
-                
-                Timestamp thoiGianKetThuc = rs.getTimestamp("thoiGianKetThuc");
-                if (thoiGianKetThuc != null) {
-                    ca.setThoiGianKetThuc(thoiGianKetThuc.toLocalDateTime());
-                }
-                
-                ca.setTienHeThongGhiNhan(rs.getDouble("tienHeThongGhiNhan"));
-                ca.setTienDauCa(rs.getDouble("tienDauCa"));
-                ca.setTienKetCa(rs.getDouble("tienKetCa"));
-                
-                dsCa.add(ca);
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return dsCa;
+    private CaLamViec mapRow(ResultSet rs) throws SQLException {
+        CaLamViec ca = new CaLamViec();
+        ca.setId(rs.getString("id"));
+        NhanVien nv = new NhanVien();
+        nv.setNhanVien(rs.getString("nhanVienId"));
+        ca.setNhanVienId(nv);
+        ca.setThoiGianBatDau(rs.getTimestamp("thoiGianBatDau").toLocalDateTime());
+        Timestamp ket = rs.getTimestamp("thoiGianKetThuc");
+        if (ket != null) ca.setThoiGianKetThuc(ket.toLocalDateTime());
+        ca.setTienHeThongGhiNhan(rs.getDouble("tienHeThongGhiNhan"));
+        ca.setTienDauCa(rs.getDouble("tienDauCa"));
+        ca.setTienKetCa(rs.getDouble("tienKetCa"));
+        return ca;
     }
 }

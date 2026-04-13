@@ -1,4 +1,4 @@
-package Components;
+package Utils;
 
 import javax.swing.Icon;
 import java.awt.*;
