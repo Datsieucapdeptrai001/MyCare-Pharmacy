@@ -173,28 +173,62 @@ public class ThemKhachHang extends JDialog {
         btnThem.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
         // LOGIC LƯU DỮ LIỆU
+     // LOGIC LƯU DỮ LIỆU
         btnThem.addActionListener(e -> {
             String hoten = txtHoTen.getText().trim();
             String sdt = txtSdt.getText().trim();
             
+            // Kiểm tra dữ liệu đầu vào
             if(hoten.isEmpty() || hoten.equals("Nhập họ và tên đầy đủ") || sdt.isEmpty() || sdt.equals("0912345678")) {
                 JOptionPane.showMessageDialog(this, "Vui lòng nhập Họ tên và Số điện thoại!", "Lỗi", JOptionPane.ERROR_MESSAGE);
                 return;
             }
 
+            // Khởi tạo DAO
+            DAO.DAO_KhachHang daoKH = new DAO.DAO_KhachHang();
+
             if(mainModel != null) {
                 if (editRow != -1) {
-                    // Đang ở chế độ SỬA -> Ghi đè vào dòng cũ
+                    // ================= ĐANG Ở CHẾ ĐỘ SỬA =================
+                    String maKH = mainModel.getValueAt(editRow, 0).toString();
+                    
+                    // BƯỚC 1: Cập nhật xuống Database (Giả sử bạn đã viết hàm capNhatKhachHang trong DAO)
+                    // Entity.KhachHang khUpdate = new Entity.KhachHang();
+                    // khUpdate.setId(maKH);
+                    // khUpdate.setHoVaTen(hoten);
+                    // khUpdate.setSdt(sdt);
+                    // daoKH.capNhatKhachHang(khUpdate);
+
+                    // BƯỚC 2: Cập nhật Giao diện (JTable)
                     mainModel.setValueAt(hoten, editRow, 1);
                     mainModel.setValueAt(sdt, editRow, 2);
+                    
                 } else {
-                    // Đang ở chế độ THÊM MỚI -> Thêm dòng mới
-                    String maMoi = "KH2026-" + String.format("%04d", mainModel.getRowCount() + 1);
-                    String ngay = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"));
-                    mainModel.addRow(new Object[]{ maMoi, hoten, sdt, "0", "0đ", "0", ngay, "" });
+                    // ================= ĐANG Ở CHẾ ĐỘ THÊM MỚI =================
+                    // 1. Xin mã tự động từ CSDL (Hàm phatSinhMaKHTiepTheo đã tạo ở bước trước)
+                    String maMoi = daoKH.phatSinhMaKHTiepTheo();
+                    
+                    // 2. Đóng gói dữ liệu vào đối tượng KhachHang
+                    Entity.KhachHang kh = new Entity.KhachHang();
+                    kh.setId(maMoi);
+                    kh.setHoVaTen(hoten);
+                    kh.setSdt(sdt);
+                    kh.setDiemTichLuy(0); // Khách mới mặc định 0 điểm
+                    
+                    // 3. Đẩy xuống Database
+                    boolean isSuccess = daoKH.themKhachHang(kh);
+
+                    // 4. Nếu thêm Database thành công thì mới hiện lên JTable
+                    if (isSuccess) {
+                        String ngay = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+                        mainModel.addRow(new Object[]{ maMoi, hoten, sdt, "0", "0đ", "0", ngay, "" });
+                    } else {
+                        JOptionPane.showMessageDialog(this, "Có lỗi xảy ra khi lưu vào Cơ sở dữ liệu!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+                        return; // Lỗi thì dừng lại, không đóng cửa sổ
+                    }
                 }
             }
-            dispose(); 
+            dispose(); // Đóng form
         });
 
         pnlFooter.add(btnHuy);

@@ -2,8 +2,8 @@ package DAO;
 
 import ConnectDB.ConnectDB;
 import Entity.NhanVien;
-import Enum.ChucVu;
-import Enum.TrangThaiLamViec;
+import Enumeration.ChucVu;
+import Enumeration.TrangThaiLamViec;
 
 import java.sql.*;
 import java.util.ArrayList;

@@ -2,7 +2,7 @@ package DAO;
 
 import ConnectDB.ConnectDB;
 import Entity.KhachHang;
-
+import java.time.LocalDateTime;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -12,13 +12,12 @@ import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-
+import java.text.DecimalFormat;
+import java.time.format.DateTimeFormatter;
 public class DAO_KhachHang {
 
     public DAO_KhachHang() {
     }
-
-    // Lấy toàn bộ danh sách khách hàng
     public List<KhachHang> getDSKhachHang() {
         List<KhachHang> dsKhachHang = new ArrayList<>();
         String sql = "SELECT * FROM KhachHang";
@@ -87,7 +86,36 @@ public class DAO_KhachHang {
         }
         return n > 0;
     }
-
+ // Thêm hàm này vào DAO_KhachHang.java
+    public String phatSinhMaKHTiepTheo() {
+        String maMoi = "KH1"; // Mặc định nếu CSDL chưa có khách hàng nào
+        String sql = "SELECT id FROM KhachHang WHERE id LIKE 'KH%'";
+        
+        Connection con = ConnectDB.getInstance().getConnection();
+        try (Statement st = con.createStatement();
+             ResultSet rs = st.executeQuery(sql)) {
+            
+            int maxSo = 0;
+            while (rs.next()) {
+                String id = rs.getString("id"); // Lấy mã, ví dụ: "KH7"
+                try {
+                    // Cắt bỏ 2 ký tự đầu ("KH") và ép phần còn lại sang số nguyên
+                    int so = Integer.parseInt(id.substring(2));
+                    if (so > maxSo) {
+                        maxSo = so; // Tìm số lớn nhất
+                    }
+                } catch (Exception ex) {
+                    // Bỏ qua những mã cũ sai định dạng (VD: KH2024-0001)
+                }
+            }
+            // Cộng thêm 1 vào số lớn nhất để ra mã mới
+            maMoi = "KH" + (maxSo + 1);
+            
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return maMoi;
+    }
     // Lấy thông tin khách hàng bằng số điện thoại
     public KhachHang getKhachHangTheoSDT(String sdt) {
         KhachHang kh = null;
@@ -114,7 +142,50 @@ public class DAO_KhachHang {
         }
         return kh;
     }
+    public List<Object[]> layDanhSachKhachHangChoBang() {
+        List<Object[]> ds = new ArrayList<>();
+        
+        // Lệnh SQL: Lấy thông tin KH, đồng thời đếm số hóa đơn và tính tổng tiền đã mua
+        String sql = "SELECT kh.id, kh.hoVaTen, kh.sdt, kh.diemTichLuy, kh.ngayTao, " +
+                     "COUNT(DISTINCT hd.id) AS soDonHang, " +
+                     "ISNULL(SUM(ct.soLuong * dv.gia), 0) AS tongChiTieu " +
+                     "FROM KhachHang kh " +
+                     "LEFT JOIN HoaDon hd ON kh.id = hd.khachHangId AND hd.loaiHD = 'BAN_HANG' " +
+                     "LEFT JOIN ChiTietHoaDon ct ON hd.id = ct.hoaDonId " +
+                     "LEFT JOIN DonViDoLuong dv ON ct.donViDoLuongId = dv.id " +
+                     "GROUP BY kh.id, kh.hoVaTen, kh.sdt, kh.diemTichLuy, kh.ngayTao " +
+                     "ORDER BY kh.ngayTao DESC";
 
+        Connection con = ConnectDB.getInstance().getConnection();
+        
+        try (PreparedStatement pst = con.prepareStatement(sql);
+             ResultSet rs = pst.executeQuery()) {
+
+            DecimalFormat df = new DecimalFormat("#,###đ");
+            DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
+            while (rs.next()) {
+                String id = rs.getString("id");
+                String ten = rs.getString("hoVaTen") != null ? rs.getString("hoVaTen") : "Khách chưa có tên";
+                String sdt = rs.getString("sdt") != null ? rs.getString("sdt") : "";
+                
+                String soDon = String.valueOf(rs.getInt("soDonHang"));
+                String tongChiTieu = df.format(rs.getDouble("tongChiTieu"));
+                String diem = String.valueOf(rs.getInt("diemTichLuy"));
+                
+                String ngayTao = "";
+                if (rs.getTimestamp("ngayTao") != null) {
+                    ngayTao = rs.getTimestamp("ngayTao").toLocalDateTime().format(dtf);
+                }
+
+                // Đưa vào mảng khớp với thứ tự 8 cột trên giao diện của bạn
+                ds.add(new Object[]{id, ten, sdt, soDon, tongChiTieu, diem, ngayTao, ""});
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return ds;
+    }
     // Cập nhật điểm tích lũy
     public boolean capNhatDiemTichLuy(String id, int diemMoi) {
         String sql = "UPDATE KhachHang SET diemTichLuy = ? WHERE id = ?";

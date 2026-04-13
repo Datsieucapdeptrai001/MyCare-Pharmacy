@@ -1,7 +1,7 @@
-package Enum;
+package Enumeration;
 
 public enum TrangThaiLamViec {
-	DA_NGHI_VIEC,
+	THOI_VIEC,
 	NGHI_PHEP,
 	DANG_LAM_VIEC
 }

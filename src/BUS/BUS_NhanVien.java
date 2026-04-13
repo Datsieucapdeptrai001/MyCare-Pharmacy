@@ -2,8 +2,8 @@ package BUS;
 
 import DAO.DAO_NhanVien;
 import Entity.NhanVien;
-import Enum.ChucVu;
-import Enum.TrangThaiLamViec;
+import Enumeration.ChucVu;
+import Enumeration.TrangThaiLamViec;
 
 import java.util.ArrayList;
 import java.util.List;

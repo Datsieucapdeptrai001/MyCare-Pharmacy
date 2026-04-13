@@ -3,8 +3,8 @@ package Entity;
 import java.time.LocalDateTime;
 import java.util.Objects;
 
-import Enum.LoaiHoaDon;
-import Enum.PhuongThucThanhToan;
+import Enumeration.LoaiHoaDon;
+import Enumeration.PhuongThucThanhToan;
 
 public class HoaDon {
 	private String id;

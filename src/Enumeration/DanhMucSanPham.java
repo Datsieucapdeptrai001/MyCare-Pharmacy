@@ -1,4 +1,4 @@
-package Enum;
+package Enumeration;
 
 public enum DanhMucSanPham {
 	THUC_PHAM_CHUC_NANG,

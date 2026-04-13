@@ -2,7 +2,7 @@ package GUI;
 
 import Utils.MenuIcon;
 import ConnectDB.ConnectDB;
-import Enum.VaiTro;
+import Enumeration.VaiTro;
 import Utils.UserSession;
 
 import javax.swing.*;

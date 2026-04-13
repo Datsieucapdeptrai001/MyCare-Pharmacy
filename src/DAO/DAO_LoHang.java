@@ -4,7 +4,7 @@ import ConnectDB.ConnectDB;
 import Entity.KhoHang;
 import Entity.LoHang;
 import Entity.SanPham;
-import Enum.TrangThaiLoHang;
+import Enumeration.TrangThaiLoHang;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;

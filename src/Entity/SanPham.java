@@ -3,8 +3,8 @@ package Entity;
 import java.time.LocalDateTime;
 import java.util.Objects;
 
-import Enum.DangBaoChe;
-import Enum.DanhMucSanPham;
+import Enumeration.DangBaoChe;
+import Enumeration.DanhMucSanPham;
 
 public class SanPham {
 	private String id;

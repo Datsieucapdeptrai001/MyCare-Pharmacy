@@ -200,9 +200,9 @@ public class ManHinhBanHang extends JPanel {
         table.setDefaultRenderer(Object.class, new ModernTableRenderer());
 
         // CHÍNH XÁC SỰ KIỆN CLICK MỞ CHI TIẾT
-        table.addMouseListener(new MouseAdapter() {
+        table.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
-            public void mouseClicked(MouseEvent e) {
+            public void mouseClicked(java.awt.event.MouseEvent e) {
                 int viewRow = table.rowAtPoint(e.getPoint());
                 int col = table.columnAtPoint(e.getPoint());
                 
@@ -218,13 +218,29 @@ public class ManHinhBanHang extends JPanel {
                     
                     Window p = SwingUtilities.getWindowAncestor(ManHinhBanHang.this);
 
+                    String tenNhanVienHienTai = "Nguyễn Tuấn Đạt"; // Lấy từ Session hoặc truy vấn DB
+
                     if (status.equals("Đang xử lý")) {
                         // Mở Sửa Hóa Đơn Nháp
                         TaoHoaDon dialogSua = new TaoHoaDon((Frame) p, model, modelRow, maHoaDon, khach, sdt); 
                         dialogSua.setVisible(true);
                     } else {
-                        // Mở Xem Chi Tiết Hóa Đơn Hoàn Thành
-                        ChiTietHoaDon dialogChiTiet = new ChiTietHoaDon((Frame) p, maHoaDon, ngay, khach, sdt, phuongThuc, tongTien);
+                        // Lấy danh sách sản phẩm từ CSDL
+                        DAO.DAO_ChiTietHoaDon daoCTHD = new DAO.DAO_ChiTietHoaDon();
+                        java.util.List<Object[]> listSanPham = daoCTHD.layDanhSachSanPhamTheoMaHD(maHoaDon);
+
+                        // Mở Xem Chi Tiết Hóa Đơn (Đã truyền thêm tham số tenNhanVienHienTai)
+                        ChiTietHoaDon dialogChiTiet = new ChiTietHoaDon(
+                            (Frame) p, 
+                            maHoaDon, 
+                            ngay, 
+                            khach, 
+                            sdt, 
+                            phuongThuc, 
+                            tongTien, 
+                            tenNhanVienHienTai, // <--- THÊM BIẾN TÊN NHÂN VIÊN VÀO ĐÂY
+                            listSanPham
+                        );
                         dialogChiTiet.setVisible(true);
                     }
                 }

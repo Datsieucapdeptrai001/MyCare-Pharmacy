@@ -5,8 +5,9 @@ import Entity.HoaDon;
 import Entity.KhachHang;
 import Entity.KhuyenMai;
 import Entity.NhanVien;
-import Enum.LoaiHoaDon;
-import Enum.PhuongThucThanhToan;
+import Enumeration.LoaiHoaDon;
+import Enumeration.PhuongThucThanhToan;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.text.DecimalFormat;

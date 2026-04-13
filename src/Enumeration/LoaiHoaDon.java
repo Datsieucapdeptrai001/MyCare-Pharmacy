@@ -1,4 +1,4 @@
-package Enum;
+package Enumeration;
 
 public enum LoaiHoaDon {
 	DOI_HANG,

@@ -3,7 +3,7 @@ package Entity;
 import java.time.LocalDateTime;
 import java.util.Objects;
 
-import Enum.TrangThaiLoHang;
+import Enumeration.TrangThaiLoHang;
 
 public class LoHang {
 	private String id;

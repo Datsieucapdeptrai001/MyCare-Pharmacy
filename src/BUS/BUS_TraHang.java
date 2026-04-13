@@ -2,7 +2,8 @@ package BUS;
 
 import DAO.DAO_HoaDon;
 import Entity.HoaDon;
-import Enum.LoaiHoaDon;
+import Enumeration.LoaiHoaDon;
+
 import java.time.LocalDateTime;
 
 public class BUS_TraHang {
