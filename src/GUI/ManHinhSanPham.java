@@ -184,6 +184,10 @@ public class ManHinhSanPham extends JPanel {
     // Trạng thái
     private boolean isAdding       = false;
     private boolean uomAutoChanging = false;
+	private Component btnThem;
+	private Component btnXoa;
+	private Component btnSua;
+	private Component btnLuu;
 
     public ManHinhSanPham() {
         UIManager.put("TextField.inactiveForeground", Color.BLACK);
@@ -1057,5 +1061,18 @@ public class ManHinhSanPham extends JPanel {
         currentFilteredData.clear();
         currentFilteredData.addAll(allDataMock);
         updatePagination();
+    }
+
+    public void setReadOnly(boolean isReadOnly) {
+        // Nếu isReadOnly = true (là Staff), ta sẽ khóa các nút thay đổi dữ liệu (false)
+        // Nếu isReadOnly = false (là Admin), ta mở lại các nút (true)
+        
+        boolean canEdit = !isReadOnly; 
+       
+        btnThem.setEnabled(canEdit); 
+        btnXoa.setEnabled(canEdit);
+        btnSua.setEnabled(canEdit);
+        btnLuu.setEnabled(canEdit);
+        
     }
 }

@@ -29,7 +29,7 @@ public class DialogMoCa extends JDialog {
 
     private static final String[] CA_LABELS  = { "Ca Sáng", "Ca Chiều", "Ca Tối" };
     private static final String[] CA_TIMES   = { "06:00 – 14:00", "14:00 – 22:00", "22:00 – 06:00" };
-    private static final String[] CA_ICONS   = { "☀", "🌅", "🌙" };
+    private static final String[] CA_ICON_TYPES = { "SHIFT_MORNING", "SHIFT_AFTERNOON", "SHIFT_NIGHT" };
     private static final Color[]  CA_BG      = {
         Color.decode("#FFF3E0"),
         Color.decode("#FFF8F0"),
@@ -510,8 +510,12 @@ public class DialogMoCa extends JDialog {
         btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btn.setPreferredSize(new Dimension(0, 90));
 
-        JLabel icon = new JLabel(CA_ICONS[idx], SwingConstants.CENTER);
-        icon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 22));
+        JLabel icon = new JLabel("", SwingConstants.CENTER);
+        icon.setIcon(new MenuIcon(CA_ICON_TYPES[idx]) {
+            @Override public int getIconWidth()  { return 28; }
+            @Override public int getIconHeight() { return 28; }
+        });
+        icon.setForeground(CA_FG[idx]);
         icon.setAlignmentX(CENTER_ALIGNMENT);
 
         JLabel name = new JLabel(CA_LABELS[idx], SwingConstants.CENTER);
@@ -602,7 +606,9 @@ public class DialogMoCa extends JDialog {
                 new EmptyBorder(10, 14, 10, 14)));
         row.setAlignmentX(LEFT_ALIGNMENT);
 
-        JLabel lLeft = new JLabel(CA_ICONS[selectedCa] + "  " + CA_LABELS[selectedCa]);
+        JLabel lLeft = new JLabel("  " + CA_LABELS[selectedCa]);
+        lLeft.setIcon(new MenuIcon(CA_ICON_TYPES[selectedCa]));
+        lLeft.setIconTextGap(8);
         lLeft.setFont(new Font("Segoe UI", Font.BOLD, 14));
         lLeft.setForeground(CA_FG[selectedCa]);
 
