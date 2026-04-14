@@ -424,6 +424,13 @@ public class ManHinhNhanVien extends JPanel {
 
         // THÊM SỰ KIỆN XÓA (CẬP NHẬT TRẠNG THÁI NGHỈ VIỆC)
         btnDelete.addActionListener(e -> {
+            // Chặn từ server-side: STAFF không được xóa dù nút vô tình hiển thị
+            if (!Utils.UserSession.getInstance().isAdmin()) {
+                JOptionPane.showMessageDialog(pnlDetail,
+                    "Bạn không có quyền thực hiện thao tác này.",
+                    "Từ chối", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
             int row = table.getSelectedRow();
             if (row >= 0) {
                 int modelRow = table.convertRowIndexToModel(row);
@@ -584,7 +591,9 @@ class DialogThemNhanVien extends JDialog {
     
     private JLabel lblTitle;
     private JButton btnThem;
-    private int editRow; 
+    private int editRow;
+	private JComponent btnDelete;
+	private Object btnEdit; 
 
     public DialogThemNhanVien(Frame parent, ManHinhNhanVien parentScreen, int editRow, String hoten, String cchn, String sdt, String email, String chucVu, String trangThai) {
         super(parent, editRow == -1 ? "Thêm nhân viên mới" : "Chỉnh sửa nhân viên", true);
@@ -837,8 +846,12 @@ class DialogThemNhanVien extends JDialog {
      */
     public void setReadOnly(boolean readOnly) {
         if (!readOnly) return;
-        if (btnThem != null) btnThem.setVisible(false);
-        disableButtonsByText(this, "Thêm mới", "Nhập Excel", "Thêm", "Xóa", "Sửa", "Lưu");
+        // Ẩn trực tiếp các nút có reference toàn cục
+        if (btnThem   != null) btnThem.setVisible(false);
+        if (btnDelete != null) btnDelete.setVisible(false);   // "Xóa nhân viên" – phải ẩn tường minh
+        if (btnEdit   != null) btnEdit.setVisible(false);
+        // Duyệt đệ quy tìm nút còn sót theo text
+        disableButtonsByText(this, "Thêm mới", "Nhập Excel", "Thêm", "Xóa", "Xóa nhân viên", "Sửa", "Lưu", "Chỉnh sửa");
     }
 
     private void disableButtonsByText(java.awt.Container container, String... texts) {
