@@ -7,8 +7,8 @@ import java.awt.Container;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.*;
-
 import ConnectDB.ConnectDB;
+import DAO.DAO_HoaDon;
 import Utils.MenuIcon;
 
 import java.awt.*;
@@ -27,9 +27,10 @@ public class ManHinhBanHang extends JPanel {
     private JButton[] statusBtns, categoryBtns;
     private String filterStatus = "Tất cả", filterCat = "Tất cả";
     private JTextField txtSearch;
-
+    private DAO_HoaDon dao_HoaDon;
     public ManHinhBanHang() {
         initUI();
+        loadData();
     }
 
     private void initUI() {
@@ -202,9 +203,9 @@ public class ManHinhBanHang extends JPanel {
         table.setDefaultRenderer(Object.class, new ModernTableRenderer());
 
         // CHÍNH XÁC SỰ KIỆN CLICK MỞ CHI TIẾT
-        table.addMouseListener(new MouseAdapter() {
+        table.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
-            public void mouseClicked(MouseEvent e) {
+            public void mouseClicked(java.awt.event.MouseEvent e) {
                 int viewRow = table.rowAtPoint(e.getPoint());
                 int col = table.columnAtPoint(e.getPoint());
                 
@@ -220,13 +221,29 @@ public class ManHinhBanHang extends JPanel {
                     
                     Window p = SwingUtilities.getWindowAncestor(ManHinhBanHang.this);
 
+                    String tenNhanVienHienTai = "Nguyễn Tuấn Đạt"; // Lấy từ Session hoặc truy vấn DB
+
                     if (status.equals("Đang xử lý")) {
                         // Mở Sửa Hóa Đơn Nháp
                         TaoHoaDon dialogSua = new TaoHoaDon((Frame) p, model, modelRow, maHoaDon, khach, sdt); 
                         dialogSua.setVisible(true);
                     } else {
-                        // Mở Xem Chi Tiết Hóa Đơn Hoàn Thành
-                        ChiTietHoaDon dialogChiTiet = new ChiTietHoaDon((Frame) p, maHoaDon, ngay, khach, sdt, phuongThuc, tongTien);
+                        // Lấy danh sách sản phẩm từ CSDL
+                        DAO.DAO_ChiTietHoaDon daoCTHD = new DAO.DAO_ChiTietHoaDon();
+                        java.util.List<Object[]> listSanPham = daoCTHD.layDanhSachSanPhamTheoMaHD(maHoaDon);
+
+                        // Mở Xem Chi Tiết Hóa Đơn (Đã truyền thêm tham số tenNhanVienHienTai)
+                        ChiTietHoaDon dialogChiTiet = new ChiTietHoaDon(
+                            (Frame) p, 
+                            maHoaDon, 
+                            ngay, 
+                            khach, 
+                            sdt, 
+                            phuongThuc, 
+                            tongTien, 
+                            tenNhanVienHienTai, // <--- THÊM BIẾN TÊN NHÂN VIÊN VÀO ĐÂY
+                            listSanPham
+                        );
                         dialogChiTiet.setVisible(true);
                     }
                 }
@@ -252,9 +269,25 @@ public class ManHinhBanHang extends JPanel {
         pnlSouth.add(lblInfo, BorderLayout.EAST);
         this.add(pnlSouth, BorderLayout.SOUTH);
 
-        loadData();
+        
     }
-
+    private void loadData() {
+        // Xóa dữ liệu cũ trong bảng trước khi tải mới
+        model.setRowCount(0);
+        
+        // Gọi DAO để lấy dữ liệu thực tế
+        DAO_HoaDon daoHD = new DAO_HoaDon();
+        List<Object[]> dsHoaDon = daoHD.layDanhSachHoaDonChoBang();
+        
+        // Thêm từng dòng vào model
+        for (Object[] row : dsHoaDon) {
+            model.addRow(row);
+        }
+        
+        // Cập nhật nhãn hiển thị thông tin số lượng hóa đơn
+        // Giả sử bạn có JLabel lblInfo để hiện "Trang 1/1 (X HĐ)"
+        // lblInfo.setText("Trang 1/1 (" + model.getRowCount() + " HĐ)");
+    }
     private JButton createActionBtn(String txt, String hex) {
         JButton btn = new JButton(txt) {
             public Dimension getPreferredSize() { Dimension size = super.getPreferredSize(); size.height = 45; return size; }

@@ -5,9 +5,13 @@ import Entity.HoaDon;
 import Entity.KhachHang;
 import Entity.KhuyenMai;
 import Entity.NhanVien;
-import Enum.LoaiHoaDon;
-import Enum.PhuongThucThanhToan;
+import Enumeration.LoaiHoaDon;
+import Enumeration.PhuongThucThanhToan;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.text.DecimalFormat;
+import java.time.format.DateTimeFormatter;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -17,7 +21,50 @@ import java.sql.Timestamp;
 public class DAO_HoaDon {
 
     public DAO_HoaDon() {}
+    public List<Object[]> layDanhSachHoaDonChoBang() {
+        List<Object[]> ds = new ArrayList<>();
+        // Câu lệnh SQL lấy thông tin hóa đơn, tên khách hàng và tính tổng tiền
+        String sql = "SELECT hd.id, hd.ngayLapHD, kh.hoVaTen, kh.sdt, hd.phuongThucThanhToan, " +
+                     "SUM(ct.soLuong * dv.gia) as tongTien " +
+                     "FROM HoaDon hd " +
+                     "LEFT JOIN KhachHang kh ON hd.khachHangId = kh.id " +
+                     "JOIN ChiTietHoaDon ct ON hd.id = ct.hoaDonId " +
+                     "JOIN DonViDoLuong dv ON ct.donViDoLuongId = dv.id AND ct.sanPhamId = dv.sanPhamId " +
+                     "WHERE hd.loaiHD = 'BAN_HANG' " +
+                     "GROUP BY hd.id, hd.ngayLapHD, kh.hoVaTen, kh.sdt, hd.phuongThucThanhToan " +
+                     "ORDER BY hd.ngayLapHD DESC";
 
+        try (Connection con = ConnectDB.getInstance().getConnection();
+             PreparedStatement pst = con.prepareStatement(sql);
+             ResultSet rs = pst.executeQuery()) {
+
+            DecimalFormat df = new DecimalFormat("#,###đ");
+            DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+
+            while (rs.next()) {
+                String maHD = rs.getString("id");
+                // Xử lý ngày tháng
+                String ngay = rs.getTimestamp("ngayLapHD").toLocalDateTime().format(dtf);
+                // Xử lý khách hàng (nếu null thì là Khách lẻ)
+                String tenKH = rs.getString("hoVaTen") != null ? rs.getString("hoVaTen") : "Khách lẻ";
+                String sdt = rs.getString("sdt") != null ? rs.getString("sdt") : "";
+                // Xử lý phương thức thanh toán
+                String pt = rs.getString("phuongThucThanhToan").equals("TIEN_MAT") ? "Tiền mặt" : "Chuyển khoản";
+                // Định dạng tiền
+                String tongTien = df.format(rs.getDouble("tongTien"));
+                
+                // Các cột bổ trợ cho JTable trong ManHinhBanHang
+                String trangThai = "Hoàn thành";
+                String xem = ""; // Cột icon xem
+                String hiddenCat = "Tất cả"; // Cột ẩn để lọc danh mục
+
+                ds.add(new Object[]{maHD, ngay, tenKH, sdt, pt, tongTien, trangThai, xem, hiddenCat});
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return ds;
+    }
     public boolean themHoaDon(HoaDon hd) {
         String sql = "INSERT INTO HoaDon (id, loaiHD, ghiChu, ngayLapHD, nhanVienId, khachHangId, khuyenMaiId, phuongThucThanhToan, hoaDonGocId) "
                    + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
@@ -120,7 +167,7 @@ public class DAO_HoaDon {
 
         return hd;
     }
-
+    
     public boolean capNhatTrangThai(String idHD, LoaiHoaDon loaiMoi) {
         String sql = "UPDATE HoaDon SET loaiHD = ? WHERE id = ?";
         Connection con = ConnectDB.getInstance().getConnection();

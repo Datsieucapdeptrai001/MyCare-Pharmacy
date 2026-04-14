@@ -1,4 +1,4 @@
-package Enum;
+package Enumeration;
 
 public enum LoaiHinhThuc {
 	GIAM_THEO_PHAN_TRAM,

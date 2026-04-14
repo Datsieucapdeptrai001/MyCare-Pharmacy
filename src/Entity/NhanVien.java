@@ -2,8 +2,8 @@ package Entity;
 
 import java.util.Objects;
 
-import Enum.ChucVu;
-import Enum.TrangThaiLamViec;
+import Enumeration.ChucVu;
+import Enumeration.TrangThaiLamViec;
 
 public class NhanVien {
 	private String nhanVien;

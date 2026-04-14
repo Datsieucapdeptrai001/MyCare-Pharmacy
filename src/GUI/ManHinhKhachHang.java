@@ -500,14 +500,21 @@ public class ManHinhKhachHang extends JPanel {
         return model;
     }
     private void loadData() {
-        model.addRow(new Object[]{"KH2026-0001", "Nguyễn Văn An", "0910000000", "6", "1.600.000đ", "200", "01/01/2024", ""});
-        model.addRow(new Object[]{"KH2026-0002", "Trần Thị Bình", "0911234567", "9", "3.000.000đ", "337", "02/02/2024", ""});
-        model.addRow(new Object[]{"KH2026-0003", "Lê Văn Cường", "0912469134", "12", "4.400.000đ", "474", "03/03/2024", ""});
-        model.addRow(new Object[]{"KH2026-0004", "Phạm Thị Dung", "0913703701", "15", "5.800.000đ", "611", "04/01/2024", ""});
-        model.addRow(new Object[]{"KH2026-0005", "Hoàng Văn Em", "0914938268", "18", "7.200.000đ", "748", "05/02/2024", ""});
-        model.addRow(new Object[]{"KH2026-0006", "Vũ Thị Phương", "0916172835", "21", "8.600.000đ", "885", "06/03/2024", ""});
-        model.addRow(new Object[]{"KH2026-0007", "Đặng Văn Giang", "0917407402", "24", "10.000.000đ", "1.022", "07/01/2024", ""});
-        model.addRow(new Object[]{"KH2026-0008", "Bùi Thị Hoa", "0918641969", "27", "1.400.000đ", "1.159", "08/02/2024", ""});
-        model.addRow(new Object[]{"KH2026-0009", "Đinh Văn Hùng", "0919876536", "30", "2.800.000đ", "1.296", "09/03/2024", ""});
+        // Xóa sạch dữ liệu cũ trên bảng
+        model.setRowCount(0);
+        
+        // Khởi tạo DAO và lấy danh sách thật từ CSDL
+        DAO.DAO_KhachHang daoKH = new DAO.DAO_KhachHang();
+        List<Object[]> dsKhachHang = daoKH.layDanhSachKhachHangChoBang();
+        
+        // Đổ từng dòng dữ liệu vào model của JTable
+        for (Object[] row : dsKhachHang) {
+            model.addRow(row);
+        }
+        
+        // (Tùy chọn) Cập nhật nhãn tổng số lượng khách hàng nếu bạn có
+        if (lblTotalKhachHang != null) {
+            lblTotalKhachHang.setText("Danh sách (" + model.getRowCount() + ")");
+        }
     }
 }

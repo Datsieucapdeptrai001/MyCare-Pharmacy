@@ -3,11 +3,11 @@ package GUI;
 import javax.swing.*;
 import javax.swing.border.*;
 import javax.swing.table.DefaultTableModel;
-
+import Enumeration.*;
 import Utils.*;
-
+import ConnectDB.ConnectDB;
 import java.awt.*;
-
+import DAO.DAO_SanPham;
 public class TaoHoaDon extends JDialog {
     // --- BIẾN QUẢN LÝ UI KHÁCH HÀNG ---
     private JPanel pnlInputFields, pnlLinkedCustomer;
@@ -146,18 +146,130 @@ public class TaoHoaDon extends JDialog {
             String sdt = isCustomerLinked ? linkedSdtKH : txtPhone.getText().replace("Số điện thoại (tuỳ chọn)", "");
             String tongTien = lblTotalPriceValue.getText();
 
-            if (editingModelRow != -1) {
-                mainTableModel.setValueAt(maHDDangSua.replace("-TEMP", ""), editingModelRow, 0); 
-                mainTableModel.setValueAt(khach, editingModelRow, 2);         
-                mainTableModel.setValueAt(sdt, editingModelRow, 3);           
-                mainTableModel.setValueAt(phuongThuc, editingModelRow, 4);   
-                mainTableModel.setValueAt(tongTien, editingModelRow, 5);     
-                mainTableModel.setValueAt("Hoàn thành", editingModelRow, 6); 
-            } else {
-                String maMoi = "HD-" + (System.currentTimeMillis() % 10000);
-                mainTableModel.addRow(new Object[]{maMoi, "11/04/2026", khach, sdt, phuongThuc, tongTien, "Hoàn thành", "", "TPCN"});
+            // Ràng buộc: Phải có ít nhất 1 sản phẩm
+            if (productModel.getRowCount() == 0) {
+                JOptionPane.showMessageDialog(this, "Vui lòng thêm ít nhất 1 sản phẩm vào hóa đơn!", "Cảnh báo", JOptionPane.WARNING_MESSAGE);
+                return;
             }
-            dispose();
+
+            try {
+                java.sql.Connection con = ConnectDB.getInstance().getConnection();
+
+                // ==================================================
+                // 1. TẠO ĐỐI TƯỢNG HÓA ĐƠN
+                // ==================================================
+                String maHDMoi = (editingModelRow != -1) ? maHDDangSua.replace("-TEMP", "") : "HD" + System.currentTimeMillis();
+                Entity.HoaDon hd = new Entity.HoaDon();
+                hd.setId(maHDMoi);
+                hd.setLoaiHD(Enumeration.LoaiHoaDon.BAN_HANG);
+                
+                // MẸO TRÁNH SỬA DB: Giấu tiền mặt khách đưa vào cột Ghi Chú
+                if (phuongThuc.equals("Tiền mặt")) {
+                    hd.setGhiChu("CASH:" + tongTienMat);
+                } else {
+                    hd.setGhiChu(""); 
+                }
+                hd.setNgayLapHD(java.time.LocalDateTime.now());
+
+                // Setup Nhân Viên (Mã NV mặc định tạm thời)
+                Entity.NhanVien nv = new Entity.NhanVien();
+                // Thay bằng setId hoặc setNhanVien tùy thuộc vào cách bạn thiết kế Class NhanVien
+                try { nv.setNhanVien("DS-0001"); } catch(Exception ex) { /* Ignore nếu sai tên hàm */ }
+                hd.setNhanVienId(nv);
+
+                // Setup Khách Hàng (Tự động tra cứu mã KH từ DB thông qua SĐT nếu có liên kết)
+                if (isCustomerLinked && !sdt.isEmpty()) {
+                    java.sql.PreparedStatement pstKH = con.prepareStatement("SELECT id FROM KhachHang WHERE sdt = ?");
+                    pstKH.setString(1, sdt);
+                    java.sql.ResultSet rsKH = pstKH.executeQuery();
+                    if (rsKH.next()) {
+                        Entity.KhachHang kh = new Entity.KhachHang();
+                        kh.setId(rsKH.getString("id"));
+                        hd.setKhachHangId(kh);
+                    }
+                }
+
+                // Setup Phương thức thanh toán
+                Enumeration.PhuongThucThanhToan pt = phuongThuc.equals("Tiền mặt") 
+                        ? Enumeration.PhuongThucThanhToan.TIEN_MAT 
+                        : Enumeration.PhuongThucThanhToan.CHUYEN_KHOAN_NGAN_HANG;
+                hd.setPhuongThucThanhToan(pt);
+
+
+                // ==================================================
+                // 2. TẠO DANH SÁCH CHI TIẾT HÓA ĐƠN TỪ TABLE GIAO DIỆN
+                // ==================================================
+                java.util.List<Entity.ChiTietHoaDon> dsCTHD = new java.util.ArrayList<>();
+                
+                for (int i = 0; i < productModel.getRowCount(); i++) {
+                    String tenSP = productModel.getValueAt(i, 0).toString();
+                    String tenDVT = productModel.getValueAt(i, 1).toString();
+                    int soLuong = Integer.parseInt(productModel.getValueAt(i, 2).toString());
+
+                    // Truy vấn ngầm Mã SP và Mã ĐVT dựa vào Tên SP và Tên ĐVT
+                    String maSP = "";
+                    String maDVT = "";
+                    String sql = "SELECT sp.id AS MaSP, dv.id AS MaDVT FROM SanPham sp JOIN DonViDoLuong dv ON sp.id = dv.sanPhamId WHERE sp.ten = ? AND dv.ten = ?";
+                    java.sql.PreparedStatement pstSP = con.prepareStatement(sql);
+                    pstSP.setString(1, tenSP);
+                    pstSP.setString(2, tenDVT);
+                    java.sql.ResultSet rsSP = pstSP.executeQuery();
+                    
+                    if(rsSP.next()) {
+                        maSP = rsSP.getString("MaSP");
+                        maDVT = rsSP.getString("MaDVT");
+                    }
+
+                    if (maSP.isEmpty()) {
+                        throw new Exception("Không tìm thấy mã sản phẩm trong CSDL cho: " + tenSP);
+                    }
+
+                    // Gắn vào ChiTietHoaDon
+                    Entity.ChiTietHoaDon ct = new Entity.ChiTietHoaDon();
+                    ct.setHoaDonId(hd);
+                    
+                    Entity.SanPham sp = new Entity.SanPham();
+                    sp.setId(maSP);
+                    ct.setSanPhamId(sp);
+
+                    Entity.DonViDoLuong dv = new Entity.DonViDoLuong();
+                    dv.setId(maDVT);
+                    ct.setDonViDoLuongId(dv);
+
+                    ct.setSoLuong(soLuong);
+                    dsCTHD.add(ct);
+                }
+
+                // ==================================================
+                // 3. GỌI BUS ĐỂ THỰC THI TRANSACTION (Lưu HĐ + Lưu CTHD + Trừ Lô Hàng)
+                // ==================================================
+                BUS.BUS_HoaDon busHD = new BUS.BUS_HoaDon();
+                boolean success = busHD.thanhToan(hd, dsCTHD); // <-- Hàm thần thánh bạn đã viết ở BUS_HoaDon
+
+                if (success) {
+                    JOptionPane.showMessageDialog(this, "Thanh toán thành công!\nHóa đơn và Tồn kho đã được cập nhật.");
+                    
+                    // Cập nhật lại UI bảng bên ngoài màn hình Bán Hàng
+                    String ngayStr = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+                    if (editingModelRow != -1) {
+                        mainTableModel.setValueAt(maHDMoi, editingModelRow, 0); 
+                        mainTableModel.setValueAt(khach, editingModelRow, 2);         
+                        mainTableModel.setValueAt(sdt, editingModelRow, 3);           
+                        mainTableModel.setValueAt(phuongThuc, editingModelRow, 4);   
+                        mainTableModel.setValueAt(tongTien, editingModelRow, 5);     
+                        mainTableModel.setValueAt("Hoàn thành", editingModelRow, 6); 
+                    } else {
+                        mainTableModel.addRow(new Object[]{maHDMoi, ngayStr, khach, sdt, phuongThuc, tongTien, "Hoàn thành", "", "TPCN"});
+                    }
+                    dispose();
+                } else {
+                    JOptionPane.showMessageDialog(this, "Lỗi Database: Kho không đủ hàng hoặc dữ liệu sai!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+                }
+
+            } catch(Exception ex) {
+                ex.printStackTrace();
+                JOptionPane.showMessageDialog(this, "Lỗi hệ thống: " + ex.getMessage(), "Lỗi Nghiêm Trọng", JOptionPane.ERROR_MESSAGE);
+            }
         });
 
         btnLuuNhap.addActionListener(e -> {
@@ -662,8 +774,13 @@ public class TaoHoaDon extends JDialog {
         txtSearchProduct.addKeyListener(new java.awt.event.KeyAdapter() {
             @Override
             public void keyReleased(java.awt.event.KeyEvent e) {
-                String text = txtSearchProduct.getText().trim().toLowerCase();
-                
+            	String text = txtSearchProduct.getText().trim();
+
+            	// Chỉ tìm kiếm khi người dùng gõ từ 2 ký tự trở lên để giảm tải DB
+            	if (text.isEmpty() || text.length() < 2 || text.equals(placeholderText)) {
+            	    suggestionPopup.setVisible(false);
+            	    return;
+            	}
                 // Ẩn bảng nếu không có chữ
                 if (text.isEmpty() || text.equals(placeholderText.toLowerCase())) {
                     suggestionPopup.setVisible(false);
@@ -673,27 +790,45 @@ public class TaoHoaDon extends JDialog {
                 suggestionPopup.removeAll();
                 boolean hasResult = false;
 
-                // --- DỮ LIỆU MÔ PHỎNG THEO ẢNH DESIGN CỦA BẠN ---
-                if ("viên sủi plusssz gold".contains(text) || text.contains("sủi")) {
-                    suggestionPopup.add(createSuggestionItem(suggestionPopup, txtSearchProduct, "PILL", "Viên sủi Plusssz Gold", "Tuýp", "45000", "120"));
-                    hasResult = true;
-                }
-                if ("băng cá nhân urgo".contains(text) || text.contains("băng") || text.contains("urgo")) {
-                    suggestionPopup.add(createSuggestionItem(suggestionPopup, txtSearchProduct, "MED_BOX", "Băng cá nhân Urgo", "Hộp", "32000", "45"));
-                    hasResult = true;
-                }
-                if ("panadol extra".contains(text) || text.contains("pana")) {
-                    suggestionPopup.add(createSuggestionItem(suggestionPopup, txtSearchProduct, "PILL", "Panadol Extra", "Vỉ", "15000", "300"));
-                    hasResult = true;
+                // BỌC TRY-CATCH ĐỂ BẮT LỖI NGẦM
+                try {
+                    DAO.DAO_SanPham daoSP = new DAO.DAO_SanPham();
+                    java.util.List<Object[]> ketQua = daoSP.timKiemSanPhamBan(text);
+
+                    if (ketQua != null && !ketQua.isEmpty()) {
+                        for (Object[] row : ketQua) {
+                            String id = row[0].toString();
+                            String ten = row[1].toString();
+                            String donVi = row[2].toString();
+                            
+                            // [FIX LỖI CRASH GIAO DIỆN]: Ép kiểu số thực -> làm tròn -> chuyển về chuỗi số nguyên chuẩn
+                            // Giúp triệt tiêu các đuôi ".0" hoặc ".000" từ Database trả về
+                            long giaBan = Math.round(Double.parseDouble(row[3].toString()));
+                            String gia = String.valueOf(giaBan); // Trở thành "15000" an toàn tuyệt đối
+                            
+                            String tonKho = row[4].toString();
+
+                            suggestionPopup.add(createSuggestionItem(suggestionPopup, txtSearchProduct, "PILL", ten, donVi, gia, tonKho));
+                        }
+                        hasResult = true;
+                    }
+                } catch (Exception ex) {
+                    // Nếu lỗi kết nối DB hoặc lỗi dữ liệu, nó sẽ in ra Console thay vì làm sập Popup
+                    System.err.println("Lỗi khi tìm kiếm sản phẩm: " + ex.getMessage());
+                    ex.printStackTrace(); 
                 }
 
                 if (hasResult) {
-                    // Show bảng đổ xuống với kích thước ôm sát thanh tìm kiếm
                     suggestionPopup.setPreferredSize(new Dimension(pnlSearchWrapper.getWidth(), suggestionPopup.getPreferredSize().height));
                     suggestionPopup.show(pnlSearchWrapper, 0, pnlSearchWrapper.getHeight());
                     txtSearchProduct.requestFocus(); 
                 } else {
-                    suggestionPopup.setVisible(false);
+                    JMenuItem emptyItem = new JMenuItem("Không tìm thấy sản phẩm nào phù hợp...");
+                    emptyItem.setEnabled(false);
+                    suggestionPopup.add(emptyItem);
+                    suggestionPopup.setPreferredSize(new Dimension(pnlSearchWrapper.getWidth(), suggestionPopup.getPreferredSize().height));
+                    suggestionPopup.show(pnlSearchWrapper, 0, pnlSearchWrapper.getHeight());
+                    txtSearchProduct.requestFocus();
                 }
             }
         });
@@ -968,6 +1103,7 @@ public class TaoHoaDon extends JDialog {
         
         return pnl;
     }
+    
     private void capNhatTongTien() {
         if (lblTotalValue != null) {
             String formattedString = String.format("%,d", tongTienMat).replace(',', '.');

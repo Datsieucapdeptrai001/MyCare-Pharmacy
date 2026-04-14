@@ -1,12 +1,12 @@
 package BUS;
 
-import ConnectDB.ConnectDB; // Bổ sung import lớp ConnectDB
+import ConnectDB.ConnectDB; 
 import DAO.*;
 import Entity.*;
-import Enum.TrangThaiLoHang;
+import Enumeration.TrangThaiLoHang;
 
-import java.sql.Connection; // Bổ sung import Connection
-import java.sql.SQLException; // Bổ sung import SQLException
+import java.sql.Connection; 
+import java.sql.SQLException; 
 import java.util.List;
 
 public class BUS_HoaDon {
@@ -26,6 +26,7 @@ public class BUS_HoaDon {
 
             for (ChiTietHoaDon ct : dsCTHD) {
                 // 2. Lưu chi tiết từng mặt hàng
+                // (Lưu ý: Hàm của bạn tên là themCTHD, nếu bên DAO tên là themChiTietHoaDon thì bạn nhớ đổi lại cho khớp nhé)
                 if (!daoCTHD.themCTHD(ct)) throw new Exception("Lỗi lưu chi tiết");
 
                 // 3. Xử lý trừ kho theo lô (FEFO)
@@ -37,8 +38,9 @@ public class BUS_HoaDon {
 
                     int layDuoc = Math.min(lh.getSoLuongLoHang(), soLuongCanLay);
                     
-                    // Lưu thông tin phân bổ lô
-                    PhanBoLoHang pb = new PhanBoLoHang(hd, null, ct.getSanPhamId(), lh, layDuoc);
+                    // --- ĐÃ FIX LỖI NULL ĐƠN VỊ ĐO LƯỜNG Ở ĐÂY ---
+                    // Đổi chữ "null" thành ct.getDonViDoLuongId()
+                    PhanBoLoHang pb = new PhanBoLoHang(hd, ct.getDonViDoLuongId(), ct.getSanPhamId(), lh, layDuoc);
                     daoPB.themPhanBo(pb);
 
                     // Cập nhật số lượng còn lại trong lô

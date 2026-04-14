@@ -2,8 +2,8 @@ package Entity;
 
 import java.util.Objects;
 
-import Enum.DoiTuongApDung;
-import Enum.LoaiHinhThuc;
+import Enumeration.DoiTuongApDung;
+import Enumeration.LoaiHinhThuc;
 
 public class HinhThucKhuyenMai {
     private String id;

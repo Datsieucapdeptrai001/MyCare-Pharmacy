@@ -2,7 +2,7 @@ package Entity;
 
 import java.util.Objects;
 
-import Enum.VaiTro;
+import Enumeration.VaiTro;
 
 public class TaiKhoan {
 	private String id;

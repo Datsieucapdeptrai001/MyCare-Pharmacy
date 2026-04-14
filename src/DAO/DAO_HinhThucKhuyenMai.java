@@ -4,9 +4,9 @@ import ConnectDB.ConnectDB;
 import Entity.HinhThucKhuyenMai;
 import Entity.KhuyenMai;
 import Entity.SanPham;
+import Enumeration.DoiTuongApDung;
+import Enumeration.LoaiHinhThuc;
 import Entity.DonViDoLuong;
-import Enum.DoiTuongApDung;
-import Enum.LoaiHinhThuc;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;

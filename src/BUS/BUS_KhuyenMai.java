@@ -4,12 +4,12 @@ import DAO.DAO_DieuKienKhuyenMai;
 import DAO.DAO_HinhThucKhuyenMai;
 import DAO.DAO_KhuyenMai;
 import Entity.KhuyenMai;
+import Enumeration.DoiTuongApDung;
+import Enumeration.LoaiHinhThuc;
 import Entity.DieuKienKhuyenMai;
 import java.time.LocalDateTime;
 import java.util.List;
 import Entity.HinhThucKhuyenMai;
-import Enum.DoiTuongApDung;
-import Enum.LoaiHinhThuc;
 public class BUS_KhuyenMai {
     private DAO_KhuyenMai daoKhuyenMai;
     private DAO_DieuKienKhuyenMai daoDieuKienKhuyenMai;
