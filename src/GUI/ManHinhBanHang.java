@@ -8,10 +8,14 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.*;
 
+import ConnectDB.ConnectDB;
 import Utils.MenuIcon;
 
 import java.awt.*;
 import java.awt.event.*;
+import java.sql.*;
+import java.text.DecimalFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -346,8 +350,52 @@ public class ManHinhBanHang extends JPanel {
         // btnAdd.doClick();
     }
     private void loadData() {
-        model.addRow(new Object[]{"HD-2024-0001", "05/04/2026", "Nguyễn An", "0912345678", "Tiền mặt", "104.000đ", "Hoàn thành", "", "Thuốc kê đơn"});
-        model.addRow(new Object[]{"HD-2024-0002", "06/04/2026", "Trần Bình", "0987654321", "Chuyển khoản", "105.000đ", "Đang xử lý", "", "Thuốc không kê đơn"});
-        model.addRow(new Object[]{"HD-2024-0003", "09/04/2026", "Lê Cường", "0901234567", "Tiền mặt", "206.250đ", "Đã hủy", "", "TPCN"});
+        model.setRowCount(0);
+        try {
+            Connection con = ConnectDB.getInstance().getConnection();
+            if (con == null) return;
+            String sql =
+                "SELECT TOP 200 hd.id, hd.ngayLapHD, " +
+                "ISNULL(kh.hoVaTen,'Khách lẻ') AS khach, " +
+                "ISNULL(kh.soDienThoai,'---') AS sdt, " +
+                "hd.phuongThucThanhToan, " +
+                "ISNULL(SUM(ct.soLuong * dvl.gia), 0) AS tong " +
+                "FROM HoaDon hd " +
+                "LEFT JOIN KhachHang kh ON hd.khachHangId = kh.id " +
+                "LEFT JOIN ChiTietHoaDon ct ON hd.id = ct.hoaDonId " +
+                "LEFT JOIN DonViDoLuong dvl ON ct.donViDoLuongId = dvl.id " +
+                "    AND ct.sanPhamId = dvl.sanPhamId " +
+                "WHERE hd.loaiHD = 'BAN_HANG' " +
+                "GROUP BY hd.id, hd.ngayLapHD, kh.hoVaTen, kh.soDienThoai, hd.phuongThucThanhToan " +
+                "ORDER BY hd.ngayLapHD DESC";
+            SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm");
+            DecimalFormat df = new DecimalFormat("###,###,###");
+            ResultSet rs = con.createStatement().executeQuery(sql);
+            while (rs.next()) {
+                String pttt = rs.getString("phuongThucThanhToan");
+                if (pttt != null) pttt = pttt
+                    .replace("TIEN_MAT", "Tiền mặt")
+                    .replace("CHUYEN_KHOAN", "Chuyển khoản")
+                    .replace("THE", "Thẻ");
+                String ngay = rs.getTimestamp("ngayLapHD") != null
+                    ? sdf.format(rs.getTimestamp("ngayLapHD")) : "";
+                String tong = df.format(rs.getLong("tong")) + "đ";
+                model.addRow(new Object[]{
+                    rs.getString("id"),
+                    ngay,
+                    rs.getString("khach"),
+                    rs.getString("sdt"),
+                    pttt,
+                    tong,
+                    "Hoàn thành",
+                    "",
+                    "Tất cả"     // cột ẩn danh mục – dùng cho filter
+                });
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            // Fallback: thông báo lỗi kết nối
+            model.addRow(new Object[]{"---", "---", "Lỗi kết nối DB", "---", "---", "---", "---", "", ""});
+        }
     }
 }

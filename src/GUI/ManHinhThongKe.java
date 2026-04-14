@@ -15,11 +15,6 @@ import java.awt.geom.*;
 import java.util.*;
 
 public class ManHinhThongKe extends JPanel {
-
-    // ==========================================
-    // DỮ LIỆU MẪU
-    // ==========================================
-    // ── Dữ liệu NV load từ DB ──────────────────────────────
     static String[] NV_NAMES  = {};
     static String[] NV_IDS    = {};
     static String[] NV_ROLES  = {};
@@ -57,6 +52,10 @@ public class ManHinhThongKe extends JPanel {
     private JComboBox<String> cboNam, cboKyLoc, cboNhanVien;
     private JLabel lblYearBadge;
 
+    // ── Stat card labels – cập nhật sau khi load DB ──
+    private JLabel lblStatTongDT, lblStatSoHD, lblStatLoiNhuan, lblStatTBAO;
+    private JLabel lblStatSubDT, lblStatSubHD, lblStatSubLN, lblStatSubTBAO;
+
     // Chart references để có thể repaint khi filter
     private BarChartMain  chartBarMain;
     private LineChartDaily chartLineDaily;
@@ -64,6 +63,7 @@ public class ManHinhThongKe extends JPanel {
     private NVDailyChart  chartNVDaily;
     private NVShiftChart  chartNVShift;
     private NVDetailTable tblNVDetail;
+    private JLabel[]      nvStatRefs;   // [count, tbao, tongDT, subCount, subTBAO, subTong]
 
     private int selectedNVIdx = -1; // -1 = Tất cả
 
@@ -105,6 +105,14 @@ public class ManHinhThongKe extends JPanel {
 
     // ── LOAD DỮ LIỆU TỪ DATABASE ────────────────────────────
     private void loadDataFromDB() {
+        int year = java.time.Year.now().getValue(); // mặc định năm hiện tại
+        if (cboNam != null && cboNam.getSelectedItem() != null) {
+            try { year = Integer.parseInt(cboNam.getSelectedItem().toString()); } catch (NumberFormatException ignored) {}
+        }
+        loadDataFromDB(year);
+    }
+
+    private void loadDataFromDB(int year) {
         try {
             Connection con = ConnectDB.getInstance().getConnection();
             if (con == null) return;
@@ -139,9 +147,9 @@ public class ManHinhThongKe extends JPanel {
                     "SELECT COUNT(*) cnt, ISNULL(SUM(ct.soLuong*dvl.gia),0) dt FROM HoaDon hd " +
                     "JOIN ChiTietHoaDon ct ON hd.id=ct.hoaDonId " +
                     "JOIN DonViDoLuong dvl ON ct.donViDoLuongId=dvl.id AND ct.sanPhamId=dvl.sanPhamId " +
-                    "WHERE hd.nhanVienId=? AND YEAR(hd.ngayLapHD)=YEAR(GETDATE()) AND hd.loaiHD='BAN_HANG' " +
+                    "WHERE hd.nhanVienId=? AND YEAR(hd.ngayLapHD)=? AND hd.loaiHD='BAN_HANG' " +
                     "AND DATEPART(HOUR,hd.ngayLapHD) BETWEEN 6 AND 13")) {
-                    ps.setString(1,id);
+                    ps.setString(1,id); ps.setInt(2, year);
                     ResultSet rs2 = ps.executeQuery();
                     if (rs2.next()) { NV_HD_S[i]=rs2.getInt("cnt"); NV_DT_S[i]=rs2.getDouble("dt")/1_000_000; }
                 }
@@ -149,21 +157,23 @@ public class ManHinhThongKe extends JPanel {
                     "SELECT COUNT(*) cnt, ISNULL(SUM(ct.soLuong*dvl.gia),0) dt FROM HoaDon hd " +
                     "JOIN ChiTietHoaDon ct ON hd.id=ct.hoaDonId " +
                     "JOIN DonViDoLuong dvl ON ct.donViDoLuongId=dvl.id AND ct.sanPhamId=dvl.sanPhamId " +
-                    "WHERE hd.nhanVienId=? AND YEAR(hd.ngayLapHD)=YEAR(GETDATE()) AND hd.loaiHD='BAN_HANG' " +
+                    "WHERE hd.nhanVienId=? AND YEAR(hd.ngayLapHD)=? AND hd.loaiHD='BAN_HANG' " +
                     "AND DATEPART(HOUR,hd.ngayLapHD) BETWEEN 14 AND 21")) {
-                    ps.setString(1,id);
+                    ps.setString(1,id); ps.setInt(2, year);
                     ResultSet rs2 = ps.executeQuery();
                     if (rs2.next()) { NV_HD_C[i]=rs2.getInt("cnt"); NV_DT_C[i]=rs2.getDouble("dt")/1_000_000; }
                 }
             }
 
             // 2. Doanh thu 12 tháng
-            try (Statement st = con.createStatement();
-                 ResultSet rs = st.executeQuery(
+            Arrays.fill(DT_DATA, 0);
+            try (PreparedStatement psMonth = con.prepareStatement(
                     "SELECT MONTH(hd.ngayLapHD) m, ISNULL(SUM(ct.soLuong*dvl.gia),0)/1000000 dt FROM HoaDon hd " +
                     "JOIN ChiTietHoaDon ct ON hd.id=ct.hoaDonId " +
                     "JOIN DonViDoLuong dvl ON ct.donViDoLuongId=dvl.id AND ct.sanPhamId=dvl.sanPhamId " +
-                    "WHERE YEAR(hd.ngayLapHD)=YEAR(GETDATE()) AND hd.loaiHD='BAN_HANG' GROUP BY MONTH(hd.ngayLapHD)")) {
+                    "WHERE YEAR(hd.ngayLapHD)=? AND hd.loaiHD='BAN_HANG' GROUP BY MONTH(hd.ngayLapHD)")) {
+                psMonth.setInt(1, year);
+                ResultSet rs = psMonth.executeQuery();
                 while (rs.next()) { int m=rs.getInt("m"); if(m>=1&&m<=12) DT_DATA[m-1]=(int)rs.getDouble("dt"); }
             }
 
@@ -222,6 +232,46 @@ public class ManHinhThongKe extends JPanel {
             if (tblNVDetail    != null) tblNVDetail.refreshData();
             if (pnlBody        != null) { pnlBody.revalidate(); pnlBody.repaint(); }
 
+            // ── Cập nhật stat cards doanh thu từ dữ liệu thật ──
+            long totalDT = 0; for (int v : DT_DATA) totalDT += v;
+            String namChon = cboNam != null ? (String) cboNam.getSelectedItem() : String.valueOf(java.time.Year.now().getValue());
+
+            // Tổng số hóa đơn trong năm
+            int totalHD = 0;
+            try (PreparedStatement psHD = con.prepareStatement(
+                "SELECT COUNT(*) FROM HoaDon WHERE loaiHD='BAN_HANG' AND YEAR(ngayLapHD)=?")) {
+                psHD.setInt(1, Integer.parseInt(namChon));
+                ResultSet rsHD = psHD.executeQuery();
+                if (rsHD.next()) totalHD = rsHD.getInt(1);
+            }
+
+            // Tính TB/đơn (triệu)
+            double tbDon = totalHD > 0 ? (double) totalDT / totalHD : 0;
+
+            if (lblStatTongDT != null) {
+                lblStatTongDT.setText(totalDT + "M đ");
+                lblStatSubDT.setText("Cả năm " + namChon);
+                lblStatSoHD.setText(String.format("%,d", totalHD));
+                int maxThang = 0; int maxVal = 0;
+                for (int i = 0; i < 12; i++) if (DT_DATA[i] > maxVal) { maxVal = DT_DATA[i]; maxThang = i+1; }
+                lblStatSubHD.setText("Tháng cao nhất: T" + maxThang);
+                lblStatLoiNhuan.setText("---");      // Chưa có bảng chi phí riêng
+                lblStatSubLN.setText("Chưa có dữ liệu chi phí");
+                lblStatTBAO.setText(String.format("%.0fK đ", tbDon * 1000));
+                lblStatSubTBAO.setText("Tháng cao nhất: T" + maxThang);
+            }
+
+            // ── Cập nhật stat cards nhân viên ──
+            if (nvStatRefs != null && NV_NAMES.length > 0) {
+                double tongDTNV = 0;
+                for (int i = 0; i < NV_NAMES.length; i++) tongDTNV += NV_DT_S[i] + NV_DT_C[i];
+                double tbDTNV = tongDTNV / NV_NAMES.length;
+                nvStatRefs[0].setText(String.valueOf(NV_NAMES.length));
+                nvStatRefs[1].setText(String.format("%.1fM đ", tbDTNV));
+                nvStatRefs[2].setText(String.format("%.1fM đ", tongDTNV));
+                nvStatRefs[3].setText("đang hoạt động · " + namChon);
+            }
+
         } catch (Exception e) { e.printStackTrace(); }
     }
 
@@ -232,7 +282,7 @@ public class ManHinhThongKe extends JPanel {
         JPanel p = new JPanel(new BorderLayout());
         p.setOpaque(false);
 
-        lblYearBadge = new JLabel("Cả năm 2024");
+        lblYearBadge = new JLabel("Cả năm " + java.time.Year.now().getValue());
         lblYearBadge.setForeground(Color.decode("#1A73E8"));
         lblYearBadge.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         lblYearBadge.setBorder(BorderFactory.createCompoundBorder(
@@ -283,7 +333,7 @@ public class ManHinhThongKe extends JPanel {
         btnNV = makeTabBtn("👥 Nhân viên",       false);
 
         cboNam = new JComboBox<>(new String[]{"2022","2023","2024","2025","2026"});
-        cboNam.setSelectedItem("2024");
+        cboNam.setSelectedItem(String.valueOf(java.time.Year.now().getValue()));
 
         cboKyLoc = new JComboBox<>(new String[]{"Cả năm","Tháng","Quý","Tùy chỉnh"});
 
@@ -295,17 +345,22 @@ public class ManHinhThongKe extends JPanel {
         btnThucHien.setFocusPainted(false);
         btnThucHien.setBorder(new EmptyBorder(6, 14, 6, 14));
         btnThucHien.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        btnThucHien.addActionListener(e -> applyFilter());
+        // Reload dữ liệu từ DB với năm được chọn
+        btnThucHien.addActionListener(e -> {
+            lblYearBadge.setText("Cả năm " + cboNam.getSelectedItem());
+            loadDataFromDB();
+        });
 
         JButton btnReset = new JButton("↺ Reset");
         btnReset.setFocusPainted(false);
         btnReset.setBorder(new EmptyBorder(6, 12, 6, 12));
         btnReset.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         btnReset.addActionListener(e -> {
-            cboNam.setSelectedItem("2024");
+            cboNam.setSelectedItem(String.valueOf(java.time.Year.now().getValue()));
             cboKyLoc.setSelectedIndex(0);
             cboNhanVien.setSelectedIndex(0);
-            applyFilter();
+            lblYearBadge.setText("Cả năm " + cboNam.getSelectedItem());
+            loadDataFromDB();
         });
 
         p.add(btnDT); p.add(btnNV);
@@ -373,20 +428,28 @@ public class ManHinhThongKe extends JPanel {
         root.setLayout(new BoxLayout(root, BoxLayout.Y_AXIS));
         root.setOpaque(false);
 
-        // --- 4 stat cards ---
+        // --- 4 stat cards – giá trị sẽ được cập nhật sau loadDataFromDB() ---
         JPanel cards = new JPanel(new GridLayout(1, 4, 12, 0));
         cards.setOpaque(false);
         cards.setMaximumSize(new Dimension(Integer.MAX_VALUE, 90));
-        cards.add(statCard("Tổng doanh thu",    "795.0M đ",  "Cả năm 2024",       "#1A73E8", "📈", "#EEF2FF"));
-        cards.add(statCard("Số lượng đơn hàng", "5.450",     "TB mỗi kỳ: 454 đơn","#9C27B0", "🛒", "#F3E5F5"));
-        cards.add(statCard("Lợi nhuận",         "299.0M đ",  "Tỷ lệ: 37.6%",      "#00A76F", "📈", "#E8F5E9"));
-        cards.add(statCard("Giá trị TB / đơn",  "146K đ",    "Tháng cao nhất: T12","#FF9800", "🎁", "#FFF3E0"));
+
+        JPanel[] statCards = new JPanel[4];
+        lblStatTongDT   = new JLabel("---"); lblStatSubDT   = new JLabel("Cả năm " + cboNam.getSelectedItem());
+        lblStatSoHD     = new JLabel("---"); lblStatSubHD   = new JLabel("Đang tải...");
+        lblStatLoiNhuan = new JLabel("---"); lblStatSubLN   = new JLabel("Tỷ lệ: ---");
+        lblStatTBAO     = new JLabel("---"); lblStatSubTBAO = new JLabel("Đang tải...");
+
+        statCards[0] = buildDynamicStatCard("Tổng doanh thu",    lblStatTongDT,   lblStatSubDT,   "#1A73E8", "📈", "#EEF2FF");
+        statCards[1] = buildDynamicStatCard("Số lượng đơn hàng", lblStatSoHD,     lblStatSubHD,   "#9C27B0", "🛒", "#F3E5F5");
+        statCards[2] = buildDynamicStatCard("Lợi nhuận",         lblStatLoiNhuan, lblStatSubLN,   "#00A76F", "📈", "#E8F5E9");
+        statCards[3] = buildDynamicStatCard("Giá trị TB / đơn",  lblStatTBAO,     lblStatSubTBAO, "#FF9800", "🎁", "#FFF3E0");
+        for (JPanel c : statCards) cards.add(c);
         root.add(cards);
         root.add(Box.createVerticalStrut(12));
 
         // --- Biểu đồ cột chính (DT-CP-LN 12 tháng) ---
         chartBarMain = new BarChartMain();
-        JPanel cBarCard = wrapChart("Doanh thu – Chi phí – Lợi nhuận · Cả năm 2024", "12 kỳ dữ liệu", chartBarMain, 280);
+        JPanel cBarCard = wrapChart("Doanh thu – Chi phí – Lợi nhuận · Cả năm " + java.time.Year.now().getValue(), "12 kỳ dữ liệu", chartBarMain, 280);
         cBarCard.setMaximumSize(new Dimension(Integer.MAX_VALUE, 340));
         root.add(cBarCard);
         root.add(Box.createVerticalStrut(12));
@@ -451,13 +514,24 @@ public class ManHinhThongKe extends JPanel {
         root.setLayout(new BoxLayout(root, BoxLayout.Y_AXIS));
         root.setOpaque(false);
 
-        // --- 3 stat cards ---
+        // --- 3 stat cards NV – cập nhật sau loadDataFromDB() ---
         JPanel cards = new JPanel(new GridLayout(1, 3, 12, 0));
         cards.setOpaque(false);
         cards.setMaximumSize(new Dimension(Integer.MAX_VALUE, 90));
-        cards.add(statCard("Tổng nhân viên",     "6",        "đang hoạt động · Cả năm 2024","#1A73E8","👥","#EEF2FF"));
-        cards.add(statCard("DT trung bình / NV", "27.1M đ",  "mỗi nhân viên",               "#9C27B0","📈","#F3E5F5"));
-        cards.add(statCard("Tổng doanh thu NV",  "162.4M đ", "tất cả nhân viên",            "#00A76F","📈","#E8F5E9"));
+
+        JLabel lblNVCount  = new JLabel("---"); JLabel lblNVSubCount = new JLabel("đang hoạt động");
+        JLabel lblNVTBAO   = new JLabel("---"); JLabel lblNVSubTBAO  = new JLabel("mỗi nhân viên");
+        JLabel lblNVTongDT = new JLabel("---"); JLabel lblNVSubTong  = new JLabel("tất cả nhân viên");
+
+        // Lưu reference để cập nhật sau loadDataFromDB
+        final JLabel[] nvStatRefs = {lblNVCount, lblNVTBAO, lblNVTongDT,
+                                     lblNVSubCount, lblNVSubTBAO, lblNVSubTong};
+        // Gán vào static để loadDataFromDB() cập nhật được
+        ManHinhThongKe.this.nvStatRefs = nvStatRefs;
+
+        cards.add(buildDynamicStatCard("Tổng nhân viên",     lblNVCount,  lblNVSubCount,  "#1A73E8","👥","#EEF2FF"));
+        cards.add(buildDynamicStatCard("DT trung bình / NV", lblNVTBAO,   lblNVSubTBAO,  "#9C27B0","📈","#F3E5F5"));
+        cards.add(buildDynamicStatCard("Tổng doanh thu NV",  lblNVTongDT, lblNVSubTong,  "#00A76F","📈","#E8F5E9"));
         root.add(cards);
         root.add(Box.createVerticalStrut(12));
 
@@ -1069,7 +1143,7 @@ public class ManHinhThongKe extends JPanel {
             header.setOpaque(false);
             JPanel titles = new JPanel(new GridLayout(2,1,0,2));
             titles.setOpaque(false);
-            JLabel t1 = new JLabel("⏰ Chi tiết dược sĩ theo ca · Cả năm 2024");
+            JLabel t1 = new JLabel("⏰ Chi tiết dược sĩ theo ca · Cả năm " + java.time.Year.now().getValue());
             t1.setFont(new Font("Segoe UI", Font.BOLD, 13));
             t1.setForeground(Color.decode("#152A4B"));
             JTextField search = new JTextField("🔍 Tìm nhân viên...");
@@ -1385,7 +1459,36 @@ public class ManHinhThongKe extends JPanel {
         return p;
     }
 
+    private JPanel buildDynamicStatCard(String label, JLabel valLabel, JLabel subLabel,
+                                         String color, String icon, String iconBg) {
+        JPanel p = new JPanel(new BorderLayout(0, 4));
+        p.setBackground(Color.WHITE);
+        p.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(Color.decode("#DFE3E8"), 1, true),
+            new EmptyBorder(12, 14, 12, 14)));
+        JPanel top = new JPanel(new BorderLayout()); top.setOpaque(false);
+        JLabel lbl = new JLabel(label);
+        lbl.setFont(new Font("Segoe UI", Font.PLAIN, 12)); lbl.setForeground(Color.decode("#888888"));
+        JLabel ico = new JLabel(icon, SwingConstants.CENTER);
+        ico.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 14));
+        ico.setOpaque(true); ico.setBackground(Color.decode(iconBg));
+        ico.setPreferredSize(new Dimension(32, 32));
+        top.add(lbl, BorderLayout.WEST); top.add(ico, BorderLayout.EAST);
+        valLabel.setFont(new Font("Segoe UI", Font.BOLD, 20));
+        valLabel.setForeground(Color.decode(color));
+        subLabel.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        subLabel.setForeground(Color.decode("#999999"));
+        JPanel bottom = new JPanel(new GridLayout(2, 1, 0, 2)); bottom.setOpaque(false);
+        bottom.add(valLabel); bottom.add(subLabel);
+        p.add(top,    BorderLayout.NORTH);
+        p.add(bottom, BorderLayout.CENTER);
+        return p;
+    }
+
     private JPanel statCard(String label, String val, String sub, String color, String icon, String iconBg) {
+        JLabel vl = new JLabel(val); JLabel sl = new JLabel(sub);
+        return buildDynamicStatCard(label, vl, sl, color, icon, iconBg);
+    }
         JPanel p = new JPanel(new BorderLayout(0, 4));
         p.setBackground(Color.WHITE);
         p.setBorder(BorderFactory.createCompoundBorder(

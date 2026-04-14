@@ -496,12 +496,18 @@ public class ManHinhChinh extends JPanel {
                 ca.setTienHeThongGhiNhan(dtCa);
                 ca.setTienKetCa(tongKC);
                 new DAO.DAO_CaLamViec().capNhatCa(ca);
-                UserSession.getInstance().setCaHienTai(null);
             }
             dlg.dispose();
+            final long dtCaFinal = (long) dtCa;
+            final long tongKCFinal = tongKC;
             JOptionPane.showMessageDialog(this,
-                "Kết ca thành công!\nDoanh thu ca: "+formatMoney((long)dtCa)+"\nTiền mặt kiểm kê: "+formatMoney(tongKC),
+                "Kết ca thành công!\nDoanh thu ca: "+formatMoney(dtCaFinal)+"\nTiền mặt kiểm kê: "+formatMoney(tongKCFinal),
                 "Kết ca", JOptionPane.INFORMATION_MESSAGE);
+            // ── Đăng xuất và quay về màn hình đăng nhập ──
+            UserSession.getInstance().logout();
+            Window mainWindow = SwingUtilities.getWindowAncestor(ManHinhChinh.this);
+            mainWindow.dispose();
+            SwingUtilities.invokeLater(() -> new ManHinhDangNhap().setVisible(true));
         });
         JPanel rFt=new JPanel(new FlowLayout(FlowLayout.RIGHT)); rFt.setBackground(Color.WHITE); rFt.add(bXN);
         ft.add(bHuy,BorderLayout.WEST); ft.add(rFt,BorderLayout.EAST);

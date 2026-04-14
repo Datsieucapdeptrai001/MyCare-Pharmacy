@@ -1,6 +1,7 @@
 package GUI;
 
 import BUS.BUS_SanPham;
+import ConnectDB.ConnectDB;
 import Utils.MenuIcon;
 import Entity.LoHang;
 import Entity.SanPham;
@@ -15,6 +16,8 @@ import java.awt.*;
 import java.awt.event.*;
 import java.io.File;
 import java.math.BigDecimal;
+import java.sql.*;
+import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -151,7 +154,7 @@ public class ManHinhSanPham extends JPanel {
 
         add(pnlBody, BorderLayout.CENTER);
 
-        khoiTaoDuLieuAo();
+        khoiTaoDuLieuDB();
         currentFilteredData.addAll(allDataMock);
         // Mặc định: detail ẩn, bảng mở rộng 7 cột
         setDetailVisible(false);
@@ -258,7 +261,10 @@ public class ManHinhSanPham extends JPanel {
         JLabel lblBoxIcon = new JLabel(new MenuIcon("PACKAGE")); lblBoxIcon.setForeground(COLOR_PRIMARY);
         pnlLeft.add(lblBoxIcon);
         pnlLeft.add(new JLabel("<html><b style='color:#1E3A8A; font-size:16px;'>QUẢN LÝ SẢN PHẨM</b></html>"));
-        pnlLeft.add(new JLabel("(42 sản phẩm)"));
+        JLabel lblCount = new JLabel("(đang tải...)");
+        pnlLeft.add(lblCount);
+        // Cập nhật số lượng sau khi load DB
+        SwingUtilities.invokeLater(() -> lblCount.setText("(" + allDataMock.size() + " sản phẩm)"));
 
         JPanel pnlRight = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0)); pnlRight.setOpaque(false);
         pnlRight.add(new JLabel("Tìm kiếm: "));
@@ -558,23 +564,91 @@ public class ManHinhSanPham extends JPanel {
     }
 
     private void thucHienLuu() {
-        String ma = txtId.getText(); String ten = txtTen.getText().trim();
-        if (ten.isEmpty()) { JOptionPane.showMessageDialog(this, "Vui lòng nhập tên sản phẩm!", "Thông báo", JOptionPane.WARNING_MESSAGE); return; }
-        String loai = cbLoaiCT.getSelectedItem().toString();
-        String hoatChat = txtHoatChat.getText().trim();
-        String dangBaoChe = cbDang.getSelectedItem().toString();
-        txtLoaiView.setText(loai); txtDangView.setText(dangBaoChe); txtNSXView.setText(cbNhaSX.getSelectedItem().toString()); txtDVTView.setText(cbDVT.getSelectedItem().toString());
-        if (loai.equals("Thuốc kê đơn")) txtLoaiView.setDisabledTextColor(Color.decode("#EF4444")); else if (loai.equals("Sản phẩm chức năng")) txtLoaiView.setDisabledTextColor(Color.decode("#10B981")); else txtLoaiView.setDisabledTextColor(Color.decode("#2179E0"));
-        if (isAdding) {
-            allDataMock.add(0, new Object[]{ma, ten, loai, hoatChat, dangBaoChe});
-            isAdding = false;
-            JOptionPane.showMessageDialog(this, "Đã thêm sản phẩm thành công!");
-        } else {
-            for (Object[] row : allDataMock) { if (row[0].toString().equals(ma)) { row[1] = ten; row[2] = loai; row[3] = hoatChat; if (row.length > 4) row[4] = dangBaoChe; break; } }
-            JOptionPane.showMessageDialog(this, "Cập nhật sản phẩm thành công!");
+        String ma       = txtId.getText().trim();
+        String ten      = txtTen.getText().trim();
+        if (ten.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Vui lòng nhập tên sản phẩm!", "Thông báo", JOptionPane.WARNING_MESSAGE);
+            return;
         }
+        String loaiHienThi = cbLoaiCT.getSelectedItem().toString();
+        String hoatChat    = txtHoatChat.getText().trim();
+        String dangBaoChe  = cbDang.getSelectedItem().toString();
+        String nsx         = cbNhaSX.getSelectedItem().toString();
+        String dvtGoc      = cbDVT.getSelectedItem().toString();
+        String hamLuong    = txtHamLuong.getText().trim();
+        String tenVietTat  = txtVietTat.getText().trim();
+        String moTa        = txtMoTa.getText().trim();
+        double vat;
+        try { vat = Double.parseDouble(txtVAT.getText().trim()); } catch (NumberFormatException e) { vat = 0; }
+
+        // Map loại hiển thị → enum DB
+        String danhMucDB = loaiHienThi.equals("Thuốc kê đơn")         ? "THUOC_KE_DON"         :
+                           loaiHienThi.equals("Thuốc không kê đơn")   ? "THUOC_KHONG_KE_DON"   :
+                           loaiHienThi.equals("Mỹ phẩm")              ? "MY_PHAM"               : "THUC_PHAM_CHUC_NANG";
+
+        try {
+            Connection con = ConnectDB.getInstance().getConnection();
+            if (con == null) throw new SQLException("Không có kết nối DB");
+
+            if (isAdding) {
+                // ── INSERT mới ──
+                PreparedStatement ps = con.prepareStatement(
+                    "INSERT INTO SanPham (id, danhMuc, dang, ten, tenVietTat, nhaSanXuat, hoatChat, " +
+                    "thueVAT, hamLuong, moTa, donViDoCoBan, ngayTao) VALUES (?,?,?,?,?,?,?,?,?,?,?,GETDATE())");
+                ps.setString(1,  ma);      ps.setString(2, danhMucDB); ps.setString(3, dangBaoChe);
+                ps.setString(4,  ten);     ps.setString(5, tenVietTat.isEmpty() ? null : tenVietTat);
+                ps.setString(6,  nsx.isEmpty() ? null : nsx);
+                ps.setString(7,  hoatChat.isEmpty() ? null : hoatChat);
+                ps.setDouble(8,  vat);
+                ps.setString(9,  hamLuong.isEmpty() ? null : hamLuong);
+                ps.setString(10, moTa.isEmpty() ? null : moTa);
+                ps.setString(11, dvtGoc);
+                ps.executeUpdate();
+                JOptionPane.showMessageDialog(this, "Đã thêm sản phẩm thành công!");
+                isAdding = false;
+            } else {
+                // ── UPDATE ──
+                PreparedStatement ps = con.prepareStatement(
+                    "UPDATE SanPham SET danhMuc=?, dang=?, ten=?, tenVietTat=?, nhaSanXuat=?, " +
+                    "hoatChat=?, thueVAT=?, hamLuong=?, moTa=?, donViDoCoBan=? WHERE id=?");
+                ps.setString(1, danhMucDB); ps.setString(2, dangBaoChe);
+                ps.setString(3, ten);       ps.setString(4, tenVietTat.isEmpty() ? null : tenVietTat);
+                ps.setString(5, nsx.isEmpty() ? null : nsx);
+                ps.setString(6, hoatChat.isEmpty() ? null : hoatChat);
+                ps.setDouble(7, vat);
+                ps.setString(8, hamLuong.isEmpty() ? null : hamLuong);
+                ps.setString(9, moTa.isEmpty() ? null : moTa);
+                ps.setString(10, dvtGoc);
+                ps.setString(11, ma);
+                ps.executeUpdate();
+                JOptionPane.showMessageDialog(this, "Cập nhật sản phẩm thành công!");
+            }
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(this,
+                "Lỗi khi lưu vào CSDL: " + ex.getMessage(), "Lỗi DB", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        // Cập nhật view + tên hiển thị
+        txtLoaiView.setText(loaiHienThi); txtDangView.setText(dangBaoChe);
+        txtNSXView.setText(nsx);         txtDVTView.setText(dvtGoc);
+        if (loaiHienThi.equals("Thuốc kê đơn"))         txtLoaiView.setDisabledTextColor(Color.decode("#EF4444"));
+        else if (loaiHienThi.equals("Sản phẩm chức năng")) txtLoaiView.setDisabledTextColor(Color.decode("#10B981"));
+        else                                               txtLoaiView.setDisabledTextColor(Color.decode("#2179E0"));
+
+        // Reload toàn bộ danh sách từ DB để đồng bộ
+        khoiTaoDuLieuDB();
+        currentFilteredData.clear();
+        currentFilteredData.addAll(allDataMock);
         doSearch();
-        for (int i = 0; i < tblSanPham.getRowCount(); i++) { if (tblSanPham.getValueAt(i, 0).toString().equals(ma)) { tblSanPham.setRowSelectionInterval(i, i); break; } }
+
+        // Chọn lại dòng vừa lưu
+        for (int i = 0; i < tblSanPham.getRowCount(); i++) {
+            if (tblSanPham.getValueAt(i, 0).toString().equals(ma)) {
+                tblSanPham.setRowSelectionInterval(i, i); break;
+            }
+        }
         setEditMode(false);
     }
 
@@ -598,36 +672,99 @@ public class ManHinhSanPham extends JPanel {
 
     private void actionXoaSanPham() {
         if (txtId.getText().isEmpty()) return;
-        if (JOptionPane.showConfirmDialog(this, "Xác nhận xóa?", "Xóa", JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION) {
-            allDataMock.removeIf(row -> row[0].equals(txtId.getText()));
-            doSearch(); clearDetailForm();
-            setDetailVisible(false);
+        if (JOptionPane.showConfirmDialog(this, "Xác nhận xóa sản phẩm này?", "Xóa",
+                JOptionPane.YES_NO_OPTION) != JOptionPane.YES_OPTION) return;
+        String ma = txtId.getText().trim();
+        try {
+            Connection con = ConnectDB.getInstance().getConnection();
+            if (con == null) throw new SQLException("Không có kết nối DB");
+            PreparedStatement ps = con.prepareStatement("DELETE FROM SanPham WHERE id=?");
+            ps.setString(1, ma);
+            ps.executeUpdate();
+            JOptionPane.showMessageDialog(this, "Đã xóa sản phẩm thành công.");
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(this,
+                "Lỗi khi xóa: " + ex.getMessage(), "Lỗi DB", JOptionPane.ERROR_MESSAGE);
+            return;
         }
+        khoiTaoDuLieuDB();
+        currentFilteredData.clear();
+        currentFilteredData.addAll(allDataMock);
+        doSearch();
+        clearDetailForm();
+        setDetailVisible(false);
     }
 
     private void hienThiChiTietSanPham(int row) {
         Object[] data = currentFilteredData.get((currentPageMock - 1) * itemsPerPageMock + row);
-        String maSP = data[0].toString();
-        txtId.setText(maSP); txtTen.setText(data[1].toString());
+        String maSP   = data[0].toString();
+        txtId.setText(maSP);
+        txtTen.setText(data[1].toString());
         String loai = data[2].toString();
         txtLoaiView.setText(loai);
-        if (loai.equals("Thuốc kê đơn")) txtLoaiView.setDisabledTextColor(Color.decode("#EF4444")); else if (loai.equals("Sản phẩm chức năng")) txtLoaiView.setDisabledTextColor(Color.decode("#10B981")); else txtLoaiView.setDisabledTextColor(Color.decode("#2179E0"));
+        if (loai.equals("Thuốc kê đơn"))         txtLoaiView.setDisabledTextColor(Color.decode("#EF4444"));
+        else if (loai.equals("Sản phẩm chức năng")) txtLoaiView.setDisabledTextColor(Color.decode("#10B981"));
+        else                                        txtLoaiView.setDisabledTextColor(Color.decode("#2179E0"));
         txtHoatChat.setText(data[3].toString());
-        String dangBaoChe = (data.length > 4) ? data[4].toString() : "Viên nén";
+        String dangBaoChe = (data.length > 4) ? data[4].toString() : "";
         txtDangView.setText(dangBaoChe);
-        txtVietTat.setText(txtTen.getText().split(" ")[0]);
-        txtHamLuong.setText("500mg"); txtVAT.setText("10"); txtMoTa.setText(""); txtNSXView.setText("DHG Pharma");
-        String dvtGoc = dangBaoChe.contains("Dung dịch") || dangBaoChe.contains("Si rô") ? "Chai" : "Viên";
-        txtDVTView.setText(dvtGoc);
-        uomAutoChanging = true; modelDonVi.setRowCount(0);
-        if (dvtGoc.equals("Viên")) { modelDonVi.addRow(new Object[]{"Vỉ", "10"}); modelDonVi.addRow(new Object[]{"Hộp", "100"}); } else if (dvtGoc.equals("Chai")) { modelDonVi.addRow(new Object[]{"Thùng", "24"}); }
-        modelDonVi.addRow(new Object[2]); uomAutoChanging = false;
-        LocalDate now = LocalDate.now(); DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-        modelLoHang.setRowCount(0);
-        modelLoHang.addRow(new Object[]{maSP + "-L01", "1500", now.plusMonths(12).format(fmt), "Được bán"});
-        modelLoHang.addRow(new Object[]{maSP + "-L02", "800",  now.plusMonths(4).format(fmt),  "Được bán"});
-        modelLoHang.addRow(new Object[]{maSP + "-L03", "50",   now.minusDays(15).format(fmt),  "Hết hạn sử dụng"});
-        setDetailVisible(true); // Tự động mở detail khi click sản phẩm
+
+        // ── Load thêm thông tin chi tiết từ DB ──
+        try {
+            Connection con = ConnectDB.getInstance().getConnection();
+            if (con != null) {
+                PreparedStatement ps = con.prepareStatement(
+                    "SELECT nhaSanXuat, thueVAT, hamLuong, tenVietTat, donViDoCoBan FROM SanPham WHERE id=?");
+                ps.setString(1, maSP);
+                ResultSet rs = ps.executeQuery();
+                if (rs.next()) {
+                    txtNSXView.setText(rs.getString("nhaSanXuat") != null ? rs.getString("nhaSanXuat") : "");
+                    txtVAT.setText(rs.getBigDecimal("thueVAT") != null
+                        ? rs.getBigDecimal("thueVAT").stripTrailingZeros().toPlainString() : "0");
+                    txtHamLuong.setText(rs.getString("hamLuong") != null ? rs.getString("hamLuong") : "");
+                    txtVietTat.setText(rs.getString("tenVietTat") != null ? rs.getString("tenVietTat") : "");
+                    txtDVTView.setText(rs.getString("donViDoCoBan") != null ? rs.getString("donViDoCoBan") : "");
+                }
+                // Đơn vị quy đổi
+                uomAutoChanging = true;
+                modelDonVi.setRowCount(0);
+                PreparedStatement ps2 = con.prepareStatement(
+                    "SELECT ten, tyLeQuyDoi FROM DonViDoLuong WHERE sanPhamId=? ORDER BY tyLeQuyDoi");
+                ps2.setString(1, maSP);
+                ResultSet rs2 = ps2.executeQuery();
+                while (rs2.next()) {
+                    modelDonVi.addRow(new Object[]{rs2.getString("ten"), rs2.getInt("tyLeQuyDoi")});
+                }
+                modelDonVi.addRow(new Object[2]);
+                uomAutoChanging = false;
+                // Lô hàng
+                modelLoHang.setRowCount(0);
+                PreparedStatement ps3 = con.prepareStatement(
+                    "SELECT soLoHang, soLuongLoHang, ngayHetHan, trangThai FROM LoHang " +
+                    "WHERE sanPhamId=? ORDER BY ngayHetHan");
+                ps3.setString(1, maSP);
+                ResultSet rs3 = ps3.executeQuery();
+                SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
+                while (rs3.next()) {
+                    String trangThai = "AVAILABLE".equals(rs3.getString("trangThai")) ? "Được bán" : "Hết hạn sử dụng";
+                    String hsd = rs3.getTimestamp("ngayHetHan") != null
+                        ? sdf.format(rs3.getTimestamp("ngayHetHan")) : "---";
+                    modelLoHang.addRow(new Object[]{
+                        rs3.getString("soLoHang"),
+                        rs3.getInt("soLuongLoHang"),
+                        hsd,
+                        trangThai
+                    });
+                }
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            // fallback nếu lỗi DB: để nguyên các field trống
+            uomAutoChanging = false;
+        }
+
+        setDetailVisible(true);
         setEditMode(false);
     }
 
@@ -847,49 +984,35 @@ public class ManHinhSanPham extends JPanel {
     private void setupTableStyle(JTable t) { t.setRowHeight(30); t.setFont(FONT_NORMAL); t.getTableHeader().setFont(FONT_BOLD); t.getTableHeader().setBackground(COLOR_LIGHT_BLUE); t.setGridColor(COLOR_BORDER); t.setSelectionBackground(COLOR_LIGHT_BLUE); t.setSelectionForeground(Color.BLACK); }
     private JLabel createLabelFilter(String t) { JLabel l = new JLabel(t); l.setFont(new Font("Segoe UI", Font.BOLD, 14)); l.setBorder(new EmptyBorder(10, 15, 5, 0)); return l; }
 
-    private void khoiTaoDuLieuAo() {
-        allDataMock.add(new Object[]{"PRO2023-0001", "Vitamin C 1000mg", "Sản phẩm chức năng", "Ascorbic Acid", "Viên sủi"});
-        allDataMock.add(new Object[]{"PRO2023-0002", "Calcium + Vitamin D3", "Sản phẩm chức năng", "Calcium", "Viên nén"});
-        allDataMock.add(new Object[]{"PRO2023-0003", "Omega 3 Fish Oil", "Sản phẩm chức năng", "EPA, DHA", "Viên nang"});
-        allDataMock.add(new Object[]{"PRO2023-0004", "Siro tăng sức đề kháng", "Sản phẩm chức năng", "Various", "Si rô"});
-        allDataMock.add(new Object[]{"PRO2023-0005", "Paracetamol 500mg", "Thuốc không kê đơn", "Paracetamol", "Viên nén"});
-        allDataMock.add(new Object[]{"PRO2023-0006", "Ibuprofen 400mg", "Thuốc không kê đơn", "Ibuprofen", "Viên nén"});
-        allDataMock.add(new Object[]{"PRO2023-0007", "Amoxicillin 500mg", "Thuốc kê đơn", "Amoxicillin", "Viên nang"});
-        allDataMock.add(new Object[]{"PRO2023-0008", "Loratadine 10mg", "Thuốc không kê đơn", "Loratadine", "Viên nén"});
-        allDataMock.add(new Object[]{"PRO2023-0009", "Siro ho Prospan", "Thuốc không kê đơn", "Cao lá thường xuân", "Si rô"});
-        allDataMock.add(new Object[]{"PRO2023-0010", "Smecta", "Thuốc không kê đơn", "Diosmectite", "Thuốc bột"});
-        allDataMock.add(new Object[]{"PRO2023-0011", "Oresol", "Thuốc không kê đơn", "Điện giải", "Thuốc bột"});
-        allDataMock.add(new Object[]{"PRO2023-0012", "Berberin", "Thuốc không kê đơn", "Berberin clorid", "Viên nén"});
-        allDataMock.add(new Object[]{"PRO2023-0013", "Strepsils", "Thuốc không kê đơn", "Amylmetacresol", "Kẹo ngậm"});
-        allDataMock.add(new Object[]{"PRO2023-0014", "Betadine", "Thuốc không kê đơn", "Povidone-Iodine", "Dung dịch"});
-        allDataMock.add(new Object[]{"PRO2023-0015", "Vitamin E 400IU", "Sản phẩm chức năng", "Alpha Tocopherol", "Viên nang"});
-        allDataMock.add(new Object[]{"PRO2023-0016", "Sắt + Folic Acid", "Sản phẩm chức năng", "Sắt, Folic", "Viên nén"});
-        allDataMock.add(new Object[]{"PRO2023-0017", "Ceftriaxone 500mg", "Thuốc kê đơn", "Ceftriaxone", "Viên nang"});
-        allDataMock.add(new Object[]{"PRO2023-0018", "Azithromycin 500mg", "Thuốc kê đơn", "Azithromycin", "Viên nang"});
-        allDataMock.add(new Object[]{"PRO2023-0019", "Omeprazole 20mg", "Thuốc kê đơn", "Omeprazole", "Viên nang"});
-        allDataMock.add(new Object[]{"PRO2023-0020", "Natri Clorid 0.9%", "Thuốc không kê đơn", "NaCl", "Dung dịch"});
-        allDataMock.add(new Object[]{"PRO2023-0021", "Thuốc nhỏ mắt V.Rohto", "Thuốc không kê đơn", "Tetrahydrozoline", "Thuốc nhỏ giọt"});
-        allDataMock.add(new Object[]{"PRO2023-0022", "Súc miệng Listerine", "Thuốc không kê đơn", "Menthol", "Súc miệng"});
-        allDataMock.add(new Object[]{"PRO2023-0023", "Men tiêu hóa Enterogermina", "Thuốc không kê đơn", "Bacillus clausii", "Hỗn dịch"});
-        allDataMock.add(new Object[]{"PRO2023-0024", "Vitamin B Complex", "Sản phẩm chức năng", "Vitamin B", "Viên nén"});
-        allDataMock.add(new Object[]{"PRO2023-0025", "Ginkgo Biloba 120mg", "Sản phẩm chức năng", "Ginkgo", "Viên nang"});
-        allDataMock.add(new Object[]{"PRO2023-0026", "Cefuroxime 1g", "Thuốc kê đơn", "Cefuroxime", "Viên nang"});
-        allDataMock.add(new Object[]{"PRO2023-0027", "Diclofenac 50mg", "Thuốc kê đơn", "Diclofenac", "Viên nén"});
-        allDataMock.add(new Object[]{"PRO2023-0028", "Meloxicam 7.5mg", "Thuốc kê đơn", "Meloxicam", "Viên nén"});
-        allDataMock.add(new Object[]{"PRO2023-0029", "Aspirin 400mg", "Thuốc không kê đơn", "Aspirin", "Viên nén"});
-        allDataMock.add(new Object[]{"PRO2023-0030", "Fexofenadine 10mg", "Thuốc không kê đơn", "Fexofenadine", "Viên nén"});
-        allDataMock.add(new Object[]{"PRO2023-0031", "Salbutamol 4mg", "Thuốc kê đơn", "Salbutamol", "Viên nén"});
-        allDataMock.add(new Object[]{"PRO2023-0032", "Prednisone 5mg", "Thuốc kê đơn", "Prednisone", "Viên nén"});
-        allDataMock.add(new Object[]{"PRO2023-0033", "Ciprofloxacin 500mg", "Thuốc kê đơn", "Ciprofloxacin", "Viên nang"});
-        allDataMock.add(new Object[]{"PRO2023-0034", "Vitamin A 400IU", "Sản phẩm chức năng", "Vitamin A", "Viên nang"});
-        allDataMock.add(new Object[]{"PRO2023-0035", "Kẽm ZinC", "Sản phẩm chức năng", "Kẽm", "Viên nén"});
-        allDataMock.add(new Object[]{"PRO2023-0036", "Collagen 1000mg", "Sản phẩm chức năng", "Collagen", "Viên nang"});
-        allDataMock.add(new Object[]{"PRO2023-0037", "Glucosamine 500mg", "Sản phẩm chức năng", "Glucosamine", "Viên nang"});
-        allDataMock.add(new Object[]{"PRO2023-0038", "Nước muối sinh lý", "Thuốc không kê đơn", "NaCl", "Dung dịch"});
-        allDataMock.add(new Object[]{"PRO2023-0039", "Cồn Iod", "Thuốc không kê đơn", "Iodine", "Dung dịch"});
-        allDataMock.add(new Object[]{"PRO2023-0040", "Oxy già", "Thuốc không kê đơn", "H2O2", "Dung dịch"});
-        allDataMock.add(new Object[]{"PRO2023-0041", "Băng cá nhân", "Sản phẩm chức năng", "Gạc", "Hộp"});
-        allDataMock.add(new Object[]{"PRO2023-0042", "Nhiệt kế thủy ngân", "Sản phẩm chức năng", "Thủy ngân", "Hộp"});
+    private void khoiTaoDuLieuDB() {
+        allDataMock.clear();
+        try {
+            Connection con = ConnectDB.getInstance().getConnection();
+            if (con == null) return;
+            ResultSet rs = con.createStatement().executeQuery(
+                "SELECT id, ten, danhMuc, hoatChat, dang, nhaSanXuat, thueVAT, hamLuong, tenVietTat, donViDoCoBan " +
+                "FROM SanPham ORDER BY ten");
+            while (rs.next()) {
+                String dm = rs.getString("danhMuc");
+                String loai = "THUOC_KE_DON".equals(dm) ? "Thuốc kê đơn" :
+                              "THUOC_KHONG_KE_DON".equals(dm) ? "Thuốc không kê đơn" :
+                              "MY_PHAM".equals(dm) ? "Mỹ phẩm" : "Sản phẩm chức năng";
+                allDataMock.add(new Object[]{
+                    rs.getString("id"),
+                    rs.getString("ten"),
+                    loai,
+                    rs.getString("hoatChat") != null ? rs.getString("hoatChat") : "",
+                    rs.getString("dang")     != null ? rs.getString("dang")     : "",
+                    rs.getString("nhaSanXuat") != null ? rs.getString("nhaSanXuat") : "",
+                    rs.getBigDecimal("thueVAT") != null ? rs.getBigDecimal("thueVAT").toPlainString() : "0",
+                    rs.getString("hamLuong") != null ? rs.getString("hamLuong") : "",
+                    rs.getString("tenVietTat") != null ? rs.getString("tenVietTat") : "",
+                    rs.getString("donViDoCoBan") != null ? rs.getString("donViDoCoBan") : ""
+                });
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
     }
 
     /**
