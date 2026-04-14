@@ -33,8 +33,11 @@ public class ManHinhThongKe extends JPanel {
     static double[] NV_DT_C   = {};
     static String[] DATES_10  = {};
     static int[][]  NV_DAILY  = {};
-    static int[]    DT_DATA   = new int[12];
-    static int[]    CP_DATA   = new int[12];
+    
+    // Đã đổi từ int[] sang double[] để nhận số thập phân
+    static double[] DT_DATA   = new double[12];
+    static double[] CP_DATA   = new double[12];
+    
     static double[] DAILY_30_DT    = new double[30];
     static int[]    DAILY_30_HD    = new int[30];
     static String[] DAILY_30_DATES = new String[30];
@@ -150,7 +153,7 @@ public class ManHinhThongKe extends JPanel {
         return sp;
     }
 
- // ── LOAD DỮ LIỆU TỪ DATABASE (tham số year) ──────────────
+    // ── LOAD DỮ LIỆU TỪ DATABASE (tham số year) ──────────────
     private void loadDataFromDB(int year) {
         // --- BƯỚC 1: LẤY ĐIỀU KIỆN LỌC THỜI GIAN ĐỘNG ---
         String condHD = ""; 
@@ -188,7 +191,7 @@ public class ManHinhThongKe extends JPanel {
         new Thread(() -> {
             try {
                 Connection con = ConnectDB.getInstance().getConnection();
-             // Đảm bảo kết nối thành công
+                // Đảm bảo kết nối thành công
                 if (con == null) return;
 
                 // 1. Load nhân viên DƯỢC SĨ trực tiếp từ bảng NhanVien
@@ -202,10 +205,6 @@ public class ManHinhThongKe extends JPanel {
                     }
                 }
                 
-                // --- DÒNG DEBUG DÀNH CHO DÂN KHMT (Nhìn xuống màn hình Output/Console) ---
-                System.out.println(">>> DEBUG: Số lượng Dược Sĩ lấy được từ DB = " + nvList.size());
-                // -----------------------------------------------------------------------
-
                 int n = nvList.size();
                 NV_NAMES  = new String[n]; NV_IDS   = new String[n];
                 NV_ROLES  = new String[n]; NV_SHORT = new String[n];
@@ -222,23 +221,25 @@ public class ManHinhThongKe extends JPanel {
                     NV_COLORS[i] = PALETTE[i % PALETTE.length];
                 }
 
-                // 2. Doanh thu 12 tháng theo năm
-                DT_DATA = new int[12]; CP_DATA = new int[12];
+                // 2. Doanh thu 12 tháng theo năm (Dùng double để không bị mất số lẻ)
+                DT_DATA = new double[12]; CP_DATA = new double[12];
                 try (PreparedStatement ps = con.prepareStatement(
-                    "SELECT MONTH(hd.ngayLapHD) m, ISNULL(SUM(ct.soLuong*dvl.gia),0)/1000000 dt FROM HoaDon hd " +
+                    "SELECT MONTH(hd.ngayLapHD) m, ISNULL(SUM(ct.soLuong*dvl.gia),0)/1000000.0 dt FROM HoaDon hd " +
                     "JOIN ChiTietHoaDon ct ON hd.id=ct.hoaDonId " +
                     "JOIN DonViDoLuong dvl ON ct.donViDoLuongId=dvl.id AND ct.sanPhamId=dvl.sanPhamId " +
                     "WHERE YEAR(hd.ngayLapHD)=? AND hd.loaiHD='BAN_HANG' " + fCondHD + " GROUP BY MONTH(hd.ngayLapHD)")) {
                     ps.setInt(1, year);
                     ResultSet rs = ps.executeQuery();
-                    while (rs.next()) { int m = rs.getInt("m"); if (m >= 1 && m <= 12) DT_DATA[m-1] = (int)rs.getDouble("dt"); }
+                    while (rs.next()) { int m = rs.getInt("m"); if (m >= 1 && m <= 12) DT_DATA[m-1] = rs.getDouble("dt"); }
                 }
+                
+                // Lấy chi phí từ bảng LoHang thay vì PhieuNhapHang
                 try (PreparedStatement ps = con.prepareStatement(
-                    "SELECT MONTH(ngayNhap) m, ISNULL(SUM(soLuong*giaNhap),0)/1000000 cp " +
-                    "FROM PhieuNhapHang WHERE YEAR(ngayNhap)=? " + fCondPN + " GROUP BY MONTH(ngayNhap)")) {
+                    "SELECT MONTH(ngayNhap) m, ISNULL(SUM(soLuongLoHang*gia),0)/1000000.0 cp " +
+                    "FROM LoHang WHERE YEAR(ngayNhap)=? " + fCondPN + " GROUP BY MONTH(ngayNhap)")) {
                     ps.setInt(1, year);
                     ResultSet rs = ps.executeQuery();
-                    while (rs.next()) { int m = rs.getInt("m"); if (m >= 1 && m <= 12) CP_DATA[m-1] = (int)rs.getDouble("cp"); }
+                    while (rs.next()) { int m = rs.getInt("m"); if (m >= 1 && m <= 12) CP_DATA[m-1] = rs.getDouble("cp"); }
                 } catch (Exception ignored) {}
 
                 // 3. Donut phân loại SP
@@ -259,7 +260,7 @@ public class ManHinhThongKe extends JPanel {
                 }
                 for (int i = 0; i < 4; i++) DONUT_VALS[i] = Math.max(1, (int)Math.round(catVals[i] * 100.0 / totalCat));
 
-             // 4. 10 ngày gần nhất (Đã fix lỗi DISTINCT và lỗi sắp xếp ngày)
+                // 4. 10 ngày gần nhất
                 java.util.List<String> dates = new java.util.ArrayList<>();
                 try (Statement st = con.createStatement();
                      ResultSet rs = st.executeQuery(
@@ -285,7 +286,8 @@ public class ManHinhThongKe extends JPanel {
                         } catch (Exception ignored2) {}
                     }
                 }
-             // 4b. Load doanh thu + HĐ 30 ngày gần nhất
+                
+                // 4b. Load doanh thu + HĐ 30 ngày gần nhất
                 java.util.Arrays.fill(DAILY_30_DT, 0); java.util.Arrays.fill(DAILY_30_HD, 0); java.util.Arrays.fill(DAILY_30_DATES, "");
                 try (PreparedStatement ps = con.prepareStatement(
                     "SELECT CONVERT(NVARCHAR,CAST(hd.ngayLapHD AS DATE),103) d, COUNT(DISTINCT hd.id) cnt, " +
@@ -303,7 +305,7 @@ public class ManHinhThongKe extends JPanel {
                     }
                 } catch (Exception ignored) {}
 
-                // 4c. Load HĐ + DT theo ca cho từng NV
+                // 4c. Load HĐ + DT theo ca cho từng NV (Fix lỗi giờ lọt khe)
                 for (int i = 0; i < n; i++) {
                     NV_HD_S[i] = 0; NV_HD_C[i] = 0; NV_DT_S[i] = 0; NV_DT_C[i] = 0;
                     try (PreparedStatement ps = con.prepareStatement(
@@ -311,27 +313,28 @@ public class ManHinhThongKe extends JPanel {
                         "FROM HoaDon hd JOIN ChiTietHoaDon ct ON ct.hoaDonId=hd.id " +
                         "JOIN DonViDoLuong dvl ON dvl.id=ct.donViDoLuongId AND dvl.sanPhamId=ct.sanPhamId " +
                         "WHERE hd.nhanVienId=? AND YEAR(hd.ngayLapHD)=? AND hd.loaiHD='BAN_HANG' " +
-                        "AND DATEPART(HOUR,hd.ngayLapHD) BETWEEN 6 AND 12" + fCondHD)) {
+                        "AND DATEPART(HOUR,hd.ngayLapHD) < 14" + fCondHD)) { // Dưới 14h là ca sáng
                         ps.setString(1, NV_IDS[i]); ps.setInt(2, year);
                         ResultSet rs = ps.executeQuery();
                         if (rs.next()) { NV_HD_S[i]=rs.getInt("hd"); NV_DT_S[i]=rs.getDouble("dt"); }
                     } catch (Exception ignored) {}
+                    
                     try (PreparedStatement ps = con.prepareStatement(
                         "SELECT COUNT(DISTINCT hd.id) hd, ISNULL(SUM(ct.soLuong*dvl.gia),0)/1000000.0 dt " +
                         "FROM HoaDon hd JOIN ChiTietHoaDon ct ON ct.hoaDonId=hd.id " +
                         "JOIN DonViDoLuong dvl ON dvl.id=ct.donViDoLuongId AND dvl.sanPhamId=ct.sanPhamId " +
                         "WHERE hd.nhanVienId=? AND YEAR(hd.ngayLapHD)=? AND hd.loaiHD='BAN_HANG' " +
-                        "AND DATEPART(HOUR,hd.ngayLapHD) BETWEEN 14 AND 20" + fCondHD)) {
+                        "AND DATEPART(HOUR,hd.ngayLapHD) >= 14" + fCondHD)) { // Từ 14h là ca chiều
                         ps.setString(1, NV_IDS[i]); ps.setInt(2, year);
                         ResultSet rs = ps.executeQuery();
                         if (rs.next()) { NV_HD_C[i]=rs.getInt("hd"); NV_DT_C[i]=rs.getDouble("dt"); }
                     } catch (Exception ignored) {}
                 }
 
-                // 5. Tính KPI tổng hợp
+                // 5. Tính KPI tổng hợp (Vòng lặp double)
                 double totalDT = 0, totalCP = 0;
-                for (int v : DT_DATA) totalDT += v;
-                for (int v : CP_DATA) totalCP += v;
+                for (double v : DT_DATA) totalDT += v;
+                for (double v : CP_DATA) totalCP += v;
                 long totalHD = 0;
                 try (PreparedStatement ps = con.prepareStatement(
                     "SELECT COUNT(*) FROM HoaDon hd WHERE YEAR(hd.ngayLapHD)=? AND hd.loaiHD='BAN_HANG' " + fCondHD)) {
@@ -385,7 +388,7 @@ public class ManHinhThongKe extends JPanel {
                     int soLuongNV = NV_NAMES.length; 
                     if (lblTongNV != null) lblTongNV.setText(String.valueOf(soLuongNV)); 
                     
-                    // Tự động cộng dồn doanh thu của riêng Dược Sĩ (Khớp với bảng chi tiết)
+                    // Tự động cộng dồn doanh thu của riêng Dược Sĩ
                     double sumDT_NV = 0;
                     for (double s : NV_DT_S) sumDT_NV += s;
                     for (double c : NV_DT_C) sumDT_NV += c;
@@ -400,7 +403,7 @@ public class ManHinhThongKe extends JPanel {
                     if (lblHDSang != null) lblHDSang.setText(sumHDSang + " HĐ");
                     if (lblHDChieu != null) lblHDChieu.setText(sumHDChieu + " HĐ");
                     
-                 // Update 30-day chart
+                    // Update 30-day chart
                     if (chartLineDaily != null) chartLineDaily.setData(DAILY_30_DT, DAILY_30_DATES);
                     // Update mini stats
                     double sumDT30=0, maxDT30=0; int sumHD30=0, activeDays30=0; String peakDate30="--";
@@ -480,7 +483,7 @@ public class ManHinhThongKe extends JPanel {
     }
 
     // ==========================================
-    // FILTER BAR (redesigned – auto apply, no action buttons)
+    // FILTER BAR
     // ==========================================
     private JPanel buildFilterBar() {
         JPanel p = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 8));
@@ -522,7 +525,7 @@ public class ManHinhThongKe extends JPanel {
                 JTextField txt = (JTextField) e.getSource();
                 Window win = SwingUtilities.getWindowAncestor(ManHinhThongKe.this);
                 new ModernDatePicker(win, txt).setVisible(true);
-                onFilterChanged(); // Chọn xong lịch tự load lại Data
+                onFilterChanged();
             }
         };
         txtTuNgay.addMouseListener(openCal); txtDenNgay.addMouseListener(openCal);
@@ -544,14 +547,14 @@ public class ManHinhThongKe extends JPanel {
         cboQuy.addActionListener(e -> onFilterChanged());
         cboKyLoc = cboThang; 
 
-        // GẮN SỰ KIỆN CHO NÚT NĂM (Lỗi ko click đc là do thiếu dòng này)
+        // GẮN SỰ KIỆN CHO NÚT NĂM
         btnNamPicker = new JButton("📅 " + currentYear + " ▼");
         btnNamPicker.addActionListener(e -> showYearCalendarPopup(btnNamPicker)); 
         
         // GẮN SỰ KIỆN DƯỢC SĨ
         cboNhanVien = new JComboBox<>(new String[]{"Tất cả"});
         styleCombo(cboNhanVien);
-        cboNhanVien.addActionListener(e -> applyNVFilter()); // Đổi dược sĩ là update liền
+        cboNhanVien.addActionListener(e -> applyNVFilter());
 
         pnlFilterDuocSi = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         pnlFilterDuocSi.setOpaque(false);
@@ -572,7 +575,6 @@ public class ManHinhThongKe extends JPanel {
             BorderFactory.createLineBorder(Color.decode("#DFE3E8"), 1, true),
             new EmptyBorder(0, 0, 0, 0)));
 
-        // Header
         JLabel header = new JLabel("  Chọn năm thống kê", SwingConstants.LEFT);
         header.setFont(new Font("Segoe UI", Font.BOLD, 13));
         header.setForeground(Color.WHITE);
@@ -580,7 +582,6 @@ public class ManHinhThongKe extends JPanel {
         header.setBackground(Color.decode("#1A73E8"));
         header.setBorder(new EmptyBorder(10, 12, 10, 12));
 
-        // Year grid
         JPanel grid = new JPanel(new GridLayout(0, 3, 6, 6));
         grid.setBackground(Color.WHITE);
         grid.setBorder(new EmptyBorder(12, 12, 12, 12));
@@ -633,15 +634,10 @@ public class ManHinhThongKe extends JPanel {
         root.setLayout(new BoxLayout(root, BoxLayout.Y_AXIS));
         root.setOpaque(false);
 
-        // ─ KPI cards với label refs để update từ DB ─
-        kpiDTVal = makeKpiVal("...", "#1A73E8");
-        kpiDTSub = makeKpiSub("Đang tải...");
-        kpiHDVal = makeKpiVal("...", "#9C27B0");
-        kpiHDSub = makeKpiSub("...");
-        kpiLNVal = makeKpiVal("...", "#00A76F");
-        kpiLNSub = makeKpiSub("...");
-        kpiTBVal = makeKpiVal("...", "#FF9800");
-        kpiTBSub = makeKpiSub("...");
+        kpiDTVal = makeKpiVal("...", "#1A73E8"); kpiDTSub = makeKpiSub("Đang tải...");
+        kpiHDVal = makeKpiVal("...", "#9C27B0"); kpiHDSub = makeKpiSub("...");
+        kpiLNVal = makeKpiVal("...", "#00A76F"); kpiLNSub = makeKpiSub("...");
+        kpiTBVal = makeKpiVal("...", "#FF9800"); kpiTBSub = makeKpiSub("...");
 
         JPanel cards = new JPanel(new GridLayout(1, 4, 12, 0));
         cards.setOpaque(false);
@@ -653,7 +649,6 @@ public class ManHinhThongKe extends JPanel {
         root.add(cards);
         root.add(Box.createVerticalStrut(12));
 
-        // ─ Bar chart chính ─
         chartBarMain = new BarChartMain();
         JPanel cBarCard = wrapChart("Doanh thu – Chi phí – Lợi nhuận",
             "12 tháng · " + currentYear, chartBarMain, 280);
@@ -661,7 +656,6 @@ public class ManHinhThongKe extends JPanel {
         root.add(cBarCard);
         root.add(Box.createVerticalStrut(12));
 
-        // ─ Line + Donut ─
         JPanel row2 = new JPanel(new GridLayout(1, 2, 12, 0));
         row2.setOpaque(false);
         row2.setMaximumSize(new Dimension(Integer.MAX_VALUE, 310));
@@ -695,7 +689,6 @@ public class ManHinhThongKe extends JPanel {
         root.add(row2);
         root.add(Box.createVerticalStrut(12));
 
-        // ─ Top SP + VAT ─
         JPanel row3 = new JPanel(new GridLayout(1, 2, 12, 0));
         row3.setOpaque(false);
         row3.setMaximumSize(new Dimension(Integer.MAX_VALUE, 300));
@@ -704,7 +697,6 @@ public class ManHinhThongKe extends JPanel {
         root.add(row3);
         root.add(Box.createVerticalStrut(12));
         
-        // Thêm bảng SP sắp hết hạn
         JPanel row4 = new JPanel(new BorderLayout());
         row4.setOpaque(false);
         row4.add(buildSpSapHetHanTable(), BorderLayout.CENTER);
@@ -721,15 +713,11 @@ public class ManHinhThongKe extends JPanel {
     // ==========================================
     // TAB 2: NHÂN VIÊN
     // ==========================================
- // ==========================================
-    // TAB 2: NHÂN VIÊN
-    // ==========================================
     private JPanel buildViewNV() {
         JPanel root = new JPanel();
         root.setLayout(new BoxLayout(root, BoxLayout.Y_AXIS));
         root.setOpaque(false);
 
-        // --- ĐOẠN MỚI FIX 1: Dùng biến để chứa Data thay vì gõ cứng ---
         lblTongNV = makeKpiVal("...", "#1A73E8");
         lblDTTB_NV = makeKpiVal("...", "#9C27B0");
         lblTongDT_NV = makeKpiVal("...", "#00A76F");
@@ -742,9 +730,7 @@ public class ManHinhThongKe extends JPanel {
         cards.add(statCardDynamic("Tổng doanh thu NV", lblTongDT_NV, makeKpiSub("tất cả nhân viên"), "📈", "#E8F5E9"));
         root.add(cards);
         root.add(Box.createVerticalStrut(12));
-        // -------------------------------------------------------------
 
-        // ─ NV Daily Chart ─
         chartNVDaily = new NVDailyChart();
         JPanel nvDailyCard = new JPanel(new BorderLayout(0, 8));
         nvDailyCard.setBackground(Color.WHITE);
@@ -773,7 +759,6 @@ public class ManHinhThongKe extends JPanel {
         root.add(nvDailyCard);
         root.add(Box.createVerticalStrut(12));
 
-        // ─ Shift chart + Detail table ─
         JPanel row2 = new JPanel(new GridLayout(1, 2, 12, 0));
         row2.setOpaque(false);
         row2.setMaximumSize(new Dimension(Integer.MAX_VALUE, 380));
@@ -787,7 +772,6 @@ public class ManHinhThongKe extends JPanel {
         shTitle.setFont(new Font("Segoe UI", Font.BOLD, 13));
         shTitle.setForeground(Color.decode("#152A4B"));
 
-        // --- ĐOẠN MỚI FIX 2: Bảng mini hiển thị số hóa đơn theo ca ---
         lblHDSang = makeKpiVal("...", "#F59E0B");
         lblHDChieu = makeKpiVal("...", "#6366F1");
 
@@ -795,7 +779,6 @@ public class ManHinhThongKe extends JPanel {
         shMini.setOpaque(false);
         shMini.add(statCardDynamic("Ca sáng (6h–13h)", lblHDSang, makeKpiSub("Hóa đơn"), "☀️", "#FFF8E1"));
         shMini.add(statCardDynamic("Ca chiều (14h–21h)", lblHDChieu, makeKpiSub("Hóa đơn"), "🌙", "#EEF2FF"));
-        // -------------------------------------------------------------
 
         chartNVShift = new NVShiftChart();
         chartNVShift.setPreferredSize(new Dimension(0, 160));
@@ -877,17 +860,13 @@ public class ManHinhThongKe extends JPanel {
             cardBody.show(pnlBody, "NV");
             pnlFilterDuocSi.setVisible(true);
         });
-        
-        // (Đã xóa dòng cboNhanVien.addActionListener ở đây)
     }
 
-    /** Gọi khi năm hoặc kỳ thay đổi → reload DB */
     private void onFilterChanged() {
         lblYearBadge.setText(getKyString() + " " + currentYear);
         loadDataFromDB(currentYear);
     }
 
-    /** Chỉ apply filter NV (không cần reload DB) */
     private void applyNVFilter() {
         int idx = cboNhanVien.getSelectedIndex() - 1;
         selectedNVIdx = idx;
@@ -920,13 +899,13 @@ public class ManHinhThongKe extends JPanel {
                     int barW = 16, gap = 4;
                     int groupW = barW * 3 + gap * 2 + 14;
                     int startX = 50, maxH = getHeight() - 60;
-                    int maxVal = calcMaxVal();
+                    double maxVal = calcMaxVal();
                     for (int i = 0; i < 12; i++) {
                         int gx = startX + i * groupW;
                         for (int b = 0; b < 3; b++) {
                             int bx  = gx + b * (barW + gap);
-                            int val = (b==0)?DT_DATA[i]:(b==1)?CP_DATA[i]:DT_DATA[i]-CP_DATA[i];
-                            int bh  = maxVal>0 ? (int)((double)val/maxVal*maxH) : 0;
+                            double val = (b==0)?DT_DATA[i]:(b==1)?CP_DATA[i]:Math.max(0, DT_DATA[i]-CP_DATA[i]);
+                            int bh  = maxVal>0 ? (int)(val/maxVal*maxH) : 0;
                             int by  = getHeight() - 35 - bh;
                             if (e.getX()>=bx && e.getX()<=bx+barW && e.getY()>=by && e.getY()<=by+bh) {
                                 hoverIdx = i; tooltipPt = e.getPoint(); break;
@@ -940,10 +919,10 @@ public class ManHinhThongKe extends JPanel {
             });
         }
 
-        private int calcMaxVal() {
-            int max = 10;
-            for (int v : DT_DATA) if (v > max) max = v;
-            return (int)(max * 1.2);
+        private double calcMaxVal() {
+            double max = 10.0;
+            for (double v : DT_DATA) if (v > max) max = v;
+            return max * 1.2;
         }
 
         @Override protected void paintComponent(Graphics g) {
@@ -953,23 +932,23 @@ public class ManHinhThongKe extends JPanel {
             int w = getWidth(), h = getHeight();
             int barW = 16, gap = 4, groupW = barW*3 + gap*2 + 14;
             int startX = 50, baseY = h-35, maxH = h-60;
-            int maxVal = calcMaxVal();
+            double maxVal = calcMaxVal();
             Color[] barColors = {Color.decode("#1A73E8"), Color.decode("#FFAB00"), Color.decode("#00A76F")};
 
-            // Grid lines
+            // Grid lines (Dùng double để vẽ mượt hơn)
             g2.setStroke(new BasicStroke(0.5f));
-            for (int v = 0; v <= maxVal; v += Math.max(1, maxVal/4)) {
-                int y = baseY - (int)((double)v/maxVal*maxH);
+            for (double v = 0; v <= maxVal; v += Math.max(1.0, maxVal/4.0)) {
+                int y = baseY - (int)(v/maxVal*maxH);
                 g2.setColor(Color.decode("#F0F0F0")); g2.drawLine(startX, y, w-10, y);
                 g2.setColor(Color.decode("#AAAAAA")); g2.setFont(new Font("Segoe UI",Font.PLAIN,10));
-                g2.drawString(v+"M", 4, y+4);
+                g2.drawString(String.format("%.1fM", v), 4, y+4);
             }
 
             for (int i = 0; i < 12; i++) {
                 int gx = startX + i*groupW;
-                int[] vals = {DT_DATA[i], CP_DATA[i], DT_DATA[i]-CP_DATA[i]};
+                double[] vals = {DT_DATA[i], CP_DATA[i], Math.max(0, DT_DATA[i]-CP_DATA[i])};
                 for (int b = 0; b < 3; b++) {
-                    int bh = maxVal>0 ? (int)((double)vals[b]/maxVal*maxH) : 0;
+                    int bh = maxVal>0 ? (int)(vals[b]/maxVal*maxH) : 0;
                     if (bh <= 0) continue;
                     int bx = gx + b*(barW+gap);
                     int by = baseY - bh;
@@ -995,10 +974,10 @@ public class ManHinhThongKe extends JPanel {
                 lx += 80;
             }
 
-            // Tooltip
+            // Tooltip (Hiển thị số thập phân)
             if (hoverIdx >= 0 && tooltipPt != null) {
                 int i = hoverIdx;
-                String txt = String.format("T%d  DT:%dM | CP:%dM | LN:%dM", i+1, DT_DATA[i], CP_DATA[i], DT_DATA[i]-CP_DATA[i]);
+                String txt = String.format("T%d  DT:%.1fM | CP:%.1fM | LN:%.1fM", i+1, DT_DATA[i], CP_DATA[i], DT_DATA[i]-CP_DATA[i]);
                 drawTooltip(g2, Math.min(tooltipPt.x+10, w-200), tooltipPt.y-30, txt);
             }
         }
@@ -1044,7 +1023,6 @@ public class ManHinhThongKe extends JPanel {
             int n = vals.length, w = getWidth(), h = getHeight();
             float step = (float)(w-40)/(n-1);
 
-            // Fill area
             GeneralPath area = new GeneralPath();
             area.moveTo(20, h-20);
             for (int i = 0; i < n; i++) {
@@ -1056,7 +1034,6 @@ public class ManHinhThongKe extends JPanel {
             area.closePath();
             g2.setColor(new Color(26,115,232,25)); g2.fill(area);
 
-            // Line
             g2.setColor(Color.decode("#1A73E8")); g2.setStroke(new BasicStroke(2f));
             int[] xs = new int[n], ys = new int[n];
             for (int i = 0; i < n; i++) {
@@ -1072,7 +1049,6 @@ public class ManHinhThongKe extends JPanel {
                     g2.setColor(Color.decode("#1A73E8")); g2.fillOval(xs[i]-2,ys[i]-2, 5, 5);
                 }
             }
-            // X labels
             g2.setColor(Color.decode("#AAAAAA")); g2.setFont(new Font("Segoe UI",Font.PLAIN,9));
             for (int li : new int[]{0,4,9,14,19,24,29}) {
                 g2.drawString((li+1<10?"0":"")+(li+1)+"/", xs[li]-8, h-4);
@@ -1141,11 +1117,10 @@ public class ManHinhThongKe extends JPanel {
                 g2.drawString((int)Math.round(DONUT_VALS[i]/total*100)+"%", lx-10, ly+4);
                 startAngle += sweep;
             }
-            // Hole
             g2.setColor(Color.WHITE);
             int hole = size-100;
             g2.fillOval(x+50, y+50, hole, hole);
-            // Legend
+            
             int ly2 = y + size + 8;
             g2.setFont(new Font("Segoe UI",Font.PLAIN,10));
             int lx2 = x;
@@ -1203,7 +1178,6 @@ public class ManHinhThongKe extends JPanel {
                 if (j < NV_DAILY.length && i < NV_DAILY[j].length && NV_DAILY[j][i] > maxVal) maxVal = NV_DAILY[j][i];
             maxVal = (int)(maxVal * 1.2) + 1;
 
-            // Grid
             g2.setStroke(new BasicStroke(0.5f));
             for (int v = 0; v <= maxVal; v += Math.max(1, maxVal/4)) {
                 int y = baseY-(int)((double)v/maxVal*maxH);
@@ -1232,13 +1206,11 @@ public class ManHinhThongKe extends JPanel {
                     g2.setColor(c); g2.fillRoundRect(bx, baseY-bh, barW-1, bh, 3, 3);
                     bIdx++;
                 }
-                // Label ngày - hiện ngắn gọn (dd/MM)
                 g2.setColor(Color.decode("#888888")); g2.setFont(new Font("Segoe UI",Font.PLAIN,9));
                 String dateLabel = DATES_10[d].length() > 5 ? DATES_10[d].substring(0,5) : DATES_10[d];
                 g2.drawString(dateLabel, gx, h-12);
             }
 
-            // Tooltip
             if (hoverDay >= 0 && tooltipPt != null) {
                 int d = hoverDay;
                 StringBuilder sb = new StringBuilder("Ngày " + DATES_10[d] + ": ");
@@ -1488,6 +1460,7 @@ public class ManHinhThongKe extends JPanel {
         p.add(sp, BorderLayout.CENTER);
         return p;
     }
+    
     private void reloadTopSP(String condHD, int year) {
         if (modelTopSP == null) return;
         modelTopSP.setRowCount(0);
@@ -1533,19 +1506,19 @@ public class ManHinhThongKe extends JPanel {
         JLabel t = new JLabel("📋 Báo cáo thuế VAT chi tiết");
         t.setFont(new Font("Segoe UI", Font.BOLD, 13));
         t.setForeground(Color.decode("#152A4B"));
-        JLabel total = new JLabel("Tổng VAT: --đ");
-        total.setFont(new Font("Segoe UI", Font.BOLD, 11));
-        total.setForeground(Color.decode("#3730A3"));
-        total.setBackground(Color.decode("#EEF2FF")); total.setOpaque(true);
-        total.setBorder(new EmptyBorder(3, 10, 3, 10));
-        header.add(t, BorderLayout.WEST); header.add(total, BorderLayout.EAST);
+        lblVATTotal = new JLabel("Tổng VAT: --đ");
+        lblVATTotal.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        lblVATTotal.setForeground(Color.decode("#3730A3"));
+        lblVATTotal.setBackground(Color.decode("#EEF2FF")); lblVATTotal.setOpaque(true);
+        lblVATTotal.setBorder(new EmptyBorder(3, 10, 3, 10));
+        header.add(t, BorderLayout.WEST); header.add(lblVATTotal, BorderLayout.EAST);
         p.add(header, BorderLayout.NORTH);
 
         String[] cols = {"Mã SP","Tên sản phẩm","Kê đơn","VAT (%)","Tiền thuế"};
-        modelTopSP = new DefaultTableModel(cols, 0)  {
+        modelVAT = new DefaultTableModel(cols, 0)  {
             @Override public boolean isCellEditable(int r, int c) { return false; }
         };
-        DefaultTableModel m = modelTopSP;
+        DefaultTableModel m = modelVAT;
 
         JTable tbl = new JTable(m);
         tbl.setRowHeight(30); tbl.setFont(new Font("Segoe UI", Font.PLAIN, 12));
@@ -1584,6 +1557,7 @@ public class ManHinhThongKe extends JPanel {
         p.add(sp, BorderLayout.CENTER);
         return p;
     }
+    
     private void reloadVAT(String condHD, int year) {
         if (modelVAT == null) return;
         modelVAT.setRowCount(0);
@@ -1642,7 +1616,6 @@ public class ManHinhThongKe extends JPanel {
         return l;
     }
 
-    /** Stat card với label refs từ ngoài (cho tab DT - dynamic update) */
     private JPanel statCardDynamic(String label, JLabel valLabel, JLabel subLabel, String icon, String iconBg) {
         JPanel p = new JPanel(new BorderLayout(0, 4));
         p.setBackground(Color.WHITE);
@@ -1697,40 +1670,6 @@ public class ManHinhThongKe extends JPanel {
         return p;
     }
 
-    private JPanel statCard(String label, String val, String sub, String color, String icon, String iconBg) {
-        JPanel p = new JPanel(new BorderLayout(0, 4));
-        p.setBackground(Color.WHITE);
-        p.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(Color.decode("#DFE3E8"), 1, true),
-            new EmptyBorder(14, 16, 14, 16)));
-        JPanel top = new JPanel(new BorderLayout()); top.setOpaque(false);
-        JLabel lbl = new JLabel(label); lbl.setFont(new Font("Segoe UI",Font.PLAIN,12)); lbl.setForeground(Color.decode("#888888"));
-        JLabel ico = new JLabel(icon, SwingConstants.CENTER);
-        ico.setFont(new Font("Segoe UI Emoji",Font.PLAIN,16));
-        ico.setOpaque(true); ico.setBackground(Color.decode(iconBg));
-        ico.setPreferredSize(new Dimension(36,36));
-        top.add(lbl, BorderLayout.WEST); top.add(ico, BorderLayout.EAST);
-        JLabel vl = new JLabel(val); vl.setFont(new Font("Segoe UI",Font.BOLD,20)); vl.setForeground(Color.decode(color));
-        JLabel sl = new JLabel(sub); sl.setFont(new Font("Segoe UI",Font.PLAIN,11)); sl.setForeground(Color.decode("#999999"));
-        JPanel bottom = new JPanel(new GridLayout(2,1,0,2)); bottom.setOpaque(false);
-        bottom.add(vl); bottom.add(sl);
-        p.add(top, BorderLayout.NORTH); p.add(bottom, BorderLayout.CENTER);
-        return p;
-    }
-
-    private JPanel miniStatInline(String label, String val, String sub, String color, String bgColor) {
-        JPanel p = new JPanel(new GridLayout(3,1,0,1));
-        p.setBackground(Color.decode(bgColor));
-        p.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(new Color(Integer.parseInt(bgColor.substring(1),16) & 0x00CCCCCC | 0x88000000, true), 1, true),
-            new EmptyBorder(6, 10, 6, 10)));
-        JLabel l1 = new JLabel(label); l1.setFont(new Font("Segoe UI",Font.PLAIN,10)); l1.setForeground(Color.decode("#888888"));
-        JLabel l2 = new JLabel(val);   l2.setFont(new Font("Segoe UI",Font.BOLD, 16)); l2.setForeground(Color.decode(color));
-        JLabel l3 = new JLabel(sub);   l3.setFont(new Font("Segoe UI",Font.PLAIN,10)); l3.setForeground(Color.decode("#999999"));
-        p.add(l1); p.add(l2); p.add(l3);
-        return p;
-    }
-    
     private JPanel miniStatInlineDynamic(String label, JLabel valLabel, String sub, String color, String bgColor) {
         JPanel p = new JPanel(new GridLayout(3,1,0,1));
         p.setBackground(Color.decode(bgColor));
@@ -1739,18 +1678,6 @@ public class ManHinhThongKe extends JPanel {
         JLabel l1 = new JLabel(label); l1.setFont(new Font("Segoe UI",Font.PLAIN,10)); l1.setForeground(Color.decode("#888888"));
         JLabel l3 = new JLabel(sub);   l3.setFont(new Font("Segoe UI",Font.PLAIN,10)); l3.setForeground(Color.decode("#999999"));
         p.add(l1); p.add(valLabel); p.add(l3);
-        return p;
-    }
-
-    private JPanel shiftMiniCard(String title, String val, String bg, String titleColor, String valColor) {
-        JPanel p = new JPanel(new GridLayout(2,1,0,2));
-        p.setBackground(Color.decode(bg));
-        p.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(Color.decode(bg.replace("FF","CC")), 1, true),
-            new EmptyBorder(8, 12, 8, 12)));
-        JLabel t = new JLabel(title, SwingConstants.CENTER); t.setFont(new Font("Segoe UI",Font.BOLD,11)); t.setForeground(Color.decode(titleColor));
-        JLabel v = new JLabel(val,   SwingConstants.CENTER); v.setFont(new Font("Segoe UI",Font.BOLD,20)); v.setForeground(Color.decode(valColor));
-        p.add(t); p.add(v);
         return p;
     }
 
@@ -1780,7 +1707,7 @@ public class ManHinhThongKe extends JPanel {
     }
 
     // ==========================================
-    // XUẤT BÁO CÁO
+    // XUẤT BÁO CÁO (Đã fix double formatter)
     // ==========================================
     private void xuatExcel() {
         JFileChooser fc = new JFileChooser();
@@ -1802,8 +1729,8 @@ public class ManHinhThongKe extends JPanel {
             pw.println("DOANH THU THEO THÁNG");
             pw.println("Tháng,Doanh thu (triệu đ),Chi phí (triệu đ),Lợi nhuận (triệu đ)");
             for (int i = 0; i < 12; i++) {
-                int dt=DT_DATA[i], cp=CP_DATA[i];
-                pw.println(THANG[i]+","+dt+","+cp+","+(dt-cp));
+                double dt=DT_DATA[i], cp=CP_DATA[i];
+                pw.println(THANG[i]+","+String.format("%.1f",dt)+","+String.format("%.1f",cp)+","+String.format("%.1f",dt-cp));
             }
             pw.println();
             pw.println("THỐNG KÊ NHÂN VIÊN");
@@ -1841,9 +1768,12 @@ public class ManHinhThongKe extends JPanel {
             pw.println("<button onclick='window.print()' style='background:#1A73E8;color:white;padding:8px 16px;border:none;cursor:pointer;border-radius:4px;'>🖨 In / Lưu PDF</button>");
             pw.println("<h2>Doanh thu theo tháng</h2>");
             pw.println("<table><tr><th>Tháng</th><th>Doanh thu (M đ)</th><th>Chi phí (M đ)</th><th>Lợi nhuận (M đ)</th></tr>");
-            int tDT=0, tCP=0;
-            for (int i=0;i<12;i++) { tDT+=DT_DATA[i]; tCP+=CP_DATA[i]; pw.println("<tr><td>"+THANG[i]+"</td><td>"+DT_DATA[i]+"</td><td>"+CP_DATA[i]+"</td><td class='green'>"+(DT_DATA[i]-CP_DATA[i])+"</td></tr>"); }
-            pw.println("<tr style='background:#f5f5f5;font-weight:bold;'><td>TỔNG</td><td>"+tDT+"</td><td>"+tCP+"</td><td class='green'>"+(tDT-tCP)+"</td></tr></table>");
+            double tDT=0, tCP=0;
+            for (int i=0;i<12;i++) { 
+                tDT+=DT_DATA[i]; tCP+=CP_DATA[i]; 
+                pw.println("<tr><td>"+THANG[i]+"</td><td>"+String.format("%.1f",DT_DATA[i])+"</td><td>"+String.format("%.1f",CP_DATA[i])+"</td><td class='green'>"+String.format("%.1f",DT_DATA[i]-CP_DATA[i])+"</td></tr>"); 
+            }
+            pw.println("<tr style='background:#f5f5f5;font-weight:bold;'><td>TỔNG</td><td>"+String.format("%.1f",tDT)+"</td><td>"+String.format("%.1f",tCP)+"</td><td class='green'>"+String.format("%.1f",tDT-tCP)+"</td></tr></table>");
             pw.println("<h2>Thống kê nhân viên</h2>");
             pw.println("<table><tr><th>Tên</th><th>Chức vụ</th><th>HĐ Sáng</th><th>HĐ Chiều</th><th>DT Sáng</th><th>DT Chiều</th><th>Tổng</th></tr>");
             for (int i=0;i<NV_NAMES.length;i++) pw.println("<tr><td>"+NV_NAMES[i]+"</td><td>"+NV_ROLES[i]+"</td><td>"+NV_HD_S[i]+"</td><td>"+NV_HD_C[i]+"</td><td>"+String.format("%.1f",NV_DT_S[i])+"M</td><td>"+String.format("%.1f",NV_DT_C[i])+"M</td><td class='green'>"+String.format("%.1f",NV_DT_S[i]+NV_DT_C[i])+"M</td></tr>");
@@ -1855,6 +1785,10 @@ public class ManHinhThongKe extends JPanel {
             JOptionPane.showMessageDialog(this, "Lỗi: "+ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
         }
     }
+
+    // ==========================================
+    // BẢNG SẢN PHẨM HẾT HẠN
+    // ==========================================
     private JPanel buildSpSapHetHanTable() {
         JPanel p = new JPanel(new BorderLayout(0, 8));
         p.setBackground(Color.WHITE);
