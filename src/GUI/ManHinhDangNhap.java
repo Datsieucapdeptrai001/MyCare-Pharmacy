@@ -1,12 +1,14 @@
 package GUI;
 
-import ConnectDB.ConnectDB;
+import Utils.*;
+import BUS.BUS_TaiKhoan;
 import DAO.DAO_TaiKhoan;
 import Entity.TaiKhoan;
-import Utils.MenuIcon;
-
+import Utils.UserSession;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import java.awt.*;
 import java.awt.event.*;
 import java.util.ArrayList;
@@ -16,24 +18,22 @@ import java.util.prefs.Preferences;
 
 public class ManHinhDangNhap extends JFrame {
 
-    private final Color COLOR_BG_DARK = Color.decode("#122A4A");
-    private final Color COLOR_BG_LIGHT = Color.decode("#1A3C64");
-    private final Color COLOR_HEADER_DARK = Color.decode("#103358");
+    private final Color COLOR_BG_DARK      = Color.decode("#122A4A");
+    private final Color COLOR_BG_LIGHT     = Color.decode("#1A3C64");
+    private final Color COLOR_HEADER_DARK  = Color.decode("#103358");
     private final Color COLOR_HEADER_LIGHT = Color.decode("#1870A9");
-    private final Color COLOR_BTN_LOGIN = Color.decode("#1A4B7C");
-    private final Color COLOR_LINK = Color.decode("#1976D2");
-    private final Color COLOR_TEXT_GRAY = Color.decode("#555555");
-    private final Color COLOR_BORDER = Color.decode("#D4D4D4");
+    private final Color COLOR_BTN_LOGIN    = Color.decode("#1A4B7C");
+    private final Color COLOR_LINK         = Color.decode("#1976D2");
+    private final Color COLOR_TEXT_GRAY    = Color.decode("#555555");
+    private final Color COLOR_BORDER       = Color.decode("#D4D4D4");
 
     private AutoSuggestJTextField txtTaiKhoan;
-    private JPasswordField txtMatKhau;
-    private JButton btnEye;
-    private JCheckBox cbGhiNho;
+    private JPasswordField        txtMatKhau;
+    private JButton               btnEye;
+    private JCheckBox             cbGhiNho;
 
-    private final Preferences prefs = Preferences.userRoot().node(this.getClass().getName());
+    private Preferences  prefs          = Preferences.userRoot().node(this.getClass().getName());
     private List<String> savedUsersList;
-
-    private final DAO_TaiKhoan daoTaiKhoan = new DAO_TaiKhoan();
 
     public ManHinhDangNhap() {
         setTitle("MYCARE PHARMACY - Đăng nhập");
@@ -42,22 +42,20 @@ public class ManHinhDangNhap extends JFrame {
         setLocationRelativeTo(null);
         setResizable(true);
 
+        // ── Load danh sách user đã lưu ──────────────────────────────────────
         String savedStr = prefs.get("saved_users", "");
-        if (savedStr.isEmpty()) {
-            savedUsersList = new ArrayList<>();
-        } else {
-            savedUsersList = new ArrayList<>(Arrays.asList(savedStr.split(",")));
-        }
+        savedUsersList = savedStr.isEmpty()
+                ? new ArrayList<>()
+                : new ArrayList<>(Arrays.asList(savedStr.split(",")));
 
+        // ── Background gradient ─────────────────────────────────────────────
         JPanel pnlBackground = new JPanel(new GridBagLayout()) {
-            @Override
-            protected void paintComponent(Graphics g) {
+            @Override protected void paintComponent(Graphics g) {
                 super.paintComponent(g);
                 Graphics2D g2d = (Graphics2D) g.create();
                 g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2d.setPaint(new GradientPaint(0, 0, COLOR_BG_DARK, getWidth(), getHeight(), COLOR_BG_LIGHT));
                 g2d.fillRect(0, 0, getWidth(), getHeight());
-
                 g2d.setColor(new Color(255, 255, 255, 8));
                 g2d.fillOval(-100, 50, 400, 400);
                 g2d.fillOval(150, -150, 300, 300);
@@ -69,20 +67,18 @@ public class ManHinhDangNhap extends JFrame {
         };
         setContentPane(pnlBackground);
 
+        // ── Card wrapper ────────────────────────────────────────────────────
         JPanel pnlWrapper = new JPanel(null) {
-            @Override
-            protected void paintComponent(Graphics g) {
+            @Override protected void paintComponent(Graphics g) {
                 Graphics2D g2d = (Graphics2D) g.create();
                 g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2d.setColor(new Color(0, 0, 0, 40));
                 g2d.fillRoundRect(15, 15, 500, 560, 20, 20);
                 g2d.setColor(Color.WHITE);
                 g2d.fillRoundRect(10, 10, 500, 560, 20, 20);
-
                 g2d.setPaint(new GradientPaint(10, 10, COLOR_HEADER_DARK, 10, 550, COLOR_HEADER_LIGHT));
                 g2d.fillRoundRect(10, 10, 500, 210, 20, 20);
                 g2d.fillRect(10, 110, 500, 100);
-
                 g2d.setColor(new Color(0, 0, 0, 20));
                 g2d.drawRoundRect(10, 10, 500, 560, 20, 20);
                 g2d.dispose();
@@ -92,8 +88,7 @@ public class ManHinhDangNhap extends JFrame {
         pnlWrapper.setOpaque(false);
 
         GridBagConstraints gbcForm = new GridBagConstraints();
-        gbcForm.gridx = 0;
-        gbcForm.gridy = 0;
+        gbcForm.gridx = 0; gbcForm.gridy = 0;
         pnlBackground.add(pnlWrapper, gbcForm);
 
         JPanel pnlContent = new JPanel(null);
@@ -101,9 +96,9 @@ public class ManHinhDangNhap extends JFrame {
         pnlContent.setOpaque(false);
         pnlWrapper.add(pnlContent);
 
+        // ── Logo ────────────────────────────────────────────────────────────
         JPanel pnlLogo = new JPanel() {
-            @Override
-            protected void paintComponent(Graphics g) {
+            @Override protected void paintComponent(Graphics g) {
                 Graphics2D g2d = (Graphics2D) g.create();
                 g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2d.setColor(Color.WHITE);
@@ -139,12 +134,14 @@ public class ManHinhDangNhap extends JFrame {
         lblDesc.setBounds(0, 160, 500, 20);
         pnlContent.add(lblDesc);
 
+        // ── Body ────────────────────────────────────────────────────────────
         JLabel lblHeaderCard = new JLabel("ĐĂNG NHẬP VÀO HỆ THỐNG", SwingConstants.CENTER);
         lblHeaderCard.setFont(new Font("Segoe UI", Font.BOLD, 18));
         lblHeaderCard.setForeground(Color.decode("#1F2937"));
         lblHeaderCard.setBounds(0, 225, 500, 30);
         pnlContent.add(lblHeaderCard);
 
+        // Tên đăng nhập
         JLabel lblUser = new JLabel("Tên đăng nhập");
         lblUser.setFont(new Font("Segoe UI", Font.BOLD, 14));
         lblUser.setForeground(COLOR_TEXT_GRAY);
@@ -153,7 +150,6 @@ public class ManHinhDangNhap extends JFrame {
 
         JPanel pnlInputUser = createInputBorder();
         pnlInputUser.setBounds(40, 293, 420, 48);
-
         JLabel iconUser = new JLabel(new MenuIcon("USER"));
         iconUser.setBounds(15, 13, 22, 22);
         pnlInputUser.add(iconUser);
@@ -163,9 +159,9 @@ public class ManHinhDangNhap extends JFrame {
         txtTaiKhoan.setBorder(new EmptyBorder(0, 10, 0, 0));
         txtTaiKhoan.setFont(new Font("Segoe UI", Font.PLAIN, 16));
 
+        // Popup tài khoản đã lưu khi click vào ô trống
         txtTaiKhoan.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
+            @Override public void mouseClicked(MouseEvent e) {
                 if (txtTaiKhoan.getText().isEmpty() && !savedUsersList.isEmpty()) {
                     JPopupMenu popup = new JPopupMenu();
                     popup.setBorder(BorderFactory.createLineBorder(COLOR_BORDER, 1));
@@ -193,10 +189,10 @@ public class ManHinhDangNhap extends JFrame {
                 }
             }
         });
-
         pnlInputUser.add(txtTaiKhoan);
         pnlContent.add(pnlInputUser);
 
+        // Mật khẩu
         JLabel lblPass = new JLabel("Mật khẩu");
         lblPass.setFont(new Font("Segoe UI", Font.BOLD, 14));
         lblPass.setForeground(COLOR_TEXT_GRAY);
@@ -207,8 +203,7 @@ public class ManHinhDangNhap extends JFrame {
         pnlInputPass.setBounds(40, 376, 420, 48);
 
         JLabel iconLock = new JLabel() {
-            @Override
-            protected void paintComponent(Graphics g) {
+            @Override protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setColor(COLOR_TEXT_GRAY);
@@ -229,12 +224,12 @@ public class ManHinhDangNhap extends JFrame {
 
         btnEye = new JButton(new MenuIcon("EYE_HIDE"));
         btnEye.setBounds(385, 11, 25, 25);
-        btnEye.setBorder(null);
-        btnEye.setContentAreaFilled(false);
+        btnEye.setBorder(null); btnEye.setContentAreaFilled(false);
         btnEye.setCursor(new Cursor(Cursor.HAND_CURSOR));
         pnlInputPass.add(btnEye);
         pnlContent.add(pnlInputPass);
 
+        // Ghi nhớ & Quên mật khẩu
         cbGhiNho = new JCheckBox("Ghi nhớ đăng nhập");
         cbGhiNho.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         cbGhiNho.setForeground(Color.decode("#374151"));
@@ -249,9 +244,9 @@ public class ManHinhDangNhap extends JFrame {
         lblForgot.setCursor(new Cursor(Cursor.HAND_CURSOR));
         pnlContent.add(lblForgot);
 
+        // Nút đăng nhập
         JButton btnLogin = new JButton("Đăng nhập") {
-            @Override
-            protected void paintComponent(Graphics g) {
+            @Override protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setColor(COLOR_BTN_LOGIN);
@@ -262,129 +257,114 @@ public class ManHinhDangNhap extends JFrame {
         btnLogin.setBounds(40, 475, 420, 50);
         btnLogin.setForeground(Color.WHITE);
         btnLogin.setFont(new Font("Segoe UI", Font.BOLD, 18));
-        btnLogin.setContentAreaFilled(false);
-        btnLogin.setBorderPainted(false);
+        btnLogin.setContentAreaFilled(false); btnLogin.setBorderPainted(false);
         btnLogin.setCursor(new Cursor(Cursor.HAND_CURSOR));
         pnlContent.add(btnLogin);
 
+        // Footer
         JLabel lblFooter = new JLabel("© 2024 MYCARE Pharmacy Management System", SwingConstants.CENTER);
         lblFooter.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         lblFooter.setForeground(new Color(255, 255, 255, 150));
         GridBagConstraints gbcFooter = new GridBagConstraints();
-        gbcFooter.gridx = 0;
-        gbcFooter.gridy = 1;
+        gbcFooter.gridx = 0; gbcFooter.gridy = 1;
         gbcFooter.insets = new Insets(20, 0, 0, 0);
         pnlBackground.add(lblFooter, gbcFooter);
 
+        // ── Tự điền nếu đã ghi nhớ ─────────────────────────────────────────
+        String savedUser = prefs.get("saved_username", "");
+        if (!savedUser.isEmpty()) {
+            txtTaiKhoan.setText(savedUser);
+            cbGhiNho.setSelected(true);
+        }
+
+        // ── Eye toggle ──────────────────────────────────────────────────────
         btnEye.addActionListener(e -> {
             boolean visible = txtMatKhau.getEchoChar() == 0;
-            txtMatKhau.setEchoChar(visible ? '•' : (char) 0);
+            txtMatKhau.setEchoChar(visible ? '•' : 0);
             btnEye.setIcon(visible ? new MenuIcon("EYE_HIDE") : new MenuIcon("EYE"));
         });
 
-        lblForgot.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                moManHinhQuenMatKhau();
+        // ── Logic đăng nhập (từ code 2) ─────────────────────────────────────
+        btnLogin.addActionListener(e -> {
+            String u = txtTaiKhoan.getText().trim();
+            String p = new String(txtMatKhau.getPassword()).trim();
+
+            if (u.isEmpty() || p.isEmpty()) {
+                showCustomErrorDialog("<html>Vui lòng nhập đầy đủ tên đăng nhập<br/>và mật khẩu!</html>");
+                return;
+            }
+
+            BUS_TaiKhoan bus = new BUS_TaiKhoan();
+            if (bus.authenticate(u, p)) {
+
+                // Ghi nhớ tài khoản
+                if (cbGhiNho.isSelected()) {
+                    prefs.put("saved_username", u);
+                    if (!savedUsersList.contains(u)) {
+                        savedUsersList.add(u);
+                        prefs.put("saved_users", String.join(",", savedUsersList));
+                    }
+                } else {
+                    prefs.remove("saved_username");
+                }
+
+                // Lưu session
+                DAO_TaiKhoan dao = new DAO_TaiKhoan();
+                TaiKhoan tk = dao.getTaiKhoan(u);
+                UserSession.getInstance().setTaiKhoan(tk);
+
+                // STAFF → mở Dialog Mở Ca
+                if (!UserSession.getInstance().isAdmin()) {
+                    DialogMoCa dlg = new DialogMoCa(this);
+                    dlg.setVisible(true);
+                    if (!dlg.isConfirmed()) {
+                        UserSession.getInstance().logout();
+                        return;
+                    }
+                    UserSession.getInstance().setLoaiCa(dlg.getSelectedCa());
+                    UserSession.getInstance().setTienDauCa(dlg.getTongTienDauCa());
+
+                    Entity.CaLamViec ca = new Entity.CaLamViec();
+                    ca.setId("Ca-" + System.currentTimeMillis());
+                    ca.setNhanVienId(tk.getNhanVienId());
+                    ca.setThoiGianBatDau(java.time.LocalDateTime.now());
+                    ca.setTienDauCa(dlg.getTongTienDauCa());
+                    ca.setTienHeThongGhiNhan(0);
+                    ca.setTienKetCa(0);
+                    new DAO.DAO_CaLamViec().themCa(ca);
+                    UserSession.getInstance().setCaHienTai(ca);
+                }
+
+                new MainDashboard().setVisible(true);
+                dispose();
+
+            } else {
+                showCustomErrorDialog("<html>Thông tin đăng nhập không chính xác.<br/>Vui lòng kiểm tra lại tài khoản và mật khẩu!</html>");
             }
         });
 
-        btnLogin.addActionListener(e -> dangNhap());
         getRootPane().setDefaultButton(btnLogin);
     }
 
-    private void dangNhap() {
-        String tenDangNhap = txtTaiKhoan.getText() == null ? "" : txtTaiKhoan.getText().trim();
-        String matKhau = new String(txtMatKhau.getPassword()).trim();
-
-        if (tenDangNhap.isEmpty() || matKhau.isEmpty()) {
-            showCustomErrorDialog("Vui lòng nhập đầy đủ tài khoản và mật khẩu!");
-            return;
-        }
-
-        try {
-            TaiKhoan tk = daoTaiKhoan.getTaiKhoan(tenDangNhap);
-
-            if (tk == null) {
-                showCustomErrorDialog("<html>Tài khoản không tồn tại.<br/>Vui lòng kiểm tra lại!</html>");
-                return;
-            }
-
-            if (tk.getMatKhau() == null || !tk.getMatKhau().equals(matKhau)) {
-                showCustomErrorDialog("<html>Mật khẩu không chính xác.<br/>Vui lòng kiểm tra lại!</html>");
-                return;
-            }
-
-            if (cbGhiNho.isSelected()) {
-                if (!savedUsersList.contains(tenDangNhap)) {
-                    savedUsersList.add(tenDangNhap);
-                    prefs.put("saved_users", String.join(",", savedUsersList));
-                }
-            }
-
-            // Nếu project mày có UserSession thật thì set ở đây
-            // Ví dụ:
-            // UserSession.getInstance().setTaiKhoan(tk);
-
-            new MainDashboard().setVisible(true);
-            dispose();
-
-        } catch (Exception ex) {
-            ex.printStackTrace();
-            showCustomErrorDialog("<html>Lỗi hệ thống khi đăng nhập.<br/>Vui lòng thử lại!</html>");
-        }
-    }
-
-    private void moManHinhQuenMatKhau() {
-        ManHinhQuenMatKhauOTP dialog = new ManHinhQuenMatKhauOTP(
-                this,
-                (email, matKhauMoi) -> {
-                    try {
-                        boolean tonTai = daoTaiKhoan.kiemTraEmailTonTai(email);
-                        if (!tonTai) {
-                            JOptionPane.showMessageDialog(this, "Email không tồn tại trong hệ thống!");
-                            return;
-                        }
-
-                        boolean ok = daoTaiKhoan.capNhatMatKhauTheoEmail(email, matKhauMoi);
-
-                        if (ok) {
-                            JOptionPane.showMessageDialog(this, "Đổi mật khẩu thành công!");
-                        } else {
-                            JOptionPane.showMessageDialog(this, "Không thể cập nhật mật khẩu!");
-                        }
-                    } catch (Exception ex) {
-                        ex.printStackTrace();
-                        JOptionPane.showMessageDialog(this, "Lỗi cập nhật mật khẩu!");
-                    }
-                }
-        );
-        dialog.setVisible(true);
-    }
-
+    // ── Custom Error Dialog (từ code 1) ────────────────────────────────────
     private void showCustomErrorDialog(String message) {
         JDialog dialog = new JDialog(this, true);
         dialog.setUndecorated(true);
         dialog.setBackground(new Color(0, 0, 0, 0));
 
         JPanel pnl = new JPanel(null) {
-            @Override
-            protected void paintComponent(Graphics g) {
+            @Override protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-
                 g2.setColor(Color.WHITE);
                 g2.fillRoundRect(0, 0, getWidth(), getHeight(), 12, 12);
-
                 g2.setColor(COLOR_HEADER_DARK);
                 g2.fillRoundRect(0, 0, getWidth(), 45, 12, 12);
                 g2.fillRect(0, 20, getWidth(), 25);
-
                 g2.setColor(COLOR_HEADER_DARK);
                 g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 12, 12);
-
-                int iconX = 25;
-                int iconY = 75;
+                // Icon lỗi
+                int iconX = 25, iconY = 75;
                 g2.setColor(Color.decode("#FEE2E2"));
                 g2.fillOval(iconX, iconY, 45, 45);
                 g2.setColor(Color.decode("#EF4444"));
@@ -392,7 +372,6 @@ public class ManHinhDangNhap extends JFrame {
                 g2.drawOval(iconX, iconY, 45, 45);
                 g2.drawLine(iconX + 15, iconY + 15, iconX + 30, iconY + 30);
                 g2.drawLine(iconX + 30, iconY + 15, iconX + 15, iconY + 30);
-
                 g2.dispose();
             }
         };
@@ -409,8 +388,7 @@ public class ManHinhDangNhap extends JFrame {
         msg.setBounds(90, 60, 340, 55);
 
         JButton btnOk = new JButton("Đóng") {
-            @Override
-            protected void paintComponent(Graphics g) {
+            @Override protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setColor(COLOR_BTN_LOGIN);
@@ -421,8 +399,7 @@ public class ManHinhDangNhap extends JFrame {
         btnOk.setBounds(330, 135, 100, 38);
         btnOk.setForeground(Color.WHITE);
         btnOk.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        btnOk.setContentAreaFilled(false);
-        btnOk.setBorderPainted(false);
+        btnOk.setContentAreaFilled(false); btnOk.setBorderPainted(false);
         btnOk.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnOk.addActionListener(e -> dialog.dispose());
 
@@ -438,14 +415,11 @@ public class ManHinhDangNhap extends JFrame {
 
     private JPanel createInputBorder() {
         JPanel p = new JPanel(null) {
-            @Override
-            protected void paintComponent(Graphics g) {
+            @Override protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(Color.WHITE);
-                g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 8, 8);
-                g2.setColor(COLOR_BORDER);
-                g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 8, 8);
+                g2.setColor(Color.WHITE); g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 8, 8);
+                g2.setColor(COLOR_BORDER); g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 8, 8);
                 g2.dispose();
             }
         };
@@ -453,26 +427,27 @@ public class ManHinhDangNhap extends JFrame {
         return p;
     }
 
+    // ── Inner classes (từ code 1) ───────────────────────────────────────────
     static class AutoSuggestJTextField extends JTextField {
-        private final String watermark;
-        private final List<String> dictionary;
-        private String suggestion = "";
+        private String       watermark;
+        private List<String> dictionary;
+        private String       suggestion = "";
 
         public AutoSuggestJTextField(String watermark, List<String> dictionary) {
-            this.watermark = watermark;
+            this.watermark  = watermark;
             this.dictionary = dictionary;
             setOpaque(false);
 
-            getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
-                public void insertUpdate(javax.swing.event.DocumentEvent e) { updateSuggestion(); }
-                public void removeUpdate(javax.swing.event.DocumentEvent e) { updateSuggestion(); }
-                public void changedUpdate(javax.swing.event.DocumentEvent e) { updateSuggestion(); }
+            getDocument().addDocumentListener(new DocumentListener() {
+                public void insertUpdate(DocumentEvent e)  { updateSuggestion(); }
+                public void removeUpdate(DocumentEvent e)  { updateSuggestion(); }
+                public void changedUpdate(DocumentEvent e) { updateSuggestion(); }
             });
 
             addKeyListener(new KeyAdapter() {
-                @Override
                 public void keyPressed(KeyEvent e) {
-                    if ((e.getKeyCode() == KeyEvent.VK_RIGHT || e.getKeyCode() == KeyEvent.VK_TAB) && !suggestion.isEmpty()) {
+                    if ((e.getKeyCode() == KeyEvent.VK_RIGHT || e.getKeyCode() == KeyEvent.VK_TAB)
+                            && !suggestion.isEmpty()) {
                         setText(getText() + suggestion);
                         e.consume();
                     }
@@ -494,14 +469,12 @@ public class ManHinhDangNhap extends JFrame {
             repaint();
         }
 
-        @Override
-        protected void paintComponent(Graphics g) {
+        @Override protected void paintComponent(Graphics g) {
             super.paintComponent(g);
             Graphics2D g2d = (Graphics2D) g.create();
             g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             g2d.setFont(new Font("Segoe UI", Font.ITALIC, 16));
-
-            int textY = (getHeight() - g2d.getFontMetrics().getHeight()) / 2 + g2d.getFontMetrics().getAscent();
+            int textY  = (getHeight() - g2d.getFontMetrics().getHeight()) / 2 + g2d.getFontMetrics().getAscent();
             int startX = getInsets().left;
 
             if (getText().isEmpty() && !hasFocus()) {
@@ -517,35 +490,24 @@ public class ManHinhDangNhap extends JFrame {
     }
 
     static class WatermarkJPasswordField extends JPasswordField {
-        private final String watermark;
+        private String watermark;
+        public WatermarkJPasswordField(String watermark) { this.watermark = watermark; setOpaque(false); }
 
-        public WatermarkJPasswordField(String watermark) {
-            this.watermark = watermark;
-            setOpaque(false);
-        }
-
-        @Override
-        protected void paintComponent(Graphics g) {
+        @Override protected void paintComponent(Graphics g) {
             super.paintComponent(g);
             if (!hasFocus() && getPassword().length == 0) {
                 Graphics2D g2d = (Graphics2D) g.create();
                 g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2d.setColor(Color.decode("#9CA3AF"));
                 g2d.setFont(new Font("Segoe UI", Font.ITALIC, 16));
-                g2d.drawString(
-                        watermark,
-                        getInsets().left + 15,
-                        (getHeight() - g2d.getFontMetrics().getHeight()) / 2 + g2d.getFontMetrics().getAscent()
-                );
+                g2d.drawString(watermark, getInsets().left + 15,
+                        (getHeight() - g2d.getFontMetrics().getHeight()) / 2 + g2d.getFontMetrics().getAscent());
                 g2d.dispose();
             }
         }
     }
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> {
-            ConnectDB.getInstance().connect();
-            new ManHinhDangNhap().setVisible(true);
-        });
+        SwingUtilities.invokeLater(() -> new ManHinhDangNhap().setVisible(true));
     }
 }

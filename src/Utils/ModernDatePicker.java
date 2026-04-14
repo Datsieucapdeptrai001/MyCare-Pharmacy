@@ -6,6 +6,7 @@ import java.awt.*;
 import java.awt.event.*;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
+import java.awt.Window;
 
 public class ModernDatePicker extends JDialog {
     private Calendar calendar = Calendar.getInstance();
@@ -13,8 +14,9 @@ public class ModernDatePicker extends JDialog {
     private JPanel pnlDays;
     private JTextField targetField;
 
-    public ModernDatePicker(JDialog parent, JTextField targetField) {
-        super(parent, true);
+    public ModernDatePicker(Window parent, JTextField targetField) {
+    	super(parent);
+        setModal(true);
         this.targetField = targetField;
         setUndecorated(true);
         setSize(280, 280);
@@ -27,7 +29,7 @@ public class ModernDatePicker extends JDialog {
 
         setLayout(new BorderLayout());
 
-        // --- HEADER: Nút bấm chuyển tháng ---
+        // HEADER: Nút bấm chuyển tháng
         JPanel pnlHeader = new JPanel(new BorderLayout());
         pnlHeader.setBackground(Color.decode("#1967D2"));
         pnlHeader.setBorder(new EmptyBorder(10, 10, 10, 10));
