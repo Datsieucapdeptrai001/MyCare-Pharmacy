@@ -17,7 +17,9 @@ public class ManHinhKhachHang extends JPanel {
     private DefaultTableModel model;
     private TableRowSorter<DefaultTableModel> sorter;
     private JTextField txtSearch;
+    
     private JLabel lblTotalKhachHang; 
+    private JLabel lblTotalPoints; // Biến quản lý số điểm hiển thị
 
     private JPanel pnlDetail;
     private JLabel lblDetAvatar, lblDetName, lblDetId;
@@ -25,6 +27,7 @@ public class ManHinhKhachHang extends JPanel {
     private JLabel lblDetOrders, lblDetPoints, lblDetTotalSpend, lblDetLastVisit;
     private JButton btnEdit;
     private JButton btnAdd;
+
     public ManHinhKhachHang() {
         initUI();
     }
@@ -34,6 +37,7 @@ public class ManHinhKhachHang extends JPanel {
         this.setBackground(Color.decode("#F3F4F6")); 
         this.setBorder(new EmptyBorder(20, 25, 20, 25));
         btnAdd = new JButton("Thêm khách hàng");
+        
         // ==================== 1. PHẦN ĐẦU ====================
         JPanel pnlHeader = new JPanel(new BorderLayout());
         pnlHeader.setOpaque(false);
@@ -91,8 +95,9 @@ public class ManHinhKhachHang extends JPanel {
         pnlCards.setOpaque(false);
         pnlCards.setPreferredSize(new Dimension(0, 90));
         
-        pnlCards.add(createSummaryCard("Tổng khách hàng", "0", true)); 
-        pnlCards.add(createSummaryCard("Tổng điểm tích lũy", "57.386", false));
+        // ĐÃ THÊM LẠI 2 DÒNG NÀY ĐỂ KHỞI TẠO LABEL THÀNH CÔNG
+        pnlCards.add(createSummaryCard("Tổng khách hàng", "0", 1)); 
+        pnlCards.add(createSummaryCard("Tổng điểm tích lũy", "0", 2));
 
         JPanel pnlTop = new JPanel(new BorderLayout(0, 20));
         pnlTop.setOpaque(false);
@@ -179,17 +184,17 @@ public class ManHinhKhachHang extends JPanel {
                 String sdt = model.getValueAt(modelRow, 2).toString();
                 
                 Window p = SwingUtilities.getWindowAncestor(this);
-                // Gọi Form với Constructor chế độ SỬA
                 ThemKhachHang dialog = new ThemKhachHang((Frame) p, model, modelRow, hoten, sdt);
                 dialog.setVisible(true);
                 
-                // Cập nhật lại Sidebar sau khi sửa
                 updateDetailSidebar(modelRow);
             }
         });
 
         model.addTableModelListener(e -> {
             if (lblTotalKhachHang != null) lblTotalKhachHang.setText(String.valueOf(model.getRowCount()));
+            tinhTongDiemTichLuy(); // Đảm bảo điểm cũng được cập nhật khi thêm/xóa/sửa hàng
+            
             if (e.getType() == javax.swing.event.TableModelEvent.INSERT) {
                 SwingUtilities.invokeLater(() -> {
                     int lastRow = table.getRowCount() - 1;
@@ -200,15 +205,28 @@ public class ManHinhKhachHang extends JPanel {
         });
 
         loadData();
-        lblTotalKhachHang.setText(String.valueOf(model.getRowCount()));
     }
 
- // ==================== TẠO GIAO DIỆN BẢNG CHI TIẾT (SIDEBAR) ====================
- // ==================== TẠO GIAO DIỆN BẢNG CHI TIẾT (SIDEBAR) ====================
+    private void tinhTongDiemTichLuy() {
+        long tongDiem = 0;
+        for (int i = 0; i < model.getRowCount(); i++) {
+            try {
+                String diemStr = model.getValueAt(i, 5).toString().replace(".", "").replace(",", "");
+                tongDiem += Long.parseLong(diemStr);
+            } catch (Exception ex) {
+                // Bỏ qua lỗi parse số
+            }
+        }
+        
+        if (lblTotalPoints != null) {
+            java.text.DecimalFormat df = new java.text.DecimalFormat("#,###");
+            lblTotalPoints.setText(df.format(tongDiem));
+        }
+    }
+
     private JPanel createDetailSidebar() {
         JPanel pnl = new JPanel(new BorderLayout());
         
-        // 1. GIẢM CHIỀU CAO & CHIỀU RỘNG (Nhỏ gọn hơn)
         pnl.setPreferredSize(new Dimension(270, 0)); 
         pnl.setBackground(Color.WHITE);
         pnl.setBorder(BorderFactory.createLineBorder(Color.decode("#DFE3E8"), 1));
@@ -265,16 +283,15 @@ public class ManHinhKhachHang extends JPanel {
         pnlTabs.add(lblTab1);
         pnlTabs.add(lblTab2);
 
-        // --- 1.3 BODY (THÔNG TIN LIÊN HỆ & THỐNG KÊ) ---
+        // --- 1.3 BODY ---
         JPanel pnlBody = new JPanel();
         pnlBody.setLayout(new BoxLayout(pnlBody, BoxLayout.Y_AXIS));
         pnlBody.setBackground(Color.WHITE);
 
-        // List thông tin (👤, 📞, ✉, 📍)
         JPanel pnlInfoList = new JPanel(new GridLayout(4, 1, 0, 10));
         pnlInfoList.setBackground(Color.WHITE);
         pnlInfoList.setBorder(new EmptyBorder(15, 15, 15, 15));
-        pnlInfoList.setAlignmentX(Component.LEFT_ALIGNMENT); // ÉP PANEL SANG TRÁI
+        pnlInfoList.setAlignmentX(Component.LEFT_ALIGNMENT); 
 
         lblDetGenderDOB = new JLabel(" Nam • 01/01/1990");
         lblDetGenderDOB.setIcon(new MenuIcon("USER"));
@@ -292,12 +309,11 @@ public class ManHinhKhachHang extends JPanel {
             pnlInfoList.add(l);
         }
 
-        // Hộp thống kê (Đơn hàng & Điểm)
         JPanel pnlStats = new JPanel(new GridLayout(1, 2, 10, 0));
         pnlStats.setBackground(Color.WHITE);
         pnlStats.setBorder(new EmptyBorder(0, 15, 15, 15));
         pnlStats.setMaximumSize(new Dimension(1000, 70));
-        pnlStats.setAlignmentX(Component.LEFT_ALIGNMENT); // ÉP PANEL SANG TRÁI
+        pnlStats.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         JPanel box1 = new JPanel(new GridLayout(2, 1));
         box1.setBackground(Color.decode("#F0F9FF")); 
@@ -321,28 +337,27 @@ public class ManHinhKhachHang extends JPanel {
 
         pnlStats.add(box1); pnlStats.add(box2);
 
-        // --- FIX CHÍNH: KHU VỰC TỔNG CHI TIÊU & LẦN CUỐI ---
         JPanel pnlSpend = new JPanel();
         pnlSpend.setLayout(new BoxLayout(pnlSpend, BoxLayout.Y_AXIS));
         pnlSpend.setBackground(Color.WHITE);
         pnlSpend.setBorder(new EmptyBorder(0, 15, 10, 15)); 
-        pnlSpend.setAlignmentX(Component.LEFT_ALIGNMENT); // QUAN TRỌNG: ÉP PANEL CHA SANG TRÁI
+        pnlSpend.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         JLabel lblSpendText = new JLabel("Tổng chi tiêu:");
         lblSpendText.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         lblSpendText.setForeground(Color.GRAY);
-        lblSpendText.setAlignmentX(Component.LEFT_ALIGNMENT); // ÉP NHÃN SANG TRÁI
+        lblSpendText.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         lblDetTotalSpend = new JLabel("1.600.000đ");
         lblDetTotalSpend.setFont(new Font("Segoe UI", Font.BOLD, 18));
         lblDetTotalSpend.setForeground(Color.decode("#16A34A")); 
         lblDetTotalSpend.setBorder(new EmptyBorder(2, 0, 4, 0));
-        lblDetTotalSpend.setAlignmentX(Component.LEFT_ALIGNMENT); // ÉP SỐ TIỀN SANG TRÁI
+        lblDetTotalSpend.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         lblDetLastVisit = new JLabel("Lần cuối: 01/01/2024");
         lblDetLastVisit.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         lblDetLastVisit.setForeground(Color.GRAY);
-        lblDetLastVisit.setAlignmentX(Component.LEFT_ALIGNMENT); // ÉP NGÀY THÁNG SANG TRÁI
+        lblDetLastVisit.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         pnlSpend.add(lblSpendText);
         pnlSpend.add(lblDetTotalSpend);
@@ -352,12 +367,11 @@ public class ManHinhKhachHang extends JPanel {
         pnlBody.add(pnlStats);
         pnlBody.add(pnlSpend);
         
-        // Thanh cuộn tàng hình cho Body để thấy hết "Lần cuối"
         JScrollPane spBody = new JScrollPane(pnlBody);
         spBody.setBorder(null);
         spBody.getVerticalScrollBar().setPreferredSize(new Dimension(0, 0)); 
 
-        // --- 1.4 FOOTER (NÚT BẤM) ---
+        // --- 1.4 FOOTER ---
         JPanel pnlFooterActions = new JPanel(new GridLayout(2, 1, 0, 8));
         pnlFooterActions.setBackground(Color.WHITE);
         pnlFooterActions.setBorder(new EmptyBorder(10, 15, 15, 15));
@@ -424,7 +438,7 @@ public class ManHinhKhachHang extends JPanel {
         lblDetLastVisit.setText("Lần cuối: " + lastVisit);
     }
 
-    private JPanel createSummaryCard(String title, String value, boolean isTotalCard) {
+    private JPanel createSummaryCard(String title, String value, int type) {
         JPanel pnl = new JPanel(new GridLayout(2, 1, 0, 5));
         pnl.setBackground(Color.WHITE);
         pnl.setBorder(BorderFactory.createCompoundBorder(
@@ -440,7 +454,8 @@ public class ManHinhKhachHang extends JPanel {
         lblValue.setFont(new Font("Segoe UI", Font.BOLD, 24));
         lblValue.setForeground(Color.decode("#111827"));
 
-        if (isTotalCard) lblTotalKhachHang = lblValue; 
+        if (type == 1) lblTotalKhachHang = lblValue; 
+        if (type == 2) lblTotalPoints = lblValue; 
 
         pnl.add(lblTitle);
         pnl.add(lblValue);
@@ -490,31 +505,30 @@ public class ManHinhKhachHang extends JPanel {
         if (search.isEmpty() || search.equals("Tên, mã, SĐT...")) sorter.setRowFilter(null);
         else sorter.setRowFilter(RowFilter.regexFilter("(?i)" + search));
     }
- // Thêm hàm này vào cuối class ManHinhKhachHang
+
     public void moFormThemMoi() {
         Window p = SwingUtilities.getWindowAncestor(this);
         ThemKhachHang dialog = new ThemKhachHang((Frame) p, model);
         dialog.setVisible(true);
     }
+
     public DefaultTableModel getModel() {
         return model;
     }
+
     private void loadData() {
-        // Xóa sạch dữ liệu cũ trên bảng
         model.setRowCount(0);
         
-        // Khởi tạo DAO và lấy danh sách thật từ CSDL
         DAO.DAO_KhachHang daoKH = new DAO.DAO_KhachHang();
         List<Object[]> dsKhachHang = daoKH.layDanhSachKhachHangChoBang();
         
-        // Đổ từng dòng dữ liệu vào model của JTable
         for (Object[] row : dsKhachHang) {
             model.addRow(row);
         }
         
-        // (Tùy chọn) Cập nhật nhãn tổng số lượng khách hàng nếu bạn có
         if (lblTotalKhachHang != null) {
-            lblTotalKhachHang.setText("Danh sách (" + model.getRowCount() + ")");
+            lblTotalKhachHang.setText(String.valueOf(model.getRowCount()));
         }
+        tinhTongDiemTichLuy();
     }
 }
