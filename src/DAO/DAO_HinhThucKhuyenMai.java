@@ -15,54 +15,104 @@ import java.sql.SQLException;
 
 public class DAO_HinhThucKhuyenMai {
 
-	public HinhThucKhuyenMai layTheoMaKM(String maKM) {
-	    HinhThucKhuyenMai htkm = null;
-	    String sql = "SELECT * FROM HinhThucKhuyenMai WHERE khuyenMaiId = ?";
-	    Connection con = ConnectDB.getInstance().getConnection();
+    public boolean themHinhThuc(HinhThucKhuyenMai htkm) {
+        String sql = "INSERT INTO HinhThucKhuyenMai (id, loaiHinhThuc, doiTuongApDung, moTa, giaTri, giamToiDa, khuyenMaiId, spYeuCau, slYeuCau, spTang, slTang) "
+                   + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        Connection con = ConnectDB.getInstance().getConnection();
+        try (PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setString(1, htkm.getId());
+            pst.setString(2, htkm.getLoaiHinhThuc() != null ? htkm.getLoaiHinhThuc().name() : null);
+            pst.setString(3, htkm.getDoiTuongApDung() != null ? htkm.getDoiTuongApDung().name() : null);
+            pst.setString(4, htkm.getMoTa());
+            pst.setDouble(5, htkm.getGiaTri());
+            pst.setDouble(6, htkm.getGiamToiDa());
+            pst.setString(7, htkm.getKhuyenMaiId() != null ? htkm.getKhuyenMaiId().getId() : null);
+            pst.setString(8, htkm.getSpYeuCau());
+            pst.setInt(9, htkm.getSlYeuCau());
+            pst.setString(10, htkm.getSpTang());
+            pst.setInt(11, htkm.getSlTang());
+            return pst.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
 
-	    try (PreparedStatement pst = con.prepareStatement(sql)) {
-	        pst.setString(1, maKM);
+    public boolean capNhatHinhThuc(HinhThucKhuyenMai htkm) {
+        String sql = "UPDATE HinhThucKhuyenMai SET loaiHinhThuc=?, doiTuongApDung=?, moTa=?, giaTri=?, giamToiDa=?, spYeuCau=?, slYeuCau=?, spTang=?, slTang=? WHERE khuyenMaiId=?";
+        Connection con = ConnectDB.getInstance().getConnection();
+        try (PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setString(1, htkm.getLoaiHinhThuc() != null ? htkm.getLoaiHinhThuc().name() : null);
+            pst.setString(2, htkm.getDoiTuongApDung() != null ? htkm.getDoiTuongApDung().name() : null);
+            pst.setString(3, htkm.getMoTa());
+            pst.setDouble(4, htkm.getGiaTri());
+            pst.setDouble(5, htkm.getGiamToiDa());
+            pst.setString(6, htkm.getSpYeuCau());
+            pst.setInt(7, htkm.getSlYeuCau());
+            pst.setString(8, htkm.getSpTang());
+            pst.setInt(9, htkm.getSlTang());
+            pst.setString(10, htkm.getKhuyenMaiId().getId());
+            return pst.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
 
-	        try (ResultSet rs = pst.executeQuery()) {
-	            if (rs.next()) {
-	                htkm = new HinhThucKhuyenMai();
-	                htkm.setId(rs.getString("id"));
+    public boolean xoaTheoMaKM(String maKM) {
+        String sql = "DELETE FROM HinhThucKhuyenMai WHERE khuyenMaiId=?";
+        Connection con = ConnectDB.getInstance().getConnection();
+        try (PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setString(1, maKM);
+            return pst.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
 
-	                if (rs.getString("loaiHinhThuc") != null) {
-	                    htkm.setLoaiHinhThuc(LoaiHinhThuc.valueOf(rs.getString("loaiHinhThuc")));
-	                }
+    public HinhThucKhuyenMai layTheoMaKM(String maKM) {
+        HinhThucKhuyenMai htkm = null;
+        String sql = "SELECT * FROM HinhThucKhuyenMai WHERE khuyenMaiId = ?";
+        Connection con = ConnectDB.getInstance().getConnection();
 
-	                if (rs.getString("doiTuongApDung") != null) {
-	                    htkm.setDoiTuongApDung(DoiTuongApDung.valueOf(rs.getString("doiTuongApDung")));
-	                }
+        try (PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setString(1, maKM);
+            try (ResultSet rs = pst.executeQuery()) {
+                if (rs.next()) {
+                    htkm = new HinhThucKhuyenMai();
+                    htkm.setId(rs.getString("id"));
+                    if (rs.getString("loaiHinhThuc") != null) htkm.setLoaiHinhThuc(LoaiHinhThuc.valueOf(rs.getString("loaiHinhThuc")));
+                    if (rs.getString("doiTuongApDung") != null) htkm.setDoiTuongApDung(DoiTuongApDung.valueOf(rs.getString("doiTuongApDung")));
+                    htkm.setMoTa(rs.getString("moTa"));
+                    htkm.setGiaTri(rs.getDouble("giaTri"));
+                    htkm.setGiamToiDa(rs.getDouble("giamToiDa"));
 
-	                htkm.setMoTa(rs.getString("moTa"));
-	                htkm.setGiaTri(rs.getDouble("giaTri"));
-	                htkm.setGiamToiDa(rs.getDouble("giamToiDa"));
+                    if (rs.getString("donViDoLuongId") != null) {
+                        DonViDoLuong dvdl = new DonViDoLuong();
+                        dvdl.setId(rs.getString("donViDoLuongId"));
+                        htkm.setDonViDoLuongId(dvdl);
+                    }
+                    if (rs.getString("sanPhamId") != null) {
+                        SanPham sp = new SanPham();
+                        sp.setId(rs.getString("sanPhamId"));
+                        htkm.setSanPhamId(sp);
+                    }
+                    KhuyenMai km = new KhuyenMai();
+                    km.setId(rs.getString("khuyenMaiId"));
+                    htkm.setKhuyenMaiId(km);
 
-	                if (rs.getString("donViDoLuongId") != null) {
-	                    DonViDoLuong dvdl = new DonViDoLuong();
-	                    dvdl.setId(rs.getString("donViDoLuongId"));
-	                    htkm.setDonViDoLuongId(dvdl);
-	                }
-
-	                if (rs.getString("sanPhamId") != null) {
-	                    SanPham sp = new SanPham();
-	                    sp.setId(rs.getString("sanPhamId"));
-	                    htkm.setSanPhamId(sp);
-	                }
-
-	                if (rs.getString("khuyenMaiId") != null) {
-	                    KhuyenMai km = new KhuyenMai();
-	                    km.setId(rs.getString("khuyenMaiId"));
-	                    htkm.setKhuyenMaiId(km);
-	                }
-	            }
-	        }
-	    } catch (SQLException e) {
-	        e.printStackTrace();
-	    }
-
-	    return htkm;
-	}
+                    try {
+                        htkm.setSpYeuCau(rs.getString("spYeuCau"));
+                        htkm.setSlYeuCau(rs.getInt("slYeuCau"));
+                        htkm.setSpTang(rs.getString("spTang"));
+                        htkm.setSlTang(rs.getInt("slTang"));
+                    } catch(Exception ignored){}
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return htkm;
+    }
 }
