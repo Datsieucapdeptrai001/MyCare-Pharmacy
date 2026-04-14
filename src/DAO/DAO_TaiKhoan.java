@@ -7,75 +7,142 @@ import Enumeration.ChucVu;
 import Enumeration.TrangThaiLamViec;
 import Enumeration.VaiTro;
 
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 
 public class DAO_TaiKhoan {
 
-    public DAO_TaiKhoan() {}
+    public DAO_TaiKhoan() {
+    }
 
     /**
-     * Lấy TaiKhoan + NhanVien đầy đủ theo tên đăng nhập.
-     * DB mới: NhanVien.id (PK), không phải nhanVien
+     * Lấy tài khoản + thông tin nhân viên theo tên đăng nhập
      */
     public TaiKhoan getTaiKhoan(String tenDangNhap) {
         TaiKhoan tk = null;
-        // JOIN dùng nv.id (PK mới của NhanVien)
+
         String sql =
-            "SELECT tk.id, tk.nhanVienId, tk.vaiTro, tk.tenDangNhap, tk.matKhau, " +
-            "nv.hoVaTen, nv.chucVu, nv.sdt, nv.email, nv.soChungChiHanhNghe, nv.trangThaiLamViec " +
-            "FROM TaiKhoan tk " +
-            "LEFT JOIN NhanVien nv ON tk.nhanVienId = nv.id " +
-            "WHERE tk.tenDangNhap = ?";
+                "SELECT tk.id, tk.nhanVienId, tk.vaiTro, tk.tenDangNhap, tk.matKhau, " +
+                "nv.hoVaTen, nv.chucVu, nv.sdt, nv.email, nv.soChungChiHanhNghe, nv.trangThaiLamViec " +
+                "FROM TaiKhoan tk " +
+                "LEFT JOIN NhanVien nv ON tk.nhanVienId = nv.id " +
+                "WHERE tk.tenDangNhap = ?";
 
         Connection con = ConnectDB.getInstance().getConnection();
+
         try (PreparedStatement pst = con.prepareStatement(sql)) {
             pst.setString(1, tenDangNhap);
+
             try (ResultSet rs = pst.executeQuery()) {
                 if (rs.next()) {
-                    tk = new TaiKhoan();
-                    tk.setId(rs.getString("id"));
-                    tk.setVaiTro(VaiTro.valueOf(rs.getString("vaiTro")));
-                    tk.setTenDangNhap(rs.getString("tenDangNhap"));
-                    tk.setMatKhau(rs.getString("matKhau"));
-
-                    NhanVien nv = new NhanVien();
-                    // Lưu ID nhân viên vào trường nhanVien của Entity
-                    nv.setNhanVien(rs.getString("nhanVienId"));
-                    String hoVaTen = rs.getString("hoVaTen");
-                    nv.setHoVaTen(hoVaTen != null ? hoVaTen : tenDangNhap);
-                    nv.setSdt(rs.getString("sdt"));
-                    nv.setEmail(rs.getString("email"));
-                    nv.setSoChungChiHanhNghe(rs.getString("soChungChiHanhNghe"));
-                    try {
-                        String cv = rs.getString("chucVu");
-                        if (cv != null) nv.setChucVu(ChucVu.valueOf(cv));
-                    } catch (Exception ignored) {}
-                    try {
-                        String tt = rs.getString("trangThaiLamViec");
-                        if (tt != null) nv.setTrangThaiLamViec(TrangThaiLamViec.valueOf(tt));
-                    } catch (Exception ignored) {}
-                    tk.setNhanVienId(nv);
+                    tk = mapTaiKhoan(rs, tenDangNhap);
                 }
             }
         } catch (SQLException e) {
             e.printStackTrace();
         }
+
+        return tk;
+    }
+
+    /**
+     * Lấy tài khoản + thông tin nhân viên theo email
+     */
+    public TaiKhoan getTaiKhoanTheoEmail(String email) {
+        TaiKhoan tk = null;
+
+        String sql =
+                "SELECT tk.id, tk.nhanVienId, tk.vaiTro, tk.tenDangNhap, tk.matKhau, " +
+                "nv.hoVaTen, nv.chucVu, nv.sdt, nv.email, nv.soChungChiHanhNghe, nv.trangThaiLamViec " +
+                "FROM TaiKhoan tk " +
+                "LEFT JOIN NhanVien nv ON tk.nhanVienId = nv.id " +
+                "WHERE nv.email = ?";
+
+        Connection con = ConnectDB.getInstance().getConnection();
+
+        try (PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setString(1, email);
+
+            try (ResultSet rs = pst.executeQuery()) {
+                if (rs.next()) {
+                    tk = mapTaiKhoan(rs, rs.getString("tenDangNhap"));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
         return tk;
     }
 
     public boolean capNhatMatKhau(String tenDangNhap, String matKhauMoi) {
         String sql = "UPDATE TaiKhoan SET matKhau = ? WHERE tenDangNhap = ?";
         Connection con = ConnectDB.getInstance().getConnection();
+
         try (PreparedStatement pst = con.prepareStatement(sql)) {
             pst.setString(1, matKhauMoi);
             pst.setString(2, tenDangNhap);
             return pst.executeUpdate() > 0;
-        } catch (SQLException e) { e.printStackTrace(); return false; }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    /**
+     * Kiểm tra email có tồn tại trong hệ thống không
+     */
+    public boolean kiemTraEmailTonTai(String email) {
+        String sql =
+                "SELECT COUNT(*) " +
+                "FROM TaiKhoan tk " +
+                "INNER JOIN NhanVien nv ON tk.nhanVienId = nv.id " +
+                "WHERE nv.email = ?";
+
+        Connection con = ConnectDB.getInstance().getConnection();
+
+        try (PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setString(1, email);
+
+            try (ResultSet rs = pst.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1) > 0;
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return false;
+    }
+
+    /**
+     * Cập nhật mật khẩu theo email
+     */
+    public boolean capNhatMatKhauTheoEmail(String email, String matKhauMoi) {
+        String sql =
+                "UPDATE TaiKhoan " +
+                "SET matKhau = ? " +
+                "WHERE nhanVienId IN (SELECT id FROM NhanVien WHERE email = ?)";
+
+        Connection con = ConnectDB.getInstance().getConnection();
+
+        try (PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setString(1, matKhauMoi);
+            pst.setString(2, email);
+            return pst.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
     }
 
     public boolean themTaiKhoan(TaiKhoan tk) {
         String sql = "INSERT INTO TaiKhoan (id, nhanVienId, vaiTro, tenDangNhap, matKhau) VALUES (?, ?, ?, ?, ?)";
         Connection con = ConnectDB.getInstance().getConnection();
+
         try (PreparedStatement pst = con.prepareStatement(sql)) {
             pst.setString(1, tk.getId());
             pst.setString(2, tk.getNhanVienId().getNhanVien());
@@ -83,18 +150,69 @@ public class DAO_TaiKhoan {
             pst.setString(4, tk.getTenDangNhap());
             pst.setString(5, tk.getMatKhau());
             return pst.executeUpdate() > 0;
-        } catch (SQLException e) { e.printStackTrace(); return false; }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
     }
 
     public boolean checkTrungTenDangNhap(String tenDangNhap) {
         String sql = "SELECT COUNT(*) FROM TaiKhoan WHERE tenDangNhap = ?";
         Connection con = ConnectDB.getInstance().getConnection();
+
         try (PreparedStatement pst = con.prepareStatement(sql)) {
             pst.setString(1, tenDangNhap);
+
             try (ResultSet rs = pst.executeQuery()) {
-                if (rs.next()) return rs.getInt(1) > 0;
+                if (rs.next()) {
+                    return rs.getInt(1) > 0;
+                }
             }
-        } catch (SQLException e) { e.printStackTrace(); }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
         return false;
+    }
+
+    private TaiKhoan mapTaiKhoan(ResultSet rs, String tenDangNhapMacDinh) throws SQLException {
+        TaiKhoan tk = new TaiKhoan();
+        tk.setId(rs.getString("id"));
+
+        String vaiTro = rs.getString("vaiTro");
+        if (vaiTro != null) {
+            tk.setVaiTro(VaiTro.valueOf(vaiTro));
+        }
+
+        tk.setTenDangNhap(rs.getString("tenDangNhap"));
+        tk.setMatKhau(rs.getString("matKhau"));
+
+        NhanVien nv = new NhanVien();
+        nv.setNhanVien(rs.getString("nhanVienId"));
+
+        String hoVaTen = rs.getString("hoVaTen");
+        nv.setHoVaTen(hoVaTen != null ? hoVaTen : tenDangNhapMacDinh);
+        nv.setSdt(rs.getString("sdt"));
+        nv.setEmail(rs.getString("email"));
+        nv.setSoChungChiHanhNghe(rs.getString("soChungChiHanhNghe"));
+
+        try {
+            String chucVu = rs.getString("chucVu");
+            if (chucVu != null) {
+                nv.setChucVu(ChucVu.valueOf(chucVu));
+            }
+        } catch (Exception ignored) {
+        }
+
+        try {
+            String trangThaiLamViec = rs.getString("trangThaiLamViec");
+            if (trangThaiLamViec != null) {
+                nv.setTrangThaiLamViec(TrangThaiLamViec.valueOf(trangThaiLamViec));
+            }
+        } catch (Exception ignored) {
+        }
+
+        tk.setNhanVienId(nv);
+        return tk;
     }
 }
