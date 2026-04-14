@@ -72,7 +72,7 @@ public class ManHinhKhuyenMai extends JPanel {
     private JLabel lblDetType, lblDetDiscount, lblDetMinOrder, lblDetTarget, lblDetTime;
     private JLabel lblDetStatus;
     private RoundedButton btnDetailEdit, btnDetailToggle, btnDetailDelete;
-
+    
     // ==========================================
     // 3. KHỞI TẠO
     // ==========================================
