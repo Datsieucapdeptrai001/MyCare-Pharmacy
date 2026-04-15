@@ -165,58 +165,53 @@ public class DAO_SanPham {
         }
         return dsLoHang;
     }
-    public java.util.List<Object[]> timKiemSanPhamBan(String keyword) {
-        java.util.List<Object[]> list = new java.util.ArrayList<>();
-        java.sql.Connection con = null;
-        java.sql.PreparedStatement pstm = null;
-        java.sql.ResultSet rs = null;
-
+    public List<Object[]> timKiemSanPhamBan(String text) {
+        List<Object[]> ds = new ArrayList<>();
         try {
-            // Thay bằng class Connection thật của bạn (VD: Database.getInstance().getConnection())
-            con = ConnectDB.getConnection(); 
+            java.sql.Connection con = ConnectDB.getInstance().getConnection();
             
-            // CÂU SQL: Nối 3 bảng SanPham, DonViDoLuong và LoHang (để lấy tồn kho)
-            String sql = "SELECT " +
-                         "    sp.id, " +
-                         "    sp.ten, " +
-                         "    dv.ten AS donVi, " +
-                         "    dv.gia AS giaBan, " +
-                         "    ISNULL(SUM(lh.soLuongLoHang), 0) AS tonKho " +
+            // Đã cập nhật đúng cấu trúc DB của bạn:
+            // Kết nối bảng SanPham và LoHang để lấy Tồn kho và Giá bán
+            String sql = "SELECT sp.id AS id, sp.ten AS ten, sp.donViDoCoBan AS donVi, " +
+                         "lh.gia AS giaBan, SUM(lh.soLuongLoHang) AS soLuongTon, sp.danhMuc AS danhMuc " +
                          "FROM SanPham sp " +
-                         "JOIN DonViDoLuong dv ON sp.id = dv.sanPhamId " +
-                         "LEFT JOIN LoHang lh ON sp.id = lh.sanPhamId AND lh.trangThai = N'CON_HANG' AND lh.ngayHetHan > GETDATE() " +
-                         "WHERE sp.ten LIKE ? OR sp.tenVietTat LIKE ? OR sp.hoatChat LIKE ? OR sp.id LIKE ? " +
-                         "GROUP BY sp.id, sp.ten, dv.ten, dv.gia";
-
-            pstm = con.prepareStatement(sql);
-            String searchPattern = "%" + keyword + "%";
-            pstm.setString(1, searchPattern);
-            pstm.setString(2, searchPattern);
-            pstm.setString(3, searchPattern);
-            pstm.setString(4, searchPattern);
-
-            rs = pstm.executeQuery();
-
+                         "JOIN LoHang lh ON sp.id = lh.sanPhamId " +
+                         "WHERE (sp.ten LIKE ? OR sp.id LIKE ?) AND lh.trangThai != 'HET_HAN' " +
+                         "GROUP BY sp.id, sp.ten, sp.donViDoCoBan, lh.gia, sp.danhMuc " +
+                         "HAVING SUM(lh.soLuongLoHang) > 0";
+            
+            java.sql.PreparedStatement pst = con.prepareStatement(sql);
+            String searchPattern = "%" + text + "%";
+            pst.setString(1, searchPattern);
+            pst.setString(2, searchPattern);
+            
+            java.sql.ResultSet rs = pst.executeQuery();
             while (rs.next()) {
-                Object[] row = new Object[5];
-                row[0] = rs.getString("id");        // Mã SP
-                row[1] = rs.getString("ten");       // Tên SP
-                row[2] = rs.getString("donVi");     // Đơn vị tính
-                row[3] = rs.getDouble("giaBan");    // Giá bán
-                row[4] = rs.getInt("tonKho");       // Tồn kho
-
-                list.add(row);
+                // XỬ LÝ QUAN TRỌNG: Dịch từ mã Enum sang tiếng Việt để UI đổi màu nhãn
+                String danhMucDB = rs.getString("danhMuc");
+                String loai = "Khác"; 
+                if (danhMucDB != null) {
+                    if (danhMucDB.equals("THUOC_KE_DON")) loai = "Thuốc kê đơn";
+                    else if (danhMucDB.equals("THUOC_KHONG_KE_DON")) loai = "Thuốc không kê đơn";
+                    else if (danhMucDB.equals("THUC_PHAM_CHUC_NANG")) loai = "Thực phẩm chức năng";
+                    else if (danhMucDB.equals("MY_PHAM")) loai = "Mỹ phẩm";
+                    else if (danhMucDB.equals("VAT_TU_Y_TE")) loai = "Vật tư y tế";
+                }
+                
+                ds.add(new Object[]{
+                    rs.getString("id"),
+                    rs.getString("ten"),
+                    rs.getString("donVi"),
+                    rs.getDouble("giaBan"),
+                    rs.getInt("soLuongTon"),
+                    loai // Trả về chữ tiếng Việt có dấu cho Form Hóa Đơn
+                });
             }
         } catch (Exception e) {
-            System.err.println("Lỗi SQL tại timKiemSanPhamBan: " + e.getMessage());
+            System.err.println("Lỗi tại DAO_SanPham.timKiemSanPhamBan: " + e.getMessage());
             e.printStackTrace();
-        } finally {
-            try {
-                if (rs != null) rs.close();
-                if (pstm != null) pstm.close();
-            } catch (Exception ex) {}
         }
-        return list;
+        return ds;
     }
     // 3. Cập nhật số lượng tồn kho
     public boolean capNhatSoLuongTon(String maLoHang, int soLuongMoi) {
@@ -231,11 +226,6 @@ public class DAO_SanPham {
         }
         return false;
     }
- // =====================================================================
-    // CÁC HÀM BỔ SUNG ĐỂ THÊM/SỬA/XÓA/TẠO MÃ TỰ ĐỘNG XUỐNG DATABASE
-    // =====================================================================
-    
-    // 1. Tự động sinh mã SP mới nhất (VD: Từ SP2024-0032 -> SP2024-0033)
     public String layMaSanPhamMoiNhat() {
         String sql = "SELECT TOP 1 id FROM SanPham ORDER BY id DESC";
         Connection con = ConnectDB.getConnection();

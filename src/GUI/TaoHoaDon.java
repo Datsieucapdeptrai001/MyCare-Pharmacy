@@ -58,7 +58,8 @@ public class TaoHoaDon extends JDialog {
     private long tienGiamGia = 0;
     private String maKhuyenMaiApDung = "";
     private JLabel lblDiscountValue;
-    
+    private JPanel pnlDonThuoc;
+    private JTextField txtBacSi, txtCoSo, txtChuanDoan;
     // --- TÍCH HỢP TÍNH NĂNG DÙNG ĐIỂM (SHOPEE STYLE) ---
     private int diemHienTaiKH = 0;
     private boolean isDungDiem = false;
@@ -118,6 +119,14 @@ public class TaoHoaDon extends JDialog {
         pnlBody.add(Box.createRigidArea(new Dimension(0, 20)));
         pnlBody.add(createSectionPanel("Thêm sản phẩm", "PACKAGE", createProductPanel()));
         pnlBody.add(Box.createRigidArea(new Dimension(0, 20)));
+        
+        // --- CHÈN PANEL ĐƠN THUỐC VÀO ĐÂY ---
+        pnlDonThuoc = createDonThuocPanel();
+        pnlBody.add(pnlDonThuoc);
+        pnlBody.add(Box.createRigidArea(new Dimension(0, 20)));
+        // ------------------------------------
+
+        
         
         pnlBody.add(createSectionPanel("Mã khuyến mãi", "GIFT", createVoucherPanel()));
         pnlBody.add(Box.createRigidArea(new Dimension(0, 5)));
@@ -206,6 +215,23 @@ public class TaoHoaDon extends JDialog {
 
         // NÚT THANH TOÁN (XỬ LÝ ĐIỂM + KHUYẾN MÃI)
         btnThanhToan.addActionListener(e -> {
+        	if (productModel.getRowCount() == 0) {
+                JOptionPane.showMessageDialog(this, "Vui lòng thêm ít nhất 1 sản phẩm vào hóa đơn!", "Cảnh báo", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            // --- BẮT LỖI FORM KÊ ĐƠN Ở ĐÂY ---
+            if (pnlDonThuoc.isVisible()) {
+                String bacSi = txtBacSi.getText().trim();
+                String coSo = txtCoSo.getText().trim();
+                
+                // Nếu dược sĩ để trống hoặc chưa sửa Placeholder
+                if (bacSi.isEmpty() || bacSi.contains("BS. Nguyễn") || 
+                    coSo.isEmpty() || coSo.contains("BV Bạch Mai")) {
+                    JOptionPane.showMessageDialog(this, "Đơn hàng này có THUỐC KÊ ĐƠN.\nVui lòng nhập đầy đủ Tên Bác Sĩ và Cơ Sở Khám Bệnh!", "Thiếu thông tin", JOptionPane.WARNING_MESSAGE);
+                    return; // Chặn lại không cho thanh toán
+                }
+            }
             String khach = isCustomerLinked ? linkedTenKH : txtName.getText();
             if(khach.equals("Tên khách (bỏ trống = Khách lẻ)") || khach.trim().isEmpty()) khach = "Khách lẻ";
             String sdt = isCustomerLinked ? linkedSdtKH : txtPhone.getText().replace("Số điện thoại (tuỳ chọn)", "");
@@ -224,14 +250,25 @@ public class TaoHoaDon extends JDialog {
                 hd.setId(maHDMoi);
                 hd.setLoaiHD(Enumeration.LoaiHoaDon.BAN_HANG);
                 
-                // Ghi chú nếu có dùng điểm hoặc KM
+                
                 String strDiem = isDungDiem ? " | Dùng điểm: -" + tienGiamTuDiem : "";
                 String strKM = maKhuyenMaiApDung.isEmpty() ? "" : " | KM: " + maKhuyenMaiApDung;
                 
+                // --- BẠN BỊ THIẾU ĐOẠN NÀY NÈ: LẤY THÔNG TIN KÊ ĐƠN ---
+                String strKeDon = "";
+                if (pnlDonThuoc != null && pnlDonThuoc.isVisible()) {
+                    String bs = txtBacSi.getText().trim();
+                    String cs = txtCoSo.getText().trim();
+                    String cd = txtChuanDoan.getText().trim();
+                    if (cd.contains("Chẩn đoán bệnh")) cd = ""; // Xóa chữ mờ
+                    strKeDon = " | BS:" + bs + " | CS:" + cs + (cd.isEmpty() ? "" : " | CD:" + cd);
+                }
+                
+                // Nối chuỗi strKeDon vào ghi chú để lưu xuống Database
                 if (phuongThuc.equals("Tiền mặt")) {
-                    hd.setGhiChu("CASH:" + tongTienMat + strKM + strDiem);
+                    hd.setGhiChu("CASH:" + tongTienMat + strKM + strDiem + strKeDon);
                 } else {
-                    hd.setGhiChu("BANK" + strKM + strDiem); 
+                    hd.setGhiChu("BANK" + strKM + strDiem + strKeDon); 
                 }
                 hd.setNgayLapHD(java.time.LocalDateTime.now());
 
@@ -471,19 +508,45 @@ public class TaoHoaDon extends JDialog {
     }
 
     private void recalculateTotals() {
+        boolean hasKeDon = false;
         tamTinh = 0;
+
         for (int i = 0; i < productModel.getRowCount(); i++) {
-            String valueStr = productModel.getValueAt(i, 5).toString().replaceAll("[^0-9]", "");
-            tamTinh += Long.parseLong(valueStr);
+            // Lấy giá trị cột Thành tiền (index 5)
+            Object valueObj = productModel.getValueAt(i, 5);
+            if (valueObj != null) {
+                String valueStr = valueObj.toString().replaceAll("[^0-9]", "");
+                if (!valueStr.isEmpty()) {
+                    tamTinh += Long.parseLong(valueStr);
+                }
+            }
+
+            // Quét tìm xem có Thuốc kê đơn không (Dữ liệu ở cột index 6)
+            Object dmObj = productModel.getValueAt(i, 6);
+            if (dmObj != null) {
+                String dm = dmObj.toString().toLowerCase();
+                if (dm.contains("kê đơn") && !dm.contains("không")) {
+                    hasKeDon = true;
+                }
+            }
         }
+
+        // Cập nhật hiển thị panel đơn thuốc kê đơn
+        if (pnlDonThuoc != null) {
+            pnlDonThuoc.setVisible(hasKeDon);
+            pnlDonThuoc.getParent().revalidate();
+            pnlDonThuoc.getParent().repaint();
+        }
+
         vat = (long) (tamTinh * 0.05); 
         
+        // KHAI BÁO DUY NHẤT 1 LẦN Ở ĐÂY
         long tongTienDK = tamTinh + vat; 
 
         // ==============================================================
-        // THUẬT TOÁN AUTO-APPLY: QUÉT CACHE TÌM MÃ GIẢM SÂU NHẤT
+        // THUẬT TOÁN TỰ ĐỘNG ÁP DỤNG VOUCHER
         // ==============================================================
-        long maxGiamGiaTựĐộng = 0;
+        long maxGiamGiaTuDong = 0;
         String bestMaKM = "";
 
         for (Object[] km : dsKhuyenMaiCache) {
@@ -492,7 +555,6 @@ public class TaoHoaDon extends JDialog {
             double giaTri = (double) km[2];
             double donToiThieu = (double) km[3];
 
-            // Nếu đơn hàng lớn hơn hoặc bằng điều kiện đơn tối thiểu
             if (tongTienDK >= donToiThieu) {
                 long giamTam = 0;
                 if (loaiKM.trim().toUpperCase().contains("PHAN_TRAM")) {
@@ -501,31 +563,28 @@ public class TaoHoaDon extends JDialog {
                     giamTam = (long) giaTri;
                 }
 
-                // Luôn chọn mã mang lại số tiền giảm nhiều nhất cho khách
-                if (giamTam > maxGiamGiaTựĐộng) {
-                    maxGiamGiaTựĐộng = giamTam;
+                if (giamTam > maxGiamGiaTuDong) {
+                    maxGiamGiaTuDong = giamTam;
                     bestMaKM = maKM;
                 }
             }
         }
 
-        // Nếu mã tự động tìm được có tiền giảm lớn hơn hoặc bằng mã khách tự nhập tay, ưu tiên mã tự động
-        if (maxGiamGiaTựĐộng >= tienGiamGia || maKhuyenMaiApDung.isEmpty()) {
-            tienGiamGia = maxGiamGiaTựĐộng;
+        // Ưu tiên mã có mức giảm cao nhất
+        if (maxGiamGiaTuDong >= tienGiamGia || maKhuyenMaiApDung.isEmpty()) {
+            tienGiamGia = maxGiamGiaTuDong;
             maKhuyenMaiApDung = bestMaKM;
             
-            // Tự động đẩy tên mã giảm giá lên giao diện để người dùng biết hệ thống đang dùng mã gì
             if (txtVoucherInput != null) {
                 if (!bestMaKM.isEmpty()) {
                     txtVoucherInput.setText(bestMaKM);
-                    txtVoucherInput.setForeground(Color.decode("#10B981")); // Đổi màu xanh lá báo thành công
+                    txtVoucherInput.setForeground(Color.decode("#10B981"));
                 } else {
                     txtVoucherInput.setText("NHẬP MÃ HOẶC CHỌN BÊN DƯỚI...");
                     txtVoucherInput.setForeground(Color.GRAY);
                 }
             }
         }
-        // ==============================================================
 
         if (tienGiamGia > tongTienDK) {
             tienGiamGia = tongTienDK; 
@@ -533,9 +592,8 @@ public class TaoHoaDon extends JDialog {
 
         long tienSauKM = tongTienDK - tienGiamGia; 
         
-        // --- XỬ LÝ DÙNG ĐIỂM ---
         if (isDungDiem) {
-            long maxDiemTien = diemHienTaiKH * 100L; // 1 điểm = 100đ
+            long maxDiemTien = diemHienTaiKH * 100L; 
             tienGiamTuDiem = Math.min(maxDiemTien, tienSauKM); 
         } else {
             tienGiamTuDiem = 0;
@@ -543,6 +601,7 @@ public class TaoHoaDon extends JDialog {
 
         tongHoaDon = tienSauKM - tienGiamTuDiem; 
 
+        // Cập nhật lên giao diện
         if (lblSubtotalValue != null) lblSubtotalValue.setText(String.format("%,d", tamTinh).replace(',', '.') + "đ");
         if (lblVatValue != null) lblVatValue.setText("+" + String.format("%,d", vat).replace(',', '.') + "đ");
         if (lblDiscountValue != null) lblDiscountValue.setText("-" + String.format("%,d", tienGiamGia).replace(',', '.') + "đ");
@@ -698,7 +757,52 @@ public class TaoHoaDon extends JDialog {
         pnl.add(content, BorderLayout.CENTER);
         return pnl;
     }
+    private JPanel createDonThuocPanel() {
+        JPanel pnlWrapper = new JPanel(new BorderLayout(0, 15));
+        pnlWrapper.setBackground(Color.decode("#FEF2F2")); // Nền đỏ hồng nhạt
+        pnlWrapper.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(Color.decode("#FECACA"), 1, true), // Viền đỏ nhạt
+            new EmptyBorder(15, 20, 15, 20)
+        ));
 
+        // 1. Tiêu đề cảnh báo
+        JLabel lblTitle = new JLabel("Thông tin đơn kê đơn (bắt buộc)");
+        lblTitle.setIcon(new MenuIcon("WARNING")); // Gọi icon Warning có sẵn của bạn
+        lblTitle.setIconTextGap(8);
+        lblTitle.setForeground(Color.decode("#DC2626"));
+        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        pnlWrapper.add(lblTitle, BorderLayout.NORTH);
+
+        // 2. Các ô nhập liệu
+        JPanel pnlFields = new JPanel(new GridLayout(1, 3, 15, 0));
+        pnlFields.setOpaque(false);
+
+        // Dùng lại hàm tạo Textfield có sẵn của bạn
+        txtBacSi = createStyledTextField("BS. Nguyễn Văn A...");
+        txtCoSo = createStyledTextField("BV Bạch Mai...");
+        txtChuanDoan = createStyledTextField("Chẩn đoán bệnh...");
+
+        pnlFields.add(wrapFieldWithLabel("Bác sĩ kê đơn *", txtBacSi));
+        pnlFields.add(wrapFieldWithLabel("Cơ sở khám *", txtCoSo));
+        pnlFields.add(wrapFieldWithLabel("Chẩn đoán *", txtChuanDoan));
+
+        pnlWrapper.add(pnlFields, BorderLayout.CENTER);
+        
+        pnlWrapper.setVisible(false); // Ẩn đi mặc định, chỉ khi có thuốc kê đơn mới hiện
+        return pnlWrapper;
+    }
+
+    // Hàm tạo nhãn (Label) nằm trên ô Textfield
+    private JPanel wrapFieldWithLabel(String labelText, JTextField txtField) {
+        JPanel pnl = new JPanel(new BorderLayout(0, 5));
+        pnl.setOpaque(false);
+        JLabel lbl = new JLabel(labelText);
+        lbl.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        lbl.setForeground(Color.decode("#4B5563"));
+        pnl.add(lbl, BorderLayout.NORTH);
+        pnl.add(txtField, BorderLayout.CENTER);
+        return pnl;
+    }
     private JPanel createCustomerPanel() {
         JPanel pnlWrapper = new JPanel(new BorderLayout(0, 4)); 
         pnlWrapper.setBackground(Color.WHITE);
@@ -1074,13 +1178,6 @@ public class TaoHoaDon extends JDialog {
                 return column == 2 || column == 3; 
             }
         };
-
-        // ==============================================================
-        // ĐOẠN CODE MỚI: TỰ ĐỘNG TÍNH LẠI TIỀN KHI NGƯỜI DÙNG SỬA SỐ LƯỢNG
-        // ==============================================================
-     // ==============================================================
-        // ĐOẠN CODE MỚI: TỰ ĐỘNG TÍNH LẠI TIỀN (CÓ CHỐT CHỐNG LẶP VÔ HẠN)
-        // ==============================================================
         productModel.addTableModelListener(e -> {
             // NẾU ĐANG TRONG QUÁ TRÌNH TỰ ĐỘNG CẬP NHẬT THÌ BỎ QUA ĐỂ CHỐNG LẶP
             if (isTableUpdating) return; 
@@ -1270,7 +1367,8 @@ public class TaoHoaDon extends JDialog {
         javax.swing.Timer searchTimer = new javax.swing.Timer(300, e -> {
             String text = txtSearchProduct.getText().trim();
 
-            if (text.isEmpty() || text.length() < 2 || text.equals(placeholderText.toLowerCase()) || text.equals(placeholderText)) {
+           
+            if (text.isEmpty() || text.equals(placeholderText.toLowerCase()) || text.equals(placeholderText)) {
                 suggestionPopup.setVisible(false);
                 return;
             }
@@ -1282,6 +1380,7 @@ public class TaoHoaDon extends JDialog {
                     return daoSP.timKiemSanPhamBan(text);
                 }
 
+        
                 @Override
                 protected void done() {
                     try {
@@ -1289,42 +1388,54 @@ public class TaoHoaDon extends JDialog {
                         suggestionPopup.removeAll();
                         boolean hasResult = false;
 
+                        // 1. TẠO PANEL CHỨA DANH SÁCH (Thay vì nhét trực tiếp mọi thứ vào Popup)
+                        JPanel pnlList = new JPanel();
+                        pnlList.setLayout(new BoxLayout(pnlList, BoxLayout.Y_AXIS));
+                        pnlList.setBackground(Color.WHITE);
+
                         if (ketQua != null && !ketQua.isEmpty()) {
                             for (Object[] row : ketQua) {
                                 String id = row[0].toString();
                                 String ten = row[1].toString();
-                                String donVi = row[2].toString();
+                                String donVi = row[2] != null ? row[2].toString() : "";
                                 long giaBan = Math.round(Double.parseDouble(row[3].toString()));
                                 String gia = String.valueOf(giaBan); 
-                                String tonKho = row[4].toString();
+                                String tonKho = row[4] != null ? row[4].toString() : "0";
                                 
-                                // Lấy danh mục từ SQL
                                 String danhMuc = (row.length > 5 && row[5] != null) ? row[5].toString() : "Khác";
 
-                                // 1. LOGIC CHỌN ICON DỰA THEO TÊN DANH MỤC
-                                String iconType = "PACKAGE"; // Icon mặc định nếu không khớp loại nào
+                                String iconType = "PACKAGE"; 
                                 String dmCheck = danhMuc.toLowerCase();
-                                
                                 if (dmCheck.contains("thuốc kê đơn")) {
-                                    iconType = "PILL";         // Viên thuốc
+                                    iconType = "PILL";         
                                 } else if (dmCheck.contains("không kê đơn")) {
-                                    iconType = "BOX";          // Hộp thuốc
+                                    iconType = "BOX";          
                                 } else if (dmCheck.contains("mỹ phẩm")) {
-                                    iconType = "COSMETIC";     // Mỹ phẩm
+                                    iconType = "COSMETIC";     
                                 } else if (dmCheck.contains("chức năng") || dmCheck.contains("tpcn")) {
-                                    iconType = "LEAF";         // Thực phẩm chức năng (Hình chiếc lá/thiên nhiên)
+                                    iconType = "LEAF";         
                                 } else if (dmCheck.contains("vật tư") || dmCheck.contains("y tế")) {
-                                    iconType = "MEDICAL_TOOL"; // Vật tư y tế
+                                    iconType = "MEDICAL_TOOL"; 
                                 }
 
-                                // 2. Truyền biến iconType vào hàm tạo gợi ý thay vì gõ cứng "PILL"
-                                suggestionPopup.add(createSuggestionItem(suggestionPopup, txtSearchProduct, iconType, ten, donVi, gia, tonKho, danhMuc));
+                                // THÊM VÀO PANEL LIST THAY VÌ POPUP
+                                pnlList.add(createSuggestionItem(suggestionPopup, txtSearchProduct, iconType, ten, donVi, gia, tonKho, danhMuc));
                             }
                             hasResult = true;
                         }
 
                         if (hasResult) {
-                            suggestionPopup.setPreferredSize(new Dimension(pnlSearchWrapper.getWidth(), suggestionPopup.getPreferredSize().height));
+                            // 2. BỌC PANEL VÀO JSCROLLPANE ĐỂ GIỚI HẠN CHIỀU CAO (CHỐT CHỐNG LAG)
+                            JScrollPane scrollPane = new JScrollPane(pnlList);
+                            scrollPane.setBorder(null);
+                            scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+                            scrollPane.getVerticalScrollBar().setUnitIncrement(16); // Cho phép lăn chuột mượt
+                            
+                            // Giới hạn chiều cao tối đa là 300px, nếu ít kết quả hơn thì tự co lại cho đẹp
+                            int listHeight = pnlList.getPreferredSize().height;
+                            scrollPane.setPreferredSize(new Dimension(pnlSearchWrapper.getWidth(), Math.min(listHeight, 300)));
+                            
+                            suggestionPopup.add(scrollPane);
                             suggestionPopup.show(pnlSearchWrapper, 0, pnlSearchWrapper.getHeight());
                         } else {
                             JMenuItem emptyItem = new JMenuItem("Không tìm thấy sản phẩm nào phù hợp...");
@@ -1353,7 +1464,7 @@ public class TaoHoaDon extends JDialog {
                 searchTimer.restart(); 
             }
         });
-
+        
         return pnl;
     }
 
@@ -1694,7 +1805,6 @@ public class TaoHoaDon extends JDialog {
             String idKH = null;
             
             if (!sdt.isEmpty() || !khach.equals("Khách lẻ")) {
-                
                 // Nếu có SĐT thì check xem SĐT này có trong DB chưa
                 if (!sdt.isEmpty()) {
                     java.sql.PreparedStatement pstCheck = con.prepareStatement("SELECT id FROM KhachHang WHERE sdt = ?");
@@ -1732,9 +1842,21 @@ public class TaoHoaDon extends JDialog {
             }
             // ==========================================
 
+            // --- LOGIC LẤY THÔNG TIN ĐƠN THUỐC ---
+            String strKeDon = "";
+            if (pnlDonThuoc != null && pnlDonThuoc.isVisible()) {
+                String bs = txtBacSi.getText().trim();
+                String cs = txtCoSo.getText().trim();
+                String cd = txtChuanDoan.getText().trim();
+                if (cd.contains("Chẩn đoán bệnh")) cd = ""; 
+                strKeDon = " | BS:" + bs + " | CS:" + cs + (cd.isEmpty() ? "" : " | CD:" + cd);
+            }
+
             hd.setLoaiHD(Enumeration.LoaiHoaDon.BAN_HANG); 
             hd.setPhuongThucThanhToan(Enumeration.PhuongThucThanhToan.TIEN_MAT);
-            hd.setGhiChu("Lưu nháp"); 
+            
+            // Gắn thông tin kê đơn ngay sau chữ Lưu nháp
+            hd.setGhiChu("Lưu nháp" + strKeDon); 
 
             boolean isHDSaved = false;
 
@@ -1743,7 +1865,10 @@ public class TaoHoaDon extends JDialog {
                 String sqlUpdate = "UPDATE HoaDon SET khachHangId = ?, ghiChu = ?, ngayLapHD = ? WHERE id = ?";
                 java.sql.PreparedStatement pstUpd = con.prepareStatement(sqlUpdate);
                 if (idKH != null) pstUpd.setString(1, idKH); else pstUpd.setNull(1, java.sql.Types.NVARCHAR);
-                pstUpd.setString(2, "Lưu nháp");
+                
+                // Lấy Ghi chú đã chứa đơn thuốc để lưu
+                pstUpd.setString(2, hd.getGhiChu()); 
+                
                 pstUpd.setTimestamp(3, java.sql.Timestamp.valueOf(hd.getNgayLapHD()));
                 pstUpd.setString(4, maHD);
                 pstUpd.executeUpdate();
@@ -1802,13 +1927,13 @@ public class TaoHoaDon extends JDialog {
 
                 if (editingModelRow != -1) {
                     mainTableModel.setValueAt(maHD, editingModelRow, 0); 
-                    mainTableModel.setValueAt(khach, editingModelRow, 2);  // <--- ÉP ĐỔI TÊN Ở ĐÂY
-                    mainTableModel.setValueAt(sdt, editingModelRow, 3);    // <--- ÉP ĐỔI SĐT Ở ĐÂY
-                    mainTableModel.setValueAt(phuongThuc, editingModelRow, 4);   
+                    mainTableModel.setValueAt(khach, editingModelRow, 2);  
+                    mainTableModel.setValueAt(sdt, editingModelRow, 3);    
+                    mainTableModel.setValueAt("Tiền mặt", editingModelRow, 4);   
                     mainTableModel.setValueAt(tongTien, editingModelRow, 5);     
                     mainTableModel.setValueAt("Đang xử lý", editingModelRow, 6); 
                 } else {
-                    mainTableModel.addRow(new Object[]{maHD, ngayStr, khach, sdt, phuongThuc, tongTien, "Đang xử lý", "", "Tất cả"});
+                    mainTableModel.addRow(new Object[]{maHD, ngayStr, khach, sdt, "Tiền mặt", tongTien, "Đang xử lý", "", "Tất cả"});
                     this.editingModelRow = mainTableModel.getRowCount() - 1;
                     this.maHDDangSua = maHD;
                 }
@@ -1965,19 +2090,7 @@ public class TaoHoaDon extends JDialog {
                 }
                 
                 if (isLeftClick) {
-                    // KIỂM TRA THUỐC KÊ ĐƠN ĐỂ HIỆN BẢNG THÔNG TIN
-                    if (danhMuc != null && danhMuc.equalsIgnoreCase("Thuốc Kê Đơn")) {
-                        Window parentWindow = SwingUtilities.getWindowAncestor(TaoHoaDon.this);
-                        FormThongTinDonThuoc form = new FormThongTinDonThuoc(parentWindow);
-                        form.setVisible(true); // Dừng lại chờ user điền form
-
-                        // Nếu user ấn "Quay lại" -> Hủy việc thêm thuốc
-                        if (!form.isTiepTuc()) {
-                            txtSearch.setText("");
-                            return; 
-                        }
-                        // TODO: Bạn có thể lưu form.getTenBacSi() vào entity ChiTietHoaDon sau này nếu cần
-                    }
+                    // Xóa hoàn toàn đoạn logic gọi FormThongTinDonThuoc ở đây
 
                     currentQty++;
                     if (daTonTai) {
@@ -1986,7 +2099,8 @@ public class TaoHoaDon extends JDialog {
                         productModel.setValueAt(String.format("%,d", donGia * currentQty).replace(',', '.') + "đ", rowIndex, 5);
                     } else {
                         productModel.addRow(new Object[]{
-                            name, unit, "1", price, "5%", String.format("%,d", Integer.parseInt(price)).replace(',', '.') + "đ", ""
+                            name, unit, "1", price, "5%", String.format("%,d", Integer.parseInt(price)).replace(',', '.') + "đ", 
+                            danhMuc // <--- Giấu biến danhMuc vào cột thứ 6 để xét điều kiện sau này
                         });
                     }
                     lblCount.setText("[" + currentQty + "]"); 

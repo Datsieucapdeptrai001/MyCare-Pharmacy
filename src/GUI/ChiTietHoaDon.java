@@ -15,7 +15,9 @@ import java.awt.*;
 import java.util.List;
 
 public class ChiTietHoaDon extends JDialog {
-
+	private String bacSi = "";
+    private String coSo = "";
+    private String chuanDoan = "";
     private Color primaryGreen = Color.decode("#009643"); 
     private Color bgLight = Color.decode("#F8F9FA"); 
     private Color bgYellow = Color.decode("#FEF9C3"); 
@@ -66,26 +68,43 @@ public class ChiTietHoaDon extends JDialog {
         }
 
         // Bóc tách Ghi chú lấy Tiền Khách Đưa và Số điểm dùng
+     // Bóc tách Ghi chú lấy Tiền Khách Đưa và Số điểm dùng
         tienKhachDuaThucTe = tongThanhToanThucTe; 
         try {
             DAO.DAO_HoaDon daoHD = new DAO.DAO_HoaDon();
             Entity.HoaDon hd = daoHD.layHoaDonTheoMa(maHD);
             
             if (hd != null && hd.getGhiChu() != null) {
+                // 1. Lấy chuỗi ghi chú ra
                 String ghiChu = hd.getGhiChu();
+                
+                // 2. Bóc tiền mặt
                 if (phuongThuc.equals("Tiền mặt") && ghiChu.startsWith("CASH:")) {
                     String cashPart = ghiChu.split("\\|")[0].trim();
                     tienKhachDuaThucTe = Long.parseLong(cashPart.split(":")[1].trim());
                 }
                 
-                // Móc tiền giảm từ điểm ra
+                // 3. Bóc tiền giảm từ điểm ra
                 if (ghiChu.contains("Dùng điểm: -")) {
                     String diemPart = ghiChu.substring(ghiChu.indexOf("Dùng điểm: -") + 12);
                     diemPart = diemPart.split("\\|")[0].trim(); 
                     tienGiamTuDiemThucTe = Long.parseLong(diemPart);
                 }
+
+                // 4. Bóc thông tin thuốc kê đơn (Nằm GỌN TRONG khối if này)
+                if (ghiChu.contains("| BS:")) {
+                    String[] parts = ghiChu.split("\\|");
+                    for (String p : parts) {
+                        p = p.trim();
+                        if (p.startsWith("BS:")) bacSi = p.substring(3).trim();
+                        else if (p.startsWith("CS:")) coSo = p.substring(3).trim();
+                        else if (p.startsWith("CD:")) chuanDoan = p.substring(3).trim();
+                    }
+                }
             }
-        } catch (Exception e) { System.out.println("Lỗi Parse Ghi Chú: " + e.getMessage()); }
+        } catch (Exception e) { 
+            System.out.println("Lỗi Parse Ghi Chú: " + e.getMessage()); 
+        }
 
         // Tính ngược lại tiền giảm từ Mã Khuyến Mãi
         tienGiamGiaThucTe = (tamTinhThucTe + vatThucTe) - tongThanhToanThucTe - tienGiamTuDiemThucTe;
@@ -93,7 +112,7 @@ public class ChiTietHoaDon extends JDialog {
         
         tienThoiThucTe = tienKhachDuaThucTe - tongThanhToanThucTe;
         if (tienThoiThucTe < 0) tienThoiThucTe = 0;
-
+        
         String tongTienDungStr = String.format("%,d", tongThanhToanThucTe).replace(',', '.') + "đ";
 
         setSize(900, 750); 
@@ -249,23 +268,43 @@ public class ChiTietHoaDon extends JDialog {
     }
 
     private JPanel createCustomerAndInvoicePanel(String khachHang, String sdt, String phuongThuc) { 
-        JPanel pnl = new JPanel(new GridLayout(1, 2, 15, 0)); pnl.setBackground(Color.WHITE);
+        // Đếm số lượng ô cần hiển thị: Nếu có Tên bác sĩ thì chia làm 3 cột, nếu không thì 2 cột như cũ
+        int cols = (bacSi != null && !bacSi.isEmpty()) ? 3 : 2;
+        JPanel pnl = new JPanel(new GridLayout(1, cols, 15, 0)); 
+        pnl.setBackground(Color.WHITE);
+        
+        // --- CỘT 1: THÔNG TIN KHÁCH HÀNG ---
         JPanel pnlKhachHang = createInfoBox("THÔNG TIN KHÁCH HÀNG");
         pnlKhachHang.add(new JLabel("<html><b>" + khachHang + "</b></html>"));
-        pnlKhachHang.add(new JLabel("SĐT: " + (sdt.isEmpty() ? "Không cung cấp" : sdt)));
+        pnlKhachHang.add(new JLabel("SĐT: " + (sdt == null || sdt.isEmpty() ? "Không cung cấp" : sdt)));
         
-        // HIỂN THỊ SỐ ĐIỂM BÊN GÓC THÔNG TIN KHÁCH
-        if (!sdt.isEmpty()) {
-            JLabel lblDiem = new JLabel("Điểm tích lũy hiện tại: " + String.format("%,d", diemHienTai) + " điểm");
+        if (sdt != null && !sdt.isEmpty()) {
+            JLabel lblDiem = new JLabel("Điểm tích lũy: " + String.format("%,d", diemHienTai) + " điểm");
             lblDiem.setForeground(Color.decode("#E1304C"));
             lblDiem.setFont(new Font("Segoe UI", Font.BOLD, 12));
             pnlKhachHang.add(lblDiem);
         }
 
+        // --- CỘT 2: THÔNG TIN HÓA ĐƠN ---
         JPanel pnlHoaDon = createInfoBox("THÔNG TIN HÓA ĐƠN");
         pnlHoaDon.add(new JLabel("<html>Nhân viên: <b>" + this.tenNhanVien + "</b></html>"));
         pnlHoaDon.add(new JLabel("<html>Phương thức: <font color='#009643'><b>" + phuongThuc + "</b></font></html>")); 
-        pnl.add(pnlKhachHang); pnl.add(pnlHoaDon); return pnl;
+        
+        pnl.add(pnlKhachHang); 
+        pnl.add(pnlHoaDon); 
+        
+        // --- CỘT 3: THÔNG TIN KÊ ĐƠN (CHỈ XUẤT HIỆN KHI CÓ KÊ ĐƠN) ---
+        if (bacSi != null && !bacSi.isEmpty()) {
+            JPanel pnlKeDon = createInfoBox("THÔNG TIN KÊ ĐƠN");
+            pnlKeDon.add(new JLabel("<html>Bác sĩ: <b>" + bacSi + "</b></html>"));
+            pnlKeDon.add(new JLabel("<html>Cơ sở: <b>" + coSo + "</b></html>"));
+            if (chuanDoan != null && !chuanDoan.isEmpty()) {
+                pnlKeDon.add(new JLabel("<html>C.Đoán: <b>" + chuanDoan + "</b></html>"));
+            }
+            pnl.add(pnlKeDon);
+        }
+
+        return pnl;
     }
 
     private JPanel createInfoBox(String title) {
