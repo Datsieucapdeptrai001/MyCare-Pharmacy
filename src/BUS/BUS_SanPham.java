@@ -2,20 +2,14 @@ package BUS;
 
 import Entity.SanPham;
 import Entity.LoHang;
-import DAO.DAO_SanPham; // Đã thêm kết nối với tầng DAO
+import DAO.DAO_SanPham;
 import java.util.ArrayList;
 import java.util.List;
 
 public class BUS_SanPham {
-    // 1. KHỞI TẠO ĐỐI TƯỢNG DAO ĐỂ TƯƠNG TÁC DB THẬT
     private DAO_SanPham daoSanPham = new DAO_SanPham(); 
 
-    public BUS_SanPham() {
-    }
-
-    // ============================================================
-    // PHẦN 1: CÁC HÀM CŨ (GIỮ NGUYÊN THEO YÊU CẦU)
-    // ============================================================
+    public BUS_SanPham() { }
 
     public List<SanPham> traCuuSanPham(String tuKhoa) {
         List<SanPham> dsFake = new ArrayList<>();
@@ -51,48 +45,33 @@ public class BUS_SanPham {
     }
     
     public List<LoHang> layLoTheoSP(String maSP) {
-        return daoSanPham.layLoTheoSP(maSP); // Đã chuyển sang gọi DAO thật để lấy dữ liệu lô
+        return daoSanPham.layLoTheoSP(maSP); 
     }
 
-    // ============================================================
-    // PHẦN 2: CÁC HÀM MỚI (TƯƠNG TÁC DATABASE THẬT)
-    // ============================================================
-
-    /**
-     * Tự động sinh mã sản phẩm mới dựa trên DB (Fix lỗi trùng ID)
-     */
     public String taoMaMoi() {
         return daoSanPham.layMaSanPhamMoiNhat();
     }
 
-    /**
-     * Thêm sản phẩm mới vào SQL Server
-     */
     public boolean themSP(String id, String danhMuc, String dang, String ten, String vietTat, String nsx, String hoatChat, double vat, String hamLuong, String moTa, String dvt) {
-        // Có thể thêm logic kiểm tra dữ liệu ở đây trước khi gọi DAO
         if (ten == null || ten.trim().isEmpty()) return false;
         return daoSanPham.themSanPhamNhanh(id, danhMuc, dang, ten, vietTat, nsx, hoatChat, vat, hamLuong, moTa, dvt);
     }
 
-    /**
-     * Cập nhật thông tin sản phẩm đã có trong DB
-     */
     public boolean capNhatSP(String id, String danhMuc, String dang, String ten, String vietTat, String nsx, String hoatChat, double vat, String hamLuong, String moTa, String dvt) {
         return daoSanPham.capNhatSanPhamNhanh(id, danhMuc, dang, ten, vietTat, nsx, hoatChat, vat, hamLuong, moTa, dvt);
     }
 
-    /**
-     * Xóa vĩnh viễn sản phẩm khỏi Database
-     */
     public boolean xoaSP(String id) {
         if (id == null || id.isEmpty()) return false;
         return daoSanPham.xoaSanPham(id);
     }
     
-    /**
-     * Lấy toàn bộ danh sách định dạng bảng để hiển thị giao diện
-     */
     public List<Object[]> layDanhSachChoBang() {
         return daoSanPham.layDanhSachSanPhamChoBang();
+    }
+    
+    // Đã thêm hàm getDsThuoc() để GUI gọi sang
+    public List<SanPham> getDsThuoc() {
+        return daoSanPham.getDsThuoc();
     }
 }
