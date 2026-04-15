@@ -1843,10 +1843,60 @@ public class TaoHoaDon extends JDialog {
         JPanel pnlLeft = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
         pnlLeft.setOpaque(false);
 
+        // --- XỬ LÝ NHÃN (BADGE) DỰA THEO DANH MỤC ---
+        String badgeText = "Khác";
+        Color bgColor = Color.decode("#F3F4F6"); // Nền xám nhạt mặc định
+        Color fgColor = Color.decode("#4B5563"); // Chữ xám đậm
+
+        if (danhMuc != null) {
+            String dm = danhMuc.toLowerCase();
+            if (dm.contains("thuốc kê đơn")) {
+                badgeText = "Kê đơn";
+                bgColor = Color.decode("#FEE2E2"); // Nền đỏ hồng nhạt
+                fgColor = Color.decode("#DC2626"); // Chữ đỏ đậm
+            } else if (dm.contains("không kê đơn")) {
+                badgeText = "Không kê đơn";
+                bgColor = Color.decode("#DBEAFE"); // Nền xanh dương nhạt
+                fgColor = Color.decode("#2563EB"); // Chữ xanh dương đậm
+            } else if (dm.contains("mỹ phẩm")) {
+                badgeText = "Mỹ phẩm";
+                bgColor = Color.decode("#F3E8FF"); // Nền tím nhạt
+                fgColor = Color.decode("#9333EA"); // Chữ tím đậm
+            } else if (dm.contains("chức năng") || dm.contains("tpcn")) {
+                badgeText = "TPCN";
+                bgColor = Color.decode("#D1FAE5"); // Nền xanh lá nhạt
+                fgColor = Color.decode("#059669"); // Chữ xanh lá đậm
+            } else if (dm.contains("vật tư") || dm.contains("y tế")) {
+                badgeText = "Vật tư";
+                bgColor = Color.decode("#E5E7EB"); // Nền xám 
+                fgColor = Color.decode("#374151"); // Chữ xám
+            }
+        }
+
+        // Tạo Label đặc biệt có khả năng vẽ nền bo góc
+        JLabel lblBadge = new JLabel(badgeText, SwingConstants.CENTER) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(getBackground());
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 8, 8); // Bo góc 8px
+                super.paintComponent(g);
+                g2.dispose();
+            }
+        };
+        lblBadge.setOpaque(false); // Tắt Opaque mặc định để vẽ nền bo góc
+        lblBadge.setBackground(bgColor);
+        lblBadge.setForeground(fgColor);
+        lblBadge.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        lblBadge.setBorder(BorderFactory.createEmptyBorder(3, 8, 3, 8)); // Padding cho đẹp
+
+        JLabel lblName = new JLabel(name);
+
         JLabel lblIcon = new JLabel(new MenuIcon(iconType));
         lblIcon.setForeground(Color.decode("#1967D2")); 
 
-        JLabel lblName = new JLabel(name);
+        
         lblName.setFont(new Font("Segoe UI", Font.BOLD, 14));
         lblName.setForeground(Color.decode("#111827"));
 
@@ -1854,7 +1904,7 @@ public class TaoHoaDon extends JDialog {
         lblUnit.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         lblUnit.setForeground(Color.decode("#6B7280"));
 
-        pnlLeft.add(lblIcon);
+        pnlLeft.add(lblBadge); 
         pnlLeft.add(lblName);
         pnlLeft.add(lblUnit);
 

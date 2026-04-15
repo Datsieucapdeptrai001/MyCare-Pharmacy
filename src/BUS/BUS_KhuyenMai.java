@@ -6,12 +6,9 @@ import DAO.DAO_KhuyenMai;
 import Entity.KhuyenMai;
 import Entity.DieuKienKhuyenMai;
 import Entity.HinhThucKhuyenMai;
-import Enum.DoiTuongApDung;
-import Enum.LoaiHinhThuc;
-
-import java.time.LocalDateTime;
+import Enumeration.*;
 import java.util.List;
-
+import java.time.LocalDateTime;
 public class BUS_KhuyenMai {
     private DAO_KhuyenMai daoKhuyenMai;
     private DAO_DieuKienKhuyenMai daoDieuKienKhuyenMai;
@@ -133,9 +130,12 @@ public class BUS_KhuyenMai {
         HinhThucKhuyenMai htkm = daoHinhThucKhuyenMai.layTheoMaKM(maKM);
         if (htkm == null) return tongTienHoaDon;
 
-        if (htkm.getLoaiHinhThuc() == LoaiHinhThuc.GIAM_THEO_PHAN_TRAM
-                && htkm.getDoiTuongApDung() == DoiTuongApDung.HOA_DON) {
+        // Đã thêm chữ Enumeration. vào trước Enum để Java nhận diện chính xác
+        if (htkm.getLoaiHinhThuc() == Enumeration.LoaiHinhThuc.GIAM_THEO_PHAN_TRAM && 
+            htkm.getDoiTuongApDung() == Enumeration.DoiTuongApDung.HOA_DON) {
+            
             double tienGiam = tongTienHoaDon * htkm.getGiaTri() / 100.0;
+            
             if (htkm.getGiamToiDa() > 0 && tienGiam > htkm.getGiamToiDa()) {
                 tienGiam = htkm.getGiamToiDa();
             }
