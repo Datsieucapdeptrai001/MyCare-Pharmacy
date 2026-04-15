@@ -48,13 +48,8 @@ public class ManHinhDoiTra extends JPanel {
         
         lblBanHang.addMouseListener(new MouseAdapter() {
             @Override
-            public void mouseClicked(MouseEvent e) {
-                Container parent = ManHinhDoiTra.this.getParent();
-                if (parent != null && parent.getLayout() instanceof CardLayout) {
-                    parent.add(new ManHinhBanHang(), "BanHang"); 
-                    CardLayout cl = (CardLayout) parent.getLayout();
-                    cl.show(parent, "BanHang");
-                }
+            public void mousePressed(MouseEvent e) { // Sửa mouseClicked thành mousePressed
+            	chuyenManHinh("Bán hàng & Đổi trả");
             }
         });
 
@@ -68,8 +63,25 @@ public class ManHinhDoiTra extends JPanel {
                 BorderFactory.createMatteBorder(0, 0, 4, 0, Color.decode("#E11D48")),
                 BorderFactory.createEmptyBorder(20, 0, 20, 40)));
 
+        // --- Tab Danh Sách Hóa Đơn (BỔ SUNG MỚI) ---
+        JLabel lblDanhSachHD = new JLabel("Danh Sách Hóa Đơn");
+        lblDanhSachHD.setIcon(new MenuIcon("LIST")); 
+        lblDanhSachHD.setIconTextGap(8);
+        lblDanhSachHD.setFont(new Font("Segoe UI", Font.PLAIN, 15));
+        lblDanhSachHD.setForeground(Color.decode("#6C757D"));
+        lblDanhSachHD.setBorder(BorderFactory.createEmptyBorder(20, 0, 20, 40));
+        lblDanhSachHD.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        
+        lblDanhSachHD.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent e) { // Sửa mouseClicked thành mousePressed
+                chuyenManHinh("DanhSachHD");
+            }
+        });
+
         pnlLeftTabs.add(lblBanHang);
         pnlLeftTabs.add(lblDoiTra);
+        pnlLeftTabs.add(lblDanhSachHD); // Add tab 3 vào panel
         pnlTabs.add(pnlLeftTabs, BorderLayout.WEST);
 
         // ==================== 2. HEADER (TITLE & SEARCH) ====================
@@ -195,8 +207,34 @@ public class ManHinhDoiTra extends JPanel {
         JScrollPane sp = new JScrollPane(table);
         sp.setBorder(BorderFactory.createLineBorder(Color.decode("#DFE3E8")));
         this.add(sp, BorderLayout.CENTER);
-        
-        
+    }
+    
+    private void chuyenManHinh(String tenManHinh) {
+        SwingUtilities.invokeLater(() -> {
+            Container parent = this.getParent();
+            while (parent != null && !(parent.getLayout() instanceof CardLayout)) {
+                parent = parent.getParent();
+            }
+            
+            if (parent != null) {
+                CardLayout cl = (CardLayout) parent.getLayout();
+                cl.show(parent, tenManHinh);
+                
+                // --- THÊM ĐOẠN NÀY ĐỂ ĐỒNG BỘ VỚI MENU BÊN TRÁI ---
+                Container topLevel = parent.getParent();
+                while (topLevel != null && !(topLevel instanceof MainDashboard)) {
+                    topLevel = topLevel.getParent();
+                }
+                if (topLevel instanceof MainDashboard) {
+                    // Nếu chuyển về Bán hàng thì làm sáng nút "Bán hàng & Đổi trả" trên Sidebar
+                    if (tenManHinh.equals("Bán hàng & Đổi trả") || 
+                        tenManHinh.equals("DanhSachHD") || 
+                        tenManHinh.equals("DoiTra")) {
+                        ((MainDashboard) topLevel).chuyenSangTabBanHang(); // Ông thêm hàm này ở Bước 4
+                    }
+                }
+            }
+        });
     }
     
     // --- BỔ SUNG 3: RENDERER MỚI CÓ CHỨA NÚT BẤM VÀ MÀU SẮC MỚI ---
@@ -334,6 +372,4 @@ public class ManHinhDoiTra extends JPanel {
         btn.setForeground(Color.decode("#374151"));
         btn.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(Color.decode("#DFE3E8"), 1), BorderFactory.createEmptyBorder(8, 15, 8, 15)));
     }
-
-    
 }

@@ -46,7 +46,18 @@ public class MainDashboard extends JFrame {
         menuButtons = new ArrayList<>();
         cardLayout  = new CardLayout();
         cardPanel   = new JPanel(cardLayout);
+     // 1. Màn hình Bán hàng (Dùng đúng tên trong MenuItems)
+        cardPanel.add(new ManHinhBanHang(), "Bán hàng & Đổi trả"); 
+        
+        // 2. Màn hình Danh sách hóa đơn (Dùng tên viết liền cho dễ quản lý)
+        cardPanel.add(new ManHinhDanhSachHoaDon(), "DanhSachHD");
+        
+        // 3. Màn hình Đổi trả
+        cardPanel.add(new ManHinhDoiTra(), "DoiTra");
 
+        // Các menu khác giữ nguyên...
+        cardPanel.add(new ManHinhSanPham(), "Sản phẩm");
+        cardPanel.add(new ManHinhKhachHang(), "Khách hàng");
         ManHinhChinh     mhChinh    = new ManHinhChinh();
         ManHinhBanHang   mhBanHang  = new ManHinhBanHang();
         ManHinhSanPham   mhSanPham  = new ManHinhSanPham();
@@ -85,7 +96,14 @@ public class MainDashboard extends JFrame {
 
         cardLayout.show(cardPanel, "Màn hình chính");
     }
-
+    public void chuyenSangTabBanHang() {
+        for (JButton btn : menuButtons) {
+            if (btn.getText().contains("Bán hàng")) {
+                setActiveButton(btn); // Làm sáng nút Bán hàng bên trái
+                break;
+            }
+        }
+    }
     // ── TOP HEADER ──────────────────────────────────────────────
     private JPanel createTopHeader() {
         JPanel header = new JPanel(new BorderLayout());

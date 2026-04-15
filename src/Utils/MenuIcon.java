@@ -261,6 +261,44 @@ public class MenuIcon implements Icon {
                 g2d.drawLine(x + 8, y + 8, x + 14, y + 14); // Đường chéo 1
                 g2d.drawLine(x + 14, y + 8, x + 8, y + 14); // Đường chéo 2
                 break;
+            case "LIST": // Icon Danh Sách (3 gạch ngang có dấu chấm)
+                // Dòng 1
+                g2d.drawLine(x + 8, y + 6, x + 18, y + 6);
+                g2d.drawOval(x + 3, y + 5, 2, 2);
+                // Dòng 2
+                g2d.drawLine(x + 8, y + 11, x + 18, y + 11);
+                g2d.drawOval(x + 3, y + 10, 2, 2);
+                // Dòng 3
+                g2d.drawLine(x + 8, y + 16, x + 18, y + 16);
+                g2d.drawOval(x + 3, y + 15, 2, 2);
+                break;
+            case "CLOCK": // Icon Đồng hồ (Dành cho thẻ Đang xử lý)
+                g2d.drawOval(x + 3, y + 3, 16, 16);
+                g2d.drawLine(x + 11, y + 6, x + 11, y + 11);
+                g2d.drawLine(x + 11, y + 11, x + 15, y + 11);
+                break;
+            case "COSMETIC":
+                // Vẽ hình chai mỹ phẩm đơn giản
+                g2d.fillRoundRect(8, 10, 8, 10, 2, 2); // Thân chai
+                g2d.fillRect(10, 6, 4, 4);             // Nắp chai
+                g2d.drawLine(7, 10, 17, 10);           // Viền nắp
+                break;
+
+            case "LEAF":
+                // Vẽ hình chiếc lá (TPCN/Thảo dược)
+                g2d.fillOval(7, 6, 10, 12);
+                g2d.drawArc(7, 6, 10, 12, 45, 90); 
+                g2d.drawLine(12, 18, 12, 20);          // Cuống lá
+                break;
+
+            case "MEDICAL_TOOL":
+                // Vẽ hình dấu thập y tế (Vật tư)
+                g2d.drawRoundRect(5, 7, 14, 10, 2, 2); 
+                g2d.fillRect(11, 9, 2, 6);             // Thập dọc
+                g2d.fillRect(9, 11, 6, 2);             // Thập ngang
+                break;
+
+            
         }
         g2d.dispose();
     }
