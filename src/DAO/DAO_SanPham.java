@@ -3,9 +3,9 @@ package DAO;
 import ConnectDB.ConnectDB;
 import Entity.LoHang;
 import Entity.SanPham;
-import Enum.DangBaoChe;
-import Enum.DanhMucSanPham;
-import Enum.TrangThaiLoHang;
+import Enumeration.DangBaoChe;
+import Enumeration.DanhMucSanPham;
+import Enumeration.TrangThaiLoHang;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -165,45 +165,56 @@ public class DAO_SanPham {
         }
         return dsLoHang;
     }
- // Nhớ import các thư viện: java.util.List, java.util.ArrayList, java.sql.*
-    public List<Object[]> timKiemSanPhamBan(String tuKhoa) {
-        List<Object[]> list = new ArrayList<>();
-        
-        // Truy vấn: Tìm theo Tên hoặc Mã SP. Chỉ lấy SP còn tồn kho > 0
-        String sql = "SELECT sp.id, sp.ten, dv.tenDonVi, dv.gia, ISNULL(SUM(lh.soLuongLoHang), 0) AS tonKho " +
-                     "FROM SanPham sp " +
-                     "JOIN DonViDoLuong dv ON sp.id = dv.sanPhamId " +
-                     "LEFT JOIN LoHang lh ON sp.id = lh.sanPhamId AND lh.trangThai = 'CON_HANG' " +
-                     "WHERE sp.ten LIKE ? OR sp.id LIKE ? " +
-                     "GROUP BY sp.id, sp.ten, dv.tenDonVi, dv.gia " +
-                     "HAVING ISNULL(SUM(lh.soLuongLoHang), 0) > 0"; 
+    public java.util.List<Object[]> timKiemSanPhamBan(String keyword) {
+        java.util.List<Object[]> list = new java.util.ArrayList<>();
+        java.sql.Connection con = null;
+        java.sql.PreparedStatement pstm = null;
+        java.sql.ResultSet rs = null;
 
-        // [ĐÃ SỬA]: Kéo Connection ra ngoài khối try() để tránh bị tự động close()
-        // Vì trong ConnectDB.java của bạn, getConnection() là hàm static nên gọi trực tiếp luôn
-        Connection con = ConnectDB.getConnection();
+        try {
+            // Thay bằng class Connection thật của bạn (VD: Database.getInstance().getConnection())
+            con = ConnectDB.getConnection(); 
+            
+            // CÂU SQL: Nối 3 bảng SanPham, DonViDoLuong và LoHang (để lấy tồn kho)
+            String sql = "SELECT " +
+                         "    sp.id, " +
+                         "    sp.ten, " +
+                         "    dv.ten AS donVi, " +
+                         "    dv.gia AS giaBan, " +
+                         "    ISNULL(SUM(lh.soLuongLoHang), 0) AS tonKho " +
+                         "FROM SanPham sp " +
+                         "JOIN DonViDoLuong dv ON sp.id = dv.sanPhamId " +
+                         "LEFT JOIN LoHang lh ON sp.id = lh.sanPhamId AND lh.trangThai = N'CON_HANG' AND lh.ngayHetHan > GETDATE() " +
+                         "WHERE sp.ten LIKE ? OR sp.tenVietTat LIKE ? OR sp.hoatChat LIKE ? OR sp.id LIKE ? " +
+                         "GROUP BY sp.id, sp.ten, dv.ten, dv.gia";
 
-        // Chỉ đưa PreparedStatement vào try-with-resources để tự động giải phóng bộ nhớ câu lệnh SQL
-        try (PreparedStatement pst = con.prepareStatement(sql)) {
+            pstm = con.prepareStatement(sql);
+            String searchPattern = "%" + keyword + "%";
+            pstm.setString(1, searchPattern);
+            pstm.setString(2, searchPattern);
+            pstm.setString(3, searchPattern);
+            pstm.setString(4, searchPattern);
 
-            // Thêm % vào 2 đầu để tìm kiếm gần đúng (chứa từ khóa)
-            String searchPattern = "%" + tuKhoa + "%";
-            pst.setString(1, searchPattern);
-            pst.setString(2, searchPattern);
+            rs = pstm.executeQuery();
 
-            try (ResultSet rs = pst.executeQuery()) {
-                while (rs.next()) {
-                    String id = rs.getString("id");
-                    String ten = rs.getString("ten");
-                    String donVi = rs.getString("tenDonVi");
-                    String gia = String.valueOf(Math.round(rs.getDouble("gia"))); // Bỏ phần thập phân .0
-                    String tonKho = String.valueOf(rs.getInt("tonKho"));
+            while (rs.next()) {
+                Object[] row = new Object[5];
+                row[0] = rs.getString("id");        // Mã SP
+                row[1] = rs.getString("ten");       // Tên SP
+                row[2] = rs.getString("donVi");     // Đơn vị tính
+                row[3] = rs.getDouble("giaBan");    // Giá bán
+                row[4] = rs.getInt("tonKho");       // Tồn kho
 
-                    // Đưa vào mảng Object để trả về
-                    list.add(new Object[]{id, ten, donVi, gia, tonKho});
-                }
+                list.add(row);
             }
         } catch (Exception e) {
+            System.err.println("Lỗi SQL tại timKiemSanPhamBan: " + e.getMessage());
             e.printStackTrace();
+        } finally {
+            try {
+                if (rs != null) rs.close();
+                if (pstm != null) pstm.close();
+            } catch (Exception ex) {}
         }
         return list;
     }

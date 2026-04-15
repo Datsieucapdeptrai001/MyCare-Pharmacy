@@ -2,7 +2,7 @@ package BUS;
 
 import DAO.DAO_LoHang;
 import Entity.LoHang;
-import Enum.TrangThaiLoHang;
+import Enumeration.TrangThaiLoHang;
 
 import java.sql.*;
 import java.time.LocalDateTime;

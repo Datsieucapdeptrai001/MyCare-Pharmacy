@@ -1,4 +1,4 @@
-package Enum;
+package Enumeration;
 
 public enum TrangThaiLamViec {
 	THOI_VIEC,

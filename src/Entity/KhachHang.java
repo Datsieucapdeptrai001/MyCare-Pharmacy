@@ -18,7 +18,10 @@ public class KhachHang {
         this.ngayTao = ngayTao;
         this.diemTichLuy = diemTichLuy;
     }
-
+ // Hàm khởi tạo chỉ nhận 1 tham số là mã khách hàng
+    public KhachHang(String maKhachHang) {
+        this.id = maKhachHang; // Lưu ý: Đổi "this.maKhachHang" cho khớp với tên biến bạn thực sự khai báo
+    }
     public KhachHang() {
         super();
     }

@@ -6,7 +6,7 @@ import DAO.DAO_SanPham;
 import Entity.KhoHang;
 import Entity.LoHang;
 import Entity.SanPham;
-import Enum.TrangThaiLoHang;
+import Enumeration.TrangThaiLoHang;
 
 import javax.swing.*;
 import javax.swing.border.AbstractBorder;

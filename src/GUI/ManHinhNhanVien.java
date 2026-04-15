@@ -30,7 +30,6 @@ public class ManHinhNhanVien extends JPanel {
     private JLabel lblDetPhone, lblDetEmail, lblDetAddress;
     private JLabel lblDetRole, lblDetCCHN, lblDetStatus;
     private JButton btnEdit;
-    private JButton btnDelete; // Sửa thành biến toàn cục để thêm sự kiện
     private JButton btnAdd;
 
     public ManHinhNhanVien() {
@@ -225,7 +224,7 @@ public class ManHinhNhanVien extends JPanel {
                 String trangThaiUI = "Chưa rõ";
                 if ("DANG_LAM_VIEC".equals(trangThaiDB)) trangThaiUI = "Đang làm việc";
                 else if ("NGHI_PHEP".equals(trangThaiDB)) trangThaiUI = "Nghỉ phép";
-                else if ("DA_NGHI_VIEC".equals(trangThaiDB)) trangThaiUI = "Đã nghỉ việc";
+                else if ("THOI_VIEC".equals(trangThaiDB) || "DA_NGHI_VIEC".equals(trangThaiDB)) trangThaiUI = "Đã nghỉ việc";
 
                 if (cchn == null) cchn = "";
                 if (email == null) email = "";
@@ -321,7 +320,7 @@ public class ManHinhNhanVien extends JPanel {
         pnlBody.setLayout(new BoxLayout(pnlBody, BoxLayout.Y_AXIS));
         pnlBody.setBackground(Color.WHITE);
 
-        JPanel pnlInfoList = new JPanel(new GridLayout(3, 1, 0, 10)); // Chỉ còn SĐT, Email, Address
+        JPanel pnlInfoList = new JPanel(new GridLayout(3, 1, 0, 10)); 
         pnlInfoList.setBackground(Color.WHITE);
         pnlInfoList.setBorder(new EmptyBorder(15, 15, 15, 15));
         pnlInfoList.setAlignmentX(Component.LEFT_ALIGNMENT); 
@@ -397,8 +396,8 @@ public class ManHinhNhanVien extends JPanel {
         JScrollPane spBody = new JScrollPane(pnlBody);
         spBody.setBorder(null);
 
-        // FOOTER ACTIONS
-        JPanel pnlFooterActions = new JPanel(new GridLayout(2, 1, 0, 8));
+        // FOOTER ACTIONS - Bỏ nút Xóa, chỉ giữ lại nút Chỉnh sửa
+        JPanel pnlFooterActions = new JPanel(new GridLayout(1, 1, 0, 8));
         pnlFooterActions.setBackground(Color.WHITE);
         pnlFooterActions.setBorder(new EmptyBorder(10, 15, 15, 15));
 
@@ -412,50 +411,7 @@ public class ManHinhNhanVien extends JPanel {
         btnEdit.setFont(new Font("Segoe UI", Font.BOLD, 13));
         btnEdit.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
-        btnDelete = new JButton("Xóa nhân viên");
-        btnDelete.setIcon(new MenuIcon("TRASH"));
-        btnDelete.setIconTextGap(8);
-        btnDelete.setBackground(Color.decode("#FEF2F2")); 
-        btnDelete.setForeground(Color.decode("#DC2626"));
-        btnDelete.setFocusPainted(false);
-        btnDelete.setBorder(BorderFactory.createLineBorder(Color.decode("#FECACA")));
-        btnDelete.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        btnDelete.setCursor(new Cursor(Cursor.HAND_CURSOR));
-
-        // THÊM SỰ KIỆN XÓA (CẬP NHẬT TRẠNG THÁI NGHỈ VIỆC)
-        btnDelete.addActionListener(e -> {
-            int row = table.getSelectedRow();
-            if (row >= 0) {
-                int modelRow = table.convertRowIndexToModel(row);
-                String id = model.getValueAt(modelRow, 0).toString();
-                String name = model.getValueAt(modelRow, 1).toString();
-
-                int confirm = JOptionPane.showConfirmDialog(pnlDetail,
-                    "Bạn có chắc chắn muốn chuyển nhân viên [" + name + "] sang trạng thái Đã nghỉ việc?",
-                    "Xác nhận", JOptionPane.YES_NO_OPTION);
-
-                if (confirm == JOptionPane.YES_OPTION) {
-                    try {
-                        Connection con = ConnectDB.getInstance().getConnection();
-                        String sql = "UPDATE NhanVien SET trangThaiLamViec='DA_NGHI_VIEC' WHERE id=?";
-                        PreparedStatement stmt = con.prepareStatement(sql);
-                        stmt.setString(1, id);
-                        int affected = stmt.executeUpdate();
-                        if (affected > 0) {
-                            JOptionPane.showMessageDialog(pnlDetail, "Đã chuyển sang trạng thái Đã nghỉ việc.");
-                            loadDataFromDatabase();
-                            pnlDetail.setVisible(false);
-                        }
-                    } catch (SQLException ex) {
-                        ex.printStackTrace();
-                        JOptionPane.showMessageDialog(pnlDetail, "Lỗi khi cập nhật CSDL: " + ex.getMessage());
-                    }
-                }
-            }
-        });
-
         pnlFooterActions.add(btnEdit);
-        pnlFooterActions.add(btnDelete);
 
         JPanel pnlTopWrap = new JPanel(new BorderLayout());
         pnlTopWrap.add(pnlDetHeader, BorderLayout.NORTH);
@@ -567,10 +523,27 @@ public class ManHinhNhanVien extends JPanel {
         else sorter.setRowFilter(RowFilter.regexFilter("(?i)" + search));
     }
 
-	public void setReadOnly(boolean b) {
-		// TODO Auto-generated method stub
-		
-	}
+    /**
+     * Phân quyền: Ẩn nút Thêm/Sửa/Xóa cho STAFF.
+     */
+    public void setReadOnly(boolean readOnly) {
+        if (!readOnly) return;
+        if (btnAdd != null) btnAdd.setVisible(false);
+        disableButtonsByText(this, "Thêm mới", "Nhập Excel", "Thêm", "Xóa", "Sửa", "Lưu");
+    }
+
+    private void disableButtonsByText(java.awt.Container container, String... texts) {
+        for (java.awt.Component c : container.getComponents()) {
+            if (c instanceof javax.swing.JButton) {
+                javax.swing.JButton btn = (javax.swing.JButton) c;
+                for (String t : texts) {
+                    if (t.equals(btn.getText())) { btn.setVisible(false); break; }
+                }
+            } else if (c instanceof java.awt.Container) {
+                disableButtonsByText((java.awt.Container) c, texts);
+            }
+        }
+    }
 }
 
 // ====================================================================================
@@ -596,10 +569,23 @@ class DialogThemNhanVien extends JDialog {
             lblTitle.setText("Chỉnh sửa nhân viên");
             btnThem.setText("✓ Lưu thay đổi");
             
-            txtHoTen.setText(hoten); txtHoTen.setForeground(Color.BLACK);
-            txtCCHN.setText(cchn); txtCCHN.setForeground(Color.BLACK);
-            txtSdt.setText(sdt); txtSdt.setForeground(Color.BLACK);
-            txtEmail.setText(email); txtEmail.setForeground(Color.BLACK);
+            // FIX: KIỂM TRA PLACEHOLDER ĐỂ KHÔNG BỊ GHI ĐÈ KHI EDIT
+            if (hoten != null && !hoten.trim().isEmpty() && !hoten.equals("Nhập họ và tên đầy đủ")) { 
+                txtHoTen.setText(hoten); 
+                txtHoTen.setForeground(Color.BLACK); 
+            }
+            if (cchn != null && !cchn.trim().isEmpty() && !cchn.equals("---") && !cchn.equals("CCHN-xxxx")) { 
+                txtCCHN.setText(cchn); 
+                txtCCHN.setForeground(Color.BLACK); 
+            }
+            if (sdt != null && !sdt.trim().isEmpty() && !sdt.equals("0912345678")) { 
+                txtSdt.setText(sdt); 
+                txtSdt.setForeground(Color.BLACK); 
+            }
+            if (email != null && !email.trim().isEmpty() && !email.equals("Chưa cập nhật") && !email.equals("email@mycare.vn")) { 
+                txtEmail.setText(email); 
+                txtEmail.setForeground(Color.BLACK); 
+            }
             
             cboChucVu.setSelectedItem(chucVu);
             cboTrangThai.setSelectedItem(trangThai);
@@ -607,7 +593,7 @@ class DialogThemNhanVien extends JDialog {
     }
 
     private void initUI(Frame parent) {
-        setSize(550, 460); // Đã rút gọn vì bớt control
+        setSize(550, 460);
         setLocationRelativeTo(parent);
         setUndecorated(true);
         setLayout(new BorderLayout());
@@ -677,12 +663,12 @@ class DialogThemNhanVien extends JDialog {
         cboChucVu = createComboBox(new String[]{"Quản lý", "Dược sĩ"});
         pnlBody.add(cboChucVu, gbc);
 
-        // Dòng 4: Trạng thái (CHỈ CÒN ĐANG LÀM VIỆC VÀ NGHỈ PHÉP)
+        // Dòng 4: Trạng thái (Đã sửa lại thành 3 trạng thái)
         gbc.gridx = 0; gbc.gridy = 6; gbc.gridwidth = 2;
         pnlBody.add(createLabel("Trạng thái", true), gbc);
 
         gbc.gridy = 7;
-        cboTrangThai = createComboBox(new String[]{"Đang làm việc", "Nghỉ phép"});
+        cboTrangThai = createComboBox(new String[]{"Đang làm việc", "Nghỉ phép", "Đã nghỉ việc"});
         pnlBody.add(cboTrangThai, gbc);
 
         add(pnlBody, BorderLayout.CENTER);
@@ -733,7 +719,9 @@ class DialogThemNhanVien extends JDialog {
 
             // MAP UI SANG DATABASE
             String dbChucVu = chucVuUI.equals("Quản lý") ? "QUAN_LY" : "DUOC_SI";
-            String dbTrangThai = trangThaiUI.equals("Đang làm việc") ? "DANG_LAM_VIEC" : "NGHI_PHEP";
+            String dbTrangThai = "DANG_LAM_VIEC";
+            if (trangThaiUI.equals("Nghỉ phép")) dbTrangThai = "NGHI_PHEP";
+            else if (trangThaiUI.equals("Đã nghỉ việc")) dbTrangThai = "THOI_VIEC";
 
             DefaultTableModel mainModel = parentScreen.getModel();
 
@@ -832,26 +820,4 @@ class DialogThemNhanVien extends JDialog {
         cbo.setPreferredSize(new Dimension(0, 36));
         return cbo;
     }
-    /**
-     * Phân quyền: Ẩn nút Thêm/Sửa/Xóa cho STAFF.
-     */
-    public void setReadOnly(boolean readOnly) {
-        if (!readOnly) return;
-        if (btnThem != null) btnThem.setVisible(false);
-        disableButtonsByText(this, "Thêm mới", "Nhập Excel", "Thêm", "Xóa", "Sửa", "Lưu");
-    }
-
-    private void disableButtonsByText(java.awt.Container container, String... texts) {
-        for (java.awt.Component c : container.getComponents()) {
-            if (c instanceof javax.swing.JButton) {
-                javax.swing.JButton btn = (javax.swing.JButton) c;
-                for (String t : texts) {
-                    if (t.equals(btn.getText())) { btn.setVisible(false); break; }
-                }
-            } else if (c instanceof java.awt.Container) {
-                disableButtonsByText((java.awt.Container) c, texts);
-            }
-        }
-    }
-
 }

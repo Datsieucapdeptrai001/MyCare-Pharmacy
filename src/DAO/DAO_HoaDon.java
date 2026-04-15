@@ -5,34 +5,40 @@ import Entity.HoaDon;
 import Entity.KhachHang;
 import Entity.KhuyenMai;
 import Entity.NhanVien;
-import Enum.LoaiHoaDon;
-import Enum.PhuongThucThanhToan;
-import java.util.ArrayList;
-import java.util.List;
-import java.text.DecimalFormat;
-import java.time.format.DateTimeFormatter;
+import Enumeration.LoaiHoaDon;
+import Enumeration.PhuongThucThanhToan;
+
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.Statement;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.text.DecimalFormat;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
 
 public class DAO_HoaDon {
 
     public DAO_HoaDon() {}
+
     public List<Object[]> layDanhSachHoaDonChoBang() {
         List<Object[]> ds = new ArrayList<>();
-        // Câu lệnh SQL lấy thông tin hóa đơn, tên khách hàng và tính tổng tiền
-        String sql = "SELECT hd.id, hd.ngayLapHD, kh.hoVaTen, kh.sdt, hd.phuongThucThanhToan, " +
+        
+        // 1. Đã đổi thành LEFT JOIN để hóa đơn nháp chưa có sản phẩm vẫn hiện lên bảng
+        String sql = "SELECT hd.id, hd.ngayLapHD, kh.hoVaTen, kh.sdt, hd.phuongThucThanhToan, hd.ghiChu, " +
                      "SUM(ct.soLuong * dv.gia) as tongTien " +
                      "FROM HoaDon hd " +
                      "LEFT JOIN KhachHang kh ON hd.khachHangId = kh.id " +
-                     "JOIN ChiTietHoaDon ct ON hd.id = ct.hoaDonId " +
-                     "JOIN DonViDoLuong dv ON ct.donViDoLuongId = dv.id AND ct.sanPhamId = dv.sanPhamId " +
+                     "LEFT JOIN ChiTietHoaDon ct ON hd.id = ct.hoaDonId " +
+                     "LEFT JOIN DonViDoLuong dv ON ct.donViDoLuongId = dv.id AND ct.sanPhamId = dv.sanPhamId " +
                      "WHERE hd.loaiHD = 'BAN_HANG' " +
-                     "GROUP BY hd.id, hd.ngayLapHD, kh.hoVaTen, kh.sdt, hd.phuongThucThanhToan " +
+                     "GROUP BY hd.id, hd.ngayLapHD, kh.hoVaTen, kh.sdt, hd.phuongThucThanhToan, hd.ghiChu " +
                      "ORDER BY hd.ngayLapHD DESC";
 
+        // Dùng try-with-resources để tự động đóng Connection (chống đơ máy)
         try (Connection con = ConnectDB.getInstance().getConnection();
              PreparedStatement pst = con.prepareStatement(sql);
              ResultSet rs = pst.executeQuery()) {
@@ -42,20 +48,40 @@ public class DAO_HoaDon {
 
             while (rs.next()) {
                 String maHD = rs.getString("id");
-                // Xử lý ngày tháng
-                String ngay = rs.getTimestamp("ngayLapHD").toLocalDateTime().format(dtf);
-                // Xử lý khách hàng (nếu null thì là Khách lẻ)
+                
+                // Tránh lỗi nếu ngày lập bị null
+                String ngay = "";
+                if (rs.getTimestamp("ngayLapHD") != null) {
+                    ngay = rs.getTimestamp("ngayLapHD").toLocalDateTime().format(dtf);
+                }
+                
                 String tenKH = rs.getString("hoVaTen") != null ? rs.getString("hoVaTen") : "Khách lẻ";
                 String sdt = rs.getString("sdt") != null ? rs.getString("sdt") : "";
-                // Xử lý phương thức thanh toán
-                String pt = rs.getString("phuongThucThanhToan").equals("TIEN_MAT") ? "Tiền mặt" : "Chuyển khoản";
-                // Định dạng tiền
+                
+                // 2. BẮT LỖI NULL KHI CHƯA THANH TOÁN (HÓA ĐƠN NHÁP)
+                String pttt = rs.getString("phuongThucThanhToan");
+                String pt = "Chưa TT"; // Mặc định cho hóa đơn nháp
+                if (pttt != null) {
+                    pt = pttt.equals("TIEN_MAT") ? "Tiền mặt" : "Chuyển khoản";
+                }
+                
+                // Lấy tổng tiền (Nếu chưa có thuốc sẽ trả về 0)
                 String tongTien = df.format(rs.getDouble("tongTien"));
                 
-                // Các cột bổ trợ cho JTable trong ManHinhBanHang
-                String trangThai = "Hoàn thành";
-                String xem = ""; // Cột icon xem
-                String hiddenCat = "Tất cả"; // Cột ẩn để lọc danh mục
+                // 3. LOGIC PHÂN BIỆT TRẠNG THÁI DỰA VÀO GHI CHÚ
+                String ghiChu = rs.getString("ghiChu");
+                String trangThai = "Hoàn thành"; // Mặc định
+
+                if (ghiChu != null) {
+                    if (ghiChu.equals("Lưu nháp")) {
+                        trangThai = "Đang xử lý";
+                    } else if (ghiChu.contains("Đã hủy")) {
+                        trangThai = "Đã hủy";
+                    }
+                }
+                
+                String xem = ""; 
+                String hiddenCat = "Tất cả"; 
 
                 ds.add(new Object[]{maHD, ngay, tenKH, sdt, pt, tongTien, trangThai, xem, hiddenCat});
             }
@@ -64,6 +90,7 @@ public class DAO_HoaDon {
         }
         return ds;
     }
+
     public boolean themHoaDon(HoaDon hd) {
         String sql = "INSERT INTO HoaDon (id, loaiHD, ghiChu, ngayLapHD, nhanVienId, khachHangId, khuyenMaiId, phuongThucThanhToan, hoaDonGocId) "
                    + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
@@ -166,7 +193,58 @@ public class DAO_HoaDon {
 
         return hd;
     }
-    
+
+    public ArrayList<HoaDon> getDanhSachHoaDonLuuNhap() {
+        ArrayList<HoaDon> dsHoaDonNhap = new ArrayList<>();
+        
+        // CÁCH FIX: Chỉnh lại câu SQL. Vì bảng không có cột TrangThai, 
+        // giả định bạn đang dùng cột ghiChu hoặc cột loaiHD để đánh dấu hóa đơn nháp.
+        // Hãy đổi 'ghiChu' thành 'loaiHD = ...' nếu hệ thống của bạn dùng Enum cho nháp.
+        String sql = "SELECT * FROM HoaDon WHERE ghiChu = N'Lưu nháp'"; 
+        
+        // 1. Dùng getInstance().getConnection() để tránh lỗi văng app
+        try (Connection con = ConnectDB.getInstance().getConnection(); 
+             Statement stmt = con.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            
+            while (rs.next()) {
+                // 2. Map đúng tên cột trong Database theo các hàm ở trên
+                String maHD = rs.getString("id");
+                String maNV = rs.getString("nhanVienId");
+                String maKH = rs.getString("khachHangId");
+                
+                java.sql.Timestamp sqlTimestamp = rs.getTimestamp("ngayLapHD");
+                LocalDateTime ngayLap = (sqlTimestamp != null) ? sqlTimestamp.toLocalDateTime() : null;
+                
+                // 3. Khởi tạo bằng constructor rỗng và set thuộc tính
+                NhanVien nv = new NhanVien();
+                if(maNV != null) nv.setNhanVien(maNV); 
+                
+                KhachHang kh = new KhachHang();
+                if(maKH != null) kh.setId(maKH);
+                
+                HoaDon hd = new HoaDon();
+                hd.setId(maHD);
+                hd.setNgayLapHD(ngayLap);
+                hd.setNhanVienId(nv);
+                
+                if (maKH != null) {
+                    hd.setKhachHangId(kh);
+                }
+                
+                if (rs.getString("loaiHD") != null) {
+                    hd.setLoaiHD(LoaiHoaDon.valueOf(rs.getString("loaiHD")));
+                }
+                hd.setGhiChu(rs.getString("ghiChu"));
+                
+                dsHoaDonNhap.add(hd);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return dsHoaDonNhap;
+    }
+
     public boolean capNhatTrangThai(String idHD, LoaiHoaDon loaiMoi) {
         String sql = "UPDATE HoaDon SET loaiHD = ? WHERE id = ?";
         Connection con = ConnectDB.getInstance().getConnection();

@@ -2,7 +2,7 @@ package Utils;
 
 import Entity.CaLamViec;
 import Entity.TaiKhoan;
-import Enum.VaiTro;
+import Enumeration.VaiTro;
 
 /**
  * Singleton lưu toàn bộ trạng thái phiên đăng nhập.
