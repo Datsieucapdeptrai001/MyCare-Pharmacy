@@ -8,9 +8,6 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * DAO_CaLamViec – tương thích DB mới có cột loaiCa, ghiChuKetCa.
- */
 public class DAO_CaLamViec {
 
     public DAO_CaLamViec() {}
@@ -22,16 +19,21 @@ public class DAO_CaLamViec {
         Connection con = ConnectDB.getInstance().getConnection();
         try (PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setString(1, ca.getId());
-            ps.setString(2, ca.getNhanVienId().getNhanVien()); // nhanVienId = NhanVien.id
+            ps.setString(2, ca.getNhanVienId().getNhanVien());
             ps.setTimestamp(3, Timestamp.valueOf(ca.getThoiGianBatDau()));
             if (ca.getThoiGianKetThuc() != null)
                 ps.setTimestamp(4, Timestamp.valueOf(ca.getThoiGianKetThuc()));
             else ps.setNull(4, Types.TIMESTAMP);
+            
             ps.setDouble(5, ca.getTienHeThongGhiNhan());
             ps.setDouble(6, ca.getTienDauCa());
             ps.setDouble(7, ca.getTienKetCa());
-            ps.setInt(8, 0); // loaiCa default
-            ps.setNull(9, Types.NVARCHAR); // ghiChuKetCa
+            
+            // ---- ĐÃ SỬA: Lấy loại ca từ đối tượng thay vì ép cứng số 0 ----
+            ps.setInt(8, ca.getLoaiCa()); 
+            ps.setString(9, ca.getGhiChuKetCa()); 
+            // ---------------------------------------------------------------
+            
             return ps.executeUpdate() > 0;
         } catch (SQLException e) { e.printStackTrace(); return false; }
     }
@@ -43,9 +45,14 @@ public class DAO_CaLamViec {
             if (ca.getThoiGianKetThuc() != null)
                 ps.setTimestamp(1, Timestamp.valueOf(ca.getThoiGianKetThuc()));
             else ps.setNull(1, Types.TIMESTAMP);
+            
             ps.setDouble(2, ca.getTienHeThongGhiNhan());
             ps.setDouble(3, ca.getTienKetCa());
-            ps.setNull(4, Types.NVARCHAR);
+            
+            // ---- ĐÃ SỬA: Cập nhật ghi chú kết ca đàng hoàng ----
+            ps.setString(4, ca.getGhiChuKetCa());
+            // ----------------------------------------------------
+            
             ps.setString(5, ca.getId());
             return ps.executeUpdate() > 0;
         } catch (SQLException e) { e.printStackTrace(); return false; }
@@ -76,15 +83,24 @@ public class DAO_CaLamViec {
     private CaLamViec mapRow(ResultSet rs) throws SQLException {
         CaLamViec ca = new CaLamViec();
         ca.setId(rs.getString("id"));
+        
         NhanVien nv = new NhanVien();
         nv.setNhanVien(rs.getString("nhanVienId"));
         ca.setNhanVienId(nv);
+        
         ca.setThoiGianBatDau(rs.getTimestamp("thoiGianBatDau").toLocalDateTime());
         Timestamp ket = rs.getTimestamp("thoiGianKetThuc");
         if (ket != null) ca.setThoiGianKetThuc(ket.toLocalDateTime());
+        
         ca.setTienHeThongGhiNhan(rs.getDouble("tienHeThongGhiNhan"));
         ca.setTienDauCa(rs.getDouble("tienDauCa"));
         ca.setTienKetCa(rs.getDouble("tienKetCa"));
+        
+        // ---- ĐÃ SỬA: Đọc 2 cột mới từ SQL Server lên Java ----
+        ca.setLoaiCa(rs.getInt("loaiCa")); 
+        ca.setGhiChuKetCa(rs.getString("ghiChuKetCa"));
+        // ------------------------------------------------------
+        
         return ca;
     }
 }

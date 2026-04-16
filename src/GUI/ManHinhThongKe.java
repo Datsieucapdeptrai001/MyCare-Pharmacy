@@ -3,9 +3,7 @@ package GUI;
 import Utils.UserSession;
 import Utils.ModernDatePicker;
 import Utils.ModernScrollBarUI;
-import Entity.CaLamViec;
-import ConnectDB.ConnectDB;
-import java.sql.*;
+import BUS.BUS_ThongKe;
 import java.io.*;
 import java.util.Calendar;
 import javax.swing.filechooser.FileNameExtensionFilter;
@@ -19,9 +17,10 @@ import java.util.*;
 
 public class ManHinhThongKe extends JPanel {
 
-    // ==========================================
+    // BUS LAYER
+    private final BUS_ThongKe busThongKe = new BUS_ThongKe();
+
     // DỮ LIỆU LOAD TỪ DB
-    // ==========================================
     static String[] NV_NAMES  = {};
     static String[] NV_IDS    = {};
     static String[] NV_ROLES  = {};
@@ -34,7 +33,6 @@ public class ManHinhThongKe extends JPanel {
     static String[] DATES_10  = {};
     static int[][]  NV_DAILY  = {};
     
-    // Đã đổi từ int[] sang double[] để nhận số thập phân
     static double[] DT_DATA   = new double[12];
     static double[] CP_DATA   = new double[12];
     
@@ -56,9 +54,7 @@ public class ManHinhThongKe extends JPanel {
         Color.decode("#607D8B")
     };
 
-    // ==========================================
     // FIELDS
-    // ==========================================
     private CardLayout cardBody;
     private JPanel pnlBody;
     private JButton btnDT, btnNV;
@@ -86,7 +82,6 @@ public class ManHinhThongKe extends JPanel {
 
     private int selectedNVIdx = -1;
     
-    // BIẾN GIAO DIỆN CHỨA DATA THẬT
     private JTextField txtTuNgay, txtDenNgay;
     private JComboBox<String> cboThang, cboQuy;
     private String modeLocThoiGian = "THANG"; // Lưu trạng thái đang lọc theo gì
@@ -97,9 +92,7 @@ public class ManHinhThongKe extends JPanel {
     // Panel dược sĩ chỉ hiện ở tab NV
     private JPanel pnlFilterDuocSi;
 
-    // ==========================================
     // CONSTRUCTOR
-    // ==========================================
     public ManHinhThongKe() {
         setLayout(new BorderLayout(0, 10));
         setBackground(Color.decode("#F4F6F8"));
@@ -135,14 +128,14 @@ public class ManHinhThongKe extends JPanel {
         loadDataFromDB(currentYear);
     }
 
-    // ── Helper: JScrollPane với ModernScrollBarUI + fix repaint ──
+    // Helper: JScrollPane với ModernScrollBarUI + fix repaint
     private JScrollPane makeScrollPane(JComponent content) {
         JScrollPane sp = new JScrollPane(content);
         sp.setOpaque(false);
         sp.getViewport().setOpaque(false);
         sp.setBorder(BorderFactory.createEmptyBorder());
-        sp.setWheelScrollingEnabled(true); // Bật lăn chuột
-        sp.getVerticalScrollBar().setUnitIncrement(30); // Chỉnh tốc độ cuộn
+        sp.setWheelScrollingEnabled(true);
+        sp.getVerticalScrollBar().setUnitIncrement(30);
         sp.getVerticalScrollBar().setUI(new ModernScrollBarUI());
         sp.getHorizontalScrollBar().setUI(new ModernScrollBarUI());
 
@@ -153,12 +146,12 @@ public class ManHinhThongKe extends JPanel {
         return sp;
     }
 
-    // ── LOAD DỮ LIỆU TỪ DATABASE (tham số year) ──────────────
+    // LOAD DỮ LIỆU TỪ DATABASE (tham số year)
     private void loadDataFromDB(int year) {
-        // --- BƯỚC 1: LẤY ĐIỀU KIỆN LỌC THỜI GIAN ĐỘNG ---
-        String condHD = ""; 
-        String condPN = ""; 
-        
+        // BƯỚC 1: XÂY DỰNG ĐIỀU KIỆN LỌC
+        String condHD = "";
+        String condPN = "";
+
         if ("THANG".equals(modeLocThoiGian)) {
             String val = (String) cboThang.getSelectedItem();
             if (val != null && !val.equals("Cả năm")) {
@@ -168,44 +161,32 @@ public class ManHinhThongKe extends JPanel {
             }
         } else if ("QUY".equals(modeLocThoiGian)) {
             int sel = cboQuy.getSelectedIndex();
-            if (sel == 1) { condHD = " AND MONTH(hd.ngayLapHD) BETWEEN 1 AND 3"; condPN = " AND MONTH(ngayNhap) BETWEEN 1 AND 3"; }
-            else if (sel == 2) { condHD = " AND MONTH(hd.ngayLapHD) BETWEEN 4 AND 6"; condPN = " AND MONTH(ngayNhap) BETWEEN 4 AND 6"; }
-            else if (sel == 3) { condHD = " AND MONTH(hd.ngayLapHD) BETWEEN 7 AND 9"; condPN = " AND MONTH(ngayNhap) BETWEEN 7 AND 9"; }
+            if (sel == 1) { condHD = " AND MONTH(hd.ngayLapHD) BETWEEN 1 AND 3";   condPN = " AND MONTH(ngayNhap) BETWEEN 1 AND 3"; }
+            else if (sel == 2) { condHD = " AND MONTH(hd.ngayLapHD) BETWEEN 4 AND 6";  condPN = " AND MONTH(ngayNhap) BETWEEN 4 AND 6"; }
+            else if (sel == 3) { condHD = " AND MONTH(hd.ngayLapHD) BETWEEN 7 AND 9";  condPN = " AND MONTH(ngayNhap) BETWEEN 7 AND 9"; }
             else if (sel == 4) { condHD = " AND MONTH(hd.ngayLapHD) BETWEEN 10 AND 12"; condPN = " AND MONTH(ngayNhap) BETWEEN 10 AND 12"; }
         } else if ("TUYCHINH".equals(modeLocThoiGian)) {
             String tu = txtTuNgay.getText(), den = txtDenNgay.getText();
             if (!tu.contains("dd") && !den.contains("dd")) {
                 try {
                     String from = tu.split("/")[2] + "-" + tu.split("/")[1] + "-" + tu.split("/")[0];
-                    String to = den.split("/")[2] + "-" + den.split("/")[1] + "-" + den.split("/")[0];
+                    String to   = den.split("/")[2] + "-" + den.split("/")[1] + "-" + den.split("/")[0];
                     condHD = " AND CAST(hd.ngayLapHD AS DATE) BETWEEN '" + from + "' AND '" + to + "'";
                     condPN = " AND CAST(ngayNhap AS DATE) BETWEEN '" + from + "' AND '" + to + "'";
-                } catch (Exception e) {}
+                } catch (Exception e) { /* định dạng chưa đủ, bỏ qua */ }
             }
         }
 
         final String fCondHD = condHD;
         final String fCondPN = condPN;
 
-        // --- BƯỚC 2: CHẠY THREAD LOAD DATA ---
+        // BƯỚC 2: LOAD DATA QUA BUS TRÊN THREAD RIÊNG
         new Thread(() -> {
             try {
-                Connection con = ConnectDB.getInstance().getConnection();
-                // Đảm bảo kết nối thành công
-                if (con == null) return;
-
-                // 1. Load nhân viên DƯỢC SĨ trực tiếp từ bảng NhanVien
-                java.util.List<String[]> nvList = new java.util.ArrayList<>();
-                try (Statement st = con.createStatement();
-                     ResultSet rs = st.executeQuery(
-                        "SELECT id, hoVaTen, chucVu FROM NhanVien " +
-                        "WHERE chucVu='DUOC_SI' AND trangThaiLamViec='DANG_LAM_VIEC' ORDER BY hoVaTen")) {
-                    while (rs.next()) {
-                        nvList.add(new String[]{rs.getString("id"), rs.getString("hoVaTen"), rs.getString("chucVu")});
-                    }
-                }
-                
+                // 1. Danh sách dược sĩ
+                java.util.List<String[]> nvList = busThongKe.getDuocSiList();
                 int n = nvList.size();
+
                 NV_NAMES  = new String[n]; NV_IDS   = new String[n];
                 NV_ROLES  = new String[n]; NV_SHORT = new String[n];
                 NV_COLORS = new Color[n];
@@ -221,140 +202,60 @@ public class ManHinhThongKe extends JPanel {
                     NV_COLORS[i] = PALETTE[i % PALETTE.length];
                 }
 
-                // 2. Doanh thu 12 tháng theo năm (Dùng double để không bị mất số lẻ)
-                DT_DATA = new double[12]; CP_DATA = new double[12];
-                try (PreparedStatement ps = con.prepareStatement(
-                    "SELECT MONTH(hd.ngayLapHD) m, ISNULL(SUM(ct.soLuong*dvl.gia),0)/1000000.0 dt FROM HoaDon hd " +
-                    "JOIN ChiTietHoaDon ct ON hd.id=ct.hoaDonId " +
-                    "JOIN DonViDoLuong dvl ON ct.donViDoLuongId=dvl.id AND ct.sanPhamId=dvl.sanPhamId " +
-                    "WHERE YEAR(hd.ngayLapHD)=? AND hd.loaiHD='BAN_HANG' " + fCondHD + " GROUP BY MONTH(hd.ngayLapHD)")) {
-                    ps.setInt(1, year);
-                    ResultSet rs = ps.executeQuery();
-                    while (rs.next()) { int m = rs.getInt("m"); if (m >= 1 && m <= 12) DT_DATA[m-1] = rs.getDouble("dt"); }
-                }
-                
-                // Lấy chi phí từ bảng LoHang thay vì PhieuNhapHang
-                try (PreparedStatement ps = con.prepareStatement(
-                    "SELECT MONTH(ngayNhap) m, ISNULL(SUM(soLuongLoHang*gia),0)/1000000.0 cp " +
-                    "FROM LoHang WHERE YEAR(ngayNhap)=? " + fCondPN + " GROUP BY MONTH(ngayNhap)")) {
-                    ps.setInt(1, year);
-                    ResultSet rs = ps.executeQuery();
-                    while (rs.next()) { int m = rs.getInt("m"); if (m >= 1 && m <= 12) CP_DATA[m-1] = rs.getDouble("cp"); }
-                } catch (Exception ignored) {}
+                // 2. Doanh thu & chi phí 12 tháng
+                DT_DATA = busThongKe.getDoanhThu12Thang(year, fCondHD);
+                CP_DATA = busThongKe.getChiPhi12Thang(year, fCondPN);
 
                 // 3. Donut phân loại SP
-                String[] catDB = {"THUOC_KE_DON","THUOC_KHONG_KE_DON","THUC_PHAM_CHUC_NANG","MY_PHAM"};
-                int[] catVals = new int[4];
-                int totalCat = 0;
-                for (int i = 0; i < 4; i++) {
-                    try (PreparedStatement ps = con.prepareStatement(
-                        "SELECT ISNULL(SUM(ct.soLuong),0) FROM ChiTietHoaDon ct " +
-                        "JOIN HoaDon hd ON hd.id=ct.hoaDonId " +
-                        "JOIN SanPham sp ON sp.id=ct.sanPhamId " +
-                        "WHERE sp.danhMuc=? AND YEAR(hd.ngayLapHD)=? AND hd.loaiHD='BAN_HANG' " + fCondHD)) {
-                        ps.setString(1, catDB[i]); ps.setInt(2, year);
-                        ResultSet rs = ps.executeQuery();
-                        if (rs.next()) catVals[i] = Math.max(1, rs.getInt(1));
-                        totalCat += catVals[i];
-                    } catch (Exception e2) { catVals[i] = 1; totalCat += 1; }
-                }
-                for (int i = 0; i < 4; i++) DONUT_VALS[i] = Math.max(1, (int)Math.round(catVals[i] * 100.0 / totalCat));
+                DONUT_VALS = busThongKe.getSoLuongTheoLoaiSP(year, fCondHD);
 
-                // 4. 10 ngày gần nhất
-                java.util.List<String> dates = new java.util.ArrayList<>();
-                try (Statement st = con.createStatement();
-                     ResultSet rs = st.executeQuery(
-                        "SELECT TOP 10 CONVERT(NVARCHAR, CAST(hd.ngayLapHD AS DATE), 103) AS d " +
-                        "FROM HoaDon hd " +
-                        "WHERE hd.loaiHD='BAN_HANG' AND YEAR(hd.ngayLapHD)=" + year + fCondHD + " " +
-                        "GROUP BY CAST(hd.ngayLapHD AS DATE) " +
-                        "ORDER BY CAST(hd.ngayLapHD AS DATE) DESC")) {
-                    while (rs.next()) dates.add(0, rs.getString("d"));
-                }
-                DATES_10 = dates.toArray(new String[0]);
+                // 4. 10 ngày gần nhất & dữ liệu daily của từng NV
+                java.util.List<String> dateList = busThongKe.get10NgayGanNhat(year, fCondHD);
+                DATES_10 = dateList.toArray(new String[0]);
                 int days = DATES_10.length;
                 NV_DAILY = new int[n][days];
-                for (int i = 0; i < n; i++) {
-                    String id = NV_IDS[i];
-                    for (int j = 0; j < days; j++) {
-                        try (PreparedStatement ps = con.prepareStatement(
-                            "SELECT COUNT(*) FROM HoaDon hd WHERE hd.nhanVienId=? " +
-                            "AND CONVERT(NVARCHAR,CONVERT(DATE,hd.ngayLapHD),103)=? AND hd.loaiHD='BAN_HANG' " + fCondHD)) {
-                            ps.setString(1, id); ps.setString(2, DATES_10[j]);
-                            ResultSet rs2 = ps.executeQuery();
-                            if (rs2.next()) NV_DAILY[i][j] = rs2.getInt(1);
-                        } catch (Exception ignored2) {}
-                    }
-                }
-                
-                // 4b. Load doanh thu + HĐ 30 ngày gần nhất
-                java.util.Arrays.fill(DAILY_30_DT, 0); java.util.Arrays.fill(DAILY_30_HD, 0); java.util.Arrays.fill(DAILY_30_DATES, "");
-                try (PreparedStatement ps = con.prepareStatement(
-                    "SELECT CONVERT(NVARCHAR,CAST(hd.ngayLapHD AS DATE),103) d, COUNT(DISTINCT hd.id) cnt, " +
-                    "ISNULL(SUM(ct.soLuong*dvl.gia),0)/1000000.0 dt FROM HoaDon hd " +
-                    "JOIN ChiTietHoaDon ct ON ct.hoaDonId=hd.id " +
-                    "JOIN DonViDoLuong dvl ON dvl.id=ct.donViDoLuongId AND dvl.sanPhamId=ct.sanPhamId " +
-                    "WHERE hd.loaiHD='BAN_HANG' AND CAST(hd.ngayLapHD AS DATE)>=DATEADD(DAY,-29,CAST(GETDATE() AS DATE))" + fCondHD + " " +
-                    "GROUP BY CAST(hd.ngayLapHD AS DATE) ORDER BY CAST(hd.ngayLapHD AS DATE) ASC")) {
-                    ResultSet rs = ps.executeQuery(); int idx = 0;
-                    while (rs.next() && idx < 30) {
-                        DAILY_30_DATES[idx] = rs.getString("d");
-                        DAILY_30_HD[idx]    = rs.getInt("cnt");
-                        DAILY_30_DT[idx]    = rs.getDouble("dt");
-                        idx++;
-                    }
-                } catch (Exception ignored) {}
+                for (int i = 0; i < n; i++)
+                    for (int j = 0; j < days; j++)
+                        NV_DAILY[i][j] = busThongKe.getDailyHDCuaNV(NV_IDS[i], DATES_10[j], fCondHD);
 
-                // 4c. Load HĐ + DT theo ca cho từng NV (Fix lỗi giờ lọt khe)
-                for (int i = 0; i < n; i++) {
-                    NV_HD_S[i] = 0; NV_HD_C[i] = 0; NV_DT_S[i] = 0; NV_DT_C[i] = 0;
-                    try (PreparedStatement ps = con.prepareStatement(
-                        "SELECT COUNT(DISTINCT hd.id) hd, ISNULL(SUM(ct.soLuong*dvl.gia),0)/1000000.0 dt " +
-                        "FROM HoaDon hd JOIN ChiTietHoaDon ct ON ct.hoaDonId=hd.id " +
-                        "JOIN DonViDoLuong dvl ON dvl.id=ct.donViDoLuongId AND dvl.sanPhamId=ct.sanPhamId " +
-                        "WHERE hd.nhanVienId=? AND YEAR(hd.ngayLapHD)=? AND hd.loaiHD='BAN_HANG' " +
-                        "AND DATEPART(HOUR,hd.ngayLapHD) < 14" + fCondHD)) { // Dưới 14h là ca sáng
-                        ps.setString(1, NV_IDS[i]); ps.setInt(2, year);
-                        ResultSet rs = ps.executeQuery();
-                        if (rs.next()) { NV_HD_S[i]=rs.getInt("hd"); NV_DT_S[i]=rs.getDouble("dt"); }
-                    } catch (Exception ignored) {}
-                    
-                    try (PreparedStatement ps = con.prepareStatement(
-                        "SELECT COUNT(DISTINCT hd.id) hd, ISNULL(SUM(ct.soLuong*dvl.gia),0)/1000000.0 dt " +
-                        "FROM HoaDon hd JOIN ChiTietHoaDon ct ON ct.hoaDonId=hd.id " +
-                        "JOIN DonViDoLuong dvl ON dvl.id=ct.donViDoLuongId AND dvl.sanPhamId=ct.sanPhamId " +
-                        "WHERE hd.nhanVienId=? AND YEAR(hd.ngayLapHD)=? AND hd.loaiHD='BAN_HANG' " +
-                        "AND DATEPART(HOUR,hd.ngayLapHD) >= 14" + fCondHD)) { // Từ 14h là ca chiều
-                        ps.setString(1, NV_IDS[i]); ps.setInt(2, year);
-                        ResultSet rs = ps.executeQuery();
-                        if (rs.next()) { NV_HD_C[i]=rs.getInt("hd"); NV_DT_C[i]=rs.getDouble("dt"); }
-                    } catch (Exception ignored) {}
+                // 4b. 30 ngày gần nhất
+                java.util.Arrays.fill(DAILY_30_DT, 0);
+                java.util.Arrays.fill(DAILY_30_HD, 0);
+                java.util.Arrays.fill(DAILY_30_DATES, "");
+                java.util.List<Object[]> daily30 = busThongKe.getThongKe30NgayGanNhat(fCondHD);
+                for (int i = 0; i < Math.min(daily30.size(), 30); i++) {
+                    Object[] row = daily30.get(i);
+                    DAILY_30_DATES[i] = (String) row[0];
+                    DAILY_30_HD[i]    = (int)    row[1];
+                    DAILY_30_DT[i]    = (double) row[2];
                 }
 
-                // 5. Tính KPI tổng hợp (Vòng lặp double)
+                // 4c. Kết quả ca sáng/chiều từng NV
+                for (int i = 0; i < n; i++) {
+                    double[] sang  = busThongKe.getKetQuaCaSang(NV_IDS[i], year, fCondHD);
+                    double[] chieu = busThongKe.getKetQuaCaChieu(NV_IDS[i], year, fCondHD);
+                    NV_HD_S[i] = (int) sang[0];  NV_DT_S[i] = sang[1];
+                    NV_HD_C[i] = (int) chieu[0]; NV_DT_C[i] = chieu[1];
+                }
+
+                // 5. KPI tổng hợp
                 double totalDT = 0, totalCP = 0;
                 for (double v : DT_DATA) totalDT += v;
                 for (double v : CP_DATA) totalCP += v;
-                long totalHD = 0;
-                try (PreparedStatement ps = con.prepareStatement(
-                    "SELECT COUNT(*) FROM HoaDon hd WHERE YEAR(hd.ngayLapHD)=? AND hd.loaiHD='BAN_HANG' " + fCondHD)) {
-                    ps.setInt(1, year);
-                    ResultSet rs = ps.executeQuery();
-                    if (rs.next()) totalHD = rs.getLong(1);
-                }
+                long totalHD     = busThongKe.getTongHoaDon(year, fCondHD);
                 double loiNhuan  = totalDT - totalCP;
                 double lnPct     = totalDT > 0 ? loiNhuan / totalDT * 100 : 0;
                 double giaTriTBDon = totalHD > 0 ? (totalDT * 1_000_000.0 / totalHD) : 0;
                 int peakMonth = 0;
                 for (int i = 1; i < 12; i++) if (DT_DATA[i] > DT_DATA[peakMonth]) peakMonth = i;
 
-                final long fHD = totalHD;
-                final double fDT = totalDT, fLN = loiNhuan, fLNPct = lnPct, fTB = giaTriTBDon;
-                final int fPeak = peakMonth;
+                final long   fHD   = totalHD;
+                final double fDT   = totalDT, fLN = loiNhuan, fLNPct = lnPct, fTB = giaTriTBDon;
+                final int    fPeak = peakMonth;
                 final String kyStr = getKyString();
-                final int fYear = year;
+                final int    fYear = year;
 
-                // --- BƯỚC 3: UPDATE GIAO DIỆN ---
+                // BƯỚC 3: CẬP NHẬT GIAO DIỆN TRÊN EDT
                 SwingUtilities.invokeLater(() -> {
                     if (kpiDTVal != null) { kpiDTVal.setText(formatM(fDT)); kpiDTSub.setText(kyStr + " " + fYear); }
                     if (kpiHDVal != null) { kpiHDVal.setText(String.format("%,d", fHD)); kpiHDSub.setText("TB mỗi kỳ: " + (fHD/12) + " đơn"); }
@@ -363,18 +264,15 @@ public class ManHinhThongKe extends JPanel {
                     if (lblYearBadge != null) lblYearBadge.setText(kyStr + " " + fYear);
                     if (btnNamPicker != null) btnNamPicker.setText("📅 " + fYear + " ▼");
 
-                    // Cập nhật Danh sách Dược sĩ
                     if (cboNhanVien != null) {
                         String sel = (String) cboNhanVien.getSelectedItem();
                         ActionListener[] als = cboNhanVien.getActionListeners();
-                        for(ActionListener l : als) cboNhanVien.removeActionListener(l);
-                        
+                        for (ActionListener l : als) cboNhanVien.removeActionListener(l);
                         cboNhanVien.removeAllItems();
                         cboNhanVien.addItem("Tất cả");
                         for (String nm : NV_NAMES) cboNhanVien.addItem(nm);
-                        
                         if (sel != null) cboNhanVien.setSelectedItem(sel);
-                        for(ActionListener l : als) cboNhanVien.addActionListener(l);
+                        for (ActionListener l : als) cboNhanVien.addActionListener(l);
                     }
 
                     if (chartBarMain   != null) chartBarMain.repaint();
@@ -384,32 +282,28 @@ public class ManHinhThongKe extends JPanel {
                     if (chartNVShift   != null) chartNVShift.repaint();
                     if (tblNVDetail    != null) tblNVDetail.refreshData();
                     if (pnlBody        != null) { pnlBody.revalidate(); pnlBody.repaint(); }
-                    
-                    int soLuongNV = NV_NAMES.length; 
-                    if (lblTongNV != null) lblTongNV.setText(String.valueOf(soLuongNV)); 
-                    
-                    // Tự động cộng dồn doanh thu của riêng Dược Sĩ
+
+                    int soLuongNV = NV_NAMES.length;
+                    if (lblTongNV != null) lblTongNV.setText(String.valueOf(soLuongNV));
+
                     double sumDT_NV = 0;
                     for (double s : NV_DT_S) sumDT_NV += s;
                     for (double c : NV_DT_C) sumDT_NV += c;
+                    if (lblTongDT_NV != null) lblTongDT_NV.setText(formatM(sumDT_NV));
+                    if (lblDTTB_NV   != null) lblDTTB_NV.setText(soLuongNV > 0 ? formatM(sumDT_NV / soLuongNV) : "0đ");
 
-                    if (lblTongDT_NV != null) lblTongDT_NV.setText(formatM(sumDT_NV)); 
-                    if (lblDTTB_NV != null) lblDTTB_NV.setText(soLuongNV > 0 ? formatM(sumDT_NV / soLuongNV) : "0đ");
-
-                    // Tính tổng hóa đơn sáng/chiều của tất cả NV
                     int sumHDSang = 0, sumHDChieu = 0;
-                    for(int s : NV_HD_S) sumHDSang += s;
-                    for(int c : NV_HD_C) sumHDChieu += c;
-                    if (lblHDSang != null) lblHDSang.setText(sumHDSang + " HĐ");
+                    for (int s : NV_HD_S) sumHDSang  += s;
+                    for (int c : NV_HD_C) sumHDChieu += c;
+                    if (lblHDSang  != null) lblHDSang.setText(sumHDSang  + " HĐ");
                     if (lblHDChieu != null) lblHDChieu.setText(sumHDChieu + " HĐ");
-                    
-                    // Update 30-day chart
+
                     if (chartLineDaily != null) chartLineDaily.setData(DAILY_30_DT, DAILY_30_DATES);
-                    // Update mini stats
+
                     double sumDT30=0, maxDT30=0; int sumHD30=0, activeDays30=0; String peakDate30="--";
-                    for (int i=0;i<30;i++) {
+                    for (int i = 0; i < 30; i++) {
                         if (DAILY_30_DT[i]>0||DAILY_30_HD[i]>0) activeDays30++;
-                        sumDT30+=DAILY_30_DT[i]; sumHD30+=DAILY_30_HD[i];
+                        sumDT30 += DAILY_30_DT[i]; sumHD30 += DAILY_30_HD[i];
                         if (DAILY_30_DT[i]>maxDT30) { maxDT30=DAILY_30_DT[i]; peakDate30=DAILY_30_DATES[i].length()>=5?DAILY_30_DATES[i].substring(0,5):"--"; }
                     }
                     double avgDT30 = activeDays30>0?sumDT30/activeDays30:0;
@@ -417,7 +311,7 @@ public class ManHinhThongKe extends JPanel {
                     if (miniPeakDate != null) miniPeakDate.setText(peakDate30);
                     if (miniAvgDT    != null) miniAvgDT.setText(formatM(avgDT30));
                     if (miniAvgOrder != null) miniAvgOrder.setText(String.format("%.0f", avgHD30));
-                    // Reload Top SP & VAT
+
                     reloadTopSP(fCondHD, fYear);
                     reloadVAT(fCondHD, fYear);
                 });
@@ -441,9 +335,7 @@ public class ManHinhThongKe extends JPanel {
         return s != null ? s : "Cả năm";
     }
 
-    // ==========================================
     // HEADER
-    // ==========================================
     private JPanel buildHeader() {
         JPanel p = new JPanel(new BorderLayout());
         p.setOpaque(false);
@@ -482,9 +374,7 @@ public class ManHinhThongKe extends JPanel {
         return p;
     }
 
-    // ==========================================
     // FILTER BAR
-    // ==========================================
     private JPanel buildFilterBar() {
         JPanel p = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 8));
         p.setBackground(Color.WHITE);
@@ -626,9 +516,7 @@ public class ManHinhThongKe extends JPanel {
         cbo.setBackground(Color.WHITE);
     }
 
-    // ==========================================
     // TAB 1: DOANH THU & SẢN PHẨM
-    // ==========================================
     private JPanel buildViewDT() {
         JPanel root = new JPanel();
         root.setLayout(new BoxLayout(root, BoxLayout.Y_AXIS));
@@ -710,9 +598,7 @@ public class ManHinhThongKe extends JPanel {
         return wrapper;
     }
 
-    // ==========================================
     // TAB 2: NHÂN VIÊN
-    // ==========================================
     private JPanel buildViewNV() {
         JPanel root = new JPanel();
         root.setLayout(new BoxLayout(root, BoxLayout.Y_AXIS));
@@ -811,9 +697,7 @@ public class ManHinhThongKe extends JPanel {
         return wrapper;
     }
 
-    // ==========================================
     // PHÂN QUYỀN
-    // ==========================================
     private void showAccessDenied() {
         JPanel pnl = new JPanel(new GridBagLayout());
         pnl.setBackground(Color.decode("#F4F6F8"));
@@ -846,9 +730,7 @@ public class ManHinhThongKe extends JPanel {
         add(pnl, BorderLayout.CENTER);
     }
 
-    // ==========================================
     // SỰ KIỆN
-    // ==========================================
     private void setupEvents() {
         btnDT.addActionListener(e -> {
             toggleTab(true);
@@ -883,9 +765,7 @@ public class ManHinhThongKe extends JPanel {
         btnNV.setForeground(!isDT ? Color.decode("#9C27B0") : Color.decode("#444444"));
     }
 
-    // ==========================================
     // BIỂU ĐỒ CỘT CHÍNH (DT-CP-LN)
-    // ==========================================
     class BarChartMain extends JPanel {
         private int   hoverIdx  = -1;
         private Point tooltipPt = null;
@@ -983,9 +863,7 @@ public class ManHinhThongKe extends JPanel {
         }
     }
 
-    // ==========================================
     // BIỂU ĐỒ ĐƯỜNG (DAILY)
-    // ==========================================
     class LineChartDaily extends JPanel {
         private final double[] vals;
         private int   hoverIdx  = -1;
@@ -1060,9 +938,7 @@ public class ManHinhThongKe extends JPanel {
         }
     }
 
-    // ==========================================
     // BIỂU ĐỒ DONUT
-    // ==========================================
     class DonutChart extends JPanel {
         private int   hoverIdx  = -1;
         private Point tooltipPt = null;
@@ -1137,9 +1013,7 @@ public class ManHinhThongKe extends JPanel {
         }
     }
 
-    // ==========================================
     // BIỂU ĐỒ CỘT DƯỢC SĨ THEO NGÀY
-    // ==========================================
     class NVDailyChart extends JPanel {
         private int   filterIdx = -1;
         private int   hoverDay  = -1;
@@ -1236,9 +1110,7 @@ public class ManHinhThongKe extends JPanel {
         }
     }
 
-    // ==========================================
     // BIỂU ĐỒ CỘT CA LÀM VIỆC
-    // ==========================================
     class NVShiftChart extends JPanel {
         private int   filterIdx = -1;
         private int   hoverIdx  = -1;
@@ -1312,9 +1184,7 @@ public class ManHinhThongKe extends JPanel {
         }
     }
 
-    // ==========================================
     // BẢNG CHI TIẾT NHÂN VIÊN THEO CA
-    // ==========================================
     class NVDetailTable extends JPanel {
         private int filterIdx = -1;
         private JTable tbl;
@@ -1407,9 +1277,7 @@ public class ManHinhThongKe extends JPanel {
         }
     }
 
-    // ==========================================
     // BẢNG TOP SẢN PHẨM (load từ DB)
-    // ==========================================
     private JPanel buildTopSPTable() {
         JPanel p = new JPanel(new BorderLayout(0, 8));
         p.setBackground(Color.WHITE);
@@ -1465,35 +1333,29 @@ public class ManHinhThongKe extends JPanel {
         if (modelTopSP == null) return;
         modelTopSP.setRowCount(0);
         new Thread(() -> {
-            try {
-                Connection con = ConnectDB.getInstance().getConnection(); if (con==null) return;
-                try (PreparedStatement ps = con.prepareStatement(
-                    "SELECT TOP 10 sp.ten, sp.danhMuc, SUM(ct.soLuong) sl, " +
-                    "ISNULL(SUM(ct.soLuong*dvl.gia),0) dt FROM ChiTietHoaDon ct " +
-                    "JOIN HoaDon hd ON hd.id=ct.hoaDonId JOIN SanPham sp ON sp.id=ct.sanPhamId " +
-                    "JOIN DonViDoLuong dvl ON dvl.sanPhamId=ct.sanPhamId AND dvl.id=ct.donViDoLuongId " +
-                    "WHERE YEAR(hd.ngayLapHD)=? AND hd.loaiHD='BAN_HANG'" + condHD +
-                    " GROUP BY sp.ten, sp.danhMuc ORDER BY dt DESC")) {
-                    ps.setInt(1, year); ResultSet rs = ps.executeQuery(); int rank=1;
-                    while (rs.next()) {
-                        String cat = rs.getString("danhMuc");
-                        String catLabel = cat==null?"Khác":cat.equals("THUOC_KE_DON")?"Thuốc KĐ":
-                            cat.equals("THUOC_KHONG_KE_DON")?"Thuốc KKĐ":cat.equals("THUC_PHAM_CHUC_NANG")?"TPCN":
-                            cat.equals("MY_PHAM")?"Mỹ phẩm":"Khác";
-                        final int r2=rank++;
-                        final Object[] row={r2==1?"🥇":r2==2?"🥈":r2==3?"🥉":String.valueOf(r2),
-                            rs.getString("ten"),catLabel,String.format("%,d",rs.getInt("sl")),
-                            formatM(rs.getDouble("dt")/1_000_000)};
-                        SwingUtilities.invokeLater(() -> modelTopSP.addRow(row));
-                    }
-                }
-            } catch (Exception e) { e.printStackTrace(); }
+            java.util.List<Object[]> list = busThongKe.getTopSanPham(year, condHD);
+            int rank = 1;
+            for (Object[] item : list) {
+                String ten     = (String) item[0];
+                String danhMuc = (String) item[1];
+                int    sl      = (int)    item[2];
+                double dt      = (double) item[3];
+                String catLabel = danhMuc == null ? "Khác" :
+                    danhMuc.equals("THUOC_KE_DON")          ? "Thuốc KĐ"  :
+                    danhMuc.equals("THUOC_KHONG_KE_DON")    ? "Thuốc KKĐ" :
+                    danhMuc.equals("THUC_PHAM_CHUC_NANG")   ? "TPCN"       :
+                    danhMuc.equals("MY_PHAM")                ? "Mỹ phẩm"   : "Khác";
+                final int r2 = rank++;
+                final Object[] row = {
+                    r2==1?"🥇":r2==2?"🥈":r2==3?"🥉":String.valueOf(r2),
+                    ten, catLabel, String.format("%,d", sl), formatM(dt)
+                };
+                SwingUtilities.invokeLater(() -> modelTopSP.addRow(row));
+            }
         }).start();
     }
 
-    // ==========================================
     // BẢNG VAT
-    // ==========================================
     private JPanel buildVATTable() {
         JPanel p = new JPanel(new BorderLayout(0, 8));
         p.setBackground(Color.WHITE);
@@ -1562,37 +1424,25 @@ public class ManHinhThongKe extends JPanel {
         if (modelVAT == null) return;
         modelVAT.setRowCount(0);
         new Thread(() -> {
-            try {
-                Connection con = ConnectDB.getInstance().getConnection(); if (con==null) return;
-                double[] totalVAT = {0};
-                try (PreparedStatement ps = con.prepareStatement(
-                    "SELECT TOP 20 sp.id, sp.ten, sp.danhMuc, " +
-                    "CASE WHEN sp.danhMuc='THUOC_KE_DON' THEN 5 ELSE 10 END vatPct, " +
-                    "ISNULL(SUM(ct.soLuong*dvl.gia),0) dt FROM ChiTietHoaDon ct " +
-                    "JOIN HoaDon hd ON hd.id=ct.hoaDonId JOIN SanPham sp ON sp.id=ct.sanPhamId " +
-                    "JOIN DonViDoLuong dvl ON dvl.sanPhamId=ct.sanPhamId AND dvl.id=ct.donViDoLuongId " +
-                    "WHERE YEAR(hd.ngayLapHD)=? AND hd.loaiHD='BAN_HANG'" + condHD +
-                    " GROUP BY sp.id,sp.ten,sp.danhMuc ORDER BY dt DESC")) {
-                    ps.setInt(1, year); ResultSet rs = ps.executeQuery();
-                    while (rs.next()) {
-                        double dt = rs.getDouble("dt"); int vat = rs.getInt("vatPct");
-                        double tienThue = dt * vat / 100;
-                        totalVAT[0] += tienThue;
-                        boolean keDon = "THUOC_KE_DON".equals(rs.getString("danhMuc"));
-                        final Object[] row = {rs.getString("id"), rs.getString("ten"),
-                            keDon?"Có":"Không", vat+"%", formatM(tienThue/1_000_000)};
-                        SwingUtilities.invokeLater(() -> modelVAT.addRow(row));
-                    }
-                }
-                final double tv = totalVAT[0];
-                SwingUtilities.invokeLater(() -> { if(lblVATTotal!=null) lblVATTotal.setText("Tổng VAT: "+formatM(tv/1_000_000)); });
-            } catch (Exception e) { e.printStackTrace(); }
+            java.util.List<Object[]> list = busThongKe.getVATReport(year, condHD);
+            double[] totalVAT = {0};
+            for (Object[] item : list) {
+                String maSP    = (String) item[0];
+                String ten     = (String) item[1];
+                String danhMuc = (String) item[2];
+                int    vat     = (int)    item[3];
+                double thue    = (double) item[4];
+                totalVAT[0] += thue;
+                boolean keDon = "THUOC_KE_DON".equals(danhMuc);
+                final Object[] row = {maSP, ten, keDon ? "Có" : "Không", vat + "%", formatM(thue)};
+                SwingUtilities.invokeLater(() -> modelVAT.addRow(row));
+            }
+            final double tv = totalVAT[0];
+            SwingUtilities.invokeLater(() -> { if (lblVATTotal != null) lblVATTotal.setText("Tổng VAT: " + formatM(tv)); });
         }).start();
     }
 
-    // ==========================================
     // LEGEND CHO DƯỢC SĨ
-    // ==========================================
     private JPanel buildNVDailyLegend() {
         JPanel p = new JPanel(new FlowLayout(FlowLayout.LEFT, 14, 2));
         p.setOpaque(false);
@@ -1600,9 +1450,7 @@ public class ManHinhThongKe extends JPanel {
         return p;
     }
 
-    // ==========================================
     // HELPERS
-    // ==========================================
     private JLabel makeKpiVal(String init, String color) {
         JLabel l = new JLabel(init);
         l.setFont(new Font("Segoe UI", Font.BOLD, 20));
@@ -1706,9 +1554,7 @@ public class ManHinhThongKe extends JPanel {
         return b;
     }
 
-    // ==========================================
     // XUẤT BÁO CÁO (Đã fix double formatter)
-    // ==========================================
     private void xuatExcel() {
         JFileChooser fc = new JFileChooser();
         fc.setDialogTitle("Lưu báo cáo Excel (CSV)");
@@ -1786,9 +1632,7 @@ public class ManHinhThongKe extends JPanel {
         }
     }
 
-    // ==========================================
     // BẢNG SẢN PHẨM HẾT HẠN
-    // ==========================================
     private JPanel buildSpSapHetHanTable() {
         JPanel p = new JPanel(new BorderLayout(0, 8));
         p.setBackground(Color.WHITE);
@@ -1806,24 +1650,11 @@ public class ManHinhThongKe extends JPanel {
             @Override public boolean isCellEditable(int r, int c) { return false; }
         };
 
+        // Load dữ liệu qua BUS (không truy cập DB trực tiếp từ GUI)
         new Thread(() -> {
-            try (Connection con = ConnectDB.getInstance().getConnection();
-                 PreparedStatement ps = con.prepareStatement(
-                    "SELECT lh.soLoHang, sp.ten, kh.id as Kho, lh.soLuongLoHang, lh.ngayHetHan " +
-                    "FROM LoHang lh JOIN SanPham sp ON lh.sanPhamId = sp.id " +
-                    "JOIN KhoHang kh ON lh.khoHangId = kh.id " +
-                    "WHERE lh.trangThai = 'CON_HANG' AND lh.ngayHetHan <= DATEADD(MONTH, 6, GETDATE()) " +
-                    "ORDER BY lh.ngayHetHan ASC")) {
-                ResultSet rs = ps.executeQuery();
-                while (rs.next()) {
-                    final Object[] row = {
-                        rs.getString("soLoHang"), rs.getString("ten"),
-                        rs.getString("Kho"), rs.getInt("soLuongLoHang"),
-                        new java.text.SimpleDateFormat("dd/MM/yyyy").format(rs.getDate("ngayHetHan"))
-                    };
-                    SwingUtilities.invokeLater(() -> m.addRow(row));
-                }
-            } catch (Exception e) { e.printStackTrace(); }
+            java.util.List<Object[]> list = busThongKe.getSpSapHetHan();
+            for (Object[] row : list)
+                SwingUtilities.invokeLater(() -> m.addRow(row));
         }).start();
 
         JTable tbl = new JTable(m);

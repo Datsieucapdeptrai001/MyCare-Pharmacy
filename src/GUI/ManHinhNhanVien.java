@@ -849,7 +849,7 @@ class DialogThemNhanVien extends JDialog {
         // Ẩn trực tiếp các nút có reference toàn cục
         if (btnThem   != null) btnThem.setVisible(false);
         if (btnDelete != null) btnDelete.setVisible(false);   // "Xóa nhân viên" – phải ẩn tường minh
-        if (btnEdit   != null) btnEdit.setVisible(false);
+//        if (btnEdit   != null) btnEdit.setVisible(false);
         // Duyệt đệ quy tìm nút còn sót theo text
         disableButtonsByText(this, "Thêm mới", "Nhập Excel", "Thêm", "Xóa", "Xóa nhân viên", "Sửa", "Lưu", "Chỉnh sửa");
     }
