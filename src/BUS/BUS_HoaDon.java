@@ -14,7 +14,9 @@ public class BUS_HoaDon {
     private DAO_ChiTietHoaDon daoCTHD = new DAO_ChiTietHoaDon();
     private DAO_PhanBoLoHang daoPB = new DAO_PhanBoLoHang();
     private DAO_LoHang daoLo = new DAO_LoHang();
-
+    public List<Object[]> layDanhSachHoaDonChoBang() {
+        return daoHD.layDanhSachHoaDonChoBang(); // daoHD là biến DAO_HoaDon bạn đã khai báo ở đầu file BUS
+    }
     public boolean thanhToan(HoaDon hd, List<ChiTietHoaDon> dsCTHD) {
         Connection con = ConnectDB.getInstance().getConnection();
         try {

@@ -18,6 +18,69 @@ public class DAO_KhachHang {
 
     public DAO_KhachHang() {
     }
+    public KhachHang timKhachHangTheoSDT(String sdt) {
+        KhachHang kh = null;
+        Connection con = null;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+
+        try {
+            // LƯU Ý: Đổi dòng dưới đây theo đúng class kết nối Database của bạn (ví dụ: ConnectDB.getInstance().getConnection())
+            con = ConnectDB.getInstance().getConnection(); 
+            
+            String sql = "SELECT * FROM KhachHang WHERE sdt = ?";
+            stmt = con.prepareStatement(sql);
+            stmt.setString(1, sdt);
+            
+            rs = stmt.executeQuery();
+
+            if (rs.next()) {
+                kh = new KhachHang();
+                kh.setId(rs.getString("id"));
+                kh.setSdt(rs.getString("sdt"));
+                kh.setHoVaTen(rs.getString("hoVaTen"));
+                
+                // Ép kiểu từ SQL Timestamp sang java.time.LocalDateTime của Java
+                Timestamp timestamp = rs.getTimestamp("ngayTao");
+                if (timestamp != null) {
+                    kh.setNgayTao(timestamp.toLocalDateTime());
+                }
+                
+                kh.setDiemTichLuy(rs.getInt("diemTichLuy"));
+            }
+        } catch (Exception e) {
+            System.out.println("Lỗi khi tìm khách hàng theo SĐT: " + e.getMessage());
+            e.printStackTrace();
+        } finally {
+            // Đóng kết nối để giải phóng bộ nhớ
+            try {
+                if (rs != null) rs.close();
+                if (stmt != null) stmt.close();
+                // Không đóng connection nếu bạn dùng chung 1 connection xuyên suốt app
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+        }
+        return kh;
+    }
+    public KhachHang timKhachHangTheoMa(String id) {
+        KhachHang kh = null;
+        try {
+            Connection con = ConnectDB.getInstance().getConnection();
+            String sql = "SELECT * FROM KhachHang WHERE id = ?";
+            PreparedStatement pst = con.prepareStatement(sql);
+            pst.setString(1, id);
+            ResultSet rs = pst.executeQuery();
+            if (rs.next()) {
+                kh = new KhachHang();
+                kh.setId(rs.getString("id"));
+                kh.setHoVaTen(rs.getString("hoVaTen"));
+                kh.setSdt(rs.getString("sdt"));
+                kh.setDiemTichLuy(rs.getInt("diemTichLuy"));
+            }
+        } catch (Exception e) { e.printStackTrace(); }
+        return kh;
+    }
     public List<KhachHang> getDSKhachHang() {
         List<KhachHang> dsKhachHang = new ArrayList<>();
         String sql = "SELECT * FROM KhachHang";
