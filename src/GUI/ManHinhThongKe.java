@@ -218,16 +218,30 @@ public class ManHinhThongKe extends JPanel {
                     for (int j = 0; j < days; j++)
                         NV_DAILY[i][j] = busThongKe.getDailyHDCuaNV(NV_IDS[i], DATES_10[j], fCondHD);
 
-                // 4b. 30 ngày gần nhất
+                // 4b. 30 ngày gần nhất (SỬA CHỖ NÀY ĐỂ ĐÚNG TRỤC X)
                 java.util.Arrays.fill(DAILY_30_DT, 0);
                 java.util.Arrays.fill(DAILY_30_HD, 0);
-                java.util.Arrays.fill(DAILY_30_DATES, "");
+                
+                // Trải đều 30 ngày từ hôm nay lùi về quá khứ
+                java.time.LocalDate today = java.time.LocalDate.now();
+                java.time.format.DateTimeFormatter dtf = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy");
+                for (int i = 0; i < 30; i++) {
+                    DAILY_30_DATES[29 - i] = today.minusDays(i).format(dtf);
+                }
+                
+                // Map dữ liệu DB vào đúng ngày
                 java.util.List<Object[]> daily30 = busThongKe.getThongKe30NgayGanNhat(fCondHD);
-                for (int i = 0; i < Math.min(daily30.size(), 30); i++) {
-                    Object[] row = daily30.get(i);
-                    DAILY_30_DATES[i] = (String) row[0];
-                    DAILY_30_HD[i]    = (int)    row[1];
-                    DAILY_30_DT[i]    = (double) row[2];
+                for (Object[] row : daily30) {
+                    String d = (String) row[0];
+                    int hd = (int) row[1];
+                    double dt = (double) row[2];
+                    for (int i = 0; i < 30; i++) {
+                        if (DAILY_30_DATES[i].equals(d)) {
+                            DAILY_30_HD[i] = hd;
+                            DAILY_30_DT[i] = dt;
+                            break;
+                        }
+                    }
                 }
 
                 // 4c. Kết quả ca sáng/chiều từng NV
@@ -863,22 +877,31 @@ public class ManHinhThongKe extends JPanel {
         }
     }
 
-    // BIỂU ĐỒ ĐƯỜNG (DAILY)
+    // BIỂU ĐỒ ĐƯỜNG (DAILY) - ĐÃ FIX TRỤC X HIỂN THỊ ĐÚNG NGÀY THÁNG THỰC TẾ
     class LineChartDaily extends JPanel {
         private final double[] vals;
+        private final String[] dates; // Khai báo thêm mảng lưu ngày thực tế
         private int   hoverIdx  = -1;
         private Point tooltipPt = null;
 
         LineChartDaily() {
             setBackground(Color.WHITE);
             vals = new double[30];
+            dates = new String[30];
+            java.util.Arrays.fill(dates, "");
+            
             addMouseMotionListener(new MouseAdapter() {
                 @Override public void mouseMoved(MouseEvent e) {
                     int n = vals.length; float step = (float)(getWidth()-40)/(n-1);
                     hoverIdx = -1; tooltipPt = null;
+                    
+                    double maxVal = 1.0;
+                    for (double v : vals) if (v > maxVal) maxVal = v;
+                    maxVal *= 1.2; // Thêm 20% đệm trần
+
                     for (int i = 0; i < n; i++) {
                         int px = 20+(int)(i*step);
-                        int py = getHeight()-20-(int)((vals[i]/4.5)*(getHeight()-30));
+                        int py = getHeight()-20-(int)((vals[i]/maxVal)*(getHeight()-30));
                         if (Math.abs(e.getX()-px)<10 && Math.abs(e.getY()-py)<10) {
                             hoverIdx=i; tooltipPt=e.getPoint(); break;
                         }
@@ -888,9 +911,12 @@ public class ManHinhThongKe extends JPanel {
                 @Override public void mouseExited(MouseEvent e) { hoverIdx=-1; repaint(); }
             });
         }
-        void setData(double[] newVals, String[] dates) {
+        
+        void setData(double[] newVals, String[] newDates) {
             java.util.Arrays.fill(vals, 0);
+            java.util.Arrays.fill(dates, "");
             for (int i=0; i<Math.min(newVals.length, vals.length); i++) vals[i]=newVals[i];
+            for (int i=0; i<Math.min(newDates.length, dates.length); i++) dates[i]=newDates[i];
             repaint();
         }
 
@@ -901,11 +927,15 @@ public class ManHinhThongKe extends JPanel {
             int n = vals.length, w = getWidth(), h = getHeight();
             float step = (float)(w-40)/(n-1);
 
+            double maxVal = 1.0;
+            for (double v : vals) if (v > maxVal) maxVal = v;
+            maxVal *= 1.2; 
+
             GeneralPath area = new GeneralPath();
             area.moveTo(20, h-20);
             for (int i = 0; i < n; i++) {
                 int px = 20+(int)(i*step);
-                int py = h-20-(int)((vals[i]/4.5)*(h-30));
+                int py = h-20-(int)((vals[i]/maxVal)*(h-30));
                 area.lineTo(px, py);
             }
             area.lineTo(20+(int)((n-1)*step), h-20);
@@ -916,7 +946,7 @@ public class ManHinhThongKe extends JPanel {
             int[] xs = new int[n], ys = new int[n];
             for (int i = 0; i < n; i++) {
                 xs[i] = 20+(int)(i*step);
-                ys[i] = h-20-(int)((vals[i]/4.5)*(h-30));
+                ys[i] = h-20-(int)((vals[i]/maxVal)*(h-30));
             }
             for (int i = 0; i < n-1; i++) g2.drawLine(xs[i], ys[i], xs[i+1], ys[i+1]);
             for (int i = 0; i < n; i++) {
@@ -927,13 +957,19 @@ public class ManHinhThongKe extends JPanel {
                     g2.setColor(Color.decode("#1A73E8")); g2.fillOval(xs[i]-2,ys[i]-2, 5, 5);
                 }
             }
-            g2.setColor(Color.decode("#AAAAAA")); g2.setFont(new Font("Segoe UI",Font.PLAIN,9));
-            for (int li : new int[]{0,4,9,14,19,24,29}) {
-                g2.drawString((li+1<10?"0":"")+(li+1)+"/", xs[li]-8, h-4);
+            
+            // ---- ĐÃ FIX: In ngày tháng thực tế lên trục X thay vì in số thứ tự ----
+            g2.setColor(Color.decode("#AAAAAA")); g2.setFont(new Font("Segoe UI",Font.PLAIN,10));
+            for (int li : new int[]{0, 5, 10, 15, 20, 25, 29}) {
+                String dLabel = (dates[li] != null && dates[li].length() >= 5) ? dates[li].substring(0, 5) : "";
+                g2.drawString(dLabel, xs[li]-12, h-4);
             }
+            
+            // ---- ĐÃ FIX: In ngày tháng thực tế lên Tooltip khi rê chuột ----
             if (hoverIdx >= 0 && tooltipPt != null) {
+                String dateStr = (dates[hoverIdx] != null && dates[hoverIdx].length() >= 5) ? dates[hoverIdx].substring(0, 5) : "";
                 drawTooltip(g2, Math.min(tooltipPt.x+8, w-160), tooltipPt.y-28,
-                    String.format("Ngày %02d: %.1fM đ", hoverIdx+1, vals[hoverIdx]));
+                    String.format("Ngày %s: %.1fM đ", dateStr, vals[hoverIdx]));
             }
         }
     }
