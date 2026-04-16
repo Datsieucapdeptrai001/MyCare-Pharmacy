@@ -173,6 +173,10 @@ public class ManHinhSanPham extends JPanel {
     private boolean detailVisible = false;
     private boolean isAdding       = false;
     private boolean uomAutoChanging = false;
+	private Component btnThem;
+	private Component btnXoa;
+	private Component btnSua;
+	private Component btnLuu;
 
     private static final String[] COLS_COLLAPSED = {"Mã", "Tên", "Loại", "Hoạt chất"};
     private static final String[] COLS_EXPANDED  = {"Mã", "Tên", "Loại", "Hoạt chất", "Dạng bào chế", "NSX", "VAT"};
@@ -1186,5 +1190,18 @@ public class ManHinhSanPham extends JPanel {
         currentFilteredData.clear();
         currentFilteredData.addAll(allDataMock);
         updatePagination();
+    }
+
+    public void setReadOnly(boolean isReadOnly) {
+        // Nếu isReadOnly = true (là Staff), ta sẽ khóa các nút thay đổi dữ liệu (false)
+        // Nếu isReadOnly = false (là Admin), ta mở lại các nút (true)
+        
+        boolean canEdit = !isReadOnly; 
+       
+        btnThem.setEnabled(canEdit); 
+        btnXoa.setEnabled(canEdit);
+        btnSua.setEnabled(canEdit);
+        btnLuu.setEnabled(canEdit);
+        
     }
 }

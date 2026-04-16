@@ -29,16 +29,18 @@ public class DialogMoCa extends JDialog {
 
     private static final String[] CA_LABELS  = { "Ca Sáng", "Ca Chiều", "Ca Tối" };
     private static final String[] CA_TIMES   = { "06:00 – 14:00", "14:00 – 22:00", "22:00 – 06:00" };
-    private static final String[] CA_ICONS   = { "☀", "🌅", "🌙" };
-    private static final Color[]  CA_BG      = {
-        Color.decode("#FFF3E0"),
-        Color.decode("#FFF8F0"),
-        Color.decode("#EEF2FF")
+    private static final String[] CA_ICON_TYPES = { "SHIFT_MORNING", "SHIFT_AFTERNOON", "SHIFT_NIGHT" };
+    // Màu NỀN của 3 Ca (Sáng - Chiều - Tối)
+    private static final Color[]  CA_BG = {
+        Color.decode("#FFF3E0"), // Màu cam nhạt (Ca Sáng)
+        Color.decode("#FFF8F0"), // Màu cam siêu nhạt (Ca Chiều)
+        Color.decode("#EEF2FF")  // Màu xanh dương nhạt (Ca Tối)
     };
-    private static final Color[]  CA_FG      = {
-        Color.decode("#E65100"),
-        Color.decode("#BF360C"),
-        Color.decode("#3D52A0")
+    // Màu CHỮ & VIỀN của 3 Ca
+    private static final Color[]  CA_FG = {
+        Color.decode("#E65100"), // Cam đậm
+        Color.decode("#BF360C"), // Đỏ cam
+        Color.decode("#3D52A0")  // Xanh dương đậm
     };
 
     // Mệnh giá VND
@@ -187,15 +189,26 @@ public class DialogMoCa extends JDialog {
         return wrapper;
     }
 
-    // ─── STEP 1: Chọn Ca ─────────────────────────────────────
+ // ─── STEP 1: Chọn Ca ─────────────────────────────────────
     private JPanel buildStep1() {
+        // ---- ĐÃ FIX: Xác định Ca theo giờ ngay từ đầu TRƯỚC KHI vẽ giao diện ----
+        int currentHour = java.time.LocalDateTime.now().getHour();
+        if (currentHour >= 6 && currentHour < 14) {
+            selectedCa = 0; // Ca Sáng
+        } else if (currentHour >= 14 && currentHour < 22) {
+            selectedCa = 1; // Ca Chiều
+        } else {
+            selectedCa = 2; // Ca Tối
+        }
+        // -------------------------------------------------------------------------
+
         JPanel pnl = new JPanel();
         pnl.setLayout(new BoxLayout(pnl, BoxLayout.Y_AXIS));
         pnl.setBackground(COLOR_BG);
         pnl.setBorder(new EmptyBorder(20, 24, 10, 24));
 
         // Section title
-        JLabel secTitle1 = makeSectionTitle("ℹ  BƯỚC 1 — CHỌN LOẠI CA LÀM VIỆC");
+        JLabel secTitle1 = makeSectionTitle("ℹ  BƯỚC 1 — THÔNG TIN CA LÀM VIỆC HIỆN TẠI");
         pnl.add(secTitle1);
         pnl.add(Box.createRigidArea(new Dimension(0, 12)));
 
@@ -205,6 +218,7 @@ public class DialogMoCa extends JDialog {
         rowCa.setAlignmentX(LEFT_ALIGNMENT);
         rowCa.setMaximumSize(new Dimension(Integer.MAX_VALUE, 100));
 
+        // Lúc này vòng lặp vẽ nút sẽ biết chính xác "selectedCa" là ca nào để tô màu
         for (int i = 0; i < 3; i++) {
             btnCa[i] = buildCaButton(i);
             rowCa.add(btnCa[i]);
@@ -243,9 +257,12 @@ public class DialogMoCa extends JDialog {
         leftInfo.setLayout(new BoxLayout(leftInfo, BoxLayout.Y_AXIS));
         JLabel lblTongLabel = new JLabel("Tổng tiền đầu ca:");
         lblTongLabel.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        lblCaSubInfo = new JLabel("Ca Sáng · 06:00 – 14:00");
+        
+        // Cập nhật lại dòng chữ nhỏ xíu bên dưới chuẩn theo Ca
+        lblCaSubInfo = new JLabel(CA_LABELS[selectedCa] + " · " + CA_TIMES[selectedCa]);
         lblCaSubInfo.setFont(new Font("Segoe UI", Font.PLAIN, 11));
         lblCaSubInfo.setForeground(Color.GRAY);
+        
         leftInfo.add(lblTongLabel);
         leftInfo.add(lblCaSubInfo);
 
@@ -270,8 +287,6 @@ public class DialogMoCa extends JDialog {
         hint.add(lblHint);
         pnl.add(hint);
 
-        // Set default selection
-        selectCa(0);
         return pnl;
     }
 
@@ -507,21 +522,35 @@ public class DialogMoCa extends JDialog {
         btn.setContentAreaFilled(false);
         btn.setBorderPainted(false);
         btn.setFocusPainted(false);
-        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        
+        // ---- ĐÃ SỬA: Đổi con trỏ chuột về mặc định vì không cho phép bấm nữa ----
+        btn.setCursor(new Cursor(Cursor.DEFAULT_CURSOR)); 
+        // -----------------------------------------------------------------------
+        
         btn.setPreferredSize(new Dimension(0, 90));
 
-        JLabel icon = new JLabel(CA_ICONS[idx], SwingConstants.CENTER);
-        icon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 22));
+        JLabel icon = new JLabel("", SwingConstants.CENTER);
+        icon.setIcon(new MenuIcon(CA_ICON_TYPES[idx]) {
+            @Override public int getIconWidth()  { return 28; }
+            @Override public int getIconHeight() { return 28; }
+        });
+        
+        // Làm mờ màu icon nếu không phải ca được chọn
+        if (selectedCa == idx) {
+            icon.setForeground(CA_FG[idx]);
+        } else {
+            icon.setForeground(Color.LIGHT_GRAY);
+        }
         icon.setAlignmentX(CENTER_ALIGNMENT);
 
         JLabel name = new JLabel(CA_LABELS[idx], SwingConstants.CENTER);
         name.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        name.setForeground(CA_FG[idx]);
+        name.setForeground(selectedCa == idx ? CA_FG[idx] : Color.GRAY);
         name.setAlignmentX(CENTER_ALIGNMENT);
 
         JLabel time = new JLabel(CA_TIMES[idx], SwingConstants.CENTER);
         time.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-        time.setForeground(CA_FG[idx]);
+        time.setForeground(selectedCa == idx ? CA_FG[idx] : Color.LIGHT_GRAY);
         time.setAlignmentX(CENTER_ALIGNMENT);
 
         btn.add(Box.createVerticalGlue());
@@ -530,8 +559,9 @@ public class DialogMoCa extends JDialog {
         btn.add(time);
         btn.add(Box.createVerticalGlue());
 
-        final int fi = idx;
-        btn.addActionListener(e -> selectCa(fi));
+        // ---- ĐÃ XÓA MẤT DÒNG addActionListener ĐỂ ÉP CỨNG KHÔNG CHO BẤM ----
+        // (Nhân viên chỉ được nhìn chứ không được đổi ca)
+        
         return btn;
     }
 
@@ -602,7 +632,9 @@ public class DialogMoCa extends JDialog {
                 new EmptyBorder(10, 14, 10, 14)));
         row.setAlignmentX(LEFT_ALIGNMENT);
 
-        JLabel lLeft = new JLabel(CA_ICONS[selectedCa] + "  " + CA_LABELS[selectedCa]);
+        JLabel lLeft = new JLabel("  " + CA_LABELS[selectedCa]);
+        lLeft.setIcon(new MenuIcon(CA_ICON_TYPES[selectedCa]));
+        lLeft.setIconTextGap(8);
         lLeft.setFont(new Font("Segoe UI", Font.BOLD, 14));
         lLeft.setForeground(CA_FG[selectedCa]);
 
@@ -619,8 +651,14 @@ public class DialogMoCa extends JDialog {
 
     private void selectCa(int idx) {
         selectedCa = idx;
-        for (int i = 0; i < 3; i++) btnCa[i].repaint();
-        lblCaSubInfo.setText(CA_LABELS[idx] + " · " + CA_TIMES[idx]);
+        for (int i = 0; i < 3; i++) {
+            if (btnCa[i] != null) {
+                btnCa[i].repaint();
+            }
+        }
+        if (lblCaSubInfo != null) {
+            lblCaSubInfo.setText(CA_LABELS[idx] + " · " + CA_TIMES[idx]);
+        }
     }
 
     private void refreshCounts() {
