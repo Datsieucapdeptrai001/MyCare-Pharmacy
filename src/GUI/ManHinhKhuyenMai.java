@@ -873,7 +873,13 @@ public class ManHinhKhuyenMai extends JPanel {
             JPanel pnlFields = new JPanel(new GridLayout(2, 1, 0, 10));
             pnlFields.setOpaque(false);
 
-            List<String> khoSanPham = Arrays.asList("Thuốc hạ sốt Panadol", "Miếng dán hạ sốt KoolFever", "Vitamin C 500mg", "Khẩu trang y tế 4 lớp", "Nước súc miệng Listerine", "Siro ho Bổ Phế", "Dầu gió Trường Sơn", "Bông y tế Bạch Tuyết", "Cồn 90 độ", "Nước muối sinh lý 0.9%");
+            // ====================================================================
+            // ĐÃ CẬP NHẬT: LẤY DANH SÁCH TÊN SẢN PHẨM TRỰC TIẾP TỪ DATABASE (CHUẨN 3 LỚP)
+            // ====================================================================
+            List<String> khoSanPham = busKhuyenMai.layDanhSachTenSanPham();
+            if (khoSanPham == null || khoSanPham.isEmpty()) {
+                khoSanPham = Arrays.asList("Không có dữ liệu sản phẩm");
+            }
 
             fldMaSPMua = new SuggestionField("Sản phẩm cần mua", "Gõ tên SP... (VD: Panadol)", khoSanPham);
             fldSoLuongMua = new FloatingField("Số lượng", "VD: 3");

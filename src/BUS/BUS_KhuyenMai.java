@@ -3,6 +3,7 @@ package BUS;
 import DAO.DAO_DieuKienKhuyenMai;
 import DAO.DAO_HinhThucKhuyenMai;
 import DAO.DAO_KhuyenMai;
+import DAO.DAO_SanPham; // Thêm kết nối tới DAO_SanPham
 import Entity.KhuyenMai;
 import Entity.DieuKienKhuyenMai;
 import Entity.HinhThucKhuyenMai;
@@ -15,11 +16,13 @@ public class BUS_KhuyenMai {
     private DAO_KhuyenMai daoKhuyenMai;
     private DAO_DieuKienKhuyenMai daoDieuKienKhuyenMai;
     private DAO_HinhThucKhuyenMai daoHinhThucKhuyenMai;
+    private DAO_SanPham daoSanPham; // Khai báo đối tượng DAO Sản Phẩm
 
     public BUS_KhuyenMai() {
         this.daoKhuyenMai = new DAO_KhuyenMai();
         this.daoDieuKienKhuyenMai = new DAO_DieuKienKhuyenMai();
         this.daoHinhThucKhuyenMai = new DAO_HinhThucKhuyenMai();
+        this.daoSanPham = new DAO_SanPham(); // Khởi tạo
     }
 
     public int[] layCauHinhTichDiem() {
@@ -125,5 +128,12 @@ public class BUS_KhuyenMai {
             return tongTienHoaDon - tienGiam;
         }
         return tongTienHoaDon;
+    }
+
+    // ===========================================
+    // HÀM MỚI: GỌI XUYÊN LỚP LẤY DANH SÁCH SẢN PHẨM TRẢ VỀ CHO GUI
+    // ===========================================
+    public List<String> layDanhSachTenSanPham() {
+        return daoSanPham.layDanhSachTenSanPham();
     }
 }
