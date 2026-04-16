@@ -1,98 +1,169 @@
 package BUS;
 
-import Entity.SanPham;
+import DAO.DAO_SanPham;
 import Entity.LoHang;
-import DAO.DAO_SanPham; // Đã thêm kết nối với tầng DAO
+import Entity.SanPham;
+
 import java.util.ArrayList;
 import java.util.List;
 
 public class BUS_SanPham {
-    // 1. KHỞI TẠO ĐỐI TƯỢNG DAO ĐỂ TƯƠNG TÁC DB THẬT
-    private DAO_SanPham daoSanPham = new DAO_SanPham(); 
+
+    private final DAO_SanPham daoSanPham;
 
     public BUS_SanPham() {
+        daoSanPham = new DAO_SanPham();
     }
 
     // ============================================================
-    // PHẦN 1: CÁC HÀM CŨ (GIỮ NGUYÊN THEO YÊU CẦU)
+    // PHẦN 1: NGHIỆP VỤ CHO GUI
     // ============================================================
+
+    public List<SanPham> getDsThuoc() {
+        return daoSanPham.getDsThuoc();
+    }
+
+    public SanPham getSanPhamTheoMa(String id) {
+        if (id == null || id.trim().isEmpty()) return null;
+        return daoSanPham.getSanPhamTheoMa(id.trim());
+    }
 
     public List<SanPham> traCuuSanPham(String tuKhoa) {
-        List<SanPham> dsFake = new ArrayList<>();
-        SanPham sp1 = new SanPham();
-        sp1.setId("PRO2023-0001"); sp1.setTen("Vitamin C 1000mg"); sp1.setHoatChat("Ascorbic Acid"); sp1.setDonViDoCoBan("Viên"); sp1.setThueVAT(10);
-        
-        SanPham sp2 = new SanPham();
-        sp2.setId("PRO2023-0005"); sp2.setTen("Siro tăng sức đề kháng"); sp2.setHoatChat("Various"); sp2.setDonViDoCoBan("Chai"); sp2.setThueVAT(10);
+        List<SanPham> dsSanPham = daoSanPham.getDsThuoc();
 
-        SanPham sp3 = new SanPham();
-        sp3.setId("PRO2023-0006"); sp3.setTen("Paracetamol 500mg"); sp3.setHoatChat("Paracetamol"); sp3.setDonViDoCoBan("Vỉ"); sp3.setThueVAT(5);
+        if (tuKhoa == null || tuKhoa.trim().isEmpty()) {
+            return dsSanPham;
+        }
 
-        dsFake.add(sp1); dsFake.add(sp2); dsFake.add(sp3);
+        List<SanPham> ketQua = new ArrayList<>();
+        String key = tuKhoa.trim().toLowerCase();
 
-        if (tuKhoa == null || tuKhoa.trim().isEmpty()) return dsFake;
+        for (SanPham sp : dsSanPham) {
+            String id = sp.getId() != null ? sp.getId().toLowerCase() : "";
+            String ten = sp.getTen() != null ? sp.getTen().toLowerCase() : "";
+            String vietTat = sp.getTenVietTat() != null ? sp.getTenVietTat().toLowerCase() : "";
+            String hoatChat = sp.getHoatChat() != null ? sp.getHoatChat().toLowerCase() : "";
 
-        List<SanPham> ketQuaTimKiem = new ArrayList<>();
-        String tuKhoaLower = tuKhoa.toLowerCase();
-        for (SanPham sp : dsFake) {
-            if (sp.getTen().toLowerCase().contains(tuKhoaLower) || sp.getHoatChat().toLowerCase().contains(tuKhoaLower)) {
-                ketQuaTimKiem.add(sp);
+            if (id.contains(key) || ten.contains(key) || vietTat.contains(key) || hoatChat.contains(key)) {
+                ketQua.add(sp);
             }
         }
-        return ketQuaTimKiem;
+        return ketQua;
     }
 
+    public List<LoHang> layLoTheoSP(String maSP) {
+        if (maSP == null || maSP.trim().isEmpty()) {
+            return new ArrayList<>();
+        }
+        return daoSanPham.layLoTheoSP(maSP.trim());
+    }
+
+    public List<Object[]> timKiemSanPhamBan(String keyword) {
+        if (keyword == null) keyword = "";
+        return daoSanPham.timKiemSanPhamBan(keyword.trim());
+    }
+
+    public List<Object[]> layDanhSachChoBang() {
+        return daoSanPham.layDanhSachSanPhamChoBang();
+    }
+
+    // ============================================================
+    // PHẦN 2: VALIDATE NGHIỆP VỤ
+    // ============================================================
+
     public boolean kiemTraThongTinSP(SanPham sp) {
-        return true; 
+        if (sp == null) return false;
+        if (sp.getId() == null || sp.getId().trim().isEmpty()) return false;
+        if (sp.getTen() == null || sp.getTen().trim().isEmpty()) return false;
+        if (sp.getDonViDoCoBan() == null || sp.getDonViDoCoBan().trim().isEmpty()) return false;
+        if (sp.getThueVAT() < 0) return false;
+        return true;
     }
 
     public double tinhGiaBanTheoDonVi(String maSP, String donViMuonBan) {
-        return 5000.0; 
-    }
-    
-    public List<LoHang> layLoTheoSP(String maSP) {
-        return daoSanPham.layLoTheoSP(maSP); // Đã chuyển sang gọi DAO thật để lấy dữ liệu lô
+        if (maSP == null || maSP.trim().isEmpty()) return 0;
+        if (donViMuonBan == null || donViMuonBan.trim().isEmpty()) return 0;
+
+        List<Object[]> ds = daoSanPham.timKiemSanPhamBan(maSP.trim());
+        for (Object[] row : ds) {
+            String ma = String.valueOf(row[0]);
+            String donVi = String.valueOf(row[2]);
+
+            if (ma.equalsIgnoreCase(maSP.trim()) && donVi.equalsIgnoreCase(donViMuonBan.trim())) {
+                return ((Number) row[3]).doubleValue();
+            }
+        }
+        return 0;
     }
 
     // ============================================================
-    // PHẦN 2: CÁC HÀM MỚI (TƯƠNG TÁC DATABASE THẬT)
+    // PHẦN 3: CRUD SẢN PHẨM
     // ============================================================
 
-    /**
-     * Tự động sinh mã sản phẩm mới dựa trên DB (Fix lỗi trùng ID)
-     */
     public String taoMaMoi() {
         return daoSanPham.layMaSanPhamMoiNhat();
     }
 
-    /**
-     * Thêm sản phẩm mới vào SQL Server
-     */
-    public boolean themSP(String id, String danhMuc, String dang, String ten, String vietTat, String nsx, String hoatChat, double vat, String hamLuong, String moTa, String dvt) {
-        // Có thể thêm logic kiểm tra dữ liệu ở đây trước khi gọi DAO
+    public boolean themSP(String id, String danhMuc, String dang, String ten,
+                          String vietTat, String nsx, String hoatChat,
+                          double vat, String hamLuong, String moTa, String dvt) {
+
+        if (id == null || id.trim().isEmpty()) return false;
         if (ten == null || ten.trim().isEmpty()) return false;
-        return daoSanPham.themSanPhamNhanh(id, danhMuc, dang, ten, vietTat, nsx, hoatChat, vat, hamLuong, moTa, dvt);
+        if (dvt == null || dvt.trim().isEmpty()) return false;
+        if (vat < 0) return false;
+
+        return daoSanPham.themSanPhamNhanh(
+                id.trim(),
+                danhMuc,
+                dang,
+                ten.trim(),
+                vietTat != null ? vietTat.trim() : "",
+                nsx != null ? nsx.trim() : "",
+                hoatChat != null ? hoatChat.trim() : "",
+                vat,
+                hamLuong != null ? hamLuong.trim() : "",
+                moTa != null ? moTa.trim() : "",
+                dvt.trim()
+        );
     }
 
-    /**
-     * Cập nhật thông tin sản phẩm đã có trong DB
-     */
-    public boolean capNhatSP(String id, String danhMuc, String dang, String ten, String vietTat, String nsx, String hoatChat, double vat, String hamLuong, String moTa, String dvt) {
-        return daoSanPham.capNhatSanPhamNhanh(id, danhMuc, dang, ten, vietTat, nsx, hoatChat, vat, hamLuong, moTa, dvt);
+    public boolean capNhatSP(String id, String danhMuc, String dang, String ten,
+                             String vietTat, String nsx, String hoatChat,
+                             double vat, String hamLuong, String moTa, String dvt) {
+
+        if (id == null || id.trim().isEmpty()) return false;
+        if (ten == null || ten.trim().isEmpty()) return false;
+        if (dvt == null || dvt.trim().isEmpty()) return false;
+        if (vat < 0) return false;
+
+        return daoSanPham.capNhatSanPhamNhanh(
+                id.trim(),
+                danhMuc,
+                dang,
+                ten.trim(),
+                vietTat != null ? vietTat.trim() : "",
+                nsx != null ? nsx.trim() : "",
+                hoatChat != null ? hoatChat.trim() : "",
+                vat,
+                hamLuong != null ? hamLuong.trim() : "",
+                moTa != null ? moTa.trim() : "",
+                dvt.trim()
+        );
     }
 
-    /**
-     * Xóa vĩnh viễn sản phẩm khỏi Database
-     */
     public boolean xoaSP(String id) {
-        if (id == null || id.isEmpty()) return false;
-        return daoSanPham.xoaSanPham(id);
+        if (id == null || id.trim().isEmpty()) return false;
+        return daoSanPham.xoaSanPham(id.trim());
     }
-    
-    /**
-     * Lấy toàn bộ danh sách định dạng bảng để hiển thị giao diện
-     */
-    public List<Object[]> layDanhSachChoBang() {
-        return daoSanPham.layDanhSachSanPhamChoBang();
+
+    // ============================================================
+    // PHẦN 4: LÔ HÀNG / TỒN KHO
+    // ============================================================
+
+    public boolean capNhatSoLuongTon(String maLoHang, int soLuongMoi) {
+        if (maLoHang == null || maLoHang.trim().isEmpty()) return false;
+        if (soLuongMoi < 0) return false;
+        return daoSanPham.capNhatSoLuongTon(maLoHang.trim(), soLuongMoi);
     }
 }
