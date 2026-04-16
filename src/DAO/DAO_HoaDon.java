@@ -38,9 +38,9 @@ public class DAO_HoaDon {
                      "GROUP BY hd.id, hd.ngayLapHD, kh.hoVaTen, kh.sdt, hd.phuongThucThanhToan, hd.ghiChu " +
                      "ORDER BY hd.ngayLapHD DESC";
 
-        // Dùng try-with-resources để tự động đóng Connection (chống đơ máy)
-        try (Connection con = ConnectDB.getInstance().getConnection();
-             PreparedStatement pst = con.prepareStatement(sql);
+        // Đưa Connection ra ngoài để tránh bị đóng
+        Connection con = ConnectDB.getInstance().getConnection();
+        try (PreparedStatement pst = con.prepareStatement(sql);
              ResultSet rs = pst.executeQuery()) {
 
             DecimalFormat df = new DecimalFormat("#,###đ");
@@ -91,11 +91,52 @@ public class DAO_HoaDon {
         return ds;
     }
 
+    public HoaDon timHoaDonTheoMa(String maHD) {
+        HoaDon hd = null;
+        // Query lấy thông tin hóa đơn và tính tổng tiền từ bảng ChiTiet
+        String sql = "SELECT hd.*, kh.hoVaTen, " +
+                     "(SELECT SUM(ct.soLuong * dv.gia) FROM ChiTietHoaDon ct " +
+                     " JOIN DonViDoLuong dv ON ct.donViDoLuongId = dv.id AND ct.sanPhamId = dv.sanPhamId " +
+                     " WHERE ct.hoaDonId = hd.id) as tongTien " +
+                     "FROM HoaDon hd " +
+                     "LEFT JOIN KhachHang kh ON hd.khachHangId = kh.id " +
+                     "WHERE hd.id = ?";
+
+        // Đưa Connection ra ngoài
+        Connection con = ConnectDB.getInstance().getConnection();
+        try (PreparedStatement pst = con.prepareStatement(sql)) {
+            
+            pst.setString(1, maHD);
+            try (ResultSet rs = pst.executeQuery()) {
+                if (rs.next()) {
+                    hd = new HoaDon();
+                    // FIX: Sử dụng đúng hàm setId() và setNgayLapHD() từ Entity
+                    hd.setId(rs.getString("id"));
+                    if (rs.getTimestamp("ngayLapHD") != null) {
+                        hd.setNgayLapHD(rs.getTimestamp("ngayLapHD").toLocalDateTime());
+                    }
+                    
+                    // Khởi tạo đối tượng khách hàng
+                    KhachHang kh = new KhachHang();
+                    kh.setHoVaTen(rs.getString("hoVaTen") != null ? rs.getString("hoVaTen") : "Khách lẻ");
+                    hd.setKhachHangId(kh); // FIX: Đúng tên hàm setKhachHangId
+                    
+                    // Lưu tạm tổng tiền vào ghi chú hoặc xử lý riêng tùy logic của bạn
+                    hd.setGhiChu(String.valueOf(rs.getDouble("tongTien"))); 
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return hd;
+    }
+
     public boolean themHoaDon(HoaDon hd) {
         String sql = "INSERT INTO HoaDon (id, loaiHD, ghiChu, ngayLapHD, nhanVienId, khachHangId, khuyenMaiId, phuongThucThanhToan, hoaDonGocId) "
                    + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         int n = 0;
+        // Đã đúng, không có try(Connection) ở đây
         Connection con = ConnectDB.getInstance().getConnection();
 
         try (PreparedStatement pst = con.prepareStatement(sql)) {
@@ -137,6 +178,7 @@ public class DAO_HoaDon {
     public HoaDon layHoaDonTheoMa(String maHD) {
         HoaDon hd = null;
         String sql = "SELECT * FROM HoaDon WHERE id = ?";
+        // Đã đúng, không có try(Connection) ở đây
         Connection con = ConnectDB.getInstance().getConnection();
 
         try (PreparedStatement pst = con.prepareStatement(sql)) {
@@ -197,18 +239,14 @@ public class DAO_HoaDon {
     public ArrayList<HoaDon> getDanhSachHoaDonLuuNhap() {
         ArrayList<HoaDon> dsHoaDonNhap = new ArrayList<>();
         
-        // CÁCH FIX: Chỉnh lại câu SQL. Vì bảng không có cột TrangThai, 
-        // giả định bạn đang dùng cột ghiChu hoặc cột loaiHD để đánh dấu hóa đơn nháp.
-        // Hãy đổi 'ghiChu' thành 'loaiHD = ...' nếu hệ thống của bạn dùng Enum cho nháp.
         String sql = "SELECT * FROM HoaDon WHERE ghiChu = N'Lưu nháp'"; 
         
-        // 1. Dùng getInstance().getConnection() để tránh lỗi văng app
-        try (Connection con = ConnectDB.getInstance().getConnection(); 
-             Statement stmt = con.createStatement();
+        // Đưa Connection ra ngoài
+        Connection con = ConnectDB.getInstance().getConnection(); 
+        try (Statement stmt = con.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
             
             while (rs.next()) {
-                // 2. Map đúng tên cột trong Database theo các hàm ở trên
                 String maHD = rs.getString("id");
                 String maNV = rs.getString("nhanVienId");
                 String maKH = rs.getString("khachHangId");
@@ -216,7 +254,6 @@ public class DAO_HoaDon {
                 java.sql.Timestamp sqlTimestamp = rs.getTimestamp("ngayLapHD");
                 LocalDateTime ngayLap = (sqlTimestamp != null) ? sqlTimestamp.toLocalDateTime() : null;
                 
-                // 3. Khởi tạo bằng constructor rỗng và set thuộc tính
                 NhanVien nv = new NhanVien();
                 if(maNV != null) nv.setNhanVien(maNV); 
                 
@@ -245,8 +282,34 @@ public class DAO_HoaDon {
         return dsHoaDonNhap;
     }
 
+    public List<HoaDon> layTatCaHoaDon() {
+        List<HoaDon> dsHD = new java.util.ArrayList<>();
+        try {
+            // Đưa Connection ra ngoài và xóa Statement/ResultSet khỏi try để không bị auto close nếu có lỗi
+            java.sql.Connection con = ConnectDB.getInstance().getConnection();
+            String sql = "SELECT id, ngayLapHD FROM HoaDon"; 
+            
+            try(java.sql.PreparedStatement pst = con.prepareStatement(sql);
+                java.sql.ResultSet rs = pst.executeQuery()){
+                
+                while (rs.next()) {
+                    HoaDon hd = new HoaDon();
+                    hd.setId(rs.getString("id"));
+                    if (rs.getTimestamp("ngayLapHD") != null) {
+                        hd.setNgayLapHD(rs.getTimestamp("ngayLapHD").toLocalDateTime());
+                    }
+                    dsHD.add(hd);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return dsHD;
+    }
+
     public boolean capNhatTrangThai(String idHD, LoaiHoaDon loaiMoi) {
         String sql = "UPDATE HoaDon SET loaiHD = ? WHERE id = ?";
+        // Đã đúng, không có try(Connection) ở đây
         Connection con = ConnectDB.getInstance().getConnection();
 
         try (PreparedStatement pst = con.prepareStatement(sql)) {

@@ -161,7 +161,7 @@ public class DAO_LoHang {
     }
     public boolean themLoHang(LoHang lo) {
         String sql = "INSERT INTO LoHang(id, soLoHang, soLuongLoHang, gia, ngayNhap, ngayHetHan, trangThai, sanPhamId, khoHangId) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        Connection con = ConnectDB.getConnection();
+        Connection  con = ConnectDB.getInstance().getConnection();
         if (con == null) return false;
 
         try (PreparedStatement pst = con.prepareStatement(sql)) {

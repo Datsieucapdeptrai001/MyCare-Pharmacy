@@ -72,7 +72,7 @@ public class DAO_ThongKe {
                    + "WHERE hd.NgayLap BETWEEN ? AND ?";
 
         // Thay ConnectDB.getConnection() bằng class kết nối DB của bạn
-        try (Connection con = ConnectDB.getConnection(); 
+        try (Connection  con = ConnectDB.getInstance().getConnection(); 
              PreparedStatement pst = con.prepareStatement(sql)) {
             
             // Chuyển đổi LocalDateTime sang Timestamp để truyền vào SQL

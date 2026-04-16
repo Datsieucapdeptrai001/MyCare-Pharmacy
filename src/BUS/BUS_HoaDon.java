@@ -17,6 +17,15 @@ public class BUS_HoaDon {
     public List<Object[]> layDanhSachHoaDonChoBang() {
         return daoHD.layDanhSachHoaDonChoBang(); // daoHD là biến DAO_HoaDon bạn đã khai báo ở đầu file BUS
     }
+    public HoaDon getHoaDonTheoMa(String maHD) {
+        return daoHD.timHoaDonTheoMa(maHD); // Gọi xuống DAO để lấy dữ liệu thực
+    }
+    public HoaDon layHoaDonTheoMa(String maHD) {
+        return daoHD.layHoaDonTheoMa(maHD); // Gọi hàm đã có trong DAO_HoaDon
+    }
+    public List<HoaDon> layTatCaHoaDon() {
+        return daoHD.layTatCaHoaDon(); 
+    }
     public boolean thanhToan(HoaDon hd, List<ChiTietHoaDon> dsCTHD) {
         Connection con = ConnectDB.getInstance().getConnection();
         try {

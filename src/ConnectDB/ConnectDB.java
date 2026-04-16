@@ -2,6 +2,7 @@ package ConnectDB;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.SQLException;
 
 public class ConnectDB {
     private static Connection con = null;
@@ -41,12 +42,13 @@ public class ConnectDB {
         }
     }
 
-    public static Connection getConnection() {
+    public Connection getConnection() {
         try {
+            // Kiểm tra: Nếu biến connection chưa có, HOẶC đã bị đóng -> Kết nối lại
             if (con == null || con.isClosed()) {
-                instance.connect();
+                connect(); // Gọi lại hàm tạo kết nối (hàm chứa DriverManager.getConnection...) của bạn
             }
-        } catch (Exception e) {
+        } catch (SQLException e) {
             e.printStackTrace();
         }
         return con;

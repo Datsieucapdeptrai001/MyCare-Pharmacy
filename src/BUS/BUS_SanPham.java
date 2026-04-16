@@ -10,30 +10,10 @@ public class BUS_SanPham {
     private DAO_SanPham daoSanPham = new DAO_SanPham(); 
 
     public BUS_SanPham() { }
-
+    
     public List<SanPham> traCuuSanPham(String tuKhoa) {
-        List<SanPham> dsFake = new ArrayList<>();
-        SanPham sp1 = new SanPham();
-        sp1.setId("PRO2023-0001"); sp1.setTen("Vitamin C 1000mg"); sp1.setHoatChat("Ascorbic Acid"); sp1.setDonViDoCoBan("Viên"); sp1.setThueVAT(10);
-        
-        SanPham sp2 = new SanPham();
-        sp2.setId("PRO2023-0005"); sp2.setTen("Siro tăng sức đề kháng"); sp2.setHoatChat("Various"); sp2.setDonViDoCoBan("Chai"); sp2.setThueVAT(10);
-
-        SanPham sp3 = new SanPham();
-        sp3.setId("PRO2023-0006"); sp3.setTen("Paracetamol 500mg"); sp3.setHoatChat("Paracetamol"); sp3.setDonViDoCoBan("Vỉ"); sp3.setThueVAT(5);
-
-        dsFake.add(sp1); dsFake.add(sp2); dsFake.add(sp3);
-
-        if (tuKhoa == null || tuKhoa.trim().isEmpty()) return dsFake;
-
-        List<SanPham> ketQuaTimKiem = new ArrayList<>();
-        String tuKhoaLower = tuKhoa.toLowerCase();
-        for (SanPham sp : dsFake) {
-            if (sp.getTen().toLowerCase().contains(tuKhoaLower) || sp.getHoatChat().toLowerCase().contains(tuKhoaLower)) {
-                ketQuaTimKiem.add(sp);
-            }
-        }
-        return ketQuaTimKiem;
+        // Xóa dsFake và gọi thẳng xuống DAO
+        return daoSanPham.timKiemSanPhamDoiTra(tuKhoa);
     }
 
     public boolean kiemTraThongTinSP(SanPham sp) {

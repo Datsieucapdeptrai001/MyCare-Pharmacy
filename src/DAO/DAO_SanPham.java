@@ -27,8 +27,8 @@ public class DAO_SanPham {
                      "ISNULL(nhaSanXuat, 'Khác') AS nhaSanXuat, ISNULL(thueVAT, 0) AS thueVAT " +
                      "FROM SanPham";
         
-        try (Connection con = ConnectDB.getInstance().getConnection();
-             PreparedStatement pst = con.prepareStatement(sql);
+        Connection con = ConnectDB.getInstance().getConnection();
+        try (PreparedStatement pst = con.prepareStatement(sql);
              ResultSet rs = pst.executeQuery()) {
              
             while (rs.next()) {
@@ -228,7 +228,7 @@ public class DAO_SanPham {
     }
     public String layMaSanPhamMoiNhat() {
         String sql = "SELECT TOP 1 id FROM SanPham ORDER BY id DESC";
-        Connection con = ConnectDB.getConnection();
+        Connection  con = ConnectDB.getInstance().getConnection();
         try (PreparedStatement pst = con.prepareStatement(sql);
              ResultSet rs = pst.executeQuery()) {
             if (rs.next()) {
@@ -245,7 +245,7 @@ public class DAO_SanPham {
     // 2. Thêm Sản Phẩm mới thẳng vào DB
     public boolean themSanPhamNhanh(String id, String danhMuc, String dang, String ten, String vietTat, String nsx, String hoatChat, double vat, String hamLuong, String moTa, String dvt) {
         String sql = "INSERT INTO SanPham (id, danhMuc, dang, ten, tenVietTat, nhaSanXuat, hoatChat, thueVAT, hamLuong, moTa, donViDoCoBan, ngayTao) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, GETDATE())";
-        Connection con = ConnectDB.getConnection();
+        Connection  con = ConnectDB.getInstance().getConnection();
         try (PreparedStatement pst = con.prepareStatement(sql)) {
             pst.setString(1, id); pst.setString(2, danhMuc); pst.setString(3, dang);
             pst.setString(4, ten); pst.setString(5, vietTat); pst.setString(6, nsx);
@@ -259,7 +259,7 @@ public class DAO_SanPham {
     // 3. Cập nhật Sản Phẩm
     public boolean capNhatSanPhamNhanh(String id, String danhMuc, String dang, String ten, String vietTat, String nsx, String hoatChat, double vat, String hamLuong, String moTa, String dvt) {
         String sql = "UPDATE SanPham SET danhMuc=?, dang=?, ten=?, tenVietTat=?, nhaSanXuat=?, hoatChat=?, thueVAT=?, hamLuong=?, moTa=?, donViDoCoBan=? WHERE id=?";
-        Connection con = ConnectDB.getConnection();
+        Connection  con = ConnectDB.getInstance().getConnection();
         try (PreparedStatement pst = con.prepareStatement(sql)) {
             pst.setString(1, danhMuc); pst.setString(2, dang); pst.setString(3, ten);
             pst.setString(4, vietTat); pst.setString(5, nsx); pst.setString(6, hoatChat);
@@ -269,11 +269,41 @@ public class DAO_SanPham {
         } catch (Exception e) { e.printStackTrace(); }
         return false;
     }
-
+ // Thêm hàm này vào DAO_SanPham.java
+    public List<SanPham> timKiemSanPhamDoiTra(String tuKhoa) {
+        List<SanPham> ds = new ArrayList<>();
+        // Tìm theo tên hoặc mã SP
+        String sql = "SELECT * FROM SanPham WHERE ten LIKE ? OR id LIKE ?";
+        
+        Connection con = ConnectDB.getInstance().getConnection();
+        try (PreparedStatement pst = con.prepareStatement(sql)) {
+            
+            pst.setString(1, "%" + tuKhoa + "%");
+            pst.setString(2, "%" + tuKhoa + "%");
+            ResultSet rs = pst.executeQuery();
+            
+            while (rs.next()) {
+                SanPham sp = new SanPham();
+                sp.setId(rs.getString("id"));
+                sp.setTen(rs.getString("ten"));
+                
+                // Ép kiểu danh mục từ CSDL sang Enum để giao diện nhận diện được màu
+                String danhMucStr = rs.getString("danhMuc");
+                if (danhMucStr != null && !danhMucStr.isEmpty()) {
+                    sp.setDanhMuc(Enumeration.DanhMucSanPham.valueOf(danhMucStr));
+                }
+                
+                ds.add(sp);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return ds;
+    }
     // 4. Xóa Sản Phẩm
     public boolean xoaSanPham(String id) {
         String sql = "DELETE FROM SanPham WHERE id=?";
-        Connection con = ConnectDB.getConnection();
+        Connection  con = ConnectDB.getInstance().getConnection();
         try (PreparedStatement pst = con.prepareStatement(sql)) {
             pst.setString(1, id);
             return pst.executeUpdate() > 0;

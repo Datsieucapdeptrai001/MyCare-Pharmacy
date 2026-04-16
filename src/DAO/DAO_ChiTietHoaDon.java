@@ -23,7 +23,7 @@ public class DAO_ChiTietHoaDon {
         ResultSet rs = null;
 
         try {
-            con = ConnectDB.getConnection(); // Lấy kết nối CSDL
+        	con = ConnectDB.getInstance().getConnection();
             
             // Câu SQL JOIN 3 bảng để lấy đủ: Tên SP, ĐVT, Số Lượng, Giá, VAT
             String sql = "SELECT sp.ten AS TenSP, dv.ten AS DVT, ct.soLuong AS SL, " +
