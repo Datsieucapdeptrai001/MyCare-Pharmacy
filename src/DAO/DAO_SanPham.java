@@ -298,4 +298,24 @@ public class DAO_SanPham {
         } catch (Exception e) { e.printStackTrace(); }
         return false;
     }
+
+    // ===========================================
+    // HÀM MỚI: LẤY DANH SÁCH TÊN SẢN PHẨM CHO COMBOBOX (GIAO DIỆN KHUYẾN MÃI)
+    // ===========================================
+    public List<String> layDanhSachTenSanPham() {
+        List<String> dsTenSP = new ArrayList<>();
+        Connection con = ConnectDB.getInstance().getConnection();
+        if (con == null) return dsTenSP;
+        
+        String sql = "SELECT ten FROM SanPham";
+        try (Statement stmt = con.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                dsTenSP.add(rs.getString("ten"));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return dsTenSP;
+    }
 }
