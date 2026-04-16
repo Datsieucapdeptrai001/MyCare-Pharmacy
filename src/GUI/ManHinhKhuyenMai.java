@@ -1,10 +1,15 @@
 package GUI;
 
+import BUS.BUS_KhuyenMai;
+import Entity.DieuKienKhuyenMai;
+import Entity.HinhThucKhuyenMai;
+import Entity.KhuyenMai;
+import Enumeration.DoiTuongApDung;
+import Enumeration.LoaiHinhThuc;
 import Utils.MenuIcon;
 import Utils.ModernDatePicker;
 import Utils.ModernScrollBarUI;
 import Utils.UIHelper;
-import ConnectDB.ConnectDB;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -16,11 +21,10 @@ import javax.swing.table.JTableHeader;
 import javax.swing.table.TableRowSorter;
 import java.awt.*;
 import java.awt.event.*;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -31,9 +35,6 @@ import java.util.Map;
 
 public class ManHinhKhuyenMai extends JPanel {
 
-    // ==========================================
-    // 1. MÀU SẮC & PHÔNG CHỮ CHUẨN DESIGN
-    // ==========================================
     private final Color COLOR_BG = Color.decode("#F4F6F9");
     private final Color COLOR_CARD = Color.decode("#FFFFFF");
     private final Color COLOR_PRIMARY = Color.decode("#1F3A52"); 
@@ -50,9 +51,8 @@ public class ManHinhKhuyenMai extends JPanel {
     private final Font FONT_REGULAR = new Font("Segoe UI", Font.PLAIN, 14);
     private final Font FONT_SMALL = new Font("Segoe UI", Font.PLAIN, 12);
 
-    // ==========================================
-    // 2. CÁC BIẾN GIAO DIỆN
-    // ==========================================
+    private BUS_KhuyenMai busKhuyenMai; 
+
     private DefaultTableModel tableModel;
     private TableRowSorter<DefaultTableModel> rowSorter;
     private JTable tblKhuyenMai;
@@ -70,14 +70,11 @@ public class ManHinhKhuyenMai extends JPanel {
 
     private JTextField txtTienMua, txtDiemThuong, txtTienDoi, txtDiemToiThieu;
 
-    // ==========================================
-    // 3. KHỞI TẠO
-    // ==========================================
     public ManHinhKhuyenMai() {
         System.setProperty("awt.useSystemAAFontSettings", "on");
         System.setProperty("swing.aatext", "true");
 
-        ConnectDB.getInstance().connect();
+        busKhuyenMai = new BUS_KhuyenMai(); 
         
         this.setBackground(COLOR_BG);
         this.setLayout(new BorderLayout());
@@ -97,9 +94,6 @@ public class ManHinhKhuyenMai extends JPanel {
         loadCauHinhTichDiem();
     }
 
-    // ==========================================
-    // 4. XÂY DỰNG BỐ CỤC CHÍNH
-    // ==========================================
     private JPanel createMainContent() {
         JPanel pnlMain = new JPanel();
         pnlMain.setLayout(new BoxLayout(pnlMain, BoxLayout.Y_AXIS));
@@ -149,6 +143,7 @@ public class ManHinhKhuyenMai extends JPanel {
                 filterButtons.get(0).setBorderColor(COLOR_INFO);
             }
             if(rowSorter != null) rowSorter.setRowFilter(null);
+            loadDataFromDatabase();
             updateKPI();
         });
 
@@ -294,25 +289,14 @@ public class ManHinhKhuyenMai extends JPanel {
                 int tienDoi = Integer.parseInt(txtTienDoi.getText().trim());
                 int diemToiThieu = Integer.parseInt(txtDiemToiThieu.getText().trim());
 
-                Connection con = ConnectDB.getInstance().getConnection();
-                String createTableSQL = "IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='CauHinhTichDiem' and xtype='U') " +
-                                        "CREATE TABLE CauHinhTichDiem (" +
-                                        "tienMua INT, diemThuong INT, tienDoiMotDiem INT, diemToiThieu INT)";
-                con.createStatement().execute(createTableSQL);
-
-                String sql = "IF EXISTS (SELECT 1 FROM CauHinhTichDiem) " +
-                             "UPDATE CauHinhTichDiem SET tienMua=?, diemThuong=?, tienDoiMotDiem=?, diemToiThieu=? " +
-                             "ELSE INSERT INTO CauHinhTichDiem (tienMua, diemThuong, tienDoiMotDiem, diemToiThieu) VALUES (?, ?, ?, ?)";
-                PreparedStatement pst = con.prepareStatement(sql);
-                pst.setInt(1, tienMua); pst.setInt(2, diemThuong); pst.setInt(3, tienDoi); pst.setInt(4, diemToiThieu);
-                pst.setInt(5, tienMua); pst.setInt(6, diemThuong); pst.setInt(7, tienDoi); pst.setInt(8, diemToiThieu);
-                pst.executeUpdate();
-                
-                JOptionPane.showMessageDialog(this, "Đã cập nhật hệ thống tích điểm thành công!\nMàn hình bán hàng đã có thể sử dụng cấu hình mới.", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+                boolean success = busKhuyenMai.luuCauHinhTichDiem(tienMua, diemThuong, tienDoi, diemToiThieu);
+                if (success) {
+                    JOptionPane.showMessageDialog(this, "Đã cập nhật hệ thống tích điểm thành công!\nMàn hình bán hàng đã có thể sử dụng cấu hình mới.", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+                } else {
+                    JOptionPane.showMessageDialog(this, "Lỗi cập nhật cấu hình tích điểm vào CSDL!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+                }
             } catch (NumberFormatException ex) {
                 JOptionPane.showMessageDialog(this, "Vui lòng chỉ nhập số vào các ô cấu hình!", "Cảnh báo", JOptionPane.WARNING_MESSAGE);
-            } catch (Exception ex) {
-                JOptionPane.showMessageDialog(this, "Lỗi Database: " + ex.getMessage());
             }
         });
         
@@ -392,17 +376,12 @@ public class ManHinhKhuyenMai extends JPanel {
 
     private void loadCauHinhTichDiem() {
         try {
-            Connection con = ConnectDB.getInstance().getConnection();
-            String createTableSQL = "IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='CauHinhTichDiem' and xtype='U') " +
-                                    "CREATE TABLE CauHinhTichDiem (tienMua INT, diemThuong INT, tienDoiMotDiem INT, diemToiThieu INT)";
-            con.createStatement().execute(createTableSQL);
-            
-            ResultSet rs = con.createStatement().executeQuery("SELECT * FROM CauHinhTichDiem");
-            if(rs.next()) {
-                txtTienMua.setText(rs.getString("tienMua"));
-                txtDiemThuong.setText(rs.getString("diemThuong"));
-                txtTienDoi.setText(rs.getString("tienDoiMotDiem"));
-                txtDiemToiThieu.setText(rs.getString("diemToiThieu"));
+            int[] cauHinh = busKhuyenMai.layCauHinhTichDiem();
+            if (cauHinh != null && cauHinh.length == 4) {
+                txtTienMua.setText(String.valueOf(cauHinh[0]));
+                txtDiemThuong.setText(String.valueOf(cauHinh[1]));
+                txtTienDoi.setText(String.valueOf(cauHinh[2]));
+                txtDiemToiThieu.setText(String.valueOf(cauHinh[3]));
             }
         } catch (Exception ignored) {}
     }
@@ -687,21 +666,14 @@ public class ManHinhKhuyenMai extends JPanel {
             if (row >= 0) {
                 int confirm = JOptionPane.showConfirmDialog(ManHinhKhuyenMai.this, "Bạn có chắc muốn xóa chương trình này?", "Xác nhận", JOptionPane.YES_NO_OPTION);
                 if (confirm == JOptionPane.YES_OPTION) {
-                    try {
-                        Connection con = ConnectDB.getInstance().getConnection();
-                        con.createStatement().executeUpdate("DELETE FROM HinhThucKhuyenMai WHERE khuyenMaiId='" + currentId + "'");
-                        con.createStatement().executeUpdate("DELETE FROM DieuKienKhuyenMai WHERE khuyenMaiId='" + currentId + "'");
-                        
-                        PreparedStatement st = con.prepareStatement("DELETE FROM KhuyenMai WHERE id=?");
-                        st.setString(1, currentId);
-                        st.executeUpdate();
-                        
+                    boolean success = busKhuyenMai.xoaKhuyenMaiToanDien(currentId);
+                    if (success) {
                         tableModel.removeRow(row);
                         pnlDetail.setVisible(false);
                         updateKPI();
                         JOptionPane.showMessageDialog(ManHinhKhuyenMai.this, "Đã xóa thành công!");
-                    } catch (Exception ex) {
-                        JOptionPane.showMessageDialog(ManHinhKhuyenMai.this, "Lỗi khi xóa CSDL: " + ex.getMessage());
+                    } else {
+                        JOptionPane.showMessageDialog(ManHinhKhuyenMai.this, "Lỗi khi xóa CSDL!", "Lỗi", JOptionPane.ERROR_MESSAGE);
                     }
                 }
             }
@@ -777,9 +749,6 @@ public class ManHinhKhuyenMai extends JPanel {
     }
 
 
-    // ==========================================
-    // 5. DIALOG THÊM / SỬA KHUYẾN MẠI
-    // ==========================================
     private class PromoDialog {
         private final JDialog dialog;
         private final FloatingField fldMaKM, fldName, fldMinOrder;
@@ -846,7 +815,6 @@ public class ManHinhKhuyenMai extends JPanel {
             gbc.gridwidth = 2; gbc.gridx = 0; gbc.gridy = 2; 
             pnlBody.add(labeled("Loại hình thức", cbType), gbc);
             
-            // XU LÝ KHUNG ĐỒNG BỘ: PANEL GIẢM GIÁ
             pnlGiamGia = new JPanel(new BorderLayout(0, 10)); 
             pnlGiamGia.setOpaque(false);
             pnlGiamGia.setBorder(new EmptyBorder(15, 5, 5, 5));
@@ -898,7 +866,6 @@ public class ManHinhKhuyenMai extends JPanel {
             pnlQuickWrapper.add(pnlQuickPercents, BorderLayout.CENTER);
             pnlGiamGia.add(pnlQuickWrapper, BorderLayout.CENTER);
             
-            // XU LÝ KHUNG ĐỒNG BỘ: PANEL SẢN PHẨM KÈM THEO
             pnlTangPham = new JPanel(new BorderLayout(0, 10));
             pnlTangPham.setOpaque(false);
             pnlTangPham.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(COLOR_BORDER), "Cấu hình Mua X tặng Y"));
@@ -928,7 +895,6 @@ public class ManHinhKhuyenMai extends JPanel {
             
             pnlTangPham.add(pnlFields, BorderLayout.NORTH); 
 
-            // BỌC CẢ HAI VÀO CARDLAYOUT ĐỂ ĐỒNG BỘ KÍCH THƯỚC (GIỮ CỐ ĐỊNH)
             CardLayout cardLayout = new CardLayout();
             JPanel pnlDynamicOptions = new JPanel(cardLayout);
             pnlDynamicOptions.setOpaque(false);
@@ -938,7 +904,6 @@ public class ManHinhKhuyenMai extends JPanel {
             gbc.gridx = 0; gbc.gridy = 3; gbc.gridwidth = 2;
             pnlBody.add(pnlDynamicOptions, gbc);
             
-            // XỬ LÝ KHUNG ĐIỀU KIỆN
             CardLayout condLayout = new CardLayout();
             pnlDieuKienWrapper = new JPanel(condLayout);
             pnlDieuKienWrapper.setOpaque(false);
@@ -1032,131 +997,84 @@ public class ManHinhKhuyenMai extends JPanel {
                 String ngayKetThucStr = dpEnd.getText();
                 
                 try {
-                    SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
-                    Date start = sdf.parse(ngayBatDauStr);
-                    Date end = sdf.parse(ngayKetThucStr);
-                    if(end.before(start)) {
+                    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+                    LocalDate startD = LocalDate.parse(ngayBatDauStr, formatter);
+                    LocalDate endD = LocalDate.parse(ngayKetThucStr, formatter);
+                    
+                    LocalDateTime start = startD.atStartOfDay();
+                    LocalDateTime end = endD.atTime(LocalTime.MAX);
+                    
+                    if(!busKhuyenMai.kiemTraThoiGian(start, end)) {
                         JOptionPane.showMessageDialog(dialog, "Ngày kết thúc không được nhỏ hơn ngày bắt đầu!", "Cảnh báo", JOptionPane.WARNING_MESSAGE);
                         return;
                     }
+
+                    KhuyenMai km = new KhuyenMai(id, ten, ten, LocalDateTime.now(), start, end);
+                    HinhThucKhuyenMai ht = new HinhThucKhuyenMai();
+                    ht.setId("HT" + id);
+                    ht.setKhuyenMaiId(km);
                     
-                    Connection con = ConnectDB.getInstance().getConnection();
-                    SimpleDateFormat sqlFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-                    
-                    boolean hasGiftColumns = true;
-                    try {
-                        con.createStatement().executeQuery("SELECT spYeuCau, slYeuCau, spTang, slTang FROM HinhThucKhuyenMai WHERE 1=0");
-                    } catch (Exception ex) {
-                        hasGiftColumns = false;
+                    DieuKienKhuyenMai dk = null;
+                    double donToiThieu = Double.parseDouble(donToiThieuStr);
+                    if (donToiThieu > 0) {
+                        dk = new DieuKienKhuyenMai("DK" + id, "GIA_TRI", "HOA_DON", donToiThieu, id);
                     }
 
-                    if (!isEditMode) { 
-                        String sql1 = "INSERT INTO KhuyenMai (id, tenKhuyenMai, ngayTao, ngayBatDau, ngayKetThuc) VALUES (?, ?, GETDATE(), ?, ?)";
-                        PreparedStatement st1 = con.prepareStatement(sql1);
-                        st1.setString(1, id); st1.setString(2, ten); st1.setString(3, sqlFormat.format(start)); st1.setString(4, sqlFormat.format(end));
-                        st1.executeUpdate();
+                    if (cbType.getSelectedIndex() == 0) {
+                        String mucGiamStr = fldMucGiam.getTextField().getText().trim();
+                        if(mucGiamStr.isEmpty() || mucGiamStr.startsWith("VD:")) mucGiamStr = "0";
                         
-                        if (cbType.getSelectedIndex() == 0) {
-                            String mucGiamStr = fldMucGiam.getTextField().getText().trim();
-                            if(mucGiamStr.isEmpty() || mucGiamStr.startsWith("VD:")) mucGiamStr = "0";
-                            
-                            String sql2 = "INSERT INTO HinhThucKhuyenMai (id, loaiHinhThuc, doiTuongApDung, giaTri, khuyenMaiId) VALUES (?, 'GIAM_THEO_PHAN_TRAM', ?, ?, ?)";
-                            PreparedStatement st2 = con.prepareStatement(sql2);
-                            st2.setString(1, "HT" + id);
-                            st2.setString(2, cbTarget.getSelectedIndex() == 0 ? "HOA_DON" : "SAN_PHAM");
-                            st2.setDouble(3, Double.parseDouble(mucGiamStr));
-                            st2.setString(4, id);
-                            st2.executeUpdate();
-                            
-                            String sql3 = "INSERT INTO DieuKienKhuyenMai (id, loaiDieuKien, doiTuongApDung, giaTri, khuyenMaiId) VALUES (?, 'GIA_TRI', 'HOA_DON', ?, ?)";
-                            PreparedStatement st3 = con.prepareStatement(sql3);
-                            st3.setString(1, "DK" + id); st3.setDouble(2, Double.parseDouble(donToiThieuStr)); st3.setString(3, id);
-                            st3.executeUpdate();
-                        } else {
-                            if(hasGiftColumns) {
-                                String spMua = fldMaSPMua.getTextField().getText().trim();
-                                int slMua = 1; try { slMua = Integer.parseInt(fldSoLuongMua.getTextField().getText().trim()); } catch(Exception ignored){}
-                                String spTang = fldMaSPTang.getTextField().getText().trim();
-                                int slTang = 1; try { slTang = Integer.parseInt(fldSoLuongTang.getTextField().getText().trim()); } catch(Exception ignored){}
-                                
-                                String sql2 = "INSERT INTO HinhThucKhuyenMai (id, loaiHinhThuc, doiTuongApDung, giaTri, khuyenMaiId, spYeuCau, slYeuCau, spTang, slTang) VALUES (?, 'SAN_PHAM_KEM_THEO', 'SAN_PHAM', 0, ?, ?, ?, ?, ?)";
-                                PreparedStatement st2 = con.prepareStatement(sql2);
-                                st2.setString(1, "HT" + id); st2.setString(2, id);
-                                st2.setString(3, spMua); st2.setInt(4, slMua);
-                                st2.setString(5, spTang); st2.setInt(6, slTang);
-                                st2.executeUpdate();
-                            } else {
-                                String sql2 = "INSERT INTO HinhThucKhuyenMai (id, loaiHinhThuc, doiTuongApDung, giaTri, khuyenMaiId) VALUES (?, 'SAN_PHAM_KEM_THEO', 'SAN_PHAM', 0, ?)";
-                                PreparedStatement st2 = con.prepareStatement(sql2);
-                                st2.setString(1, "HT" + id); st2.setString(2, id);
-                                st2.executeUpdate();
-                            }
-                        }
-                        JOptionPane.showMessageDialog(dialog, "Tạo chương trình khuyến mại thành công!", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+                        ht.setLoaiHinhThuc(LoaiHinhThuc.GIAM_THEO_PHAN_TRAM);
+                        ht.setDoiTuongApDung(cbTarget.getSelectedIndex() == 0 ? DoiTuongApDung.HOA_DON : DoiTuongApDung.SAN_PHAM);
+                        ht.setGiaTri(Double.parseDouble(mucGiamStr));
+                    } else {
+                        String spMua = fldMaSPMua.getTextField().getText().trim();
+                        int slMua = 1; try { slMua = Integer.parseInt(fldSoLuongMua.getTextField().getText().trim()); } catch(Exception ignored){}
+                        String spTang = fldMaSPTang.getTextField().getText().trim();
+                        int slTang = 1; try { slTang = Integer.parseInt(fldSoLuongTang.getTextField().getText().trim()); } catch(Exception ignored){}
+                        
+                        ht.setLoaiHinhThuc(LoaiHinhThuc.SAN_PHAM_KEM_THEO);
+                        ht.setDoiTuongApDung(DoiTuongApDung.SAN_PHAM);
+                        ht.setGiaTri(0);
+                        ht.setSpYeuCau(spMua);
+                        ht.setSlYeuCau(slMua);
+                        ht.setSpTang(spTang);
+                        ht.setSlTang(slTang);
+                        
+                        dk = null;
+                    }
+
+                    boolean success = false;
+                    if (!isEditMode) { 
+                        success = busKhuyenMai.themKhuyenMaiToanDien(km, ht, dk);
+                        if (success) JOptionPane.showMessageDialog(dialog, "Tạo chương trình khuyến mại thành công!", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
                     } else { 
-                        String updateSql1 = "UPDATE KhuyenMai SET tenKhuyenMai=?, ngayBatDau=?, ngayKetThuc=? WHERE id=?";
-                        PreparedStatement ust1 = con.prepareStatement(updateSql1);
-                        ust1.setString(1, ten); ust1.setString(2, sqlFormat.format(start)); ust1.setString(3, sqlFormat.format(end)); ust1.setString(4, id);
-                        ust1.executeUpdate();
-
-                        if (cbType.getSelectedIndex() == 0) {
-                            String mucGiamStr = fldMucGiam.getTextField().getText().trim();
-                            if(mucGiamStr.isEmpty() || mucGiamStr.startsWith("VD:")) mucGiamStr = "0";
-                            
-                            String updateSql2 = hasGiftColumns 
-                                ? "UPDATE HinhThucKhuyenMai SET loaiHinhThuc='GIAM_THEO_PHAN_TRAM', doiTuongApDung=?, giaTri=?, spYeuCau=NULL, slYeuCau=NULL, spTang=NULL, slTang=NULL WHERE khuyenMaiId=?"
-                                : "UPDATE HinhThucKhuyenMai SET loaiHinhThuc='GIAM_THEO_PHAN_TRAM', doiTuongApDung=?, giaTri=? WHERE khuyenMaiId=?";
-                            PreparedStatement ust2 = con.prepareStatement(updateSql2);
-                            ust2.setString(1, cbTarget.getSelectedIndex() == 0 ? "HOA_DON" : "SAN_PHAM");
-                            ust2.setDouble(2, Double.parseDouble(mucGiamStr));
-                            ust2.setString(3, id);
-                            ust2.executeUpdate();
-
-                            String updateSql3 = "IF EXISTS (SELECT 1 FROM DieuKienKhuyenMai WHERE khuyenMaiId=?) UPDATE DieuKienKhuyenMai SET giaTri=? WHERE khuyenMaiId=? ELSE INSERT INTO DieuKienKhuyenMai (id, loaiDieuKien, doiTuongApDung, giaTri, khuyenMaiId) VALUES (?, 'GIA_TRI', 'HOA_DON', ?, ?)";
-                            PreparedStatement ust3 = con.prepareStatement(updateSql3);
-                            ust3.setString(1, id); ust3.setDouble(2, Double.parseDouble(donToiThieuStr)); ust3.setString(3, id);
-                            ust3.setString(4, "DK"+id); ust3.setDouble(5, Double.parseDouble(donToiThieuStr)); ust3.setString(6, id);
-                            ust3.executeUpdate();
-                        } else {
-                            if(hasGiftColumns) {
-                                String spMua = fldMaSPMua.getTextField().getText().trim();
-                                int slMua = 1; try { slMua = Integer.parseInt(fldSoLuongMua.getTextField().getText().trim()); } catch(Exception ignored){}
-                                String spTang = fldMaSPTang.getTextField().getText().trim();
-                                int slTang = 1; try { slTang = Integer.parseInt(fldSoLuongTang.getTextField().getText().trim()); } catch(Exception ignored){}
-
-                                String updateSql2 = "UPDATE HinhThucKhuyenMai SET loaiHinhThuc='SAN_PHAM_KEM_THEO', doiTuongApDung='SAN_PHAM', giaTri=0, spYeuCau=?, slYeuCau=?, spTang=?, slTang=? WHERE khuyenMaiId=?";
-                                PreparedStatement ust2 = con.prepareStatement(updateSql2);
-                                ust2.setString(1, spMua); ust2.setInt(2, slMua); ust2.setString(3, spTang); ust2.setInt(4, slTang); ust2.setString(5, id);
-                                ust2.executeUpdate();
-                            } else {
-                                String updateSql2 = "UPDATE HinhThucKhuyenMai SET loaiHinhThuc='SAN_PHAM_KEM_THEO', doiTuongApDung='SAN_PHAM', giaTri=0 WHERE khuyenMaiId=?";
-                                PreparedStatement ust2 = con.prepareStatement(updateSql2);
-                                ust2.setString(1, id);
-                                ust2.executeUpdate();
-                            }
-                            con.createStatement().executeUpdate("DELETE FROM DieuKienKhuyenMai WHERE khuyenMaiId='" + id + "'");
-                        }
-                        JOptionPane.showMessageDialog(dialog, "Cập nhật thành công!", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+                        success = busKhuyenMai.capNhatKhuyenMaiToanDien(km, ht, dk);
+                        if (success) JOptionPane.showMessageDialog(dialog, "Cập nhật thành công!", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
                     }
                     
-                    dialog.dispose();
-                    loadDataFromDatabase();
-                    
-                    final String safeId = id;
-                    if (isEditMode && pnlDetail.isVisible() && lblDetId.getText().equals(safeId)) {
-                        SwingUtilities.invokeLater(() -> {
-                            for(int i=0; i<tableModel.getRowCount(); i++) {
-                                if(tableModel.getValueAt(i, 0).toString().equals(safeId)) {
-                                    updateDetailSidebar(i);
-                                    break;
+                    if (success) {
+                        dialog.dispose();
+                        loadDataFromDatabase();
+                        
+                        final String safeId = id;
+                        if (isEditMode && pnlDetail.isVisible() && lblDetId.getText().equals(safeId)) {
+                            SwingUtilities.invokeLater(() -> {
+                                for(int i=0; i<tableModel.getRowCount(); i++) {
+                                    if(tableModel.getValueAt(i, 0).toString().equals(safeId)) {
+                                        updateDetailSidebar(i);
+                                        break;
+                                    }
                                 }
-                            }
-                        });
+                            });
+                        }
+                    } else {
+                        JOptionPane.showMessageDialog(dialog, "Lưu thất bại! Vui lòng kiểm tra lại CSDL.", "Lỗi", JOptionPane.ERROR_MESSAGE);
                     }
 
                 } catch (Exception ex) {
                     ex.printStackTrace();
-                    JOptionPane.showMessageDialog(dialog, "Lỗi SQL: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+                    JOptionPane.showMessageDialog(dialog, "Lỗi dữ liệu: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
                 }
             });
 
@@ -1182,10 +1100,6 @@ public class ManHinhKhuyenMai extends JPanel {
         panel.add(component, BorderLayout.CENTER);
         return panel;
     }
-
-    // ==========================================
-    // 6. CÁC CLASS UI CUSTOM 
-    // ==========================================
 
     class TextFieldWithPlaceholder extends JTextField {
         private String placeholder;
@@ -1449,94 +1363,17 @@ public class ManHinhKhuyenMai extends JPanel {
         tableModel.setRowCount(0);
         
         try {
-            Connection con = ConnectDB.getInstance().getConnection();
+            List<Object[]> listData = busKhuyenMai.layDanhSachKhuyenMaiChoTable();
             
-            boolean hasGiftColumns = true;
-            try {
-                con.createStatement().executeQuery("SELECT spTang, slTang FROM HinhThucKhuyenMai WHERE 1=0");
-            } catch (Exception e) {
-                hasGiftColumns = false;
-            }
-
-            String sql;
-            if (hasGiftColumns) {
-                sql = "SELECT k.id, k.tenKhuyenMai, k.ngayBatDau, k.ngayKetThuc, " +
-                      "h.loaiHinhThuc, h.giaTri as mucGiam, h.spTang, h.slTang, d.giaTri as donToiThieu, h.doiTuongApDung " +
-                      "FROM KhuyenMai k " +
-                      "LEFT JOIN HinhThucKhuyenMai h ON k.id = h.khuyenMaiId " +
-                      "LEFT JOIN DieuKienKhuyenMai d ON k.id = d.khuyenMaiId";
-            } else {
-                sql = "SELECT k.id, k.tenKhuyenMai, k.ngayBatDau, k.ngayKetThuc, " +
-                      "h.loaiHinhThuc, h.giaTri as mucGiam, d.giaTri as donToiThieu, h.doiTuongApDung " +
-                      "FROM KhuyenMai k " +
-                      "LEFT JOIN HinhThucKhuyenMai h ON k.id = h.khuyenMaiId " +
-                      "LEFT JOIN DieuKienKhuyenMai d ON k.id = d.khuyenMaiId";
-            }
-            
-            PreparedStatement stmt = con.prepareStatement(sql);
-            ResultSet rs = stmt.executeQuery();
-            
-            Date currentDate = new Date();
-
-            while (rs.next()) {
-                String id = rs.getString("id");
-                String ten = rs.getString("tenKhuyenMai");
-                java.sql.Timestamp startDB = rs.getTimestamp("ngayBatDau");
-                java.sql.Timestamp endDB = rs.getTimestamp("ngayKetThuc");
-                String hinhThucDB = rs.getString("loaiHinhThuc");
-                double mucGiamDB = rs.getDouble("mucGiam");
-                
-                double donToiThieuDB = 0;
-                if(rs.getObject("donToiThieu") != null) donToiThieuDB = rs.getDouble("donToiThieu");
-
-                String hinhThucUI = "Giảm phần trăm (%)";
-                String mucGiamUI = "";
-                String donToiThieuUI = "";
-                String doiTuongUI = "";
-                
-                if ("SAN_PHAM_KEM_THEO".equals(hinhThucDB)) {
-                    hinhThucUI = "Sản phẩm kèm theo";
-                    String spTang = "SP";
-                    int slTang = 1;
-                    if (hasGiftColumns) {
-                        spTang = rs.getString("spTang");
-                        slTang = rs.getInt("slTang");
-                    }
-                    mucGiamUI = "Tặng " + slTang + " " + (spTang != null ? spTang : "SP");
-                    donToiThieuUI = "Mọi đơn hàng";
-                    doiTuongUI = "Tất cả";
-                } else {
-                    mucGiamUI = mucGiamDB + "%";
-                    donToiThieuUI = donToiThieuDB > 0 ? String.format("%,.0f đ", donToiThieuDB) : "Không yêu cầu";
-                    doiTuongUI = rs.getString("doiTuongApDung") != null && rs.getString("doiTuongApDung").equals("HOA_DON") ? "Hóa đơn" : "Sản phẩm";
+            if (listData != null) {
+                for (Object[] row : listData) {
+                    tableModel.addRow(row);
                 }
-                
-                String thoiGianUI = "N/A";
-                String trangThaiUI = "Tạm dừng";
-                boolean isToggleOn = false;
-
-                if (startDB != null && endDB != null) {
-                    thoiGianUI = new SimpleDateFormat("dd/MM/yyyy").format(startDB) + " - " + new SimpleDateFormat("dd/MM/yyyy").format(endDB);
-                    
-                    if (currentDate.before(startDB)) {
-                        trangThaiUI = "Sắp diễn ra";
-                        isToggleOn = true;
-                    } else if (currentDate.after(endDB)) {
-                        trangThaiUI = "Đã kết thúc";
-                        isToggleOn = false;
-                    } else {
-                        trangThaiUI = "Đang hoạt động";
-                        isToggleOn = true;
-                    }
-                }
-                
-                tableModel.addRow(new Object[]{ 
-                    id, ten, hinhThucUI, mucGiamUI, donToiThieuUI, doiTuongUI, thoiGianUI, trangThaiUI, "Xem", isToggleOn 
-                });
             }
         } catch (Exception ex) { 
             ex.printStackTrace();
         }
+        
         tableModel.fireTableDataChanged();
         updateKPI();
     }
@@ -1576,4 +1413,4 @@ public class ManHinhKhuyenMai extends JPanel {
             }
         }
     }
-} 
+}

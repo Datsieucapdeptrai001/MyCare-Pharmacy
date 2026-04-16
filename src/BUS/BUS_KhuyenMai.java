@@ -7,8 +7,10 @@ import Entity.KhuyenMai;
 import Entity.DieuKienKhuyenMai;
 import Entity.HinhThucKhuyenMai;
 import Enumeration.*;
+
 import java.util.List;
 import java.time.LocalDateTime;
+
 public class BUS_KhuyenMai {
     private DAO_KhuyenMai daoKhuyenMai;
     private DAO_DieuKienKhuyenMai daoDieuKienKhuyenMai;
@@ -20,9 +22,6 @@ public class BUS_KhuyenMai {
         this.daoHinhThucKhuyenMai = new DAO_HinhThucKhuyenMai();
     }
 
-    // ===========================================
-    // QUẢN LÝ TÍCH ĐIỂM
-    // ===========================================
     public int[] layCauHinhTichDiem() {
         return daoKhuyenMai.layCauHinhTichDiem();
     }
@@ -31,28 +30,22 @@ public class BUS_KhuyenMai {
         return daoKhuyenMai.luuCauHinhTichDiem(tienMua, diemThuong, tienDoi, diemToiThieu);
     }
 
-    // ===========================================
-    // QUẢN LÝ KHUYẾN MÃI (CRUD ĐỒNG BỘ)
-    // ===========================================
+    public List<Object[]> layDanhSachKhuyenMaiChoTable() {
+        return daoKhuyenMai.layDanhSachKhuyenMaiChoTable();
+    }
+
     public List<KhuyenMai> layDsKhuyenMai() {
         return daoKhuyenMai.layDsKhuyenMai();
     }
-    
+
     public boolean themKhuyenMai(KhuyenMai km) {
-        if (!kiemTraThoiGian(km.getNgayBatDau(), km.getNgayKetThuc())) {
-            System.out.println("Lỗi: Ngày kết thúc phải sau ngày bắt đầu.");
-            return false;
-        }
-        if (kiemTraMaKM(km.getId())) {
-            System.out.println("Lỗi: Mã khuyến mãi này đã tồn tại.");
-            return false;
-        }
+        if (!kiemTraThoiGian(km.getNgayBatDau(), km.getNgayKetThuc())) return false;
+        if (kiemTraMaKM(km.getId())) return false;
         return daoKhuyenMai.themKhuyenMai(km);
     }
     
     public boolean themKhuyenMaiToanDien(KhuyenMai km, HinhThucKhuyenMai ht, DieuKienKhuyenMai dk) {
         if (!themKhuyenMai(km)) return false;
-        
         daoHinhThucKhuyenMai.themHinhThuc(ht);
         if (dk != null) {
             daoDieuKienKhuyenMai.themDieuKien(dk);
@@ -66,7 +59,6 @@ public class BUS_KhuyenMai {
         boolean isKmUpdated = daoKhuyenMai.capNhatKhuyenMai(km);
         if (isKmUpdated) {
             daoHinhThucKhuyenMai.capNhatHinhThuc(ht);
-            
             if (dk != null) {
                 if (daoDieuKienKhuyenMai.kiemTraTonTai(km.getId())) {
                     daoDieuKienKhuyenMai.capNhatDieuKienTheoMaKM(dk);
@@ -87,9 +79,6 @@ public class BUS_KhuyenMai {
         return daoKhuyenMai.xoaKhuyenMai(maKM);
     }
 
-    // ===========================================
-    // CÁC HÀM NGHIỆP VỤ KHÁC
-    // ===========================================
     public boolean kiemTraThoiGian(LocalDateTime ngayBatDau, LocalDateTime ngayKetThuc) {
         if (ngayBatDau == null || ngayKetThuc == null) return false;
         return ngayBatDau.isBefore(ngayKetThuc);
@@ -104,10 +93,7 @@ public class BUS_KhuyenMai {
         if (km == null) return false;
 
         LocalDateTime now = LocalDateTime.now();
-        if (now.isBefore(km.getNgayBatDau()) || now.isAfter(km.getNgayKetThuc())) {
-            System.out.println("Khuyến mãi đã hết hạn hoặc chưa tới thời gian áp dụng.");
-            return false;
-        }
+        if (now.isBefore(km.getNgayBatDau()) || now.isAfter(km.getNgayKetThuc())) return false;
 
         List<DieuKienKhuyenMai> dsDieuKien = daoDieuKienKhuyenMai.layTheoKhuyenMaiId(maKM);
         if (dsDieuKien == null || dsDieuKien.isEmpty()) return true;
@@ -116,7 +102,6 @@ public class BUS_KhuyenMai {
             if (dk == null) continue;
             if ("HOA_DON".equalsIgnoreCase(dk.getDoiTuongApDung()) && "GIA_TRI".equalsIgnoreCase(dk.getLoaiDieuKien())) {
                 if (tongTienHoaDon < dk.getGiaTri()) {
-                    System.out.println("Hóa đơn chưa đủ điều kiện áp dụng khuyến mãi.");
                     return false;
                 }
             }
@@ -130,12 +115,10 @@ public class BUS_KhuyenMai {
         HinhThucKhuyenMai htkm = daoHinhThucKhuyenMai.layTheoMaKM(maKM);
         if (htkm == null) return tongTienHoaDon;
 
-        // Đã thêm chữ Enumeration. vào trước Enum để Java nhận diện chính xác
-        if (htkm.getLoaiHinhThuc() == Enumeration.LoaiHinhThuc.GIAM_THEO_PHAN_TRAM && 
-            htkm.getDoiTuongApDung() == Enumeration.DoiTuongApDung.HOA_DON) {
+        if (htkm.getLoaiHinhThuc() == LoaiHinhThuc.GIAM_THEO_PHAN_TRAM && 
+            htkm.getDoiTuongApDung() == DoiTuongApDung.HOA_DON) {
             
             double tienGiam = tongTienHoaDon * htkm.getGiaTri() / 100.0;
-            
             if (htkm.getGiamToiDa() > 0 && tienGiam > htkm.getGiamToiDa()) {
                 tienGiam = htkm.getGiamToiDa();
             }

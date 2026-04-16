@@ -15,7 +15,14 @@ import java.util.List;
 
 public class DAO_KhuyenMai {
 
-    public DAO_KhuyenMai() {}
+    public DAO_KhuyenMai() {
+        // Đảm bảo kết nối DB luôn sẵn sàng ở tầng Data
+        try {
+            ConnectDB.getInstance().connect();
+        } catch (Exception e) {
+            System.err.println("Lỗi khởi tạo kết nối DB tại DAO_KhuyenMai: " + e.getMessage());
+        }
+    }
 
     // ===========================================
     // CÁC HÀM QUẢN LÝ KHUYẾN MÃI CHÍNH
@@ -93,29 +100,6 @@ public class DAO_KhuyenMai {
         return dsKhuyenMai;
     }
 
-    public List<KhuyenMai> layKMHieuLuc() {
-        List<KhuyenMai> dsHieuLuc = new ArrayList<>();
-        String sql = "SELECT * FROM KhuyenMai WHERE ngayBatDau <= GETDATE() AND ngayKetThuc >= GETDATE()";
-        Connection con = ConnectDB.getInstance().getConnection();
-
-        try (Statement stmt = con.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
-            while (rs.next()) {
-                KhuyenMai km = new KhuyenMai();
-                km.setId(rs.getString("id"));
-                km.setTenKhuyenMai(rs.getString("tenKhuyenMai"));
-                km.setMoTa(rs.getString("moTa"));
-                km.setNgayTao(rs.getTimestamp("ngayTao").toLocalDateTime());
-                km.setNgayBatDau(rs.getTimestamp("ngayBatDau").toLocalDateTime());
-                km.setNgayKetThuc(rs.getTimestamp("ngayKetThuc").toLocalDateTime());
-                dsHieuLuc.add(km);
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return dsHieuLuc;
-    }
-
     public KhuyenMai layMaKM(String maKM) {
         KhuyenMai km = null;
         String sql = "SELECT * FROM KhuyenMai WHERE id = ?";
@@ -141,11 +125,114 @@ public class DAO_KhuyenMai {
     }
 
     // ===========================================
+    // CÁC HÀM DÀNH CHO GIAO DIỆN (JOIN 3 BẢNG)
+    // ===========================================
+    public List<Object[]> layDanhSachKhuyenMaiChoTable() {
+        List<Object[]> listData = new ArrayList<>();
+        Connection con = ConnectDB.getInstance().getConnection();
+        
+        if (con == null) {
+            System.err.println("Lỗi: Không có kết nối Database!");
+            return listData;
+        }
+        
+        try {
+            boolean hasGiftColumns = true;
+            try (Statement st = con.createStatement()) {
+                st.executeQuery("SELECT spTang, slTang FROM HinhThucKhuyenMai WHERE 1=0");
+            } catch (SQLException e) {
+                hasGiftColumns = false;
+            }
+
+            String sql;
+            if (hasGiftColumns) {
+                sql = "SELECT k.id, k.tenKhuyenMai, k.ngayBatDau, k.ngayKetThuc, " +
+                      "h.loaiHinhThuc, h.giaTri as mucGiam, h.spTang, h.slTang, d.giaTri as donToiThieu, h.doiTuongApDung " +
+                      "FROM KhuyenMai k " +
+                      "LEFT JOIN HinhThucKhuyenMai h ON k.id = h.khuyenMaiId " +
+                      "LEFT JOIN DieuKienKhuyenMai d ON k.id = d.khuyenMaiId";
+            } else {
+                sql = "SELECT k.id, k.tenKhuyenMai, k.ngayBatDau, k.ngayKetThuc, " +
+                      "h.loaiHinhThuc, h.giaTri as mucGiam, d.giaTri as donToiThieu, h.doiTuongApDung " +
+                      "FROM KhuyenMai k " +
+                      "LEFT JOIN HinhThucKhuyenMai h ON k.id = h.khuyenMaiId " +
+                      "LEFT JOIN DieuKienKhuyenMai d ON k.id = d.khuyenMaiId";
+            }
+            
+            try (PreparedStatement stmt = con.prepareStatement(sql);
+                 ResultSet rs = stmt.executeQuery()) {
+                
+                java.util.Date currentDate = new java.util.Date();
+
+                while (rs.next()) {
+                    String id = rs.getString("id");
+                    String ten = rs.getString("tenKhuyenMai");
+                    Timestamp startDB = rs.getTimestamp("ngayBatDau");
+                    Timestamp endDB = rs.getTimestamp("ngayKetThuc");
+                    String hinhThucDB = rs.getString("loaiHinhThuc");
+                    double mucGiamDB = rs.getDouble("mucGiam");
+                    
+                    double donToiThieuDB = 0;
+                    if(rs.getObject("donToiThieu") != null) donToiThieuDB = rs.getDouble("donToiThieu");
+
+                    String hinhThucUI = "Giảm phần trăm (%)";
+                    String mucGiamUI = "";
+                    String donToiThieuUI = "";
+                    String doiTuongUI = "";
+                    
+                    if ("SAN_PHAM_KEM_THEO".equals(hinhThucDB)) {
+                        hinhThucUI = "Sản phẩm kèm theo";
+                        String spTang = "SP";
+                        int slTang = 1;
+                        if (hasGiftColumns) {
+                            spTang = rs.getString("spTang");
+                            slTang = rs.getInt("slTang");
+                        }
+                        mucGiamUI = "Tặng " + slTang + " " + (spTang != null ? spTang : "SP");
+                        donToiThieuUI = "Mọi đơn hàng";
+                        doiTuongUI = "Tất cả";
+                    } else {
+                        mucGiamUI = mucGiamDB + "%";
+                        donToiThieuUI = donToiThieuDB > 0 ? String.format("%,.0f đ", donToiThieuDB) : "Không yêu cầu";
+                        doiTuongUI = rs.getString("doiTuongApDung") != null && rs.getString("doiTuongApDung").equals("HOA_DON") ? "Hóa đơn" : "Sản phẩm";
+                    }
+                    
+                    String thoiGianUI = "N/A";
+                    String trangThaiUI = "Tạm dừng";
+                    boolean isToggleOn = false;
+
+                    if (startDB != null && endDB != null) {
+                        thoiGianUI = new java.text.SimpleDateFormat("dd/MM/yyyy").format(startDB) + " - " + new java.text.SimpleDateFormat("dd/MM/yyyy").format(endDB);
+                        
+                        if (currentDate.before(startDB)) {
+                            trangThaiUI = "Sắp diễn ra";
+                            isToggleOn = true;
+                        } else if (currentDate.after(endDB)) {
+                            trangThaiUI = "Đã kết thúc";
+                            isToggleOn = false;
+                        } else {
+                            trangThaiUI = "Đang hoạt động";
+                            isToggleOn = true;
+                        }
+                    }
+                    
+                    listData.add(new Object[]{ 
+                        id, ten, hinhThucUI, mucGiamUI, donToiThieuUI, doiTuongUI, thoiGianUI, trangThaiUI, "Xem", isToggleOn 
+                    });
+                }
+            }
+        } catch (Exception ex) { 
+            ex.printStackTrace();
+        }
+        return listData;
+    }
+
+    // ===========================================
     // CÁC HÀM QUẢN LÝ CẤU HÌNH TÍCH ĐIỂM
     // ===========================================
-    
     public void khoiTaoBangTichDiem() {
         Connection con = ConnectDB.getInstance().getConnection();
+        if(con == null) return;
         String createTableSQL = "IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='CauHinhTichDiem' and xtype='U') " +
                                 "CREATE TABLE CauHinhTichDiem (tienMua INT, diemThuong INT, tienDoiMotDiem INT, diemToiThieu INT)";
         try {
@@ -156,6 +243,7 @@ public class DAO_KhuyenMai {
     public int[] layCauHinhTichDiem() {
         khoiTaoBangTichDiem();
         Connection con = ConnectDB.getInstance().getConnection();
+        if(con == null) return null;
         try (ResultSet rs = con.createStatement().executeQuery("SELECT * FROM CauHinhTichDiem")) {
             if (rs.next()) {
                 return new int[] {
@@ -172,6 +260,7 @@ public class DAO_KhuyenMai {
     public boolean luuCauHinhTichDiem(int tienMua, int diemThuong, int tienDoi, int diemToiThieu) {
         khoiTaoBangTichDiem();
         Connection con = ConnectDB.getInstance().getConnection();
+        if(con == null) return false;
         String sql = "IF EXISTS (SELECT 1 FROM CauHinhTichDiem) " +
                      "UPDATE CauHinhTichDiem SET tienMua=?, diemThuong=?, tienDoiMotDiem=?, diemToiThieu=? " +
                      "ELSE INSERT INTO CauHinhTichDiem (tienMua, diemThuong, tienDoiMotDiem, diemToiThieu) VALUES (?, ?, ?, ?)";
