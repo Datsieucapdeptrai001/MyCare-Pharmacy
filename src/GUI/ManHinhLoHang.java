@@ -93,12 +93,10 @@ public class ManHinhLoHang extends JPanel {
     }
 
     private JPanel createToolbarHeader() {
-        // SỬ DỤNG BOXLAYOUT THAY CHO BORDERLAYOUT ĐỂ TRÁNH BỊ ĐÈ COMPONENT
         JPanel wrapper = new JPanel();
         wrapper.setLayout(new BoxLayout(wrapper, BoxLayout.X_AXIS));
         wrapper.setOpaque(false);
 
-        // --- BÊN TRÁI (Tiêu đề & Huy hiệu) ---
         JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
         left.setOpaque(false);
 
@@ -114,10 +112,8 @@ public class ManHinhLoHang extends JPanel {
             protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                // Vẽ nền
                 g2.setColor(getBackground());
                 g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 16, 16);
-                // Vẽ viền
                 g2.setColor(new Color(254, 202, 202));
                 g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 16, 16);
                 g2.dispose();
@@ -136,7 +132,6 @@ public class ManHinhLoHang extends JPanel {
         left.add(lblTitle);
         left.add(lblWarningBadge);
 
-        // --- BÊN PHẢI (Tìm kiếm & Nút bấm) ---
         JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 0));
         right.setOpaque(false);
 
@@ -183,9 +178,8 @@ public class ManHinhLoHang extends JPanel {
         right.add(chkPanel);
         right.add(btnThemLo);
 
-        // --- RÁP NỐI VÀO WRAPPER ---
         wrapper.add(left);
-        wrapper.add(Box.createHorizontalGlue()); // Cục lò xo tự động dãn ra đẩy 2 bên về 2 mép
+        wrapper.add(Box.createHorizontalGlue());
         wrapper.add(right);
 
         return wrapper;
@@ -226,7 +220,6 @@ public class ManHinhLoHang extends JPanel {
         lblWarning = statValueLabel();
         lblGood = statValueLabel();
 
-        // Đổi icon của "Đã hết hạn" từ WARNING thành CANCEL cho hợp lý hơn
         row.add(createStatCard("Đã hết hạn", new MenuIcon("CANCEL"), lblExpired, DANGER_SOFT, DANGER));
         row.add(createStatCard("Gần hết hạn (≤30 ngày)", new MenuIcon("WARNING"), lblNear, WARNING_SOFT, WARNING));
         row.add(createStatCard("Cảnh báo (31-90 ngày)", new MenuIcon("TIME"), lblWarning, GOLD_SOFT, GOLD));
@@ -246,7 +239,6 @@ public class ManHinhLoHang extends JPanel {
         lbl.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         lbl.setForeground(TEXT_SECONDARY);
 
-        // Đã thêm Icon vào các nút filter
         btnTatCa = createFilterButton("Tất cả", "PACKAGE");
         btnDuocBan = createFilterButton("Được bán", "CHECK_CIRCLE");
         btnHetHan = createFilterButton("Hết hạn", "TIME");
@@ -427,6 +419,19 @@ public class ManHinhLoHang extends JPanel {
             }
         }
 
+        filtered.sort((a, b) -> {
+            int rankA = getPriority(a);
+            int rankB = getPriority(b);
+
+            if (rankA != rankB) {
+                return Integer.compare(rankA, rankB);
+            }
+
+            long daysA = getDaysRemaining(a);
+            long daysB = getDaysRemaining(b);
+            return Long.compare(daysA, daysB);
+        });
+
         tableModel.setRowCount(0);
         int stt = 1;
         for (BatchItem item : filtered) {
@@ -438,6 +443,33 @@ public class ManHinhLoHang extends JPanel {
         }
 
         lblTotal.setText("Hiển thị " + filtered.size() + " / " + dsTatCa.size() + " lô");
+    }
+
+    private int getPriority(BatchItem item) {
+        String conLai = item.getConLai();
+
+        if ("Hết hạn".equals(item.trangThai) || conLai.startsWith("Quá")) {
+            return 1;
+        }
+
+        int days = parseDays(conLai);
+
+        if (days <= 30) {
+            return 2;
+        } else if (days <= 90) {
+            return 3;
+        } else {
+            return 4;
+        }
+    }
+
+    private long getDaysRemaining(BatchItem item) {
+        try {
+            LocalDate hsd = LocalDate.parse(item.hanSuDung, DATE_FORMAT);
+            return ChronoUnit.DAYS.between(LocalDate.now(), hsd);
+        } catch (Exception e) {
+            return Long.MAX_VALUE;
+        }
     }
 
     private void moManHinhNhapLoMoi() {
@@ -540,11 +572,10 @@ public class ManHinhLoHang extends JPanel {
         return lbl;
     }
 
-    // Cập nhật hàm này để nhận thêm tham số tên Icon
     private JButton createFilterButton(String text, String iconName) {
         JButton btn = new JButton(text);
-        btn.setIcon(new MenuIcon(iconName)); // Thêm Icon
-        btn.setIconTextGap(8); // Tạo khoảng cách giữa Icon và Text
+        btn.setIcon(new MenuIcon(iconName));
+        btn.setIconTextGap(8);
         btn.setFocusPainted(false);
         btn.setContentAreaFilled(true);
         btn.setFont(new Font("Segoe UI", Font.BOLD, 13));
@@ -630,10 +661,9 @@ public class ManHinhLoHang extends JPanel {
         public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
                                                        boolean hasFocus, int row, int column) {
             JLabel lbl = (JLabel) super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-            
-            // Xóa icon cũ để tránh bị lặp icon sang cột khác khi Table Render cuộn
-            lbl.setIcon(null); 
-            
+
+            lbl.setIcon(null);
+
             lbl.setBorder(new EmptyBorder(0, 10, 0, 10));
             lbl.setFont(new Font("Segoe UI", Font.PLAIN, 14));
             lbl.setHorizontalAlignment(SwingConstants.LEFT);
@@ -698,21 +728,19 @@ public class ManHinhLoHang extends JPanel {
                 }
                 panel.add(pill);
                 return panel;
-            } else if (column == 7) { // CỘT TRẠNG THÁI: Thêm Icon trực quan
+            } else if (column == 7) {
                 String text = String.valueOf(value);
                 lbl.setHorizontalAlignment(SwingConstants.CENTER);
                 lbl.setFont(new Font("Segoe UI", Font.BOLD, 13));
-                lbl.setIconTextGap(6); // Khoảng cách Icon và chữ
-                
+                lbl.setIconTextGap(6);
+
                 if ("Được bán".equals(text)) {
                     lbl.setForeground(SUCCESS);
                     lbl.setIcon(new MenuIcon("CHECK_CIRCLE"));
-                }
-                else if ("Hết hạn".equals(text)) {
+                } else if ("Hết hạn".equals(text)) {
                     lbl.setForeground(DANGER);
                     lbl.setIcon(new MenuIcon("CANCEL"));
-                }
-                else {
+                } else {
                     lbl.setForeground(TEXT_SECONDARY);
                     lbl.setIcon(new MenuIcon("BOX"));
                 }
