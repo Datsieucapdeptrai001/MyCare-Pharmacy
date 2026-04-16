@@ -74,15 +74,15 @@ public class DAO_ThongKe {
         return list;
     }
 
-    // DOANH THU & CHI PHÍ 12 THÁNG
-
-    /** Doanh thu 12 tháng (triệu đồng). condHD: điều kiện SQL thêm vào (chuỗi rỗng = không lọc) */
-    public double[] getDoanhThu12Thang(int year, String maNV) { // ĐỔI THAM SỐ THÀNH maNV
+ // DOANH THU & CHI PHÍ 12 THÁNG
+    public double[] getDoanhThu12Thang(int year, String filter) {
         double[] data = new double[12];
-        
-        // ---- ĐÃ SỬA CHỖ NÀY: Bọc dấu nháy đơn '' cho maNV ----
-        String condHD = (maNV != null && !maNV.isEmpty()) ? " AND hd.nhanVienId='" + maNV + "'" : "";
-        // ------------------------------------------------------
+        String condHD = "";
+        // Tự động nhận diện đây là mã NV hay là chuỗi lọc Tháng/Quý
+        if (filter != null && !filter.isEmpty()) {
+            if (filter.trim().startsWith("AND")) condHD = " " + filter;
+            else condHD = " AND hd.nhanVienId='" + filter + "'";
+        }
         
         String sql = "SELECT MONTH(hd.ngayLapHD) m, ISNULL(SUM(ct.soLuong*dvl.gia),0)/1000000.0 dt " +
                      "FROM HoaDon hd " +
@@ -99,19 +99,16 @@ public class DAO_ThongKe {
     }
 
     // DONUT - PHÂN LOẠI SẢN PHẨM
-
-    /**
-     * Trả về int[4]: phần trăm số lượng bán theo loại SP
-     * Thứ tự: [THUOC_KE_DON, THUOC_KHONG_KE_DON, THUC_PHAM_CHUC_NANG, MY_PHAM]
-     */
-    public int[] getSoLuongTheoLoaiSP(int year, String maNV) { // ĐỔI THAM SỐ THÀNH maNV
+    public int[] getSoLuongTheoLoaiSP(int year, String filter) {
         String[] catDB = {"THUOC_KE_DON","THUOC_KHONG_KE_DON","THUC_PHAM_CHUC_NANG","MY_PHAM"};
         int[] catVals = new int[4];
         int total = 0;
         
-        // ---- ĐÃ SỬA CHỖ NÀY: Bọc dấu nháy đơn '' cho maNV ----
-        String condHD = (maNV != null && !maNV.isEmpty()) ? " AND hd.nhanVienId='" + maNV + "'" : "";
-        // ------------------------------------------------------
+        String condHD = "";
+        if (filter != null && !filter.isEmpty()) {
+            if (filter.trim().startsWith("AND")) condHD = " " + filter;
+            else condHD = " AND hd.nhanVienId='" + filter + "'";
+        }
 
         for (int i = 0; i < 4; i++) {
             String sql = "SELECT ISNULL(SUM(ct.soLuong),0) FROM ChiTietHoaDon ct " +
@@ -130,6 +127,7 @@ public class DAO_ThongKe {
             result[i] = Math.max(1, (int) Math.round(catVals[i] * 100.0 / total));
         return result;
     }
+    
     /** Chi phí nhập hàng 12 tháng (triệu đồng). condPN: điều kiện SQL thêm vào query LoHang */
     public double[] getChiPhi12Thang(int year, String condPN) {
         double[] data = new double[12];
