@@ -1,17 +1,17 @@
 package GUI;
 
 import Utils.MenuIcon;
-import ConnectDB.ConnectDB; 
+import BUS.BUS_NhanVien;
+import Entity.NhanVien;
+import Enumeration.ChucVu;
+import Enumeration.TrangThaiLamViec;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.*;
 import java.awt.*;
 import java.awt.event.*;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.util.List;
 
 // ====================================================================================
 // 1. CLASS CHÍNH: MÀN HÌNH NHÂN VIÊN
@@ -143,14 +143,13 @@ public class ManHinhNhanVien extends JPanel {
 
         table.getColumnModel().getColumn(0).setPreferredWidth(80);
         table.getColumnModel().getColumn(1).setPreferredWidth(160);
-        table.getColumnModel().getColumn(4).setPreferredWidth(180); // Email rộng hơn
+        table.getColumnModel().getColumn(4).setPreferredWidth(180); 
         table.getColumnModel().getColumn(7).setPreferredWidth(60);
 
         JScrollPane sp = new JScrollPane(table);
         sp.setBorder(BorderFactory.createLineBorder(Color.decode("#DFE3E8")));
         sp.getVerticalScrollBar().setPreferredSize(new Dimension(10, 0));
 
-        // -- SIDEBAR CHI TIẾT --
         pnlDetail = createDetailSidebar();
         pnlDetail.setVisible(false); 
 
@@ -158,7 +157,6 @@ public class ManHinhNhanVien extends JPanel {
         pnlCenter.add(pnlDetail, BorderLayout.EAST);
         this.add(pnlCenter, BorderLayout.CENTER);
 
-        // --- SỰ KIỆN CLICK BẢNG ---
         table.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
@@ -173,7 +171,6 @@ public class ManHinhNhanVien extends JPanel {
             }
         });
 
-        // --- SỰ KIỆN CLICK NÚT SỬA TRÊN SIDEBAR ---
         btnEdit.addActionListener(e -> {
             int row = table.getSelectedRow();
             if (row >= 0) {
@@ -191,54 +188,39 @@ public class ManHinhNhanVien extends JPanel {
             }
         });
 
-        // Lấy dữ liệu từ DB ngay khi khởi tạo
         loadDataFromDatabase();
     }
 
-    // ==================== HÀM LẤY DỮ LIỆU TỪ DATABASE ====================
+    // ==================== HÀM LẤY DỮ LIỆU TỪ TẦNG BUS ====================
     public void loadDataFromDatabase() {
         model.setRowCount(0); 
-        try {
-            Connection con = ConnectDB.getInstance().getConnection();
-            if (con == null) return;
+        BUS_NhanVien bus = new BUS_NhanVien();
+        List<NhanVien> list = bus.layDSNhanVien();
+
+        for (NhanVien nv : list) {
+            String id = nv.getNhanVien();
+            String hoTen = nv.getHoVaTen();
+            String cchn = (nv.getSoChungChiHanhNghe() == null) ? "" : nv.getSoChungChiHanhNghe();
+            String sdt = nv.getSdt();
+            String email = (nv.getEmail() == null) ? "" : nv.getEmail();
             
-            // Dựa vào DB bạn cung cấp
-            String sql = "SELECT id, hoVaTen, soChungChiHanhNghe, sdt, email, chucVu, trangThaiLamViec FROM NhanVien"; 
-            PreparedStatement stmt = con.prepareStatement(sql);
-            ResultSet rs = stmt.executeQuery();
+            String chucVuDB = nv.getChucVu() != null ? nv.getChucVu().name() : "";
+            String trangThaiDB = nv.getTrangThaiLamViec() != null ? nv.getTrangThaiLamViec().name() : "";
+            
+            String chucVuUI = "Chưa rõ";
+            if ("QUAN_LY".equals(chucVuDB)) chucVuUI = "Quản lý";
+            else if ("DUOC_SI".equals(chucVuDB)) chucVuUI = "Dược sĩ";
 
-            while (rs.next()) {
-                String id = rs.getString("id");
-                String hoTen = rs.getString("hoVaTen");
-                String cchn = rs.getString("soChungChiHanhNghe");
-                String sdt = rs.getString("sdt");
-                String email = rs.getString("email");
-                String chucVuDB = rs.getString("chucVu");
-                String trangThaiDB = rs.getString("trangThaiLamViec");
-                
-                // MAP DỮ LIỆU DB SANG UI TIẾNG VIỆT
-                String chucVuUI = "Chưa rõ";
-                if ("QUAN_LY".equals(chucVuDB)) chucVuUI = "Quản lý";
-                else if ("DUOC_SI".equals(chucVuDB)) chucVuUI = "Dược sĩ";
-
-                String trangThaiUI = "Chưa rõ";
-                if ("DANG_LAM_VIEC".equals(trangThaiDB)) trangThaiUI = "Đang làm việc";
-                else if ("NGHI_PHEP".equals(trangThaiDB)) trangThaiUI = "Nghỉ phép";
-                else if ("THOI_VIEC".equals(trangThaiDB) || "DA_NGHI_VIEC".equals(trangThaiDB)) trangThaiUI = "Đã nghỉ việc";
-
-                if (cchn == null) cchn = "";
-                if (email == null) email = "";
-                
-                model.addRow(new Object[]{id, hoTen, cchn, sdt, email, chucVuUI, trangThaiUI, ""});
-            }
-            updateStats();
-        } catch (SQLException e) {
-            e.printStackTrace();
-            JOptionPane.showMessageDialog(this, "Lỗi tải dữ liệu từ CSDL: " + e.getMessage());
+            String trangThaiUI = "Chưa rõ";
+            if ("DANG_LAM_VIEC".equals(trangThaiDB)) trangThaiUI = "Đang làm việc";
+            else if ("NGHI_PHEP".equals(trangThaiDB)) trangThaiUI = "Nghỉ phép";
+            else if ("THOI_VIEC".equals(trangThaiDB) || "DA_NGHI_VIEC".equals(trangThaiDB)) trangThaiUI = "Đã nghỉ việc";
+            
+            model.addRow(new Object[]{id, hoTen, cchn, sdt, email, chucVuUI, trangThaiUI, ""});
         }
+        updateStats();
     }
 
-    // ==================== CÁC HÀM TIỆN ÍCH & SIDEBAR ====================
     public void updateStats() {
         if (lblTotalNhanVien != null) lblTotalNhanVien.setText(String.valueOf(model.getRowCount()));
         if (lblDangLamViec != null) {
@@ -266,7 +248,6 @@ public class ManHinhNhanVien extends JPanel {
         pnl.setBackground(Color.WHITE);
         pnl.setBorder(BorderFactory.createLineBorder(Color.decode("#DFE3E8"), 1));
 
-        // HEADER
         JPanel pnlDetHeader = new JPanel(new BorderLayout(10, 0));
         pnlDetHeader.setBackground(Color.WHITE);
         pnlDetHeader.setBorder(new EmptyBorder(15, 15, 10, 10));
@@ -300,7 +281,6 @@ public class ManHinhNhanVien extends JPanel {
         pnlDetHeader.add(pnlName, BorderLayout.CENTER);
         pnlDetHeader.add(btnCloseDet, BorderLayout.EAST);
 
-        // TABS
         JPanel pnlTabs = new JPanel(new GridLayout(1, 2));
         pnlTabs.setBackground(Color.WHITE);
         pnlTabs.setPreferredSize(new Dimension(0, 35));
@@ -315,7 +295,6 @@ public class ManHinhNhanVien extends JPanel {
         pnlTabs.add(lblTab1);
         pnlTabs.add(lblTab2);
 
-        // BODY
         JPanel pnlBody = new JPanel();
         pnlBody.setLayout(new BoxLayout(pnlBody, BoxLayout.Y_AXIS));
         pnlBody.setBackground(Color.WHITE);
@@ -339,7 +318,6 @@ public class ManHinhNhanVien extends JPanel {
             pnlInfoList.add(l);
         }
 
-        // Hộp thống kê (Chức vụ & CCHN)
         JPanel pnlStats = new JPanel(new GridLayout(1, 2, 10, 0));
         pnlStats.setBackground(Color.WHITE);
         pnlStats.setBorder(new EmptyBorder(0, 15, 15, 15));
@@ -368,7 +346,6 @@ public class ManHinhNhanVien extends JPanel {
 
         pnlStats.add(box1); pnlStats.add(box2);
 
-        // Trạng thái
         JPanel pnlStatus = new JPanel();
         pnlStatus.setLayout(new BoxLayout(pnlStatus, BoxLayout.Y_AXIS));
         pnlStatus.setBackground(Color.WHITE);
@@ -396,7 +373,6 @@ public class ManHinhNhanVien extends JPanel {
         JScrollPane spBody = new JScrollPane(pnlBody);
         spBody.setBorder(null);
 
-        // FOOTER ACTIONS - Bỏ nút Xóa, chỉ giữ lại nút Chỉnh sửa
         JPanel pnlFooterActions = new JPanel(new GridLayout(1, 1, 0, 8));
         pnlFooterActions.setBackground(Color.WHITE);
         pnlFooterActions.setBorder(new EmptyBorder(10, 15, 15, 15));
@@ -523,9 +499,6 @@ public class ManHinhNhanVien extends JPanel {
         else sorter.setRowFilter(RowFilter.regexFilter("(?i)" + search));
     }
 
-    /**
-     * Phân quyền: Ẩn nút Thêm/Sửa/Xóa cho STAFF.
-     */
     public void setReadOnly(boolean readOnly) {
         if (!readOnly) return;
         if (btnAdd != null) btnAdd.setVisible(false);
@@ -547,7 +520,7 @@ public class ManHinhNhanVien extends JPanel {
 }
 
 // ====================================================================================
-// 2. CLASS PHỤ: DIALOG THÊM / SỬA NHÂN VIÊN TƯƠNG TÁC DB
+// 2. CLASS PHỤ: DIALOG THÊM / SỬA NHÂN VIÊN (GỌI TẦNG BUS)
 // ====================================================================================
 class DialogThemNhanVien extends JDialog {
 
@@ -569,7 +542,6 @@ class DialogThemNhanVien extends JDialog {
             lblTitle.setText("Chỉnh sửa nhân viên");
             btnThem.setText("✓ Lưu thay đổi");
             
-            // FIX: KIỂM TRA PLACEHOLDER ĐỂ KHÔNG BỊ GHI ĐÈ KHI EDIT
             if (hoten != null && !hoten.trim().isEmpty() && !hoten.equals("Nhập họ và tên đầy đủ")) { 
                 txtHoTen.setText(hoten); 
                 txtHoTen.setForeground(Color.BLACK); 
@@ -628,14 +600,12 @@ class DialogThemNhanVien extends JDialog {
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.insets = new Insets(5, 5, 5, 5); 
 
-        // Dòng 1: Họ tên
         gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 2;
         pnlBody.add(createLabel("Họ và tên", true), gbc);
         gbc.gridy = 1;
         txtHoTen = createTextField("Nhập họ và tên đầy đủ");
         pnlBody.add(txtHoTen, gbc);
 
-        // Dòng 2: SĐT, Email
         gbc.gridwidth = 1; gbc.weightx = 0.5;
         gbc.gridx = 0; gbc.gridy = 2;
         pnlBody.add(createLabel("Số điện thoại", true), gbc);
@@ -649,7 +619,6 @@ class DialogThemNhanVien extends JDialog {
         txtEmail = createTextField("email@mycare.vn");
         pnlBody.add(txtEmail, gbc);
 
-        // Dòng 3: Số CCHN, Chức vụ
         gbc.gridx = 0; gbc.gridy = 4;
         pnlBody.add(createLabel("Số CCHN", false), gbc);
         gbc.gridx = 1;
@@ -663,7 +632,6 @@ class DialogThemNhanVien extends JDialog {
         cboChucVu = createComboBox(new String[]{"Quản lý", "Dược sĩ"});
         pnlBody.add(cboChucVu, gbc);
 
-        // Dòng 4: Trạng thái (Đã sửa lại thành 3 trạng thái)
         gbc.gridx = 0; gbc.gridy = 6; gbc.gridwidth = 2;
         pnlBody.add(createLabel("Trạng thái", true), gbc);
 
@@ -701,7 +669,7 @@ class DialogThemNhanVien extends JDialog {
         btnThem.setFocusPainted(false);
         btnThem.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
-        // ================= THỰC THI SQL INSERT/UPDATE =================
+        // ================= GỌI TẦNG BUS ĐỂ XỬ LÝ DATABASE =================
         btnThem.addActionListener(e -> {
             String hoten = txtHoTen.getText().trim();
             String cchn = txtCCHN.getText().trim();
@@ -717,33 +685,27 @@ class DialogThemNhanVien extends JDialog {
             if(email.equals("email@mycare.vn")) email = "";
             if(cchn.equals("CCHN-xxxx")) cchn = "";
 
-            // MAP UI SANG DATABASE
             String dbChucVu = chucVuUI.equals("Quản lý") ? "QUAN_LY" : "DUOC_SI";
             String dbTrangThai = "DANG_LAM_VIEC";
             if (trangThaiUI.equals("Nghỉ phép")) dbTrangThai = "NGHI_PHEP";
             else if (trangThaiUI.equals("Đã nghỉ việc")) dbTrangThai = "THOI_VIEC";
 
+            NhanVien nv = new NhanVien();
+            nv.setHoVaTen(hoten);
+            nv.setSoChungChiHanhNghe(cchn);
+            nv.setSdt(sdt);
+            nv.setEmail(email);
+            nv.setChucVu(ChucVu.valueOf(dbChucVu));
+            nv.setTrangThaiLamViec(TrangThaiLamViec.valueOf(dbTrangThai));
+
+            BUS_NhanVien bus = new BUS_NhanVien();
             DefaultTableModel mainModel = parentScreen.getModel();
 
-            try {
-                Connection con = ConnectDB.getInstance().getConnection();
+            if (editRow != -1) {
+                String id = mainModel.getValueAt(editRow, 0).toString();
+                nv.setNhanVien(id);
                 
-                if (editRow != -1) {
-                    // --- CẬP NHẬT (UPDATE) ---
-                    String id = mainModel.getValueAt(editRow, 0).toString();
-                    
-                    String sql = "UPDATE NhanVien SET hoVaTen=?, soChungChiHanhNghe=?, sdt=?, email=?, chucVu=?, trangThaiLamViec=? WHERE id=?";
-                    PreparedStatement stmt = con.prepareStatement(sql);
-                    stmt.setString(1, hoten);
-                    stmt.setString(2, cchn);
-                    stmt.setString(3, sdt);
-                    stmt.setString(4, email);
-                    stmt.setString(5, dbChucVu);
-                    stmt.setString(6, dbTrangThai);
-                    stmt.setString(7, id);
-                    stmt.executeUpdate();
-
-                    // Cập nhật lại UI Model
+                if (bus.capNhatNhanVien(nv)) {
                     mainModel.setValueAt(hoten, editRow, 1);
                     mainModel.setValueAt(cchn, editRow, 2);
                     mainModel.setValueAt(sdt, editRow, 3);
@@ -754,30 +716,22 @@ class DialogThemNhanVien extends JDialog {
                     parentScreen.updateStats();
                     parentScreen.refreshSidebarIfVisible(editRow);
                     JOptionPane.showMessageDialog(this, "Cập nhật thành công!");
+                    dispose(); 
                 } else {
-                    // --- THÊM MỚI (INSERT) ---
-                    String idMoi = "NV" + String.format("%03d", System.currentTimeMillis() % 1000); 
-                    
-                    String sql = "INSERT INTO NhanVien (id, hoVaTen, soChungChiHanhNghe, sdt, email, chucVu, trangThaiLamViec) VALUES (?, ?, ?, ?, ?, ?, ?)";
-                    PreparedStatement stmt = con.prepareStatement(sql);
-                    stmt.setString(1, idMoi);
-                    stmt.setString(2, hoten);
-                    stmt.setString(3, cchn);
-                    stmt.setString(4, sdt);
-                    stmt.setString(5, email);
-                    stmt.setString(6, dbChucVu);
-                    stmt.setString(7, dbTrangThai);
-                    stmt.executeUpdate();
-
-                    // Cập nhật lại UI Model
+                    JOptionPane.showMessageDialog(this, "Cập nhật thất bại. Vui lòng kiểm tra định dạng SDT/Email!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+                }
+            } else {
+                String idMoi = bus.taoMaMoi();
+                nv.setNhanVien(idMoi);
+                
+                if (bus.themNhanVien(nv)) {
                     mainModel.addRow(new Object[]{ idMoi, hoten, cchn, sdt, email, chucVuUI, trangThaiUI, "" });
                     parentScreen.updateStats();
                     JOptionPane.showMessageDialog(this, "Thêm nhân viên thành công!");
+                    dispose();
+                } else {
+                    JOptionPane.showMessageDialog(this, "Thêm thất bại. Vui lòng kiểm tra định dạng SDT/Email!", "Lỗi", JOptionPane.ERROR_MESSAGE);
                 }
-                dispose(); 
-            } catch (SQLException ex) {
-                ex.printStackTrace();
-                JOptionPane.showMessageDialog(this, "Lỗi khi lưu vào Database: " + ex.getMessage(), "Lỗi SQL", JOptionPane.ERROR_MESSAGE);
             }
         });
 
