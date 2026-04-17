@@ -9,9 +9,6 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * DAO_NhanVien – tương thích DB mới: NhanVien.id (PK), không còn cột nhanVien.
- */
 public class DAO_NhanVien {
 
     public DAO_NhanVien() {}
@@ -31,7 +28,7 @@ public class DAO_NhanVien {
         String sql = "INSERT INTO NhanVien (id, hoVaTen, soChungChiHanhNghe, sdt, email, chucVu, trangThaiLamViec) VALUES (?,?,?,?,?,?,?)";
         Connection con = ConnectDB.getInstance().getConnection();
         try (PreparedStatement ps = con.prepareStatement(sql)) {
-            ps.setString(1, nv.getNhanVien()); // Entity field = id
+            ps.setString(1, nv.getNhanVien()); 
             ps.setString(2, nv.getHoVaTen());
             ps.setString(3, nv.getSoChungChiHanhNghe());
             ps.setString(4, nv.getSdt());
@@ -52,7 +49,7 @@ public class DAO_NhanVien {
             ps.setString(4, nv.getEmail());
             ps.setString(5, nv.getChucVu().name());
             ps.setString(6, nv.getTrangThaiLamViec().name());
-            ps.setString(7, nv.getNhanVien()); // id
+            ps.setString(7, nv.getNhanVien()); 
             return ps.executeUpdate() > 0;
         } catch (SQLException e) { e.printStackTrace(); return false; }
     }
@@ -70,7 +67,7 @@ public class DAO_NhanVien {
 
     private NhanVien mapRow(ResultSet rs) throws SQLException {
         NhanVien nv = new NhanVien();
-        nv.setNhanVien(rs.getString("id"));          // DB cột "id" → Entity field "nhanVien"
+        nv.setNhanVien(rs.getString("id"));          
         nv.setHoVaTen(rs.getString("hoVaTen"));
         nv.setSoChungChiHanhNghe(rs.getString("soChungChiHanhNghe"));
         nv.setSdt(rs.getString("sdt"));

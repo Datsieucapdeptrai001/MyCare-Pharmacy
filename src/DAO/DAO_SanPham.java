@@ -23,8 +23,9 @@ public class DAO_SanPham {
     public List<Object[]> layDanhSachSanPhamChoBang() {
         List<Object[]> ds = new ArrayList<>();
         String sql = "SELECT id, ten, danhMuc, ISNULL(hoatChat, '') AS hoatChat, dang, " +
-                     "ISNULL(nhaSanXuat, 'Khác') AS nhaSanXuat, ISNULL(thueVAT, 0) AS thueVAT " +
-                     "FROM SanPham";
+                "ISNULL(nhaSanXuat, 'Khác') AS nhaSanXuat, ISNULL(thueVAT, 0) AS thueVAT " +
+                "FROM SanPham " +
+                "WHERE ISNULL(trangThai, 'HOAT_DONG') != 'AN'";
         
         Connection con = ConnectDB.getInstance().getConnection();
         try (PreparedStatement pst = con.prepareStatement(sql);
@@ -58,7 +59,7 @@ public class DAO_SanPham {
 
     public List<SanPham> getDsThuoc() {
         List<SanPham> dsSanPham = new ArrayList<>();
-        String sql = "SELECT * FROM SanPham";
+        String sql = "SELECT * FROM SanPham WHERE ISNULL(trangThai, 'HOAT_DONG') != 'AN'";
         Connection con = ConnectDB.getInstance().getConnection();
 
         try (Statement stmt = con.createStatement();
@@ -293,6 +294,57 @@ public class DAO_SanPham {
         String sql = "DELETE FROM SanPham WHERE id=?";
         Connection con = ConnectDB.getInstance().getConnection();
         try (PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setString(1, id);
+            return pst.executeUpdate() > 0;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+    // Lấy số lượng tồn:
+    public int getSoLuongTon(String maSP) {
+        // Cộng toàn bộ số lượng các lô còn hạn sử dụng
+        String sql = "SELECT ISNULL(SUM(lh.soLuongLoHang), 0) AS tonKho " +
+                     "FROM LoHang lh " +
+                     "WHERE lh.sanPhamId = ? " +
+                     "AND lh.soLuongLoHang > 0 " +
+                     "AND lh.ngayHetHan >= GETDATE()";
+        Connection con = ConnectDB.getConnection();
+        try (PreparedStatement pst = con.prepareStatement(sql);) {
+            pst.setString(1, maSP);
+            try (ResultSet rs = pst.executeQuery()) {
+                if (rs.next()) return rs.getInt("tonKho");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+    // Lấy danh sách sản phẩm đã ẩn
+    public List<Object[]> layDanhSachSanPhamDaAn() {
+        List<Object[]> ds = new ArrayList<>();
+        // Lọc những sản phẩm có trạng thái là 'AN'
+        String sql = "SELECT id, ten, danhMuc, hoatChat, dang, nhaSanXuat, thueVAT " +
+                     "FROM SanPham WHERE trangThai = 'AN'";
+        try (Connection con = ConnectDB.getInstance().getConnection();
+             PreparedStatement pst = con.prepareStatement(sql);
+             ResultSet rs = pst.executeQuery()) {
+            while (rs.next()) {
+                ds.add(new Object[]{
+                    rs.getString("id"), rs.getString("ten"), rs.getString("danhMuc"),
+                    rs.getString("hoatChat"), rs.getString("dang"), 
+                    rs.getString("nhaSanXuat"), rs.getDouble("thueVAT") + "%"
+                });
+            }
+        } catch (Exception e) { e.printStackTrace(); }
+        return ds;
+    }
+
+    // Hàm khôi phục trạng thái
+    public boolean khoiPhucSanPham(String id) {
+        String sql = "UPDATE SanPham SET trangThai = 'HOAT_DONG' WHERE id = ?";
+        try (Connection con = ConnectDB.getInstance().getConnection();
+             PreparedStatement pst = con.prepareStatement(sql)) {
             pst.setString(1, id);
             return pst.executeUpdate() > 0;
         } catch (Exception e) { e.printStackTrace(); }

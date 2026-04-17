@@ -155,6 +155,7 @@ public class ManHinhSanPham extends JPanel {
 
     private WatermarkTextField txtTimKiem;
     private ButtonGroup bgLoai, bgDang;
+    private javax.swing.JCheckBox chkThungRac;
 
     private JTextField txtId, txtTen, txtVietTat, txtHoatChat, txtHamLuong, txtVAT;
     private JTextArea  txtMoTa;
@@ -324,8 +325,9 @@ public class ManHinhSanPham extends JPanel {
 
         JPanel pnlBody = new JPanel(new BorderLayout());
         pnlBody.setBackground(Color.WHITE);
-        pnlBody.setBorder(new EmptyBorder(30, 20, 20, 20));
-        JLabel msg = new JLabel("<html><div style='text-align: center; color:#333333; font-family:Segoe UI; font-size:14px;'>" + message.replace("\n", "<br>") + "</div></html>", SwingConstants.CENTER);
+        // ĐÃ SỬA: Giảm padding trên xuống 15, dưới xuống 10 để nhường chỗ cho chữ
+        pnlBody.setBorder(new EmptyBorder(15, 20, 10, 20));
+        JLabel msg = new JLabel("<html><div style='text-align: center; color:#333333; font-family:Segoe UI; font-size:14px; line-height: 1.5;'>" + message.replace("\n", "<br>") + "</div></html>", SwingConstants.CENTER);
         pnlBody.add(msg, BorderLayout.CENTER);
 
         JPanel pnlFooter = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 15));
@@ -333,7 +335,7 @@ public class ManHinhSanPham extends JPanel {
         
         JButton btnYes = new JButton("Đồng ý");
         btnYes.setPreferredSize(new Dimension(100, 35));
-        btnYes.setBackground(Color.decode("#EF4444")); // Đỏ cho thao tác xóa
+        btnYes.setBackground(Color.decode("#EF4444")); 
         btnYes.setForeground(Color.WHITE);
         btnYes.setFont(new Font("Segoe UI", Font.BOLD, 14));
         btnYes.setFocusPainted(false);
@@ -358,7 +360,8 @@ public class ManHinhSanPham extends JPanel {
         pnlMain.add(pnlFooter, BorderLayout.SOUTH);
 
         dialog.add(pnlMain);
-        dialog.setSize(400, 190);
+        // ĐÃ SỬA: Tăng chiều cao lên 210 để khung rộng rãi, không bị cụt chữ
+        dialog.setSize(400, 210);
         dialog.setLocationRelativeTo(this);
         dialog.setVisible(true);
 
@@ -535,6 +538,28 @@ public class ManHinhSanPham extends JPanel {
         pnl.add(Box.createVerticalStrut(15));
         pnl.add(createLabelFilter("Dạng bào chế")); JSeparator sep2 = new JSeparator(); sep2.setMaximumSize(new Dimension(170, 1)); sep2.setForeground(COLOR_BORDER); sep2.setAlignmentX(Component.LEFT_ALIGNMENT); pnl.add(sep2); pnl.add(Box.createVerticalStrut(5));
         bgDang = new ButtonGroup(); pnl.add(createRadioGroup(new String[]{"Tất cả", "Viên nén", "Viên nang", "Viên sủi", "Thuốc bột", "Kẹo ngậm", "Dung dịch", "Hỗn dịch", "Thuốc nhỏ giọt", "Súc miệng"}, bgDang));
+        
+        // --- ĐOẠN MỚI THÊM: THÙNG RÁC ---
+        pnl.add(Box.createVerticalStrut(20));
+        chkThungRac = new javax.swing.JCheckBox("Sản phẩm đã ẩn");
+        chkThungRac.setFont(new Font("Segoe UI", Font.ITALIC, 13));
+        chkThungRac.setBackground(Color.WHITE);
+        chkThungRac.setBorder(new EmptyBorder(5, 15, 5, 0));
+        chkThungRac.setFocusPainted(false);
+        chkThungRac.addActionListener(e -> {
+            if (chkThungRac.isSelected()) {
+                loadDataThungRac(); 
+                btnXoaBottom.setText("Khôi phục");
+                btnXoaBottom.setBackground(Color.decode("#10B981")); // Xanh lá
+            } else {
+                loadDataFromDatabase(); 
+                btnXoaBottom.setText("Ẩn sản phẩm");
+                btnXoaBottom.setBackground(Color.decode("#F59E0B")); // Cam
+            }
+        });
+        pnl.add(chkThungRac);
+        // ---------------------------------
+        
         return pnl;
     }
 
@@ -732,7 +757,7 @@ public class ManHinhSanPham extends JPanel {
 
         pnlActionBottom = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 10)); pnlActionBottom.setBackground(Color.WHITE); pnlActionBottom.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, COLOR_BORDER));
         btnCapNhatBottom = createBtnWithIcon("Cập nhật",      "#1D68B2", new MenuIcon("EDIT"));   btnCapNhatBottom.setPreferredSize(new Dimension(130, 36));
-        btnXoaBottom     = createBtnWithIcon("Xóa",           "#EF4444", new MenuIcon("TRASH"));  btnXoaBottom.setPreferredSize(new Dimension(100, 36));
+        btnXoaBottom = createBtnWithIcon("Ẩn sản phẩm", "#F59E0B", new MenuIcon("TRASH"));  btnXoaBottom.setPreferredSize(new Dimension(140, 36));
         btnLuuBottom     = createBtnWithIcon("Lưu",           "#10B981", new MenuIcon("SAVE"));   btnLuuBottom.setPreferredSize(new Dimension(100, 36));
         btnXacNhanThem   = createBtnWithIcon("Xác nhận Thêm", "#E11D48", new MenuIcon("ADD"));    btnXacNhanThem.setPreferredSize(new Dimension(170, 36));
         btnHuyBottom     = createBtnWithIcon("Hủy",           "#64748B", new MenuIcon("CANCEL")); btnHuyBottom.setPreferredSize(new Dimension(100, 36));
@@ -744,7 +769,24 @@ public class ManHinhSanPham extends JPanel {
             } 
             setEditMode(true); 
         });
-        btnXoaBottom.addActionListener(e    -> actionXoaSanPham());
+        btnXoaBottom.addActionListener(e -> {
+            if (txtId.getText().isEmpty()) return;
+            
+            // Nếu nút đang là Khôi phục
+            if (btnXoaBottom.getText().equals("Khôi phục")) {
+                BUS_SanPham bus = new BUS_SanPham();
+                if (bus.khoiPhucSP(txtId.getText())) {
+                    showCustomNotification("KHÔI PHỤC THÀNH CÔNG", "Đã đưa sản phẩm trở lại danh sách bán hàng!", "SUCCESS");
+                    loadDataThungRac(); // Tải lại danh sách thùng rác
+                    setDetailVisible(false);
+                } else {
+                    showCustomNotification("LỖI", "Khôi phục thất bại!", "ERROR");
+                }
+            } else {
+                // Nếu nút là Ẩn
+                actionAnSanPham(); 
+            }
+        });
         btnLuuBottom.addActionListener(e    -> thucHienLuu());
         btnXacNhanThem.addActionListener(e  -> thucHienLuu());
         btnHuyBottom.addActionListener(e    -> huyThaoTac());
@@ -837,6 +879,19 @@ public class ManHinhSanPham extends JPanel {
             showCustomNotification("LỖI HỆ THỐNG", "Lưu thất bại! Vui lòng kiểm tra lại kết nối CSDL.", "ERROR");
         }
     }
+    private void loadDataThungRac() {
+        allDataMock.clear();
+        BUS_SanPham bus = new BUS_SanPham();
+        List<Object[]> dsSP = bus.layDanhSachSanPhamDaAn();
+        
+        if (dsSP != null) {
+            allDataMock.addAll(dsSP);
+        }
+        
+        currentFilteredData.clear();
+        currentFilteredData.addAll(allDataMock);
+        updatePagination();
+    }
 
     private void setEditMode(boolean edit) {
         Color bg = edit ? Color.WHITE : COLOR_DISABLED_BG;
@@ -856,18 +911,55 @@ public class ManHinhSanPham extends JPanel {
         pnlActionBottom.revalidate(); pnlActionBottom.repaint();
     }
 
-    private void actionXoaSanPham() {
+    private void actionAnSanPham() {
         if (txtId.getText().isEmpty()) return;
-        if (showCustomConfirmDialog("XÁC NHẬN XÓA", "Bạn có chắc chắn muốn xóa sản phẩm này khỏi CSDL?")) {
-            BUS_SanPham bus = new BUS_SanPham();
-            if(bus.xoaSP(txtId.getText())) {
-                showCustomNotification("XÓA THÀNH CÔNG", "Đã xóa vĩnh viễn sản phẩm khỏi hệ thống!", "SUCCESS");
-                loadDataFromDatabase();
-                clearDetailForm();
-                setDetailVisible(false);
-            } else {
-                showCustomNotification("LỖI", "Xóa thất bại do lỗi CSDL!", "ERROR");
-            }
+
+        String maSP = txtId.getText();
+        String tenSP = txtTen.getText().trim();
+
+        boolean confirmed = showCustomConfirmDialog(
+            "XÁC NHẬN ẨN SẢN PHẨM",
+            "Sản phẩm <b>" + tenSP + "</b> sẽ bị ẩn khỏi hệ thống.\n"
+            + "Dữ liệu lịch sử đơn hàng vẫn được giữ nguyên.\n\n"
+            + "Bạn có chắc chắn muốn ẩn sản phẩm này?"
+        );
+
+        if (!confirmed) return;
+
+        BUS_SanPham bus = new BUS_SanPham();
+
+        // Kiểm tra xem SP còn tồn kho không — không nên ẩn khi còn hàng
+        int soLuongTon = bus.getSoLuongTon(maSP);
+        if (soLuongTon > 0) {
+            showCustomNotification(
+                "KHÔNG THỂ ẨN SẢN PHẨM",
+                "Sản phẩm \"" + tenSP + "\" hiện còn " + soLuongTon 
+                + " đơn vị trong kho.\n"
+                + "Vui lòng xuất hết tồn kho trước khi ẩn sản phẩm.",
+                "WARNING"
+            );
+            return;
+        }
+
+        boolean success = bus.anSP(maSP);
+
+        if (success) {
+            showCustomNotification(
+                "ẨN SẢN PHẨM THÀNH CÔNG",
+                "Sản phẩm \"" + tenSP + "\" đã được ẩn.\n"
+                + "Lịch sử giao dịch liên quan vẫn được lưu trữ đầy đủ.",
+                "SUCCESS"
+            );
+            loadDataFromDatabase();
+            clearDetailForm();
+            setDetailVisible(false);
+        } else {
+            showCustomNotification(
+                "THAO TÁC THẤT BẠI",
+                "Không thể ẩn sản phẩm \"" + tenSP + "\"!\n"
+                + "Vui lòng kiểm tra lại kết nối CSDL.",
+                "ERROR"
+            );
         }
     }
 

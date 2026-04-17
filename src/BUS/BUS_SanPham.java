@@ -43,7 +43,7 @@ public class BUS_SanPham {
 
     public boolean xoaSP(String id) {
         if (id == null || id.isEmpty()) return false;
-        return daoSanPham.xoaSanPham(id);
+        return daoSanPham.anSanPham(id);
     }
     
     public List<Object[]> layDanhSachChoBang() {
@@ -53,5 +53,23 @@ public class BUS_SanPham {
     // Đã thêm hàm getDsThuoc() để GUI gọi sang
     public List<SanPham> getDsThuoc() {
         return daoSanPham.getDsThuoc();
+    }
+ // Ẩn sản phẩm — chỉ update cột, không xóa dòng
+    public boolean anSP(String maSP) {
+        return new DAO_SanPham().anSanPham(maSP);
+    }
+
+    // Kiểm tra tồn kho trước khi cho phép ẩn
+    public int getSoLuongTon(String maSP) {
+        return new DAO_SanPham().getSoLuongTon(maSP);
+    }
+ // BỔ SUNG: Gọi DAO lấy thùng rác
+    public List<Object[]> layDanhSachSanPhamDaAn() {
+        return daoSanPham.layDanhSachSanPhamDaAn();
+    }
+
+    // BỔ SUNG: Gọi DAO khôi phục
+    public boolean khoiPhucSP(String maSP) {
+        return daoSanPham.khoiPhucSanPham(maSP);
     }
 }
