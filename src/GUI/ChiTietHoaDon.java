@@ -10,7 +10,6 @@ import javax.swing.border.LineBorder;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
-
 import Utils.*;
 import java.awt.*;
 import java.util.List;
@@ -27,19 +26,24 @@ public class ChiTietHoaDon extends JDialog {
     private List<Object[]> dsSanPham;
     private String tenNhanVien; 
 
-    // Các biến dùng chung để đồng bộ giữa UI và In Hóa Đơn
     private long tongThanhToanThucTe = 0;
     private long tamTinhThucTe = 0;
     private long vatThucTe = 0;
     private long tienKhachDuaThucTe = 0;
     private long tienThoiThucTe = 0;
-
+    private long tienGiamGiaThucTe = 0;
+    
+    // --- THÊM 2 BIẾN MỚI ĐỂ XỬ LÝ ĐIỂM ---
+    private long tienGiamTuDiemThucTe = 0; 
+    private int diemHienTai = 0;
+    
     public ChiTietHoaDon(Frame parent, String maHD, String ngay, String khachHang, String sdt, String phuongThuc, String tongTienCu, String tenNhanVien, List<Object[]> dsSanPham) {
         super(parent, "Chi tiết hóa đơn", true);
         this.dsSanPham = dsSanPham;
         this.tenNhanVien = tenNhanVien;
 
-        // --- BƯỚC FIX QUAN TRỌNG: Tự động tính toán lại Tổng tiền 100% chính xác từ Bảng ---
+        try { tongThanhToanThucTe = Long.parseLong(tongTienCu.replaceAll("[^0-9]", "")); } catch (Exception e) {}
+
         for (Object[] sp : dsSanPham) {
             try {
                 long donGia = Long.parseLong(sp[4].toString().replaceAll("[^0-9]", ""));
@@ -48,23 +52,44 @@ public class ChiTietHoaDon extends JDialog {
                 
                 long tienChuaVat = donGia * sl;
                 tamTinhThucTe += tienChuaVat;
-                tongThanhToanThucTe += thanhTienCuaSP;
                 vatThucTe += (thanhTienCuaSP - tienChuaVat);
             } catch (Exception e) {}
         }
         
-        // --- BƯỚC FIX QUAN TRỌNG: Móc Tiền Khách Đưa từ DB lên ---
-        tienKhachDuaThucTe = tongThanhToanThucTe; 
-        if (phuongThuc.equals("Tiền mặt")) {
+        // Lấy điểm hiện tại của khách
+        if (sdt != null && !sdt.isEmpty()) {
             try {
-                DAO.DAO_HoaDon daoHD = new DAO.DAO_HoaDon();
-                Entity.HoaDon hd = daoHD.layHoaDonTheoMa(maHD);
-                // Tìm đoạn text "CASH:500000" mà lúc Thanh Toán ta đã giấu vào
-                if (hd != null && hd.getGhiChu() != null && hd.getGhiChu().startsWith("CASH:")) {
-                    tienKhachDuaThucTe = Long.parseLong(hd.getGhiChu().split(":")[1]);
-                }
+                DAO.DAO_KhachHang daoKH = new DAO.DAO_KhachHang();
+                Entity.KhachHang kh = daoKH.getKhachHangTheoSDT(sdt);
+                if (kh != null) diemHienTai = kh.getDiemTichLuy();
             } catch (Exception e) {}
         }
+
+        // Bóc tách Ghi chú lấy Tiền Khách Đưa và Số điểm dùng
+        tienKhachDuaThucTe = tongThanhToanThucTe; 
+        try {
+            DAO.DAO_HoaDon daoHD = new DAO.DAO_HoaDon();
+            Entity.HoaDon hd = daoHD.layHoaDonTheoMa(maHD);
+            
+            if (hd != null && hd.getGhiChu() != null) {
+                String ghiChu = hd.getGhiChu();
+                if (phuongThuc.equals("Tiền mặt") && ghiChu.startsWith("CASH:")) {
+                    String cashPart = ghiChu.split("\\|")[0].trim();
+                    tienKhachDuaThucTe = Long.parseLong(cashPart.split(":")[1].trim());
+                }
+                
+                // Móc tiền giảm từ điểm ra
+                if (ghiChu.contains("Dùng điểm: -")) {
+                    String diemPart = ghiChu.substring(ghiChu.indexOf("Dùng điểm: -") + 12);
+                    diemPart = diemPart.split("\\|")[0].trim(); 
+                    tienGiamTuDiemThucTe = Long.parseLong(diemPart);
+                }
+            }
+        } catch (Exception e) { System.out.println("Lỗi Parse Ghi Chú: " + e.getMessage()); }
+
+        // Tính ngược lại tiền giảm từ Mã Khuyến Mãi
+        tienGiamGiaThucTe = (tamTinhThucTe + vatThucTe) - tongThanhToanThucTe - tienGiamTuDiemThucTe;
+        if (tienGiamGiaThucTe < 0) tienGiamGiaThucTe = 0;
         
         tienThoiThucTe = tienKhachDuaThucTe - tongThanhToanThucTe;
         if (tienThoiThucTe < 0) tienThoiThucTe = 0;
@@ -141,6 +166,7 @@ public class ChiTietHoaDon extends JDialog {
                     writer.println("Nhân viên: " + tenNhanVien); 
                     writer.println("------------------------------------------------");
                     writer.println("KHÁCH HÀNG: " + khachHang + " | SĐT: " + (sdt.isEmpty() ? "Trống" : sdt));
+                    if (!sdt.isEmpty()) writer.println("Điểm tích lũy hiện tại: " + String.format("%,d", diemHienTai) + " điểm");
                     writer.println("THANH TOÁN: " + phuongThuc);
                     writer.println("------------------------------------------------");
                     writer.printf("%-5s | %-20s | %-5s | %-10s\n", "SL", "TÊN SẢN PHẨM", "ĐVT", "THÀNH TIỀN");
@@ -155,14 +181,25 @@ public class ChiTietHoaDon extends JDialog {
                     }
                     
                     writer.println("------------------------------------------------");
+                    writer.printf("%-35s %s\n", "Tạm tính:", String.format("%,d", tamTinhThucTe).replace(',', '.') + "đ");
+                    writer.printf("%-35s %s\n", "VAT (5%):", "+" + String.format("%,d", vatThucTe).replace(',', '.') + "đ");
+                    if(tienGiamGiaThucTe > 0) {
+                        writer.printf("%-35s %s\n", "Giảm khuyến mãi:", "-" + String.format("%,d", tienGiamGiaThucTe).replace(',', '.') + "đ");
+                    }
+                    if(tienGiamTuDiemThucTe > 0) {
+                        writer.printf("%-35s %s\n", String.format("Dùng %d điểm:", tienGiamTuDiemThucTe/100), "-" + String.format("%,d", tienGiamTuDiemThucTe).replace(',', '.') + "đ");
+                    }
+                    writer.println("------------------------------------------------");
                     writer.printf("%-35s %s\n", "TỔNG THANH TOÁN:", tongTien);
                     if (phuongThuc.equals("Tiền mặt")) {
                         writer.printf("%-35s %s\n", "TIỀN KHÁCH ĐƯA:", String.format("%,d", tienKhachDuaThucTe).replace(',', '.') + "đ");
                         writer.printf("%-35s %s\n", "TIỀN THỐI LẠI:", String.format("%,d", tienThoiThucTe).replace(',', '.') + "đ");
                     }
                     writer.println("================================================");
-                    JOptionPane.showMessageDialog(this, "Đã lưu hóa đơn thành công!");
-                } catch (IOException ex) {}
+                    JOptionPane.showMessageDialog(this, "Đã xuất file hóa đơn thành công!");
+                } catch (IOException ex) {
+                    JOptionPane.showMessageDialog(this, "Lỗi khi lưu file!");
+                }
             }
         });
         
@@ -216,6 +253,14 @@ public class ChiTietHoaDon extends JDialog {
         JPanel pnlKhachHang = createInfoBox("THÔNG TIN KHÁCH HÀNG");
         pnlKhachHang.add(new JLabel("<html><b>" + khachHang + "</b></html>"));
         pnlKhachHang.add(new JLabel("SĐT: " + (sdt.isEmpty() ? "Không cung cấp" : sdt)));
+        
+        // HIỂN THỊ SỐ ĐIỂM BÊN GÓC THÔNG TIN KHÁCH
+        if (!sdt.isEmpty()) {
+            JLabel lblDiem = new JLabel("Điểm tích lũy hiện tại: " + String.format("%,d", diemHienTai) + " điểm");
+            lblDiem.setForeground(Color.decode("#E1304C"));
+            lblDiem.setFont(new Font("Segoe UI", Font.BOLD, 12));
+            pnlKhachHang.add(lblDiem);
+        }
 
         JPanel pnlHoaDon = createInfoBox("THÔNG TIN HÓA ĐƠN");
         pnlHoaDon.add(new JLabel("<html>Nhân viên: <b>" + this.tenNhanVien + "</b></html>"));
@@ -259,11 +304,33 @@ public class ChiTietHoaDon extends JDialog {
     private JPanel createSummaryPanel(String phuongThuc) {
         JPanel pnl = new JPanel(new GridLayout(1, 2, 15, 0)); pnl.setBackground(Color.WHITE);
 
-        JPanel pnlTotal = new JPanel(new GridLayout(3, 2, 0, 8)); pnlTotal.setBackground(Color.WHITE);
+        int totalRows = 4;
+        if (tienGiamTuDiemThucTe > 0) totalRows++; 
+
+        JPanel pnlTotal = new JPanel(new GridLayout(totalRows, 2, 0, 8)); pnlTotal.setBackground(Color.WHITE);
         pnlTotal.setBorder(BorderFactory.createCompoundBorder(new LineBorder(borderGray, 1, true), new EmptyBorder(10, 10, 10, 10)));
 
         pnlTotal.add(new JLabel("Tạm tính:")); pnlTotal.add(createRightAlignLabel(String.format("%,d", tamTinhThucTe).replace(',', '.') + "đ"));
         pnlTotal.add(new JLabel("VAT:")); pnlTotal.add(createRightAlignLabel("+" + String.format("%,d", vatThucTe).replace(',', '.') + "đ"));
+        
+        JLabel lblGiamGiaText = new JLabel("Giảm khuyến mãi:");
+        lblGiamGiaText.setForeground(Color.decode("#EF4444")); 
+        JLabel lblGiamGiaValue = createRightAlignLabel("-" + String.format("%,d", tienGiamGiaThucTe).replace(',', '.') + "đ");
+        lblGiamGiaValue.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        lblGiamGiaValue.setForeground(Color.decode("#EF4444")); 
+        pnlTotal.add(lblGiamGiaText); pnlTotal.add(lblGiamGiaValue);
+
+        // HIỂN THỊ DÒNG DÙNG ĐIỂM NẾU CÓ DÙNG
+        if (tienGiamTuDiemThucTe > 0) {
+            long diemDaDung = tienGiamTuDiemThucTe / 100;
+            JLabel lblDiemText = new JLabel(String.format("Dùng %d điểm:", diemDaDung));
+            lblDiemText.setForeground(Color.decode("#F59E0B")); // Cam
+            JLabel lblDiemValue = createRightAlignLabel("-" + String.format("%,d", tienGiamTuDiemThucTe).replace(',', '.') + "đ");
+            lblDiemValue.setFont(new Font("Segoe UI", Font.BOLD, 13));
+            lblDiemValue.setForeground(Color.decode("#F59E0B")); 
+            pnlTotal.add(lblDiemText); pnlTotal.add(lblDiemValue);
+        }
+
         JLabel lblTotalText = new JLabel("TỔNG THANH TOÁN:"); lblTotalText.setFont(new Font("Segoe UI", Font.BOLD, 13));
         JLabel lblTotalAmount = createRightAlignLabel(String.format("%,d", tongThanhToanThucTe).replace(',', '.') + "đ"); 
         lblTotalAmount.setFont(new Font("Segoe UI", Font.BOLD, 16)); lblTotalAmount.setForeground(primaryGreen);

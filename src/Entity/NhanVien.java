@@ -14,11 +14,17 @@ public class NhanVien {
 	private ChucVu chucVu;
 	private TrangThaiLamViec trangThaiLamViec;
 	
+	// 1. Hàm khởi tạo rỗng
 	public NhanVien() {
 		super();
-		// TODO Auto-generated constructor stub
 	}
 	
+	// 2. Hàm khởi tạo 1 tham số (Dùng để gán mã nhân viên khi tạo hóa đơn)
+	public NhanVien(String nhanVien) {
+	    this.nhanVien = nhanVien;
+	}
+	
+	// 3. Hàm khởi tạo đầy đủ tham số
 	public NhanVien(String nhanVien, String hoVaTen, String soChungChiHanhNghe, String sdt, String email, ChucVu chucVu,
 			TrangThaiLamViec trangThaiLamViec) {
 		super();
@@ -100,7 +106,4 @@ public class NhanVien {
 				+ ", sdt=" + sdt + ", email=" + email + ", chucVu=" + chucVu + ", trangThaiLamViec=" + trangThaiLamViec
 				+ "]";
 	}
-	
-	
-	
 }

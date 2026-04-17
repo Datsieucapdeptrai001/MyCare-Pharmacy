@@ -41,9 +41,7 @@ import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JDialog;
-import javax.swing.JFileChooser;
 import javax.swing.JLabel;
-import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JRadioButton;
 import javax.swing.JScrollPane;
@@ -66,15 +64,15 @@ import org.apache.poi.ss.usermodel.BorderStyle;
 import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.DataFormatter;
 import org.apache.poi.ss.usermodel.FillPatternType;
-import org.apache.poi.ss.usermodel.HorizontalAlignment;
 import org.apache.poi.ss.usermodel.IndexedColors;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.ss.usermodel.VerticalAlignment;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
+import BUS.BUS_SanPham;
 import Entity.LoHang;
+import Entity.SanPham;
 import Utils.MenuIcon;
 
 public class ManHinhSanPham extends JPanel {
@@ -129,19 +127,15 @@ public class ManHinhSanPham extends JPanel {
         public Set<Lot> getLotSet() { return lotSet; } public void setLotSet(Set<Lot> lots) { this.lotSet = lots; }
     }
 
-    // ========================================================================
-    // GIAO DIỆN & LOGIC
-    // ========================================================================
-    private final Color COLOR_PRIMARY     = Color.decode("#1E3A8A");
+    private final Color COLOR_PRIMARY      = Color.decode("#1E3A8A");
     private final Color COLOR_HEADER_TABLE = Color.decode("#2D435E");
-    private final Color COLOR_BORDER      = Color.decode("#DFE3E8");
-    private final Color COLOR_LIGHT_BLUE  = Color.decode("#E0F2FE");
-    private final Color COLOR_DISABLED_BG = Color.decode("#F3F4F6");
+    private final Color COLOR_BORDER       = Color.decode("#DFE3E8");
+    private final Color COLOR_LIGHT_BLUE   = Color.decode("#E0F2FE");
+    private final Color COLOR_DISABLED_BG  = Color.decode("#F3F4F6");
 
     private final Font FONT_BOLD   = new Font("Segoe UI", Font.BOLD, 13);
     private final Font FONT_NORMAL = new Font("Segoe UI", Font.PLAIN, 13);
 
-    // List & pagination
     private JTable tblSanPham, tblDonVi, tblLoHang;
     private DefaultTableModel modelSanPham;
     private ToggleEditableTableModel modelDonVi;
@@ -149,17 +143,20 @@ public class ManHinhSanPham extends JPanel {
 
     private final List<Object[]> allDataMock         = new ArrayList<>();
     private final List<Object[]> currentFilteredData  = new ArrayList<>();
+    
+    // MẶC ĐỊNH LÀ 20 DÒNG THEO YÊU CẦU
     private int currentPageMock  = 1;
-    private int itemsPerPageMock = 10;
+    private int itemsPerPageMock = 20; 
+    
     private JLabel  lblPage;
+    private JLabel  lblTotalTopBar;
     private JButton btnPrev, btnNext;
     private JComboBox<String> cbLimit;
 
-    // Toolbar
     private WatermarkTextField txtTimKiem;
     private ButtonGroup bgLoai, bgDang;
+    private javax.swing.JCheckBox chkThungRac;
 
-    // Detail fields
     private JTextField txtId, txtTen, txtVietTat, txtHoatChat, txtHamLuong, txtVAT;
     private JTextArea  txtMoTa;
     private CardLayout clLoai, clDang, clNSX, clDVT;
@@ -172,18 +169,14 @@ public class ManHinhSanPham extends JPanel {
     private JScrollPane scrollMoTa;
     private JScrollPane scrollTblSanPham;
 
-    // === Panel body & detail toggle ===
     private JPanel  pnlBody;
     private JPanel  pnlRightDetail;
     private boolean detailVisible = false;
-
-    // Cột bảng DS
-    private static final String[] COLS_COLLAPSED = {"Mã", "Tên", "Loại", "Hoạt chất"};
-    private static final String[] COLS_EXPANDED  = {"Mã", "Tên", "Loại", "Hoạt chất", "Dạng bào chế", "NSX", "VAT"};
-
-    // Trạng thái
     private boolean isAdding       = false;
     private boolean uomAutoChanging = false;
+
+    private static final String[] COLS_COLLAPSED = {"Mã", "Tên", "Loại", "Hoạt chất"};
+    private static final String[] COLS_EXPANDED  = {"Mã", "Tên", "Loại", "Hoạt chất", "Dạng bào chế", "NSX", "VAT"};
 
     public ManHinhSanPham() {
         UIManager.put("TextField.inactiveForeground", Color.BLACK);
@@ -208,8 +201,167 @@ public class ManHinhSanPham extends JPanel {
         add(pnlBody, BorderLayout.CENTER);
 
         loadDataFromDatabase();
-        currentFilteredData.addAll(allDataMock);
         setDetailVisible(false);
+    }
+
+    // ========================================================================
+    // BỘ THÔNG BÁO UI/UX GIAO DIỆN CHUẨN MỚI (CHẮC CHẮN HIỆN CHỮ)
+    // ========================================================================
+    private void showCustomNotification(String titleText, String message, String type) {
+        JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), true);
+        dialog.setUndecorated(true);
+        dialog.setBackground(new Color(0, 0, 0, 0));
+
+        JPanel pnlMain = new JPanel(new BorderLayout());
+        pnlMain.setBorder(BorderFactory.createLineBorder(Color.decode("#1E3A8A"), 2));
+        pnlMain.setBackground(Color.WHITE);
+
+        // 1. HEADER (TIÊU ĐỀ XANH ĐẬM)
+        JPanel pnlHeader = new JPanel(new BorderLayout());
+        pnlHeader.setBackground(Color.decode("#1E3A8A"));
+        pnlHeader.setPreferredSize(new Dimension(0, 45));
+        JLabel lblTitle = new JLabel(titleText.toUpperCase(), SwingConstants.CENTER);
+        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        lblTitle.setForeground(Color.WHITE);
+        pnlHeader.add(lblTitle, BorderLayout.CENTER);
+
+        // 2. BODY (ICON VÀ CHỮ)
+        JPanel pnlBody = new JPanel(null);
+        pnlBody.setBackground(Color.WHITE);
+        pnlBody.setPreferredSize(new Dimension(420, 110));
+
+        JPanel pnlIcon = new JPanel() {
+            @Override protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                Color mainColor = type.equals("ERROR") ? Color.decode("#EF4444") : 
+                                  (type.equals("SUCCESS") ? Color.decode("#10B981") : Color.decode("#F59E0B"));
+                Color bgColor = type.equals("ERROR") ? Color.decode("#FEE2E2") : 
+                                (type.equals("SUCCESS") ? Color.decode("#D1FAE5") : Color.decode("#FEF3C7"));
+                
+                g2.setColor(bgColor);
+                g2.fillOval(0, 0, 50, 50);
+                g2.setColor(mainColor);
+                g2.setStroke(new java.awt.BasicStroke(3f));
+                g2.drawOval(0, 0, 50, 50);
+                
+                g2.setFont(new Font("Segoe UI", Font.BOLD, 26));
+                FontMetrics fm = g2.getFontMetrics();
+                String symbol = type.equals("ERROR") ? "X" : (type.equals("SUCCESS") ? "V" : "!");
+                int x = (50 - fm.stringWidth(symbol)) / 2;
+                int y = ((50 - fm.getHeight()) / 2) + fm.getAscent();
+                g2.drawString(symbol, x, y);
+                g2.dispose();
+            }
+        };
+        pnlIcon.setBounds(20, 25, 50, 50);
+        pnlIcon.setOpaque(false);
+
+        JTextArea msg = new JTextArea(message);
+        msg.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        msg.setForeground(Color.decode("#333333"));
+        msg.setWrapStyleWord(true);
+        msg.setLineWrap(true);
+        msg.setOpaque(false);
+        msg.setEditable(false);
+        msg.setFocusable(false);
+        
+        JScrollPane scroll = new JScrollPane(msg);
+        scroll.setBounds(85, 20, 315, 80);
+        scroll.setBorder(null);
+        scroll.setOpaque(false);
+        scroll.getViewport().setOpaque(false);
+        applyThinScrollBar(scroll);
+
+        pnlBody.add(pnlIcon);
+        pnlBody.add(scroll);
+
+        // 3. FOOTER (NÚT ĐÓNG CANH PHẢI)
+        JPanel pnlFooter = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 10));
+        pnlFooter.setBackground(Color.WHITE);
+        JButton btnClose = new JButton("Đóng");
+        btnClose.setPreferredSize(new Dimension(100, 35));
+        btnClose.setBackground(Color.decode("#1E3A8A"));
+        btnClose.setForeground(Color.WHITE);
+        btnClose.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btnClose.setFocusPainted(false);
+        btnClose.setBorderPainted(false);
+        btnClose.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnClose.addActionListener(e -> dialog.dispose());
+        pnlFooter.add(btnClose);
+
+        pnlMain.add(pnlHeader, BorderLayout.NORTH);
+        pnlMain.add(pnlBody, BorderLayout.CENTER);
+        pnlMain.add(pnlFooter, BorderLayout.SOUTH);
+
+        dialog.add(pnlMain);
+        dialog.pack();
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+    }
+
+    private boolean showCustomConfirmDialog(String titleText, String message) {
+        final boolean[] result = {false};
+        JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), true);
+        dialog.setUndecorated(true);
+        dialog.setBackground(new Color(0, 0, 0, 0));
+
+        JPanel pnlMain = new JPanel(new BorderLayout());
+        pnlMain.setBorder(BorderFactory.createLineBorder(Color.decode("#1E3A8A"), 2));
+        pnlMain.setBackground(Color.WHITE);
+
+        JPanel pnlHeader = new JPanel(new BorderLayout());
+        pnlHeader.setBackground(Color.decode("#1E3A8A"));
+        pnlHeader.setPreferredSize(new Dimension(0, 45));
+        JLabel lblTitle = new JLabel(titleText.toUpperCase(), SwingConstants.CENTER);
+        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        lblTitle.setForeground(Color.WHITE);
+        pnlHeader.add(lblTitle, BorderLayout.CENTER);
+
+        JPanel pnlBody = new JPanel(new BorderLayout());
+        pnlBody.setBackground(Color.WHITE);
+        // ĐÃ SỬA: Giảm padding trên xuống 15, dưới xuống 10 để nhường chỗ cho chữ
+        pnlBody.setBorder(new EmptyBorder(15, 20, 10, 20));
+        JLabel msg = new JLabel("<html><div style='text-align: center; color:#333333; font-family:Segoe UI; font-size:14px; line-height: 1.5;'>" + message.replace("\n", "<br>") + "</div></html>", SwingConstants.CENTER);
+        pnlBody.add(msg, BorderLayout.CENTER);
+
+        JPanel pnlFooter = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 15));
+        pnlFooter.setBackground(Color.WHITE);
+        
+        JButton btnYes = new JButton("Đồng ý");
+        btnYes.setPreferredSize(new Dimension(100, 35));
+        btnYes.setBackground(Color.decode("#EF4444")); 
+        btnYes.setForeground(Color.WHITE);
+        btnYes.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btnYes.setFocusPainted(false);
+        btnYes.setBorderPainted(false);
+        btnYes.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnYes.addActionListener(e -> { result[0] = true; dialog.dispose(); });
+
+        JButton btnNo = new JButton("Hủy");
+        btnNo.setPreferredSize(new Dimension(100, 35));
+        btnNo.setBackground(Color.decode("#1E3A8A"));
+        btnNo.setForeground(Color.WHITE);
+        btnNo.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btnNo.setFocusPainted(false);
+        btnNo.setBorderPainted(false);
+        btnNo.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnNo.addActionListener(e -> dialog.dispose());
+
+        pnlFooter.add(btnYes); pnlFooter.add(btnNo);
+
+        pnlMain.add(pnlHeader, BorderLayout.NORTH);
+        pnlMain.add(pnlBody, BorderLayout.CENTER);
+        pnlMain.add(pnlFooter, BorderLayout.SOUTH);
+
+        dialog.add(pnlMain);
+        // ĐÃ SỬA: Tăng chiều cao lên 210 để khung rộng rãi, không bị cụt chữ
+        dialog.setSize(400, 210);
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+
+        return result[0];
     }
 
     // ========================================================================
@@ -317,7 +469,9 @@ public class ManHinhSanPham extends JPanel {
         JLabel lblBoxIcon = new JLabel(new MenuIcon("PACKAGE")); lblBoxIcon.setForeground(COLOR_PRIMARY);
         pnlLeft.add(lblBoxIcon);
         pnlLeft.add(new JLabel("<html><b style='color:#1E3A8A; font-size:16px;'>QUẢN LÝ SẢN PHẨM</b></html>"));
-        pnlLeft.add(new JLabel("(42 sản phẩm)"));
+        
+        lblTotalTopBar = new JLabel("(0 sản phẩm)");
+        pnlLeft.add(lblTotalTopBar);
 
         JPanel pnlRight = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0)); pnlRight.setOpaque(false);
         pnlRight.add(new JLabel("Tìm kiếm: "));
@@ -343,8 +497,9 @@ public class ManHinhSanPham extends JPanel {
             doSearch();
             setDetailVisible(false);
         });
-        btnXuat.addActionListener(e -> showExportDialog());
-        btnNhap.addActionListener(e -> showImportDialog());
+        
+        btnXuat.addActionListener(e -> thucHienXuatExcelThang());
+        btnNhap.addActionListener(e -> thucHienNhapExcelThang());
         btnThem.addActionListener(e -> batDauThemMoi());
 
         pnlRight.add(btnTim); pnlRight.add(btnLamMoi);
@@ -379,6 +534,28 @@ public class ManHinhSanPham extends JPanel {
         pnl.add(Box.createVerticalStrut(15));
         pnl.add(createLabelFilter("Dạng bào chế")); JSeparator sep2 = new JSeparator(); sep2.setMaximumSize(new Dimension(170, 1)); sep2.setForeground(COLOR_BORDER); sep2.setAlignmentX(Component.LEFT_ALIGNMENT); pnl.add(sep2); pnl.add(Box.createVerticalStrut(5));
         bgDang = new ButtonGroup(); pnl.add(createRadioGroup(new String[]{"Tất cả", "Viên nén", "Viên nang", "Viên sủi", "Thuốc bột", "Kẹo ngậm", "Dung dịch", "Hỗn dịch", "Thuốc nhỏ giọt", "Súc miệng"}, bgDang));
+        
+        // --- ĐOẠN MỚI THÊM: THÙNG RÁC ---
+        pnl.add(Box.createVerticalStrut(20));
+        chkThungRac = new javax.swing.JCheckBox("Sản phẩm đã ẩn");
+        chkThungRac.setFont(new Font("Segoe UI", Font.ITALIC, 13));
+        chkThungRac.setBackground(Color.WHITE);
+        chkThungRac.setBorder(new EmptyBorder(5, 15, 5, 0));
+        chkThungRac.setFocusPainted(false);
+        chkThungRac.addActionListener(e -> {
+            if (chkThungRac.isSelected()) {
+                loadDataThungRac(); 
+                btnXoaBottom.setText("Khôi phục");
+                btnXoaBottom.setBackground(Color.decode("#10B981")); // Xanh lá
+            } else {
+                loadDataFromDatabase(); 
+                btnXoaBottom.setText("Ẩn sản phẩm");
+                btnXoaBottom.setBackground(Color.decode("#F59E0B")); // Cam
+            }
+        });
+        pnl.add(chkThungRac);
+        // ---------------------------------
+        
         return pnl;
     }
 
@@ -421,7 +598,7 @@ public class ManHinhSanPham extends JPanel {
         JPanel pnlPage = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 10)); pnlPage.setBackground(Color.WHITE);
         btnPrev = new JButton("< Trang trước"); btnPrev.setFont(new Font("Segoe UI", Font.PLAIN, 14)); btnPrev.setBackground(Color.WHITE); btnPrev.setFocusPainted(false); btnPrev.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(COLOR_BORDER), new EmptyBorder(5, 10, 5, 10)));
         btnNext = new JButton("Trang tiếp >");  btnNext.setFont(new Font("Segoe UI", Font.PLAIN, 14)); btnNext.setBackground(Color.WHITE); btnNext.setFocusPainted(false); btnNext.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(COLOR_BORDER), new EmptyBorder(5, 10, 5, 10)));
-        cbLimit = new JComboBox<>(new String[]{"10", "20", "50"}); cbLimit.setFont(new Font("Segoe UI", Font.PLAIN, 14)); cbLimit.setBackground(Color.WHITE);
+        cbLimit = new JComboBox<>(new String[]{"20", "30", "50"}); cbLimit.setFont(new Font("Segoe UI", Font.PLAIN, 14)); cbLimit.setBackground(Color.WHITE);
         lblPage = new JLabel("Trang 1/1 (Tổng: 0)"); lblPage.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         btnPrev.addActionListener(e -> { if (currentPageMock > 1) { currentPageMock--; updatePagination(); } });
         btnNext.addActionListener(e -> { int max = (int) Math.ceil((double) currentFilteredData.size() / itemsPerPageMock); if (currentPageMock < max) { currentPageMock++; updatePagination(); } });
@@ -432,9 +609,15 @@ public class ManHinhSanPham extends JPanel {
     }
 
     private void updatePagination() {
+        if (lblTotalTopBar != null) {
+            lblTotalTopBar.setText("(" + allDataMock.size() + " sản phẩm)");
+        }
+
         int total = currentFilteredData.size();
         int totalPages = (int) Math.ceil((double) total / itemsPerPageMock); if (totalPages == 0) totalPages = 1; if (currentPageMock > totalPages) currentPageMock = totalPages;
+        
         lblPage.setText("Trang " + currentPageMock + "/" + totalPages + " (Tổng: " + total + ")");
+        
         btnPrev.setEnabled(currentPageMock > 1); btnNext.setEnabled(currentPageMock < totalPages);
         int start = (currentPageMock - 1) * itemsPerPageMock; int end = Math.min(start + itemsPerPageMock, total);
         modelSanPham.setRowCount(0);
@@ -570,13 +753,36 @@ public class ManHinhSanPham extends JPanel {
 
         pnlActionBottom = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 10)); pnlActionBottom.setBackground(Color.WHITE); pnlActionBottom.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, COLOR_BORDER));
         btnCapNhatBottom = createBtnWithIcon("Cập nhật",      "#1D68B2", new MenuIcon("EDIT"));   btnCapNhatBottom.setPreferredSize(new Dimension(130, 36));
-        btnXoaBottom     = createBtnWithIcon("Xóa",           "#EF4444", new MenuIcon("TRASH"));  btnXoaBottom.setPreferredSize(new Dimension(100, 36));
+        btnXoaBottom = createBtnWithIcon("Ẩn sản phẩm", "#F59E0B", new MenuIcon("TRASH"));  btnXoaBottom.setPreferredSize(new Dimension(140, 36));
         btnLuuBottom     = createBtnWithIcon("Lưu",           "#10B981", new MenuIcon("SAVE"));   btnLuuBottom.setPreferredSize(new Dimension(100, 36));
         btnXacNhanThem   = createBtnWithIcon("Xác nhận Thêm", "#E11D48", new MenuIcon("ADD"));    btnXacNhanThem.setPreferredSize(new Dimension(170, 36));
         btnHuyBottom     = createBtnWithIcon("Hủy",           "#64748B", new MenuIcon("CANCEL")); btnHuyBottom.setPreferredSize(new Dimension(100, 36));
 
-        btnCapNhatBottom.addActionListener(e -> { if (txtId.getText().isEmpty()) { JOptionPane.showMessageDialog(this, "Vui lòng chọn sản phẩm cần cập nhật!"); return; } setEditMode(true); });
-        btnXoaBottom.addActionListener(e    -> actionXoaSanPham());
+        btnCapNhatBottom.addActionListener(e -> { 
+            if (txtId.getText().isEmpty()) { 
+                showCustomNotification("Thông báo", "Vui lòng chọn sản phẩm cần cập nhật!", "WARNING"); 
+                return; 
+            } 
+            setEditMode(true); 
+        });
+        btnXoaBottom.addActionListener(e -> {
+            if (txtId.getText().isEmpty()) return;
+            
+            // Nếu nút đang là Khôi phục
+            if (btnXoaBottom.getText().equals("Khôi phục")) {
+                BUS_SanPham bus = new BUS_SanPham();
+                if (bus.khoiPhucSP(txtId.getText())) {
+                    showCustomNotification("KHÔI PHỤC THÀNH CÔNG", "Đã đưa sản phẩm trở lại danh sách bán hàng!", "SUCCESS");
+                    loadDataThungRac(); // Tải lại danh sách thùng rác
+                    setDetailVisible(false);
+                } else {
+                    showCustomNotification("LỖI", "Khôi phục thất bại!", "ERROR");
+                }
+            } else {
+                // Nếu nút là Ẩn
+                actionAnSanPham(); 
+            }
+        });
         btnLuuBottom.addActionListener(e    -> thucHienLuu());
         btnXacNhanThem.addActionListener(e  -> thucHienLuu());
         btnHuyBottom.addActionListener(e    -> huyThaoTac());
@@ -591,7 +797,7 @@ public class ManHinhSanPham extends JPanel {
         txtLoaiView.setText(""); txtDangView.setText(""); txtNSXView.setText(""); txtDVTView.setText("");
         cbLoaiCT.setSelectedIndex(0); cbDang.setSelectedIndex(0); cbNhaSX.setSelectedIndex(0); cbDVT.setSelectedIndex(0);
         
-        BUS.BUS_SanPham bus = new BUS.BUS_SanPham();
+        BUS_SanPham bus = new BUS_SanPham();
         txtId.setText(bus.taoMaMoi());
         
         uomAutoChanging = true; modelDonVi.setRowCount(0); modelDonVi.addRow(new Object[2]); uomAutoChanging = false;
@@ -611,19 +817,34 @@ public class ManHinhSanPham extends JPanel {
     private void thucHienLuu() {
         String ma = txtId.getText(); 
         String ten = txtTen.getText().trim();
-        if (ten.isEmpty()) { 
-            JOptionPane.showMessageDialog(this, "Vui lòng nhập tên sản phẩm!", "Thông báo", JOptionPane.WARNING_MESSAGE); 
+        String hoatChat = txtHoatChat.getText().trim();
+        String vietTat = txtVietTat.getText().trim();
+        String hamLuong = txtHamLuong.getText().trim();
+        String vatStr = txtVAT.getText().trim();
+
+        // 1. KIỂM TRA RỖNG: Ép buộc người dùng phải nhập đủ các trường quan trọng
+        if (ten.isEmpty() || hoatChat.isEmpty() || vietTat.isEmpty() || hamLuong.isEmpty() || vatStr.isEmpty()) { 
+            showCustomNotification("THIẾU THÔNG TIN", "Vui lòng điền đầy đủ các ô: Tên, Viết tắt, Hoạt chất, Hàm lượng và VAT!", "WARNING"); 
             return; 
+        }
+
+        // 2. KIỂM TRA ĐỊNH DẠNG: Thuế VAT phải là số và không được âm
+        double vat = 0;
+        try {
+            vat = Double.parseDouble(vatStr);
+            if (vat < 0) {
+                showCustomNotification("SAI ĐỊNH DẠNG", "Thuế VAT không được là số âm!", "ERROR"); 
+                return;
+            }
+        } catch (NumberFormatException e) {
+            showCustomNotification("SAI ĐỊNH DẠNG", "Thuế VAT phải là một con số hợp lệ!", "ERROR"); 
+            return;
         }
         
         String loai = cbLoaiCT.getSelectedItem().toString();
         String dangBaoChe = cbDang.getSelectedItem().toString();
-        String hoatChat = txtHoatChat.getText().trim();
-        String vietTat = txtVietTat.getText().trim();
         String nsx = cbNhaSX.getSelectedItem().toString();
         String dvt = cbDVT.getSelectedItem().toString();
-        double vat = Double.parseDouble(txtVAT.getText().trim().isEmpty() ? "0" : txtVAT.getText().trim());
-        String hamLuong = txtHamLuong.getText().trim();
         String moTa = txtMoTa.getText().trim();
 
         txtLoaiView.setText(loai); txtDangView.setText(dangBaoChe); txtNSXView.setText(nsx); txtDVTView.setText(dvt);
@@ -632,15 +853,15 @@ public class ManHinhSanPham extends JPanel {
         String dbDanhMuc = mapToDbDanhMuc(loai);
         String dbDang = mapToDbDang(dangBaoChe);
 
-        BUS.BUS_SanPham bus = new BUS.BUS_SanPham();
+        BUS_SanPham bus = new BUS_SanPham();
         boolean success = false;
 
         if (isAdding) {
             success = bus.themSP(ma, dbDanhMuc, dbDang, ten, vietTat, nsx, hoatChat, vat, hamLuong, moTa, dvt);
-            if(success) JOptionPane.showMessageDialog(this, "Đã thêm sản phẩm vào Database thành công!");
+            if(success) showCustomNotification("THÊM MỚI THÀNH CÔNG", "Đã thêm sản phẩm vào Database thành công!", "SUCCESS");
         } else {
             success = bus.capNhatSP(ma, dbDanhMuc, dbDang, ten, vietTat, nsx, hoatChat, vat, hamLuong, moTa, dvt);
-            if(success) JOptionPane.showMessageDialog(this, "Cập nhật Database thành công!");
+            if(success) showCustomNotification("CẬP NHẬT THÀNH CÔNG", "Cập nhật Database thành công!", "SUCCESS");
         }
 
         if(success) {
@@ -651,8 +872,21 @@ public class ManHinhSanPham extends JPanel {
             setEditMode(false);
             isAdding = false;
         } else {
-            JOptionPane.showMessageDialog(this, "Lỗi kết nối CSDL!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+            showCustomNotification("LỖI HỆ THỐNG", "Lưu thất bại! Vui lòng kiểm tra lại kết nối CSDL.", "ERROR");
         }
+    }
+    private void loadDataThungRac() {
+        allDataMock.clear();
+        BUS_SanPham bus = new BUS_SanPham();
+        List<Object[]> dsSP = bus.layDanhSachSanPhamDaAn();
+        
+        if (dsSP != null) {
+            allDataMock.addAll(dsSP);
+        }
+        
+        currentFilteredData.clear();
+        currentFilteredData.addAll(allDataMock);
+        updatePagination();
     }
 
     private void setEditMode(boolean edit) {
@@ -673,18 +907,55 @@ public class ManHinhSanPham extends JPanel {
         pnlActionBottom.revalidate(); pnlActionBottom.repaint();
     }
 
-    private void actionXoaSanPham() {
+    private void actionAnSanPham() {
         if (txtId.getText().isEmpty()) return;
-        if (JOptionPane.showConfirmDialog(this, "Xác nhận xóa khỏi CSDL?", "Xóa", JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION) {
-            BUS.BUS_SanPham bus = new BUS.BUS_SanPham();
-            if(bus.xoaSP(txtId.getText())) {
-                JOptionPane.showMessageDialog(this, "Đã xóa vĩnh viễn!");
-                loadDataFromDatabase();
-                clearDetailForm();
-                setDetailVisible(false);
-            } else {
-                JOptionPane.showMessageDialog(this, "Xóa thất bại do lỗi CSDL!", "Lỗi", JOptionPane.ERROR_MESSAGE);
-            }
+
+        String maSP = txtId.getText();
+        String tenSP = txtTen.getText().trim();
+
+        boolean confirmed = showCustomConfirmDialog(
+            "XÁC NHẬN ẨN SẢN PHẨM",
+            "Sản phẩm <b>" + tenSP + "</b> sẽ bị ẩn khỏi hệ thống.\n"
+            + "Dữ liệu lịch sử đơn hàng vẫn được giữ nguyên.\n\n"
+            + "Bạn có chắc chắn muốn ẩn sản phẩm này?"
+        );
+
+        if (!confirmed) return;
+
+        BUS_SanPham bus = new BUS_SanPham();
+
+        // Kiểm tra xem SP còn tồn kho không — không nên ẩn khi còn hàng
+        int soLuongTon = bus.getSoLuongTon(maSP);
+        if (soLuongTon > 0) {
+            showCustomNotification(
+                "KHÔNG THỂ ẨN SẢN PHẨM",
+                "Sản phẩm \"" + tenSP + "\" hiện còn " + soLuongTon 
+                + " đơn vị trong kho.\n"
+                + "Vui lòng xuất hết tồn kho trước khi ẩn sản phẩm.",
+                "WARNING"
+            );
+            return;
+        }
+
+        boolean success = bus.anSP(maSP);
+
+        if (success) {
+            showCustomNotification(
+                "ẨN SẢN PHẨM THÀNH CÔNG",
+                "Sản phẩm \"" + tenSP + "\" đã được ẩn.\n"
+                + "Lịch sử giao dịch liên quan vẫn được lưu trữ đầy đủ.",
+                "SUCCESS"
+            );
+            loadDataFromDatabase();
+            clearDetailForm();
+            setDetailVisible(false);
+        } else {
+            showCustomNotification(
+                "THAO TÁC THẤT BẠI",
+                "Không thể ẩn sản phẩm \"" + tenSP + "\"!\n"
+                + "Vui lòng kiểm tra lại kết nối CSDL.",
+                "ERROR"
+            );
         }
     }
 
@@ -706,7 +977,7 @@ public class ManHinhSanPham extends JPanel {
         if (dvtGoc.equals("Viên")) { modelDonVi.addRow(new Object[]{"Vỉ", "10"}); modelDonVi.addRow(new Object[]{"Hộp", "100"}); } else if (dvtGoc.equals("Chai")) { modelDonVi.addRow(new Object[]{"Thùng", "24"}); }
         modelDonVi.addRow(new Object[2]); uomAutoChanging = false;
         
-        BUS.BUS_SanPham bus = new BUS.BUS_SanPham();
+        BUS_SanPham bus = new BUS_SanPham();
         List<LoHang> listLo = bus.layLoTheoSP(maSP);
         modelLoHang.setRowCount(0);
         DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
@@ -732,295 +1003,6 @@ public class ManHinhSanPham extends JPanel {
     private JTextField createViewField() { JTextField t = new JTextField(); t.setEditable(false); t.setFont(FONT_NORMAL); t.setDisabledTextColor(Color.BLACK); t.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(COLOR_BORDER), new EmptyBorder(0, 8, 0, 8))); return t; }
     private void addFormField(JPanel p, String l, JTextField t, GridBagConstraints g, int x, int y, int w) { g.gridx = x; g.gridy = y; g.gridwidth = w; JLabel lbl = new JLabel(l); lbl.setFont(FONT_NORMAL); lbl.setForeground(Color.BLACK); p.add(lbl, g); g.gridy++; t.setPreferredSize(new Dimension(0, 32)); t.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(COLOR_BORDER), new EmptyBorder(0, 8, 0, 8))); t.setDisabledTextColor(Color.BLACK); t.setFont(FONT_NORMAL); p.add(t, g); }
     private void addCustomField(JPanel p, String l, JPanel c, GridBagConstraints g, int x, int y) { g.gridx = x; g.gridy = y; g.gridwidth = 1; JLabel lbl = new JLabel(l); lbl.setFont(FONT_NORMAL); lbl.setForeground(Color.BLACK); p.add(lbl, g); g.gridy++; c.setPreferredSize(new Dimension(0, 32)); p.add(c, g); }
-    private JButton createBtn(String t, String c) { return createBtnWithIcon(t, c, null); }
-
-    private void applyThinScrollBar(JScrollPane sp) {
-        sp.getVerticalScrollBar().setPreferredSize(new Dimension(8, 0));
-        sp.getHorizontalScrollBar().setPreferredSize(new Dimension(0, 8));
-        sp.getVerticalScrollBar().setUI(new javax.swing.plaf.basic.BasicScrollBarUI() {
-            @Override protected void configureScrollBarColors() { thumbColor = Color.decode("#CBD5E1"); trackColor = Color.decode("#F1F5F9"); }
-            @Override protected JButton createDecreaseButton(int o) { return zeroBtn(); }
-            @Override protected JButton createIncreaseButton(int o) { return zeroBtn(); }
-            private JButton zeroBtn() { JButton b = new JButton(); b.setPreferredSize(new Dimension(0,0)); b.setMinimumSize(new Dimension(0,0)); b.setMaximumSize(new Dimension(0,0)); return b; }
-            @Override protected void paintThumb(Graphics g, JComponent c, Rectangle r) { if (r.isEmpty()) return; Graphics2D g2 = (Graphics2D) g.create(); g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON); g2.setColor(thumbColor); g2.fillRoundRect(r.x+1, r.y+1, r.width-2, r.height-2, 6, 6); g2.dispose(); }
-            @Override protected void paintTrack(Graphics g, JComponent c, Rectangle r) { Graphics2D g2 = (Graphics2D) g.create(); g2.setColor(trackColor); g2.fillRect(r.x, r.y, r.width, r.height); g2.dispose(); }
-        });
-        sp.getHorizontalScrollBar().setUI(new javax.swing.plaf.basic.BasicScrollBarUI() {
-            @Override protected void configureScrollBarColors() { thumbColor = Color.decode("#CBD5E1"); trackColor = Color.decode("#F1F5F9"); }
-            @Override protected JButton createDecreaseButton(int o) { return zeroBtn(); }
-            @Override protected JButton createIncreaseButton(int o) { return zeroBtn(); }
-            private JButton zeroBtn() { JButton b = new JButton(); b.setPreferredSize(new Dimension(0,0)); b.setMinimumSize(new Dimension(0,0)); b.setMaximumSize(new Dimension(0,0)); return b; }
-            @Override protected void paintThumb(Graphics g, JComponent c, Rectangle r) { if (r.isEmpty()) return; Graphics2D g2 = (Graphics2D) g.create(); g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON); g2.setColor(thumbColor); g2.fillRoundRect(r.x+1, r.y+1, r.width-2, r.height-2, 6, 6); g2.dispose(); }
-            @Override protected void paintTrack(Graphics g, JComponent c, Rectangle r) { Graphics2D g2 = (Graphics2D) g.create(); g2.setColor(trackColor); g2.fillRect(r.x, r.y, r.width, r.height); g2.dispose(); }
-        });
-    }
-
-    // ========================================================================
-    // DIALOG XUẤT EXCEL (FIX ĐỊNH DẠNG ĐÚNG NHƯ ẢNH)
-    // ========================================================================
- // ========================================================================
-    // DIALOG XUẤT EXCEL CÓ HEADER CHUẨN ĐẸP 12 CỘT DATABASE NHƯ ẢNH
-    // ========================================================================
-    private void showExportDialog() {
-        JDialog dlg = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Xuất Excel", true);
-        dlg.setSize(380, 260); dlg.setLocationRelativeTo(this); dlg.setResizable(false);
-        JPanel pnl = new JPanel(new BorderLayout()); pnl.setBackground(Color.WHITE);
-        JPanel header = new JPanel(new BorderLayout()); header.setBackground(COLOR_HEADER_TABLE); header.setPreferredSize(new Dimension(0, 48));
-        JLabel lbl = new JLabel("  ⬇  Xuất danh sách sản phẩm"); lbl.setForeground(Color.WHITE); lbl.setFont(FONT_BOLD); header.add(lbl); pnl.add(header, BorderLayout.NORTH);
-        JPanel body = new JPanel(); body.setLayout(new BoxLayout(body, BoxLayout.Y_AXIS)); body.setBackground(Color.WHITE); body.setBorder(new EmptyBorder(20, 24, 10, 24));
-        JLabel lblSub = new JLabel("Chọn phạm vi dữ liệu muốn xuất:"); lblSub.setFont(FONT_NORMAL); lblSub.setAlignmentX(Component.LEFT_ALIGNMENT); body.add(lblSub); body.add(Box.createVerticalStrut(14));
-        ButtonGroup bg = new ButtonGroup();
-        JRadioButton rbAll  = new JRadioButton("Xuất toàn bộ  (" + allDataMock.size() + " sản phẩm)");
-        JRadioButton rbPage = new JRadioButton("Xuất trang hiện tại  (" + tblSanPham.getRowCount() + " sản phẩm)");
-        for (JRadioButton rb : new JRadioButton[]{rbAll, rbPage}) { rb.setFont(FONT_NORMAL); rb.setBackground(Color.WHITE); rb.setFocusPainted(false); rb.setAlignmentX(Component.LEFT_ALIGNMENT); bg.add(rb); body.add(rb); body.add(Box.createVerticalStrut(8)); }
-        rbAll.setSelected(true); pnl.add(body, BorderLayout.CENTER);
-        JPanel footer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 10)); footer.setBackground(Color.WHITE); footer.setBorder(BorderFactory.createMatteBorder(1,0,0,0,COLOR_BORDER));
-        JButton btnOk = createBtnWithIcon("Xuất Excel", "#22C55E", null); btnOk.setPreferredSize(new Dimension(130, 34));
-        JButton btnCancel = createBtnWithIcon("Hủy", "#64748B", null); btnCancel.setPreferredSize(new Dimension(90, 34));
-        
-        btnOk.addActionListener(e -> {
-            JFileChooser fileChooser = new JFileChooser();
-            fileChooser.setDialogTitle("Chọn nơi lưu file Excel");
-            if (fileChooser.showSaveDialog(dlg) == JFileChooser.APPROVE_OPTION) {
-                String filePath = fileChooser.getSelectedFile().getAbsolutePath();
-                if (!filePath.endsWith(".xlsx")) filePath += ".xlsx";
-                
-                // LẤY DỮ LIỆU TRỰC TIẾP TỪ DATABASE (Đầy đủ 12 cột)
-                DAO.DAO_SanPham dao = new DAO.DAO_SanPham();
-                List<Entity.SanPham> fullData = dao.getDsThuoc();
-                List<Entity.SanPham> dataToExport = new ArrayList<>();
-                
-                if (rbAll.isSelected()) {
-                    dataToExport.addAll(fullData);
-                } else {
-                    // Lọc ra các ID đang hiển thị trên bảng hiện tại
-                    Set<String> visibleIds = new HashSet<>();
-                    for (int i = 0; i < tblSanPham.getRowCount(); i++) {
-                        visibleIds.add(tblSanPham.getValueAt(i, 0).toString());
-                    }
-                    for (Entity.SanPham sp : fullData) {
-                        if (visibleIds.contains(sp.getId())) {
-                            dataToExport.add(sp);
-                        }
-                    }
-                }
-                
-                boolean success = exportExcelAction(filePath, dataToExport);
-                
-                if (success) {
-                    JOptionPane.showMessageDialog(dlg, "Đã xuất " + dataToExport.size() + " sản phẩm thành công tại:\n" + filePath, "Thành công", JOptionPane.INFORMATION_MESSAGE);
-                    dlg.dispose();
-                } else {
-                    JOptionPane.showMessageDialog(dlg, "Xuất file thất bại!", "Lỗi", JOptionPane.ERROR_MESSAGE);
-                }
-            }
-        });
-        
-        btnCancel.addActionListener(e -> dlg.dispose());
-        footer.add(btnOk); footer.add(btnCancel); pnl.add(footer, BorderLayout.SOUTH);
-        dlg.setContentPane(pnl); dlg.setVisible(true);
-    }
-
-    private boolean exportExcelAction(String path, List<Entity.SanPham> data) {
-        try (Workbook workbook = new XSSFWorkbook()) {
-            Sheet sheet = workbook.createSheet("Danh Sach San Pham");
-            
-            // 1. TẠO DÒNG TIÊU ĐỀ (HEADER) KHỚP 100% VỚI TÊN CỘT DATABASE NHƯ ẢNH
-            Row headerRow = sheet.createRow(0);
-            String[] headers = {"id", "danhMuc", "dang", "ten", "tenVietTat", "nhaSanXuat", "hoatChat", "thueVAT", "hamLuong", "moTa", "donViDoCoBan", "ngayTao"};
-            
-            // Style Header (Nền xám nhạt, viền dưới mỏng giống hệt SQL Server Export)
-            org.apache.poi.ss.usermodel.CellStyle headerStyle = workbook.createCellStyle();
-            headerStyle.setFillForegroundColor(org.apache.poi.ss.usermodel.IndexedColors.GREY_25_PERCENT.getIndex());
-            headerStyle.setFillPattern(org.apache.poi.ss.usermodel.FillPatternType.SOLID_FOREGROUND);
-            headerStyle.setBorderBottom(org.apache.poi.ss.usermodel.BorderStyle.THIN);
-            
-            for(int i=0; i<headers.length; i++) {
-                org.apache.poi.ss.usermodel.Cell cell = headerRow.createCell(i);
-                cell.setCellValue(headers[i]);
-                cell.setCellStyle(headerStyle);
-            }
-
-            DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-
-            // 2. GHI DỮ LIỆU ĐÚNG CHUẨN THỰC TẾ
-            for (int i = 0; i < data.size(); i++) {
-                Row row = sheet.createRow(i + 1); // Bắt đầu từ dòng số 1 do vướng Header
-                Entity.SanPham sp = data.get(i);
-                
-                row.createCell(0).setCellValue(sp.getId() != null ? sp.getId() : "");
-                row.createCell(1).setCellValue(sp.getDanhMuc() != null ? sp.getDanhMuc().name() : "");
-                row.createCell(2).setCellValue(sp.getDang() != null ? sp.getDang().name() : "");
-                row.createCell(3).setCellValue(sp.getTen() != null ? sp.getTen() : "");
-                row.createCell(4).setCellValue(sp.getTenVietTat() != null ? sp.getTenVietTat() : "");
-                row.createCell(5).setCellValue(sp.getNhaSanXuat() != null ? sp.getNhaSanXuat() : "");
-                row.createCell(6).setCellValue(sp.getHoatChat() != null ? sp.getHoatChat() : "");
-                
-                // Thuế VAT lấy định dạng 2 số thập phân (VD: 8.00, 5.00, 10.00) giống trong ảnh
-                row.createCell(7).setCellValue(Double.parseDouble(String.format(java.util.Locale.US, "%.2f", sp.getThueVAT())));
-                
-                // Xử lý hiện chữ "NULL" nếu rỗng giống hệt ảnh
-                row.createCell(8).setCellValue((sp.getHamLuong() != null && !sp.getHamLuong().isEmpty()) ? sp.getHamLuong() : "NULL");
-                row.createCell(9).setCellValue((sp.getMoTa() != null && !sp.getMoTa().isEmpty()) ? sp.getMoTa() : "NULL");
-                
-                row.createCell(10).setCellValue(sp.getDonViDoCoBan() != null ? sp.getDonViDoCoBan() : "");
-                row.createCell(11).setCellValue(sp.getNgayTao() != null ? sp.getNgayTao().format(dtf) : "");
-            }
-            
-            // Căn chỉnh chiều rộng tự động cho 12 cột
-            for (int i = 0; i < headers.length; i++) {
-                sheet.autoSizeColumn(i);
-            }
-
-            try (java.io.FileOutputStream out = new java.io.FileOutputStream(path)) {
-                workbook.write(out);
-            }
-            return true;
-        } catch (Exception ex) {
-            ex.printStackTrace();
-            return false;
-        }
-    }
-
-    // ========================================================================
-    // DIALOG NHẬP EXCEL (KIỂM TRA TRÙNG LẶP CHỐNG LỖI)
-    // ========================================================================
-    private void showImportDialog() {
-        JDialog dlg = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Nhập Excel", true);
-        dlg.setSize(420, 300); dlg.setLocationRelativeTo(this); dlg.setResizable(false);
-        JPanel pnl = new JPanel(new BorderLayout()); pnl.setBackground(Color.WHITE);
-        JPanel header = new JPanel(new BorderLayout()); header.setBackground(COLOR_HEADER_TABLE); header.setPreferredSize(new Dimension(0, 48));
-        JLabel lbl = new JLabel("  ⬆  Nhập danh sách sản phẩm"); lbl.setForeground(Color.WHITE); lbl.setFont(FONT_BOLD); header.add(lbl); pnl.add(header, BorderLayout.NORTH);
-        JPanel body = new JPanel(); body.setLayout(new BoxLayout(body, BoxLayout.Y_AXIS)); body.setBackground(Color.WHITE); body.setBorder(new EmptyBorder(16, 24, 10, 24));
-        JPanel infoBox = new JPanel(new BorderLayout()); infoBox.setBackground(Color.decode("#EFF6FF")); infoBox.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(Color.decode("#BFDBFE")), new EmptyBorder(10,12,10,12)));
-        JLabel lblInfo = new JLabel("<html><b>Lưu ý trước khi nhập:</b><br>• Hệ thống sẽ tự cập nhật nếu trùng TÊN sản phẩm.<br>• Cột bắt buộc: Tên, Loại, Hoạt chất, Dạng bào chế<br>• Nên tải <b>file mẫu</b> để tránh lỗi định dạng</html>");
-        lblInfo.setFont(new Font("Segoe UI", Font.PLAIN, 12)); infoBox.add(lblInfo); infoBox.setAlignmentX(Component.LEFT_ALIGNMENT); infoBox.setMaximumSize(new Dimension(Integer.MAX_VALUE, 100));
-        body.add(infoBox); body.add(Box.createVerticalStrut(14));
-        JPanel rowFile = new JPanel(new BorderLayout(6,0)); rowFile.setOpaque(false); rowFile.setMaximumSize(new Dimension(Integer.MAX_VALUE, 34)); rowFile.setAlignmentX(Component.LEFT_ALIGNMENT);
-        JTextField txtFile = new JTextField("Chưa chọn file..."); txtFile.setEditable(false); txtFile.setFont(FONT_NORMAL); txtFile.setBackground(COLOR_DISABLED_BG); txtFile.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(COLOR_BORDER), new EmptyBorder(0,8,0,8)));
-        JButton btnChon = createBtnWithIcon("Chọn file", "#1D68B2", null); btnChon.setPreferredSize(new Dimension(105,34));
-        
-        File[] selectedFileArr = new File[1]; 
-        
-        btnChon.addActionListener(e -> { 
-            JFileChooser fc = new JFileChooser(); 
-            fc.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("Excel Files","xlsx","xls")); 
-            if (fc.showOpenDialog(dlg) == JFileChooser.APPROVE_OPTION) {
-                selectedFileArr[0] = fc.getSelectedFile();
-                txtFile.setText(selectedFileArr[0].getName()); 
-            }
-        });
-        
-        rowFile.add(txtFile, BorderLayout.CENTER); rowFile.add(btnChon, BorderLayout.EAST); body.add(rowFile); pnl.add(body, BorderLayout.CENTER);
-        JPanel footer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 10)); footer.setBackground(Color.WHITE); footer.setBorder(BorderFactory.createMatteBorder(1,0,0,0,COLOR_BORDER));
-        JButton btnMau    = createBtnWithIcon("Tải file mẫu", "#0EA5E9", null); btnMau.setPreferredSize(new Dimension(135,34));
-        JButton btnOk     = createBtnWithIcon("Nhập dữ liệu", "#22C55E", null); btnOk.setPreferredSize(new Dimension(135,34));
-        JButton btnCancel = createBtnWithIcon("Hủy",          "#64748B", null); btnCancel.setPreferredSize(new Dimension(90,34));
-        
-        btnMau.addActionListener(e -> JOptionPane.showMessageDialog(dlg, "Đang tải file mẫu về máy...", "Tải mẫu", JOptionPane.INFORMATION_MESSAGE));
-        
-        btnOk.addActionListener(e -> { 
-            if (selectedFileArr[0] == null || txtFile.getText().equals("Chưa chọn file...")) { 
-                JOptionPane.showMessageDialog(dlg, "Vui lòng chọn file Excel!", "Lỗi", JOptionPane.WARNING_MESSAGE); 
-                return; 
-            } 
-            
-            // Hiện con trỏ chuột loading
-            dlg.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-
-            try (java.io.FileInputStream fis = new java.io.FileInputStream(selectedFileArr[0]);
-                 Workbook workbook = new XSSFWorkbook(fis)) {
-                
-                Sheet sheet = workbook.getSheetAt(0);
-                DataFormatter formatter = new DataFormatter(); 
-                BUS.BUS_SanPham bus = new BUS.BUS_SanPham();
-                DAO.DAO_SanPham dao = new DAO.DAO_SanPham(); // Gọi DAO lấy DB
-                
-                int successCount = 0;
-                int updateCount = 0;
-                List<Integer> errorRows = new ArrayList<>();
-                
-                // Lấy toàn bộ danh sách để check trùng lặp (Upsert)
-                List<Entity.SanPham> dsHienTai = dao.getDsThuoc();
-                
-                for (int i = 1; i <= sheet.getLastRowNum(); i++) { // Bỏ qua dòng header (0)
-                    Row row = sheet.getRow(i);
-                    if (row != null) {
-                        String ten = formatter.formatCellValue(row.getCell(1)).trim();
-                        if(ten.isEmpty()) continue; // Bỏ qua dòng trống
-
-                        try {
-                            String loai = formatter.formatCellValue(row.getCell(2));
-                            String hoatChat = formatter.formatCellValue(row.getCell(3));
-                            String dang = formatter.formatCellValue(row.getCell(4));
-                            String nsx = formatter.formatCellValue(row.getCell(5));
-                            
-                            // Đọc VAT, mặc định 10% nếu bỏ trống
-                            double vat = 10.0;
-                            try {
-                                String vatStr = formatter.formatCellValue(row.getCell(6)).replace("%", "").trim();
-                                if(!vatStr.isEmpty()) vat = Double.parseDouble(vatStr);
-                            } catch(Exception ignored){}
-                            
-                            // Check trùng Tên sản phẩm
-                            Entity.SanPham spCu = null;
-                            for (Entity.SanPham sp : dsHienTai) {
-                                if (sp.getTen().equalsIgnoreCase(ten)) {
-                                    spCu = sp; break;
-                                }
-                            }
-                            
-                            if (spCu != null) {
-                                // 1. Tồn tại -> Update lại thông tin
-                                bus.capNhatSP(spCu.getId(), mapToDbDanhMuc(loai), mapToDbDang(dang), ten, ten, nsx, hoatChat, vat, spCu.getHamLuong(), spCu.getMoTa(), spCu.getDonViDoCoBan());
-                                updateCount++;
-                            } else {
-                                // 2. Chưa có -> Insert mới
-                                String newId = bus.taoMaMoi();
-                                boolean isSaved = bus.themSP(newId, mapToDbDanhMuc(loai), mapToDbDang(dang), ten, ten, nsx, hoatChat, vat, "", "", "Hộp");
-                                if(isSaved) {
-                                    successCount++;
-                                    Entity.SanPham newSp = new Entity.SanPham();
-                                    newSp.setId(newId); newSp.setTen(ten);
-                                    dsHienTai.add(newSp); // Update bộ đệm để tránh trùng dòng ngay trong file
-                                }
-                            }
-                        } catch (Exception rowEx) {
-                            errorRows.add(i + 1); // Lưu lại thứ tự dòng bị lỗi
-                        }
-                    }
-                }
-                
-                // Trả lại chuột bình thường
-                dlg.setCursor(Cursor.getDefaultCursor());
-                
-                // Hiển thị kết quả chuyên nghiệp
-                StringBuilder msg = new StringBuilder();
-                msg.append("Đã xử lý xong file Excel:\n");
-                msg.append("- Thêm mới: ").append(successCount).append(" sản phẩm.\n");
-                msg.append("- Cập nhật: ").append(updateCount).append(" sản phẩm.\n");
-                
-                if (!errorRows.isEmpty()) {
-                    msg.append("- LỖI dữ liệu ở các dòng: ").append(errorRows.toString());
-                    JOptionPane.showMessageDialog(dlg, msg.toString(), "Hoàn tất (Có lỗi dữ liệu)", JOptionPane.WARNING_MESSAGE);
-                } else {
-                    JOptionPane.showMessageDialog(dlg, msg.toString(), "Thành công", JOptionPane.INFORMATION_MESSAGE);
-                }
-                
-                loadDataFromDatabase(); 
-            } catch (Exception ex) {
-                dlg.setCursor(Cursor.getDefaultCursor());
-                ex.printStackTrace();
-                JOptionPane.showMessageDialog(dlg, "Lỗi đọc file: " + ex.getMessage(), "Lỗi hệ thống", JOptionPane.ERROR_MESSAGE);
-            }
-            dlg.dispose(); 
-        });
-        
-        btnCancel.addActionListener(e -> dlg.dispose());
-        footer.add(btnMau); footer.add(btnOk); footer.add(btnCancel); pnl.add(footer, BorderLayout.SOUTH);
-        dlg.setContentPane(pnl); dlg.setVisible(true);
-    }
-
     private JButton createBtnWithIcon(String text, String hexColor, Icon icon) {
         JButton btn = new JButton(text);
         if (icon != null) { btn.setIcon(icon); btn.setIconTextGap(6); }
@@ -1045,10 +1027,249 @@ public class ManHinhSanPham extends JPanel {
     private void setupTableStyle(JTable t) { t.setRowHeight(30); t.setFont(FONT_NORMAL); t.getTableHeader().setFont(FONT_BOLD); t.getTableHeader().setBackground(COLOR_LIGHT_BLUE); t.setGridColor(COLOR_BORDER); t.setSelectionBackground(COLOR_LIGHT_BLUE); t.setSelectionForeground(Color.BLACK); }
     private JLabel createLabelFilter(String t) { JLabel l = new JLabel(t); l.setFont(new Font("Segoe UI", Font.BOLD, 14)); l.setBorder(new EmptyBorder(10, 15, 5, 0)); return l; }
 
+    private void applyThinScrollBar(JScrollPane sp) {
+        sp.getVerticalScrollBar().setPreferredSize(new Dimension(8, 0));
+        sp.getHorizontalScrollBar().setPreferredSize(new Dimension(0, 8));
+        sp.getVerticalScrollBar().setUI(new javax.swing.plaf.basic.BasicScrollBarUI() {
+            @Override protected void configureScrollBarColors() { thumbColor = Color.decode("#CBD5E1"); trackColor = Color.decode("#F1F5F9"); }
+            @Override protected JButton createDecreaseButton(int o) { return zeroBtn(); }
+            @Override protected JButton createIncreaseButton(int o) { return zeroBtn(); }
+            private JButton zeroBtn() { JButton b = new JButton(); b.setPreferredSize(new Dimension(0,0)); b.setMinimumSize(new Dimension(0,0)); b.setMaximumSize(new Dimension(0,0)); return b; }
+            @Override protected void paintThumb(Graphics g, JComponent c, Rectangle r) { if (r.isEmpty()) return; Graphics2D g2 = (Graphics2D) g.create(); g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON); g2.setColor(thumbColor); g2.fillRoundRect(r.x+1, r.y+1, r.width-2, r.height-2, 6, 6); g2.dispose(); }
+            @Override protected void paintTrack(Graphics g, JComponent c, Rectangle r) { Graphics2D g2 = (Graphics2D) g.create(); g2.setColor(trackColor); g2.fillRect(r.x, r.y, r.width, r.height); g2.dispose(); }
+        });
+        sp.getHorizontalScrollBar().setUI(new javax.swing.plaf.basic.BasicScrollBarUI() {
+            @Override protected void configureScrollBarColors() { thumbColor = Color.decode("#CBD5E1"); trackColor = Color.decode("#F1F5F9"); }
+            @Override protected JButton createDecreaseButton(int o) { return zeroBtn(); }
+            @Override protected JButton createIncreaseButton(int o) { return zeroBtn(); }
+            private JButton zeroBtn() { JButton b = new JButton(); b.setPreferredSize(new Dimension(0,0)); b.setMinimumSize(new Dimension(0,0)); b.setMaximumSize(new Dimension(0,0)); return b; }
+            @Override protected void paintThumb(Graphics g, JComponent c, Rectangle r) { if (r.isEmpty()) return; Graphics2D g2 = (Graphics2D) g.create(); g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON); g2.setColor(thumbColor); g2.fillRoundRect(r.x+1, r.y+1, r.width-2, r.height-2, 6, 6); g2.dispose(); }
+            @Override protected void paintTrack(Graphics g, JComponent c, Rectangle r) { Graphics2D g2 = (Graphics2D) g.create(); g2.setColor(trackColor); g2.fillRect(r.x, r.y, r.width, r.height); g2.dispose(); }
+        });
+    }
+
+    private void thucHienXuatExcelThang() {
+        Frame parentFrame = (Frame) SwingUtilities.getWindowAncestor(this);
+        java.awt.FileDialog fd = new java.awt.FileDialog(parentFrame, "Chọn nơi lưu file Excel", java.awt.FileDialog.SAVE);
+        fd.setFile("DanhSachSanPham.xlsx");
+        fd.setVisible(true); 
+        
+        String dir = fd.getDirectory();
+        String file = fd.getFile();
+        
+        if (dir != null && file != null) {
+            String filePath = dir + file;
+            if (!filePath.endsWith(".xlsx")) filePath += ".xlsx";
+            
+            setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+
+            BUS_SanPham bus = new BUS_SanPham();
+            List<SanPham> fullData = bus.getDsThuoc();
+            
+            if (fullData == null) {
+                setCursor(Cursor.getDefaultCursor());
+                showCustomNotification("Lỗi dữ liệu", "Không thể lấy dữ liệu từ CSDL!", "ERROR");
+                return;
+            }
+            
+            String result = exportExcelAction(filePath, fullData);
+            
+            setCursor(Cursor.getDefaultCursor());
+
+            if (result.equals("SUCCESS")) {
+                showCustomNotification("XUẤT EXCEL THÀNH CÔNG", "Đã xuất " + fullData.size() + " sản phẩm thành công tại:\n" + filePath, "SUCCESS");
+            } else if (result.equals("FILE_OPEN")) {
+                showCustomNotification("LỖI GHI ĐÈ", "File Excel này ĐANG ĐƯỢC MỞ!\nVui lòng đóng file Excel trước khi xuất.", "ERROR");
+            } else {
+                showCustomNotification("LỖI", "Xuất file thất bại!\nChi tiết: " + result, "ERROR");
+            }
+        }
+    }
+
+    private String exportExcelAction(String path, List<SanPham> data) {
+        try (Workbook workbook = new XSSFWorkbook()) {
+            Sheet sheet = workbook.createSheet("Danh Sach San Pham");
+            
+            Row headerRow = sheet.createRow(0);
+            String[] headers = {"id", "danhMuc", "dang", "ten", "tenVietTat", "nhaSanXuat", "hoatChat", "thueVAT", "hamLuong", "moTa", "donViDoCoBan", "ngayTao"};
+            
+            CellStyle headerStyle = workbook.createCellStyle();
+            headerStyle.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
+            headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+            headerStyle.setBorderBottom(BorderStyle.THIN);
+            
+            for(int i=0; i<headers.length; i++) {
+                org.apache.poi.ss.usermodel.Cell cell = headerRow.createCell(i);
+                cell.setCellValue(headers[i]);
+                cell.setCellStyle(headerStyle);
+            }
+
+            DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+            for (int i = 0; i < data.size(); i++) {
+                Row row = sheet.createRow(i + 1); 
+                SanPham sp = data.get(i);
+                
+                row.createCell(0).setCellValue(sp.getId() != null ? sp.getId() : "");
+                row.createCell(1).setCellValue(sp.getDanhMuc() != null ? sp.getDanhMuc().name() : "");
+                row.createCell(2).setCellValue(sp.getDang() != null ? sp.getDang().name() : "");
+                row.createCell(3).setCellValue(sp.getTen() != null ? sp.getTen() : "");
+                row.createCell(4).setCellValue(sp.getTenVietTat() != null ? sp.getTenVietTat() : "");
+                row.createCell(5).setCellValue(sp.getNhaSanXuat() != null ? sp.getNhaSanXuat() : "");
+                row.createCell(6).setCellValue(sp.getHoatChat() != null ? sp.getHoatChat() : "");
+                row.createCell(7).setCellValue(Double.parseDouble(String.format(java.util.Locale.US, "%.2f", sp.getThueVAT())));
+                row.createCell(8).setCellValue((sp.getHamLuong() != null && !sp.getHamLuong().isEmpty()) ? sp.getHamLuong() : "NULL");
+                row.createCell(9).setCellValue((sp.getMoTa() != null && !sp.getMoTa().isEmpty()) ? sp.getMoTa() : "NULL");
+                row.createCell(10).setCellValue(sp.getDonViDoCoBan() != null ? sp.getDonViDoCoBan() : "");
+                row.createCell(11).setCellValue(sp.getNgayTao() != null ? sp.getNgayTao().format(dtf) : "");
+            }
+            
+            for (int i = 0; i < headers.length; i++) {
+                sheet.autoSizeColumn(i);
+            }
+
+            try (java.io.FileOutputStream out = new java.io.FileOutputStream(path)) {
+                workbook.write(out);
+            }
+            
+            return "SUCCESS";
+        } catch (java.io.FileNotFoundException ex) {
+            return "FILE_OPEN";
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            return ex.getMessage();
+        }
+    }
+
+    private void thucHienNhapExcelThang() {
+        Frame parentFrame = (Frame) SwingUtilities.getWindowAncestor(this);
+        java.awt.FileDialog fd = new java.awt.FileDialog(parentFrame, "Chọn file Excel để nhập", java.awt.FileDialog.LOAD);
+        fd.setFile("*.xlsx;*.xls"); 
+        fd.setVisible(true); 
+        
+        String dir = fd.getDirectory();
+        String file = fd.getFile();
+        
+        if (dir != null && file != null) {
+            File fileToImport = new File(dir, file);
+            
+            if (!fileToImport.exists()) {
+                showCustomNotification("LỖI FILE", "Không tìm thấy file:\n" + fileToImport.getAbsolutePath(), "ERROR");
+                return;
+            }
+
+            setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+
+            try (java.io.FileInputStream fis = new java.io.FileInputStream(fileToImport);
+                 Workbook workbook = new XSSFWorkbook(fis)) {
+                
+                Sheet sheet = workbook.getSheetAt(0);
+                DataFormatter formatter = new DataFormatter(); 
+                BUS_SanPham bus = new BUS_SanPham();
+                
+                int successCount = 0;
+                int updateCount = 0;
+                List<Integer> errorRows = new ArrayList<>();
+                List<Integer> missingDataRows = new ArrayList<>();
+                
+                List<SanPham> dsHienTai = bus.getDsThuoc();
+                
+                for (int i = 1; i <= sheet.getLastRowNum(); i++) { 
+                    Row row = sheet.getRow(i);
+                    if (row != null) {
+                        String ten = formatter.formatCellValue(row.getCell(3)).trim(); 
+                        if(ten.isEmpty()) continue; 
+
+                        String loai = formatter.formatCellValue(row.getCell(1)).trim(); 
+                        String dang = formatter.formatCellValue(row.getCell(2)).trim(); 
+                        
+                        if (loai.isEmpty() || dang.isEmpty() || loai.equals("NULL") || dang.equals("NULL")) {
+                            missingDataRows.add(i + 1); 
+                            continue;
+                        }
+
+                        try {
+                            String vietTat = formatter.formatCellValue(row.getCell(4)).trim();
+                            String nsx = formatter.formatCellValue(row.getCell(5)).trim();
+                            String hoatChat = formatter.formatCellValue(row.getCell(6)).trim();
+                            
+                            double vat = 10.0;
+                            try {
+                                String vatStr = formatter.formatCellValue(row.getCell(7)).replace("%", "").trim();
+                                if(!vatStr.isEmpty() && !vatStr.equals("NULL")) vat = Double.parseDouble(vatStr);
+                            } catch(Exception ignored){}
+                            
+                            String hamLuong = formatter.formatCellValue(row.getCell(8)).trim();
+                            if(hamLuong.equals("NULL")) hamLuong = "";
+                            
+                            String moTa = formatter.formatCellValue(row.getCell(9)).trim();
+                            if(moTa.equals("NULL")) moTa = "";
+                            
+                            String donVi = formatter.formatCellValue(row.getCell(10)).trim();
+                            if(donVi.equals("NULL") || donVi.isEmpty()) donVi = "Hộp"; 
+                            
+                            SanPham spCu = null;
+                            for (SanPham sp : dsHienTai) {
+                                if (sp.getTen().equalsIgnoreCase(ten)) {
+                                    spCu = sp; break;
+                                }
+                            }
+                            
+                            if (spCu != null) {
+                                bus.capNhatSP(spCu.getId(), mapToDbDanhMuc(loai), mapToDbDang(dang), ten, vietTat, nsx, hoatChat, vat, hamLuong, moTa, donVi);
+                                updateCount++;
+                            } else {
+                                String newId = bus.taoMaMoi();
+                                boolean isSaved = bus.themSP(newId, mapToDbDanhMuc(loai), mapToDbDang(dang), ten, vietTat, nsx, hoatChat, vat, hamLuong, moTa, donVi);
+                                if(isSaved) {
+                                    successCount++;
+                                    SanPham newSp = new SanPham();
+                                    newSp.setId(newId); newSp.setTen(ten);
+                                    dsHienTai.add(newSp); 
+                                }
+                            }
+                        } catch (Exception rowEx) {
+                            errorRows.add(i + 1);
+                        }
+                    }
+                }
+                
+                setCursor(Cursor.getDefaultCursor());
+                
+                StringBuilder msg = new StringBuilder();
+                msg.append("Quá trình xử lý file Excel hoàn tất:\n");
+                msg.append("   • Thêm mới thành công: ").append(successCount).append("\n");
+                msg.append("   • Cập nhật thông tin: ").append(updateCount).append("\n");
+                
+                boolean hasError = false;
+                if (!missingDataRows.isEmpty()) {
+                    msg.append("\n⚠ Cảnh báo: Các dòng sau bị bỏ qua do thiếu Tên/Loại/Dạng: ").append(missingDataRows.toString());
+                    hasError = true;
+                }
+                if (!errorRows.isEmpty()) {
+                    msg.append("\n⚠ Lỗi format dữ liệu ở các dòng: ").append(errorRows.toString());
+                    hasError = true;
+                }
+                
+                if (hasError) {
+                    showCustomNotification("NHẬP CÓ CẢNH BÁO", msg.toString(), "WARNING");
+                } else {
+                    showCustomNotification("NHẬP DỮ LIỆU THÀNH CÔNG", msg.toString(), "SUCCESS");
+                }
+                
+                loadDataFromDatabase(); 
+            } catch (Exception ex) {
+                setCursor(Cursor.getDefaultCursor());
+                ex.printStackTrace();
+                showCustomNotification("LỖI HỆ THỐNG", "Không thể đọc file Excel:\n" + ex.getMessage(), "ERROR");
+            }
+        }
+    }
+
     private void loadDataFromDatabase() {
         allDataMock.clear();
-        DAO.DAO_SanPham daoSP = new DAO.DAO_SanPham();
-        List<Object[]> dsSP = daoSP.layDanhSachSanPhamChoBang();
+        BUS_SanPham bus = new BUS_SanPham();
+        List<Object[]> dsSP = bus.layDanhSachChoBang();
         
         if (dsSP != null) {
             allDataMock.addAll(dsSP);
