@@ -8,7 +8,6 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.*;
 
-
 import Utils.MenuIcon;
 import BUS.BUS_HoaDon;
 import java.awt.*;
@@ -17,15 +16,19 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ManHinhBanHang extends JPanel {
-	private BUS_HoaDon busHoaDon;
-	private ManHinhDanhSachHoaDon pnlDanhSachHoaDon;
+	private JTextField txtSearch;
+    public static String pendingDraftIdToOpen = null; 
+    public static String pendingPhoneToLink = null;
+    public static String pendingNameToLink = null; // BẠN THÊM ĐÚNG 1 DÒNG NÀY VÀO ĐÂY LÀ XONG
+    private BUS_HoaDon busHoaDon;
+    private ManHinhDanhSachHoaDon pnlDanhSachHoaDon;
     private JTable table;
     private DefaultTableModel model;
     private TableRowSorter<DefaultTableModel> sorter;
     private JButton[] statusBtns, categoryBtns;
     private String filterStatus = "Tất cả", filterCat = "Tất cả";
-    private JTextField txtSearch;
     
+
     public ManHinhBanHang() {
         initUI();
         loadData();
@@ -44,7 +47,7 @@ public class ManHinhBanHang extends JPanel {
         JPanel pnlLeftTabs = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
         pnlLeftTabs.setOpaque(false);
 
-        // --- 1. Tab Bán hàng (ĐANG ACTIVE - MÀU XANH) ---
+        // --- 1. Tab Bán hàng ---
         JLabel lblBanHang = new JLabel("Bán hàng");
         lblBanHang.setIcon(new MenuIcon("CART"));
         lblBanHang.setIconTextGap(8);
@@ -54,7 +57,7 @@ public class ManHinhBanHang extends JPanel {
                 BorderFactory.createMatteBorder(0, 0, 4, 0, Color.decode("#1967D2")),
                 BorderFactory.createEmptyBorder(20, 0, 20, 40)));
 
-        // --- 2. Tab Đổi / Trả hàng (KHÔNG ACTIVE - CLICK ĐỂ CHUYỂN) ---
+        // --- 2. Tab Đổi / Trả hàng ---
         JLabel lblDoiTra = new JLabel("Đổi / Trả hàng");
         lblDoiTra.setIcon(new MenuIcon("BOX"));
         lblDoiTra.setIconTextGap(8);
@@ -66,11 +69,11 @@ public class ManHinhBanHang extends JPanel {
         lblDoiTra.addMouseListener(new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent e) { 
-                chuyenManHinh("DoiTra"); // Gọi đúng tên màn hình
+                chuyenManHinh("DoiTra"); 
             }
         });
 
-        // --- 3. Tab Danh Sách Hóa Đơn (KHÔNG ACTIVE - CLICK ĐỂ CHUYỂN) ---
+        // --- 3. Tab Danh Sách Hóa Đơn ---
         JLabel lblDanhSachHD = new JLabel("Danh Sách Hóa Đơn");
         lblDanhSachHD.setIcon(new MenuIcon("LIST"));
         lblDanhSachHD.setIconTextGap(8);
@@ -82,11 +85,10 @@ public class ManHinhBanHang extends JPanel {
         lblDanhSachHD.addMouseListener(new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent e) { 
-                chuyenManHinh("DanhSachHD"); // Gọi đúng tên màn hình
+                chuyenManHinh("DanhSachHD"); 
             }
         });
 
-        // Add 3 tabs vào thanh điều hướng
         pnlLeftTabs.add(lblBanHang);
         pnlLeftTabs.add(lblDoiTra);
         pnlLeftTabs.add(lblDanhSachHD);
@@ -146,7 +148,7 @@ public class ManHinhBanHang extends JPanel {
             txtSearch.setForeground(Color.GRAY);
             txtSearch.setText(placeholder);
             xuLyStatus(statusBtns[0]);
-            xuLyCat(categoryBtns[0]);
+            xuLyCat(categoryBtns[0]); // Đã hết bị lỗi NullPointerException ở đây
             pnlHeader.requestFocus(); 
         });
 
@@ -169,12 +171,35 @@ public class ManHinhBanHang extends JPanel {
         
         pnlFilters.add(new JLabel("Trạng thái: "));
         statusBtns = new JButton[]{
-            createFilterBtn("Tất cả", true, false), createFilterBtn("Hoàn thành", false, false),
-            createFilterBtn("Đang xử lý", false, false), createFilterBtn("Đã hủy", false, false)
+            createFilterBtn("Tất cả", true, false), 
+            createFilterBtn("Hoàn thành", false, false),
+            createFilterBtn("Đang xử lý", false, false), 
+            createFilterBtn("Đã hủy", false, false)
         };
         for (JButton b : statusBtns) { pnlFilters.add(b); b.addActionListener(e -> xuLyStatus(b)); }
-
-        
+        javax.swing.Timer autoOpenTimer = new javax.swing.Timer(500, evt -> {
+            if (ManHinhBanHang.pendingDraftIdToOpen != null && !ManHinhBanHang.pendingDraftIdToOpen.isEmpty() && this.isShowing()) {
+                String maHD = ManHinhBanHang.pendingDraftIdToOpen;
+                ManHinhBanHang.pendingDraftIdToOpen = null; 
+                
+                ((javax.swing.Timer) evt.getSource()).stop(); // Dừng bộ đếm
+                
+                SwingUtilities.invokeLater(() -> {
+                    try {
+                        if (maHD.equals("NEW_INVOICE")) {
+                            Window p = SwingUtilities.getWindowAncestor(ManHinhBanHang.this);
+                            TaoHoaDon dialogTaoHoaDon = new TaoHoaDon((Frame) p, model); 
+                            dialogTaoHoaDon.setVisible(true);
+                        } else {
+                            moLaiHoaDonNhap(maHD);
+                        }
+                    } finally {
+                        ((javax.swing.Timer) evt.getSource()).start(); // Bật lại sau khi xong
+                    }
+                });
+            }
+        });
+        autoOpenTimer.start();
 
         JPanel pnlNorth = new JPanel();
         pnlNorth.setLayout(new BoxLayout(pnlNorth, BoxLayout.Y_AXIS));
@@ -189,6 +214,26 @@ public class ManHinhBanHang extends JPanel {
         table = new JTable(model);
         sorter = new TableRowSorter<>(model);
         table.setRowSorter(sorter);
+
+        sorter.setComparator(1, new java.util.Comparator<String>() {
+            java.text.SimpleDateFormat sdfFull = new java.text.SimpleDateFormat("dd/MM/yyyy HH:mm");
+            java.text.SimpleDateFormat sdfShort = new java.text.SimpleDateFormat("dd/MM/yyyy");
+            @Override
+            public int compare(String s1, String s2) {
+                try {
+                    java.util.Date d1 = s1.contains(":") ? sdfFull.parse(s1) : sdfShort.parse(s1);
+                    java.util.Date d2 = s2.contains(":") ? sdfFull.parse(s2) : sdfShort.parse(s2);
+                    return d1.compareTo(d2); 
+                } catch (Exception e) {
+                    return s1.compareTo(s2);
+                }
+            }
+        });
+        
+        java.util.List<RowSorter.SortKey> sortKeys = new java.util.ArrayList<>();
+        sortKeys.add(new RowSorter.SortKey(1, SortOrder.DESCENDING));
+        sorter.setSortKeys(sortKeys);
+        sorter.sort();
         
         table.setRowHeight(55); 
         table.setFont(new Font("Segoe UI", Font.PLAIN, 15));
@@ -209,7 +254,6 @@ public class ManHinhBanHang extends JPanel {
         table.getColumnModel().getColumn(8).setMaxWidth(0);
         table.setDefaultRenderer(Object.class, new ModernTableRenderer());
 
-        // CHÍNH XÁC SỰ KIỆN CLICK MỞ CHI TIẾT
         table.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mouseClicked(java.awt.event.MouseEvent e) {
@@ -227,29 +271,17 @@ public class ManHinhBanHang extends JPanel {
                     String status = table.getValueAt(viewRow, 6).toString();
                     
                     Window p = SwingUtilities.getWindowAncestor(ManHinhBanHang.this);
-
-                    String tenNhanVienHienTai = "Nguyễn Tuấn Đạt"; // Lấy từ Session hoặc truy vấn DB
+                    String tenNhanVienHienTai = "Nguyễn Tuấn Đạt"; 
 
                     if (status.equals("Đang xử lý")) {
-                        // Mở Sửa Hóa Đơn Nháp
                         TaoHoaDon dialogSua = new TaoHoaDon((Frame) p, model, modelRow, maHoaDon, khach, sdt); 
                         dialogSua.setVisible(true);
                     } else {
-                        // Lấy danh sách sản phẩm từ CSDL
                         DAO.DAO_ChiTietHoaDon daoCTHD = new DAO.DAO_ChiTietHoaDon();
                         java.util.List<Object[]> listSanPham = daoCTHD.layDanhSachSanPhamTheoMaHD(maHoaDon);
 
-                        // Mở Xem Chi Tiết Hóa Đơn (Đã truyền thêm tham số tenNhanVienHienTai)
                         ChiTietHoaDon dialogChiTiet = new ChiTietHoaDon(
-                            (Frame) p, 
-                            maHoaDon, 
-                            ngay, 
-                            khach, 
-                            sdt, 
-                            phuongThuc, 
-                            tongTien, 
-                            tenNhanVienHienTai, // <--- THÊM BIẾN TÊN NHÂN VIÊN VÀO ĐÂY
-                            listSanPham
+                            (Frame) p, maHoaDon, ngay, khach, sdt, phuongThuc, tongTien, tenNhanVienHienTai, listSanPham
                         );
                         dialogChiTiet.setVisible(true);
                     }
@@ -275,10 +307,24 @@ public class ManHinhBanHang extends JPanel {
         pnlSouth.add(pnlPage, BorderLayout.WEST);
         pnlSouth.add(lblInfo, BorderLayout.EAST);
         this.add(pnlSouth, BorderLayout.SOUTH);
-
-        
     }
- // --- HÀM CHUYỂN MÀN HÌNH ĐA NĂNG (CHỐNG LIỆT NÚT) ---
+
+    public void moLaiHoaDonNhap(String maHD) {
+        SwingUtilities.invokeLater(() -> {
+            for (int i = 0; i < model.getRowCount(); i++) {
+                if (model.getValueAt(i, 0).toString().equals(maHD)) {
+                    String khach = model.getValueAt(i, 2).toString();
+                    String sdt = model.getValueAt(i, 3).toString();
+                    Window p = SwingUtilities.getWindowAncestor(this);
+                    
+                    TaoHoaDon dialogSua = new TaoHoaDon((Frame) p, model, i, maHD, khach, sdt);
+                    dialogSua.setVisible(true);
+                    break;
+                }
+            }
+        });
+    }
+
     private void chuyenManHinh(String tenManHinh) {
         SwingUtilities.invokeLater(() -> {
             Container parent = this.getParent();
@@ -290,45 +336,33 @@ public class ManHinhBanHang extends JPanel {
                 CardLayout cl = (CardLayout) parent.getLayout();
                 cl.show(parent, tenManHinh);
                 
-                // --- THÊM ĐOẠN NÀY ĐỂ ĐỒNG BỘ VỚI MENU BÊN TRÁI ---
                 Container topLevel = parent.getParent();
                 while (topLevel != null && !(topLevel instanceof MainDashboard)) {
                     topLevel = topLevel.getParent();
                 }
                 if (topLevel instanceof MainDashboard) {
-                    // Nếu chuyển về Bán hàng thì làm sáng nút "Bán hàng & Đổi trả" trên Sidebar
                     if (tenManHinh.equals("Bán hàng & Đổi trả") || 
                         tenManHinh.equals("DanhSachHD") || 
                         tenManHinh.equals("DoiTra")) {
-                        ((MainDashboard) topLevel).chuyenSangTabBanHang(); // Ông thêm hàm này ở Bước 4
+                        ((MainDashboard) topLevel).chuyenSangTabBanHang(); 
                     }
                 }
             }
         });
     }
+
     private void loadData() {
-        // Xóa dữ liệu cũ trong bảng trước khi tải mới
         model.setRowCount(0);
-        
-        // Gọi lớp BUS để lấy dữ liệu thực tế (TUYỆT ĐỐI KHÔNG GỌI DAO Ở GUI NỮA)
-        // Lưu ý: Nếu ở đầu file ManHinhBanHang bạn đã khai báo "private BUS_HoaDon busHoaDon = new BUS_HoaDon();" 
-        // thì bạn KHÔNG cần dòng "BUS_HoaDon bus = new BUS_HoaDon();" ở dưới này nữa, mà dùng luôn biến busHoaDon.
-        
         BUS_HoaDon bus = new BUS_HoaDon(); 
         List<Object[]> dsHoaDon = bus.layDanhSachHoaDonChoBang();
         
-        // Thêm từng dòng vào model
         if (dsHoaDon != null) {
             for (Object[] row : dsHoaDon) {
-                model.addRow(row);
+                model.insertRow(0, row);
             }
         }
-        
-        // Cập nhật nhãn hiển thị thông tin số lượng hóa đơn (Bỏ comment nếu bạn có dùng)
-        // if (lblInfo != null) {
-        //     lblInfo.setText("Trang 1/1 (" + model.getRowCount() + " HĐ)");
-        // }
     }
+
     private JButton createActionBtn(String txt, String hex) {
         JButton btn = new JButton(txt) {
             public Dimension getPreferredSize() { Dimension size = super.getPreferredSize(); size.height = 45; return size; }
@@ -405,11 +439,9 @@ public class ManHinhBanHang extends JPanel {
             return lbl;
         }
     }
+
     public void moFormThemMoi() {
-        // Giả sử nút "Thêm mới" của bạn tên là btnAdd
-        // Lệnh doClick() sẽ giả lập hành vi người dùng click vào nút đó
         for (Component c : getComponents()) {
-            // Nếu bạn không đặt tên biến btnAdd toàn cục, ta có thể tìm nút theo chữ
             if (c instanceof JPanel) {
                 for (Component child : ((JPanel) c).getComponents()) {
                     if (child instanceof JButton && ((JButton) child).getText().contains("Thêm")) {
@@ -419,9 +451,5 @@ public class ManHinhBanHang extends JPanel {
                 }
             }
         }
-        
-        // Cách nhanh nhất: Nếu bạn có biến toàn cục JButton btnAdd, chỉ cần:
-        // btnAdd.doClick();
     }
-    
 }

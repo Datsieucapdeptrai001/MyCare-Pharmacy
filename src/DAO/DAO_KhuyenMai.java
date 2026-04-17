@@ -124,9 +124,6 @@ public class DAO_KhuyenMai {
         return km;
     }
 
-    // ===========================================
-    // CÁC HÀM DÀNH CHO GIAO DIỆN (JOIN 3 BẢNG)
-    // ===========================================
     public List<Object[]> layDanhSachKhuyenMaiChoTable() {
         List<Object[]> listData = new ArrayList<>();
         Connection con = ConnectDB.getInstance().getConnection();
@@ -137,27 +134,21 @@ public class DAO_KhuyenMai {
         }
         
         try {
-            boolean hasGiftColumns = true;
+            // Kiểm tra xem cột trangThai đã tồn tại chưa (để tránh lỗi SQL nếu chưa chạy ALTER TABLE)
+            boolean hasTrangThaiCol = true;
             try (Statement st = con.createStatement()) {
-                st.executeQuery("SELECT spTang, slTang FROM HinhThucKhuyenMai WHERE 1=0");
-            } catch (SQLException e) {
-                hasGiftColumns = false;
+                st.executeQuery("SELECT trangThai FROM KhuyenMai WHERE 1=0");
+            } catch (SQLException e) { 
+                hasTrangThaiCol = false; 
             }
 
-            String sql;
-            if (hasGiftColumns) {
-                sql = "SELECT k.id, k.tenKhuyenMai, k.ngayBatDau, k.ngayKetThuc, " +
-                      "h.loaiHinhThuc, h.giaTri as mucGiam, h.spTang, h.slTang, d.giaTri as donToiThieu, h.doiTuongApDung " +
-                      "FROM KhuyenMai k " +
-                      "LEFT JOIN HinhThucKhuyenMai h ON k.id = h.khuyenMaiId " +
-                      "LEFT JOIN DieuKienKhuyenMai d ON k.id = d.khuyenMaiId";
-            } else {
-                sql = "SELECT k.id, k.tenKhuyenMai, k.ngayBatDau, k.ngayKetThuc, " +
-                      "h.loaiHinhThuc, h.giaTri as mucGiam, d.giaTri as donToiThieu, h.doiTuongApDung " +
-                      "FROM KhuyenMai k " +
-                      "LEFT JOIN HinhThucKhuyenMai h ON k.id = h.khuyenMaiId " +
-                      "LEFT JOIN DieuKienKhuyenMai d ON k.id = d.khuyenMaiId";
-            }
+            String sql = "SELECT k.id, k.tenKhuyenMai, k.ngayBatDau, k.ngayKetThuc, " +
+                         (hasTrangThaiCol ? "k.trangThai, " : "") +
+                         "h.loaiHinhThuc, h.giaTri as mucGiam, h.spTang, h.slTang, h.spYeuCau, h.slYeuCau, " + 
+                         "d.giaTri as donToiThieu, h.doiTuongApDung " +
+                         "FROM KhuyenMai k " +
+                         "LEFT JOIN HinhThucKhuyenMai h ON k.id = h.khuyenMaiId " +
+                         "LEFT JOIN DieuKienKhuyenMai d ON k.id = d.khuyenMaiId";
             
             try (PreparedStatement stmt = con.prepareStatement(sql);
                  ResultSet rs = stmt.executeQuery()) {
@@ -170,11 +161,21 @@ public class DAO_KhuyenMai {
                     Timestamp startDB = rs.getTimestamp("ngayBatDau");
                     Timestamp endDB = rs.getTimestamp("ngayKetThuc");
                     String hinhThucDB = rs.getString("loaiHinhThuc");
-                    double mucGiamDB = rs.getDouble("mucGiam");
                     
-                    double donToiThieuDB = 0;
-                    if(rs.getObject("donToiThieu") != null) donToiThieuDB = rs.getDouble("donToiThieu");
+                    // ĐỌC CỘT TRẠNG THÁI TỪ DB
+                    boolean trangThaiDB = true;
+                    if (hasTrangThaiCol) {
+                        trangThaiDB = rs.getBoolean("trangThai");
+                    }
 
+                    // --- CÁC BIẾN KIỂU DOUBLE GỐC DÙNG ĐỂ TÍNH TOÁN ---
+                    double mucGiamDB = rs.getDouble("mucGiam");
+                    double donToiThieuDB = 0;
+                    if(rs.getObject("donToiThieu") != null) {
+                        donToiThieuDB = rs.getDouble("donToiThieu");
+                    }
+
+                    // --- CÁC BIẾN KIỂU STRING DÙNG ĐỂ HIỂN THỊ LÊN BẢNG (GUI) ---
                     String hinhThucUI = "Giảm phần trăm (%)";
                     String mucGiamUI = "";
                     String donToiThieuUI = "";
@@ -182,12 +183,9 @@ public class DAO_KhuyenMai {
                     
                     if ("SAN_PHAM_KEM_THEO".equals(hinhThucDB)) {
                         hinhThucUI = "Sản phẩm kèm theo";
-                        String spTang = "SP";
-                        int slTang = 1;
-                        if (hasGiftColumns) {
-                            spTang = rs.getString("spTang");
-                            slTang = rs.getInt("slTang");
-                        }
+                        String spTang = rs.getString("spTang");
+                        int slTang = rs.getInt("slTang");
+                        
                         mucGiamUI = "Tặng " + slTang + " " + (spTang != null ? spTang : "SP");
                         donToiThieuUI = "Mọi đơn hàng";
                         doiTuongUI = "Tất cả";
@@ -201,7 +199,11 @@ public class DAO_KhuyenMai {
                     String trangThaiUI = "Tạm dừng";
                     boolean isToggleOn = false;
 
-                    if (startDB != null && endDB != null) {
+                    // XỬ LÝ LỌC TRẠNG THÁI BẬT/TẮT CỦA NGƯỜI DÙNG
+                    if (!trangThaiDB) { 
+                        trangThaiUI = "Tạm dừng";
+                        isToggleOn = false;
+                    } else if (startDB != null && endDB != null) {
                         thoiGianUI = new java.text.SimpleDateFormat("dd/MM/yyyy").format(startDB) + " - " + new java.text.SimpleDateFormat("dd/MM/yyyy").format(endDB);
                         
                         if (currentDate.before(startDB)) {
@@ -216,8 +218,20 @@ public class DAO_KhuyenMai {
                         }
                     }
                     
+                    // QUAN TRỌNG NHẤT LÀ Ở ĐÂY: Thêm mucGiamDB và donToiThieuDB vào vị trí số [10] và [11]
                     listData.add(new Object[]{ 
-                        id, ten, hinhThucUI, mucGiamUI, donToiThieuUI, doiTuongUI, thoiGianUI, trangThaiUI, "Xem", isToggleOn 
+                        id,             // [0]
+                        ten,            // [1]
+                        hinhThucUI,     // [2]
+                        mucGiamUI,      // [3] (Dạng chữ, VD: "10%" - Để show lên bảng)
+                        donToiThieuUI,  // [4] (Dạng chữ, VD: "200.000 đ" - Để show lên bảng)
+                        doiTuongUI,     // [5]
+                        thoiGianUI,     // [6]
+                        trangThaiUI,    // [7]
+                        "Xem",          // [8]
+                        isToggleOn,     // [9]
+                        mucGiamDB,      // [10] (Dạng số thực Double - ĐỂ TÍNH TIỀN TRONG GUI)
+                        donToiThieuDB   // [11] (Dạng số thực Double - ĐỂ TÍNH TIỀN TRONG GUI)
                     });
                 }
             }
@@ -226,7 +240,17 @@ public class DAO_KhuyenMai {
         }
         return listData;
     }
-
+    public boolean capNhatTrangThai(String maKM, boolean trangThai) {
+        String sql = "UPDATE KhuyenMai SET trangThai = ? WHERE id = ?";
+        try (Connection con = ConnectDB.getInstance().getConnection();
+             PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setBoolean(1, trangThai);
+            pst.setString(2, maKM);
+            return pst.executeUpdate() > 0;
+        } catch (SQLException e) {
+            return false;
+        }
+    }
     // ===========================================
     // CÁC HÀM QUẢN LÝ CẤU HÌNH TÍCH ĐIỂM
     // ===========================================
