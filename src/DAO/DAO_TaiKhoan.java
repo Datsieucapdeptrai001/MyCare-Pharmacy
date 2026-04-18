@@ -215,4 +215,55 @@ public class DAO_TaiKhoan {
         tk.setNhanVienId(nv);
         return tk;
     }
+
+    // ================== CÁC HÀM BỔ SUNG MỚI CHO FORM NHÂN VIÊN ==================
+
+    /**
+     * Lấy tài khoản dựa trên mã Nhân Viên (Dùng khi click xem chi tiết/sửa nhân viên)
+     */
+    public TaiKhoan layTaiKhoanTheoMaNV(String maNV) {
+        TaiKhoan tk = null;
+        String sql = "SELECT * FROM TaiKhoan WHERE nhanVienId = ?";
+        Connection con = ConnectDB.getInstance().getConnection();
+
+        try (PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setString(1, maNV);
+            try (ResultSet rs = pst.executeQuery()) {
+                if (rs.next()) {
+                    tk = new TaiKhoan();
+                    tk.setId(rs.getString("id"));
+                    tk.setTenDangNhap(rs.getString("tenDangNhap"));
+                    tk.setMatKhau(rs.getString("matKhau"));
+                    
+                    String vaiTroStr = rs.getString("vaiTro");
+                    if (vaiTroStr != null) tk.setVaiTro(VaiTro.valueOf(vaiTroStr));
+                    
+                    NhanVien nv = new NhanVien();
+                    nv.setNhanVien(rs.getString("nhanVienId"));
+                    tk.setNhanVienId(nv);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return tk;
+    }
+
+    /**
+     * Cập nhật tên đăng nhập và mật khẩu dựa theo mã nhân viên
+     */
+    public boolean capNhatTaiKhoanTheoMaNV(String maNV, String tenDangNhap, String matKhau) {
+        String sql = "UPDATE TaiKhoan SET tenDangNhap = ?, matKhau = ? WHERE nhanVienId = ?";
+        Connection con = ConnectDB.getInstance().getConnection();
+
+        try (PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setString(1, tenDangNhap);
+            pst.setString(2, matKhau);
+            pst.setString(3, maNV);
+            return pst.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
 }
