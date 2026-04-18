@@ -2,15 +2,16 @@ package GUI;
 
 import BUS.BUS_Kho;
 import BUS.BUS_SanPham;
+import Entity.KhoHang;
 import Entity.LoHang;
 import Entity.SanPham;
-import Enumeration.TrangThaiLoHang;
 import Utils.MenuIcon;
 
 import javax.swing.*;
 import javax.swing.border.AbstractBorder;
 import javax.swing.border.EmptyBorder;
-import javax.swing.plaf.basic.BasicComboBoxUI;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import javax.swing.text.AbstractDocument;
 import javax.swing.text.AttributeSet;
 import javax.swing.text.BadLocationException;
@@ -24,6 +25,7 @@ import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
@@ -35,20 +37,26 @@ public class ManHinhNhapLoHangMoi extends JDialog {
 
     private static final Color BG_TRANSPARENT = new Color(0, 0, 0, 0);
     private static final Color CARD_BG = Color.WHITE;
-    private static final Color HEADER_BG = new Color(15, 23, 42);
-    private static final Color TEXT_PRIMARY = new Color(30, 41, 59);
+    
+    // --- LÊN MÀU CHO HEADER & ỨNG DỤNG ---
+    private static final Color HEADER_BG = new Color(14, 116, 144); // Xanh đại dương đậm (Primary)
+    private static final Color FOOTER_BG = new Color(248, 250, 252); // Xám ánh xanh nhạt
+    
+    private static final Color TEXT_PRIMARY = new Color(15, 23, 42); 
     private static final Color TEXT_SECONDARY = new Color(100, 116, 139);
     private static final Color TEXT_HINT = new Color(148, 163, 184);
 
-    private static final Color PRIMARY = new Color(37, 99, 235);
-    private static final Color PRIMARY_HOVER = new Color(29, 78, 216);
+    private static final Color PRIMARY = new Color(14, 116, 144); 
+    private static final Color PRIMARY_HOVER = new Color(22, 133, 163);
     private static final Color BORDER = new Color(226, 232, 240);
-    private static final Color BORDER_FOCUS = new Color(59, 130, 246);
+    private static final Color BORDER_FOCUS = new Color(14, 116, 144); 
     private static final Color DANGER = new Color(239, 68, 68);
+    private static final Color SUCCESS = new Color(34, 197, 94); 
+    private static final Color SUCCESS_HOVER = new Color(22, 163, 74);
 
-    private static final Font FONT_TITLE = new Font("Segoe UI", Font.BOLD, 18);
-    private static final Font FONT_LABEL = new Font("Segoe UI", Font.BOLD, 13);
-    private static final Font FONT_TEXT = new Font("Segoe UI", Font.PLAIN, 14);
+    private static final Font FONT_TITLE = new Font("Segoe UI", Font.BOLD, 20);
+    private static final Font FONT_LABEL = new Font("Segoe UI", Font.BOLD, 14);
+    private static final Font FONT_TEXT = new Font("Segoe UI", Font.PLAIN, 15);
 
     private final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private final NumberFormat vnNumberFormat = NumberFormat.getInstance(new Locale("vi", "VN"));
@@ -56,12 +64,18 @@ public class ManHinhNhapLoHangMoi extends JDialog {
     private final BUS_SanPham busSanPham = new BUS_SanPham();
     private final BUS_Kho busKho = new BUS_Kho();
 
-    private JComboBox<SanPham> cboSanPham;
+    private HintTextField txtTimSanPham;
+    private SanPham selectedSanPham = null;
+    private List<SanPham> dsTatCaSanPham = new ArrayList<>();
+    private JPopupMenu popupSanPham;
+    private JList<SanPham> listSanPham;
+    private DefaultListModel<SanPham> modelSanPham;
+    private boolean isFiltering = false;
+
     private HintTextField txtMaLo;
     private HintTextField txtSoLuong;
     private HintTextField txtGiaNhap;
     private HintTextField txtHanSuDung;
-    private JComboBox<String> cboTrangThai;
 
     private JLabel errSanPham;
     private JLabel errMaLo;
@@ -77,10 +91,10 @@ public class ManHinhNhapLoHangMoi extends JDialog {
 
         setUndecorated(true);
         setBackground(BG_TRANSPARENT);
-        setSize(560, 560);
+        setSize(580, 560); 
         setLocationRelativeTo(owner);
 
-        setShape(new RoundRectangle2D.Double(0, 0, getWidth(), getHeight(), 24, 24));
+        setShape(new RoundRectangle2D.Double(0, 0, getWidth(), getHeight(), 16, 16)); 
         setContentPane(createMainUI());
         registerKeyboardActions();
     }
@@ -88,7 +102,8 @@ public class ManHinhNhapLoHangMoi extends JDialog {
     private JPanel createMainUI() {
         JPanel root = new JPanel(new BorderLayout());
         root.setBackground(CARD_BG);
-        root.setBorder(BorderFactory.createLineBorder(new Color(203, 213, 225), 1));
+        // Đổi màu viền ngoài cùng thành viền xanh cho đồng bộ
+        root.setBorder(BorderFactory.createLineBorder(PRIMARY, 2));
 
         root.add(createHeader(), BorderLayout.NORTH);
         root.add(createBody(), BorderLayout.CENTER);
@@ -99,18 +114,21 @@ public class ManHinhNhapLoHangMoi extends JDialog {
 
     private JPanel createHeader() {
         JPanel header = new JPanel(new BorderLayout());
-        header.setBackground(HEADER_BG);
-        header.setBorder(new EmptyBorder(16, 24, 16, 20));
+        header.setBackground(HEADER_BG); // Sử dụng màu xanh đậm
+        header.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(8, 80, 100)), // Viền dưới đậm hơn
+                new EmptyBorder(16, 24, 16, 20)
+        ));
 
         JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 0));
         left.setOpaque(false);
 
-        JLabel lblIcon = new JLabel(new MenuIcon("ADD")); // Đổi icon tiêu đề thành ADD cho đúng ngữ cảnh Thêm mới
-        lblIcon.setForeground(Color.WHITE);
+        JLabel lblIcon = new JLabel(new MenuIcon("ADD"));
+        lblIcon.setForeground(Color.WHITE); // Đổi icon thành màu trắng
 
         JLabel title = new JLabel("Thêm Lô Hàng");
         title.setFont(FONT_TITLE);
-        title.setForeground(Color.WHITE);
+        title.setForeground(Color.WHITE); // Đổi chữ thành màu trắng
 
         left.add(lblIcon);
         left.add(title);
@@ -120,34 +138,18 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         btnClose.setFocusPainted(false);
         btnClose.setBorderPainted(false);
         btnClose.setContentAreaFilled(false);
-        btnClose.setForeground(new Color(148, 163, 184));
+        btnClose.setForeground(new Color(255, 255, 255, 180)); // Trắng mờ
         btnClose.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         btnClose.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseEntered(MouseEvent e) {
-                btnClose.setForeground(DANGER);
-            }
-
-            @Override
-            public void mouseExited(MouseEvent e) {
-                btnClose.setForeground(new Color(148, 163, 184));
-            }
+            @Override public void mouseEntered(MouseEvent e) { btnClose.setForeground(Color.WHITE); } // Sáng lên khi hover
+            @Override public void mouseExited(MouseEvent e) { btnClose.setForeground(new Color(255, 255, 255, 180)); }
         });
         btnClose.addActionListener(e -> dispose());
 
         MouseAdapter dragWindow = new MouseAdapter() {
             int x, y;
-
-            @Override
-            public void mousePressed(MouseEvent e) {
-                x = e.getX();
-                y = e.getY();
-            }
-
-            @Override
-            public void mouseDragged(MouseEvent e) {
-                setLocation(getLocation().x + e.getX() - x, getLocation().y + e.getY() - y);
-            }
+            @Override public void mousePressed(MouseEvent e) { x = e.getX(); y = e.getY(); }
+            @Override public void mouseDragged(MouseEvent e) { setLocation(getLocation().x + e.getX() - x, getLocation().y + e.getY() - y); }
         };
 
         header.addMouseListener(dragWindow);
@@ -162,11 +164,15 @@ public class ManHinhNhapLoHangMoi extends JDialog {
     private JPanel createBody() {
         JPanel body = new JPanel(new GridBagLayout());
         body.setBackground(CARD_BG);
-        body.setBorder(new EmptyBorder(24, 30, 10, 30));
+        body.setBorder(new EmptyBorder(24, 32, 10, 32));
 
-        cboSanPham = new JComboBox<>();
-        styleComboBox(cboSanPham);
-        loadSanPhamToComboBox();
+        try {
+            dsTatCaSanPham = busSanPham.getDsThuoc();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        JPanel comboSanPhamWrapper = createProductSelectorField();
 
         txtMaLo = createTextField("VD: LOT-2026-001");
         txtSoLuong = createTextField("0");
@@ -182,26 +188,22 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         errGiaNhap = createErrorLabel();
         errHanSuDung = createErrorLabel();
 
-        cboTrangThai = new JComboBox<>(new String[]{"Còn hàng", "Hết hàng", "Hết hạn"});
-        styleComboBox(cboTrangThai);
-
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.gridx = 0;
         gbc.weightx = 1.0;
         gbc.fill = GridBagConstraints.HORIZONTAL;
-        gbc.insets = new Insets(0, 0, 14, 0);
+        gbc.insets = new Insets(0, 0, 16, 0); 
 
-        // Đã thêm TÊN ICON vào các tham số cuối cùng
+        // Thêm Icon màu xanh cho các nhãn
         gbc.gridy = 0;
-        body.add(createFullWidthField("Sản phẩm *", cboSanPham, errSanPham, "PILL"), gbc);
+        body.add(createFullWidthField("Sản phẩm (Chọn hoặc nhập mới) *", comboSanPhamWrapper, errSanPham, "SEARCH"), gbc);
 
         gbc.gridy = 1;
-        body.add(createTwoColumnRow("Mã lô *", txtMaLo, errMaLo, "DOCUMENT", 
-                                    "Trạng thái", cboTrangThai, createErrorLabel(), "CHECK_CIRCLE"), gbc);
+        body.add(createFullWidthField("Mã lô *", txtMaLo, errMaLo, "DOCUMENT"), gbc);
 
         gbc.gridy = 2;
         body.add(createTwoColumnRow("Số lượng *", txtSoLuong, errSoLuong, "BOX", 
-                                    "Giá nhập (đ/ĐV) *", txtGiaNhap, errGiaNhap, "TAB_DOLLAR"), gbc);
+                                    "Giá nhập (đ) *", txtGiaNhap, errGiaNhap, "TAB_DOLLAR"), gbc);
 
         gbc.gridy = 3;
         JPanel dateFieldWrapper = createDatePickerField();
@@ -212,6 +214,164 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         body.add(Box.createVerticalGlue(), gbc);
 
         return body;
+    }
+
+    private JPanel createProductSelectorField() {
+        JPanel wrap = new JPanel(new BorderLayout());
+        wrap.setBackground(Color.WHITE);
+
+        ModernBorder sharedBorder = new ModernBorder();
+        wrap.setBorder(sharedBorder);
+
+        txtTimSanPham = new HintTextField("Nhập tên, mã SP hoặc bấm ▼ để chọn...");
+        txtTimSanPham.setFont(FONT_TEXT);
+        txtTimSanPham.setForeground(TEXT_PRIMARY);
+        txtTimSanPham.setBorder(null);
+
+        JButton btnDrop = new JButton("▼");
+        btnDrop.setFont(new Font("Segoe UI", Font.PLAIN, 10));
+        btnDrop.setFocusPainted(false);
+        btnDrop.setContentAreaFilled(false);
+        btnDrop.setBorder(new EmptyBorder(0, 12, 0, 12));
+        btnDrop.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btnDrop.setForeground(PRIMARY); // Đổi mũi tên sang màu Primary cho đẹp
+
+        setupAutocompletePopup(wrap);
+
+        btnDrop.addActionListener(e -> {
+            if (popupSanPham != null && popupSanPham.isVisible()) {
+                popupSanPham.setVisible(false);
+            } else {
+                txtTimSanPham.requestFocus();
+                isFiltering = true;
+                modelSanPham.clear();
+                for (SanPham sp : dsTatCaSanPham) modelSanPham.addElement(sp);
+                isFiltering = false;
+                showProductPopup(wrap);
+            }
+        });
+
+        txtTimSanPham.getDocument().addDocumentListener(new DocumentListener() {
+            private void update() { SwingUtilities.invokeLater(() -> filterSanPham(wrap)); }
+            @Override public void insertUpdate(DocumentEvent e) { update(); }
+            @Override public void removeUpdate(DocumentEvent e) { update(); }
+            @Override public void changedUpdate(DocumentEvent e) { update(); }
+        });
+
+        txtTimSanPham.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+                if (!popupSanPham.isVisible() || modelSanPham.getSize() == 0) return;
+                int index = listSanPham.getSelectedIndex();
+                if (e.getKeyCode() == KeyEvent.VK_DOWN) {
+                    index++;
+                    if (index >= modelSanPham.getSize()) index = 0;
+                    listSanPham.setSelectedIndex(index);
+                    listSanPham.ensureIndexIsVisible(index);
+                } else if (e.getKeyCode() == KeyEvent.VK_UP) {
+                    index--;
+                    if (index < 0) index = modelSanPham.getSize() - 1;
+                    listSanPham.setSelectedIndex(index);
+                    listSanPham.ensureIndexIsVisible(index);
+                }
+            }
+        });
+
+        txtTimSanPham.addFocusListener(new FocusAdapter() {
+            @Override public void focusGained(FocusEvent e) { sharedBorder.setFocused(true); wrap.repaint(); }
+            @Override public void focusLost(FocusEvent e) { sharedBorder.setFocused(false); wrap.repaint(); }
+        });
+
+        wrap.add(txtTimSanPham, BorderLayout.CENTER);
+        wrap.add(btnDrop, BorderLayout.EAST);
+        return wrap;
+    }
+
+    private void setupAutocompletePopup(JPanel anchorPanel) {
+        modelSanPham = new DefaultListModel<>();
+        listSanPham = new JList<>(modelSanPham);
+        listSanPham.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        listSanPham.setVisibleRowCount(6); 
+        
+        listSanPham.setCellRenderer(new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
+                JLabel lb = (JLabel) super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                lb.setBorder(new EmptyBorder(10, 14, 10, 14));
+                lb.setFont(FONT_TEXT);
+
+                if (isSelected) {
+                    lb.setBackground(new Color(241, 245, 249));
+                    lb.setForeground(PRIMARY);
+                } else {
+                    lb.setBackground(Color.WHITE);
+                    lb.setForeground(TEXT_PRIMARY);
+                }
+
+                if (value instanceof SanPham sp) {
+                    lb.setText(sp.getTen() + " (" + sp.getId() + ")");
+                }
+                return lb;
+            }
+        });
+
+        listSanPham.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (e.getClickCount() == 1) selectSanPhamFromList();
+            }
+        });
+
+        JScrollPane scroll = new JScrollPane(listSanPham);
+        scroll.setBorder(BorderFactory.createLineBorder(PRIMARY)); // Viền popup xanh
+        scroll.getVerticalScrollBar().setPreferredSize(new Dimension(8, 0));
+
+        popupSanPham = new JPopupMenu();
+        popupSanPham.setBorder(BorderFactory.createEmptyBorder());
+        popupSanPham.add(scroll);
+        popupSanPham.setFocusable(false);
+    }
+
+    private void filterSanPham(JPanel anchorPanel) {
+        if (isFiltering) return;
+        String kw = txtTimSanPham.getText().trim().toLowerCase();
+        modelSanPham.clear();
+
+        if (kw.isEmpty()) {
+            for (SanPham sp : dsTatCaSanPham) modelSanPham.addElement(sp);
+        } else {
+            for (SanPham sp : dsTatCaSanPham) {
+                if (sp.getTen().toLowerCase().contains(kw) || sp.getId().toLowerCase().contains(kw)) {
+                    modelSanPham.addElement(sp);
+                }
+            }
+        }
+        
+        if (modelSanPham.getSize() > 0) {
+            showProductPopup(anchorPanel);
+        } else {
+            popupSanPham.setVisible(false);
+        }
+    }
+
+    private void showProductPopup(JPanel anchorPanel) {
+        int popupHeight = listSanPham.getPreferredScrollableViewportSize().height;
+        popupSanPham.setPopupSize(anchorPanel.getWidth(), popupHeight + 4);
+        popupSanPham.show(anchorPanel, 0, anchorPanel.getHeight() + 2);
+        txtTimSanPham.requestFocus();
+    }
+
+    private void selectSanPhamFromList() {
+        SanPham sp = listSanPham.getSelectedValue();
+        if (sp != null) {
+            isFiltering = true; 
+            selectedSanPham = sp;
+            txtTimSanPham.setText(sp.getTen() + " (" + sp.getId() + ")");
+            popupSanPham.setVisible(false);
+            txtTimSanPham.requestFocus();
+            txtTimSanPham.setCaretPosition(txtTimSanPham.getText().length());
+            isFiltering = false;
+        }
     }
 
     private JPanel createDatePickerField() {
@@ -230,25 +390,16 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         btnCal.setIcon(new MenuIcon("CALENDAR"));
         btnCal.setFocusPainted(false);
         btnCal.setContentAreaFilled(false);
-        btnCal.setBorder(new EmptyBorder(0, 8, 0, 8));
+        btnCal.setBorder(new EmptyBorder(0, 12, 0, 12));
         btnCal.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        btnCal.setForeground(TEXT_SECONDARY);
-        
+        btnCal.setForeground(PRIMARY); // Mũi tên xanh
+
         CustomDatePicker datePickerPopup = new CustomDatePicker(txtHanSuDung);
-        btnCal.addActionListener(e -> datePickerPopup.show(txtHanSuDung, 0, txtHanSuDung.getHeight() + 4));
+        btnCal.addActionListener(e -> datePickerPopup.show(wrap, 0, wrap.getHeight() + 4));
 
         txtHanSuDung.addFocusListener(new FocusAdapter() {
-            @Override
-            public void focusGained(FocusEvent e) {
-                sharedBorder.setFocused(true);
-                wrap.repaint();
-            }
-
-            @Override
-            public void focusLost(FocusEvent e) {
-                sharedBorder.setFocused(false);
-                wrap.repaint();
-            }
+            @Override public void focusGained(FocusEvent e) { sharedBorder.setFocused(true); wrap.repaint(); }
+            @Override public void focusLost(FocusEvent e) { sharedBorder.setFocused(false); wrap.repaint(); }
         });
 
         wrap.add(txtHanSuDung, BorderLayout.CENTER);
@@ -257,33 +408,36 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         return wrap;
     }
 
-    // Đã cập nhật hàm này để nhận thêm iconName
+    // --- TÁCH ICON RA KHỎI TEXT ĐỂ TÔ MÀU ĐỘC LẬP ---
     private JPanel createFullWidthField(String title, JComponent field, JLabel error, String iconName) {
         JPanel block = new JPanel(new BorderLayout(0, 8));
         block.setOpaque(false);
 
+        JPanel titlePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+        titlePanel.setOpaque(false);
+
+        if (iconName != null && !iconName.isEmpty()) {
+            JLabel lblIcon = new JLabel(new MenuIcon(iconName));
+            lblIcon.setForeground(PRIMARY); // Icon màu XANH rực rỡ
+            titlePanel.add(lblIcon);
+        }
+
         JLabel lblTitle = new JLabel(title);
         lblTitle.setFont(FONT_LABEL);
-        lblTitle.setForeground(TEXT_PRIMARY); // Giữ màu chữ mặc định
-        
-        // Cấu hình Icon nếu có truyền vào
-        if (iconName != null && !iconName.isEmpty()) {
-            lblTitle.setIcon(new MenuIcon(iconName));
-            lblTitle.setIconTextGap(6);
-        }
+        lblTitle.setForeground(TEXT_PRIMARY); // Chữ màu ĐEN XÁM đậm
+        titlePanel.add(lblTitle);
 
         JPanel fieldWrapper = new JPanel(new BorderLayout(0, 4));
         fieldWrapper.setOpaque(false);
         fieldWrapper.add(field, BorderLayout.CENTER);
         fieldWrapper.add(error, BorderLayout.SOUTH);
 
-        block.add(lblTitle, BorderLayout.NORTH);
+        block.add(titlePanel, BorderLayout.NORTH);
         block.add(fieldWrapper, BorderLayout.CENTER);
 
         return block;
     }
 
-    // Đã cập nhật hàm này để nhận thêm icon1 và icon2
     private JPanel createTwoColumnRow(String title1, JComponent field1, JLabel error1, String icon1,
                                       String title2, JComponent field2, JLabel error2, String icon2) {
         JPanel rowPanel = new JPanel(new GridLayout(1, 2, 24, 0));
@@ -297,7 +451,7 @@ public class ManHinhNhapLoHangMoi extends JDialog {
 
     private JPanel createFooter() {
         JPanel footer = new JPanel(new BorderLayout());
-        footer.setBackground(new Color(248, 250, 252));
+        footer.setBackground(FOOTER_BG);
         footer.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createMatteBorder(1, 0, 0, 0, BORDER),
                 new EmptyBorder(16, 24, 16, 24)
@@ -307,10 +461,7 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         actions.setOpaque(false);
 
         JButton btnCancel = createSecondaryButton("Hủy");
-        btnCancel.setIcon(new MenuIcon("CANCEL"));
-
         JButton btnSubmit = createPrimaryButton("Lưu lô hàng");
-        btnSubmit.setIcon(new MenuIcon("SAVE"));
 
         btnCancel.addActionListener(e -> dispose());
         btnSubmit.addActionListener(e -> handleSubmit());
@@ -322,27 +473,9 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         return footer;
     }
 
-    private void loadSanPhamToComboBox() {
-        cboSanPham.removeAllItems();
-        try {
-            List<SanPham> ds = busSanPham.getDsThuoc();
-            for (SanPham sp : ds) {
-                cboSanPham.addItem(sp);
-            }
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Không thể tải danh sách sản phẩm!",
-                    "Lỗi",
-                    JOptionPane.ERROR_MESSAGE
-            );
-            e.printStackTrace();
-        }
-    }
-
     private HintTextField createTextField(String hint) {
         HintTextField field = new HintTextField(hint);
-        field.setPreferredSize(new Dimension(100, 40));
+        field.setPreferredSize(new Dimension(100, 44)); 
         field.setFont(FONT_TEXT);
         field.setForeground(TEXT_PRIMARY);
 
@@ -350,70 +483,11 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         field.setBorder(border);
 
         field.addFocusListener(new FocusAdapter() {
-            @Override
-            public void focusGained(FocusEvent e) {
-                border.setFocused(true);
-                field.repaint();
-            }
-
-            @Override
-            public void focusLost(FocusEvent e) {
-                border.setFocused(false);
-                field.repaint();
-            }
+            @Override public void focusGained(FocusEvent e) { border.setFocused(true); field.repaint(); }
+            @Override public void focusLost(FocusEvent e) { border.setFocused(false); field.repaint(); }
         });
 
         return field;
-    }
-
-    private void styleComboBox(JComboBox<?> combo) {
-        combo.setPreferredSize(new Dimension(100, 40));
-        combo.setFont(FONT_TEXT);
-        combo.setForeground(TEXT_PRIMARY);
-        combo.setBackground(Color.WHITE);
-        combo.setFocusable(true);
-
-        ModernBorder border = new ModernBorder();
-        combo.setBorder(border);
-        combo.setUI(new FlatComboBoxUI());
-
-        combo.addFocusListener(new FocusAdapter() {
-            @Override
-            public void focusGained(FocusEvent e) {
-                border.setFocused(true);
-                combo.repaint();
-            }
-
-            @Override
-            public void focusLost(FocusEvent e) {
-                border.setFocused(false);
-                combo.repaint();
-            }
-        });
-
-        combo.setRenderer(new DefaultListCellRenderer() {
-            @Override
-            public Component getListCellRendererComponent(JList<?> list, Object value, int index,
-                                                          boolean isSelected, boolean cellHasFocus) {
-                JLabel lb = (JLabel) super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
-                lb.setBorder(new EmptyBorder(8, 12, 8, 12));
-                lb.setFont(FONT_TEXT);
-
-                if (isSelected) {
-                    lb.setBackground(new Color(239, 246, 255));
-                    lb.setForeground(PRIMARY);
-                } else {
-                    lb.setBackground(Color.WHITE);
-                    lb.setForeground(TEXT_PRIMARY);
-                }
-
-                if (value instanceof SanPham sp) {
-                    lb.setText(sp.getTen() + " (" + sp.getId() + ")");
-                }
-
-                return lb;
-            }
-        });
     }
 
     private JLabel createErrorLabel() {
@@ -427,24 +501,16 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         JButton btn = new JButton(text);
         btn.setFocusPainted(false);
         btn.setForeground(Color.WHITE);
-        btn.setBackground(PRIMARY);
+        btn.setBackground(SUCCESS); 
         btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
         btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         btn.setBorder(new EmptyBorder(10, 24, 10, 24));
         btn.setOpaque(true);
         btn.setHorizontalTextPosition(SwingConstants.RIGHT);
-        btn.setIconTextGap(8);
 
         btn.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseEntered(MouseEvent e) {
-                btn.setBackground(PRIMARY_HOVER);
-            }
-
-            @Override
-            public void mouseExited(MouseEvent e) {
-                btn.setBackground(PRIMARY);
-            }
+            @Override public void mouseEntered(MouseEvent e) { btn.setBackground(SUCCESS_HOVER); }
+            @Override public void mouseExited(MouseEvent e) { btn.setBackground(SUCCESS); }
         });
 
         return btn;
@@ -453,7 +519,7 @@ public class ManHinhNhapLoHangMoi extends JDialog {
     private JButton createSecondaryButton(String text) {
         JButton btn = new JButton(text);
         btn.setFocusPainted(false);
-        btn.setForeground(TEXT_PRIMARY);
+        btn.setForeground(TEXT_SECONDARY); 
         btn.setBackground(Color.WHITE);
         btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
         btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
@@ -463,18 +529,10 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         ));
         btn.setOpaque(true);
         btn.setHorizontalTextPosition(SwingConstants.RIGHT);
-        btn.setIconTextGap(8);
 
         btn.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseEntered(MouseEvent e) {
-                btn.setBackground(new Color(241, 245, 249));
-            }
-
-            @Override
-            public void mouseExited(MouseEvent e) {
-                btn.setBackground(Color.WHITE);
-            }
+            @Override public void mouseEntered(MouseEvent e) { btn.setBackground(new Color(241, 245, 249)); }
+            @Override public void mouseExited(MouseEvent e) { btn.setBackground(Color.WHITE); }
         });
 
         return btn;
@@ -486,13 +544,10 @@ public class ManHinhNhapLoHangMoi extends JDialog {
             public void focusLost(FocusEvent e) {
                 String digits = getDigitsOnly(field.getText());
                 if (!digits.isEmpty()) {
-                    try {
-                        field.setText(vnNumberFormat.format(Long.parseLong(digits)));
-                    } catch (NumberFormatException ignored) {
-                    }
+                    try { field.setText(vnNumberFormat.format(Long.parseLong(digits))); } 
+                    catch (NumberFormatException ignored) {}
                 }
             }
-
             @Override
             public void focusGained(FocusEvent e) {
                 field.setText(getDigitsOnly(field.getText()));
@@ -504,63 +559,62 @@ public class ManHinhNhapLoHangMoi extends JDialog {
     private void registerKeyboardActions() {
         JRootPane rootPane = getRootPane();
         rootPane.registerKeyboardAction(
-                e -> handleSubmit(),
-                KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0),
-                JComponent.WHEN_IN_FOCUSED_WINDOW
+                e -> {
+                    if (popupSanPham != null && popupSanPham.isVisible() && listSanPham.getSelectedIndex() >= 0) {
+                        selectSanPhamFromList();
+                    } else {
+                        handleSubmit();
+                    }
+                }, KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), JComponent.WHEN_IN_FOCUSED_WINDOW
         );
         rootPane.registerKeyboardAction(
-                e -> dispose(),
-                KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0),
-                JComponent.WHEN_IN_FOCUSED_WINDOW
+                e -> dispose(), KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), JComponent.WHEN_IN_FOCUSED_WINDOW
         );
     }
 
     private void handleSubmit() {
         clearErrors();
 
-        SanPham sanPham = (SanPham) cboSanPham.getSelectedItem();
+        String spText = txtTimSanPham.getText().trim();
         String maLo = txtMaLo.getText().trim().toUpperCase();
         String soLuongText = txtSoLuong.getText().trim();
         String giaNhapText = getDigitsOnly(txtGiaNhap.getText().trim());
         String hanSuDung = txtHanSuDung.getText().trim();
-        String trangThaiText = String.valueOf(cboTrangThai.getSelectedItem());
 
         boolean valid = true;
 
-        if (sanPham == null) {
-            errSanPham.setText("Vui lòng chọn sản phẩm");
-            valid = false;
+        if (spText.isEmpty() || spText.equals("Nhập tên, mã SP hoặc bấm ▼ để chọn...")) { 
+            errSanPham.setText("Vui lòng chọn hoặc nhập tên sản phẩm"); 
+            valid = false; 
+        } else {
+            selectedSanPham = null;
+            for (SanPham sp : dsTatCaSanPham) {
+                String displayText = sp.getTen() + " (" + sp.getId() + ")";
+                if (spText.equalsIgnoreCase(displayText) || spText.equalsIgnoreCase(sp.getTen()) || spText.equalsIgnoreCase(sp.getId())) {
+                    selectedSanPham = sp;
+                    break;
+                }
+            }
+            if (selectedSanPham == null) {
+                selectedSanPham = new SanPham();
+                selectedSanPham.setTen(spText);
+            }
         }
 
-        if (maLo.isEmpty()) {
-            errMaLo.setText("Mã lô không được để trống");
-            valid = false;
-        }
+        if (maLo.isEmpty()) { errMaLo.setText("Mã lô không được để trống"); valid = false; }
 
         int soLuong = 0;
         int giaNhap = 0;
 
         try {
             soLuong = Integer.parseInt(soLuongText);
-            if (soLuong <= 0) {
-                errSoLuong.setText("Số lượng phải > 0");
-                valid = false;
-            }
-        } catch (Exception e) {
-            errSoLuong.setText("Số lượng không hợp lệ");
-            valid = false;
-        }
+            if (soLuong <= 0) { errSoLuong.setText("Số lượng phải > 0"); valid = false; }
+        } catch (Exception e) { errSoLuong.setText("Số lượng không hợp lệ"); valid = false; }
 
         try {
             giaNhap = Integer.parseInt(giaNhapText);
-            if (giaNhap < 0) {
-                errGiaNhap.setText("Giá nhập không được âm");
-                valid = false;
-            }
-        } catch (Exception e) {
-            errGiaNhap.setText("Giá nhập không hợp lệ");
-            valid = false;
-        }
+            if (giaNhap < 0) { errGiaNhap.setText("Giá nhập không được âm"); valid = false; }
+        } catch (Exception e) { errGiaNhap.setText("Giá nhập không hợp lệ"); valid = false; }
 
         LocalDate ngayHSD = null;
         if (hanSuDung.isEmpty() || hanSuDung.equals("dd/MM/yyyy")) {
@@ -581,7 +635,7 @@ public class ManHinhNhapLoHangMoi extends JDialog {
 
         if (!valid) return;
 
-        if (kiemTraTrungMaLo(maLo)) {
+        if (busKho.tonTaiMaLoDangHoatDong(maLo)) {
             errMaLo.setText("Mã lô đã tồn tại");
             return;
         }
@@ -593,79 +647,41 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         loHang.setGia(giaNhap);
         loHang.setNgayNhap(LocalDateTime.now());
         loHang.setNgayHetHan(ngayHSD.atStartOfDay());
-        loHang.setTrangThai(mapTrangThai(trangThaiText));
-        loHang.setSanPhamId(sanPham);
+        loHang.setSanPhamId(selectedSanPham);
 
+        KhoHang kho = new KhoHang();
+        kho.setId("KHO-0001");
+        loHang.setKhoHangId(kho);
+
+        boolean laTaiSuDung = busKho.tonTaiMaLoDaAn(maLo);
         boolean success = busKho.themLoHang(loHang);
 
         if (success) {
-            JOptionPane.showMessageDialog(this, "Thêm lô hàng thành công!");
-            if (reloadListener != null) {
-                reloadListener.onReload();
-            }
+            JOptionPane.showMessageDialog(this, laTaiSuDung ? "Đã tái sử dụng lô hàng đã ẩn!" : "Thêm lô hàng thành công!");
+            if (reloadListener != null) reloadListener.onReload();
             dispose();
         } else {
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Thêm lô hàng thất bại!",
-                    "Lỗi",
-                    JOptionPane.ERROR_MESSAGE
-            );
+            JOptionPane.showMessageDialog(this, "Lưu lô hàng thất bại!", "Lỗi", JOptionPane.ERROR_MESSAGE);
         }
-    }
-
-    private boolean kiemTraTrungMaLo(String maLo) {
-        try {
-            List<LoHang> dsLo = busKho.layDSLoHang();
-            for (LoHang lh : dsLo) {
-                if (lh != null && lh.getSoLoHang() != null &&
-                        lh.getSoLoHang().equalsIgnoreCase(maLo)) {
-                    return true;
-                }
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return false;
     }
 
     private String taoMaLoHangTuDong() {
         try {
             List<LoHang> dsLo = busKho.layDSLoHang();
             int max = 0;
-
             for (LoHang lh : dsLo) {
                 if (lh == null || lh.getId() == null) continue;
-
-                String id = lh.getId().trim().toUpperCase();
+                String id = lh.getId().trim().toUpperCase().replace("-", "");
                 if (id.startsWith("LH")) {
                     try {
                         int so = Integer.parseInt(id.substring(2));
                         if (so > max) max = so;
-                    } catch (Exception ignored) {
-                    }
+                    } catch (Exception ignored) {}
                 }
             }
-
-            return String.format("LH%06d", max + 1);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        return "LH000001";
-    }
-
-    private TrangThaiLoHang mapTrangThai(String text) {
-        if (text == null) return TrangThaiLoHang.CON_HANG;
-
-        switch (text.trim()) {
-            case "Hết hàng":
-                return TrangThaiLoHang.HET_HANG;
-            case "Hết hạn":
-                return TrangThaiLoHang.HET_HAN;
-            default:
-                return TrangThaiLoHang.CON_HANG;
-        }
+            return String.format("LH-%04d", max + 1);
+        } catch (Exception e) { e.printStackTrace(); }
+        return "LH-0001";
     }
 
     private void clearErrors() {
@@ -682,20 +698,15 @@ public class ManHinhNhapLoHangMoi extends JDialog {
 
     private static class HintTextField extends JTextField {
         private final String hint;
-
-        public HintTextField(String hint) {
-            this.hint = hint;
-        }
-
+        public HintTextField(String hint) { this.hint = hint; }
         @Override
         protected void paintComponent(Graphics g) {
             super.paintComponent(g);
-
             if (getText().isEmpty() && !isFocusOwner()) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
                 g2.setColor(TEXT_HINT);
-                g2.setFont(getFont());
+                g2.setFont(getFont().deriveFont(Font.ITALIC));
                 Insets ins = getInsets();
                 FontMetrics fm = g2.getFontMetrics();
                 int y = (getHeight() - fm.getHeight()) / 2 + fm.getAscent();
@@ -707,116 +718,63 @@ public class ManHinhNhapLoHangMoi extends JDialog {
 
     private static class ModernBorder extends AbstractBorder {
         private boolean focused = false;
-
-        public void setFocused(boolean focused) {
-            this.focused = focused;
+        public void setFocused(boolean focused) { this.focused = focused; }
+        @Override public Insets getBorderInsets(Component c) { return new Insets(8, 14, 8, 14); }
+        @Override public Insets getBorderInsets(Component c, Insets insets) {
+            insets.left = 14; insets.right = 14; insets.top = 8; insets.bottom = 8; return insets;
         }
-
-        @Override
-        public Insets getBorderInsets(Component c) {
-            return new Insets(10, 12, 10, 12);
-        }
-
-        @Override
-        public Insets getBorderInsets(Component c, Insets insets) {
-            insets.left = 12;
-            insets.right = 12;
-            insets.top = 10;
-            insets.bottom = 10;
-            return insets;
-        }
-
         @Override
         public void paintBorder(Component c, Graphics g, int x, int y, int width, int height) {
             Graphics2D g2 = (Graphics2D) g.create();
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-
             g2.setColor(focused ? BORDER_FOCUS : BORDER);
-            g2.drawRoundRect(x, y, width - 1, height - 1, 12, 12);
-
+            g2.setStroke(new BasicStroke(focused ? 1.5f : 1f));
+            g2.drawRoundRect(x + 1, y + 1, width - 3, height - 3, 10, 10);
             g2.dispose();
-        }
-    }
-
-    private static class FlatComboBoxUI extends BasicComboBoxUI {
-        @Override
-        protected JButton createArrowButton() {
-            JButton button = new JButton("▼");
-            button.setBorder(null);
-            button.setContentAreaFilled(false);
-            button.setFocusPainted(false);
-            button.setForeground(TEXT_SECONDARY);
-            return button;
         }
     }
 
     private static class DigitsOnlyFilter extends DocumentFilter {
         private final int maxLength;
-
-        public DigitsOnlyFilter(int maxLength) {
-            this.maxLength = maxLength;
+        public DigitsOnlyFilter(int maxLength) { this.maxLength = maxLength; }
+        @Override public void insertString(FilterBypass fb, int offset, String string, AttributeSet attr) throws BadLocationException {
+            if (string == null) return; replace(fb, offset, 0, string, attr);
         }
-
-        @Override
-        public void insertString(FilterBypass fb, int offset, String string, AttributeSet attr) throws BadLocationException {
-            if (string == null) return;
-            replace(fb, offset, 0, string, attr);
-        }
-
-        @Override
-        public void replace(FilterBypass fb, int offset, int length, String text, AttributeSet attrs) throws BadLocationException {
+        @Override public void replace(FilterBypass fb, int offset, int length, String text, AttributeSet attrs) throws BadLocationException {
             if (text == null) return;
-
             String current = fb.getDocument().getText(0, fb.getDocument().getLength());
             String next = current.substring(0, offset) + text + current.substring(offset + length);
-
-            if (next.matches("\\d*") && next.length() <= maxLength) {
-                fb.replace(offset, length, text, attrs);
-            }
+            if (next.matches("\\d*") && next.length() <= maxLength) fb.replace(offset, length, text, attrs);
         }
     }
 
     private static class CurrencyDigitsFilter extends DocumentFilter {
         private final int maxDigits;
-
-        public CurrencyDigitsFilter(int maxDigits) {
-            this.maxDigits = maxDigits;
+        public CurrencyDigitsFilter(int maxDigits) { this.maxDigits = maxDigits; }
+        @Override public void insertString(FilterBypass fb, int offset, String string, AttributeSet attr) throws BadLocationException {
+            if (string == null) return; replace(fb, offset, 0, string, attr);
         }
-
-        @Override
-        public void insertString(FilterBypass fb, int offset, String string, AttributeSet attr) throws BadLocationException {
-            if (string == null) return;
-            replace(fb, offset, 0, string, attr);
-        }
-
-        @Override
-        public void replace(FilterBypass fb, int offset, int length, String text, AttributeSet attrs) throws BadLocationException {
+        @Override public void replace(FilterBypass fb, int offset, int length, String text, AttributeSet attrs) throws BadLocationException {
             if (text == null) return;
-
             String current = fb.getDocument().getText(0, fb.getDocument().getLength());
             String next = current.substring(0, offset) + text + current.substring(offset + length);
             String digits = next.replaceAll("\\D+", "");
-
-            if (digits.length() <= maxDigits && next.matches("[\\d,.]*")) {
-                fb.replace(offset, length, text, attrs);
-            }
+            if (digits.length() <= maxDigits && next.matches("[\\d,.]*")) fb.replace(offset, length, text, attrs);
         }
     }
 
     private class CustomDatePicker extends JPopupMenu {
         private int month = LocalDate.now().getMonthValue();
         private int year = LocalDate.now().getYear();
-
         private final JLabel lblMonthYear;
         private final JPanel pnlDays;
         private final JTextField targetField;
 
         public CustomDatePicker(JTextField targetField) {
             this.targetField = targetField;
-
             setLayout(new BorderLayout());
             setBackground(Color.WHITE);
-            setBorder(BorderFactory.createLineBorder(BORDER, 1));
+            setBorder(BorderFactory.createLineBorder(PRIMARY, 1)); // Viền popup lịch màu Xanh
 
             JPanel header = new JPanel(new BorderLayout());
             header.setBackground(Color.WHITE);
@@ -832,7 +790,7 @@ public class ManHinhNhapLoHangMoi extends JDialog {
 
             lblMonthYear = new JLabel("", SwingConstants.CENTER);
             lblMonthYear.setFont(new Font("Segoe UI", Font.BOLD, 13));
-            lblMonthYear.setForeground(TEXT_PRIMARY);
+            lblMonthYear.setForeground(PRIMARY);
 
             header.add(btnPrev, BorderLayout.WEST);
             header.add(lblMonthYear, BorderLayout.CENTER);
@@ -875,33 +833,22 @@ public class ManHinhNhapLoHangMoi extends JDialog {
 
         private void changeMonth(int delta) {
             month += delta;
-            if (month < 1) {
-                month = 12;
-                year--;
-            } else if (month > 12) {
-                month = 1;
-                year++;
-            }
+            if (month < 1) { month = 12; year--; } 
+            else if (month > 12) { month = 1; year++; }
             refreshCalendar();
         }
 
         private void refreshCalendar() {
             pnlDays.removeAll();
-
             YearMonth ym = YearMonth.of(year, month);
             LocalDate firstDay = ym.atDay(1);
             int daysInMonth = ym.lengthOfMonth();
-
             int startDayOfWeek = firstDay.getDayOfWeek().getValue();
 
             lblMonthYear.setText(String.format("Tháng %02d / %d", month, year));
-
-            for (int i = 1; i < startDayOfWeek; i++) {
-                pnlDays.add(new JLabel(""));
-            }
+            for (int i = 1; i < startDayOfWeek; i++) pnlDays.add(new JLabel(""));
 
             LocalDate today = LocalDate.now();
-
             for (int day = 1; day <= daysInMonth; day++) {
                 LocalDate date = LocalDate.of(year, month, day);
                 JButton btnDay = new JButton(String.valueOf(day));
@@ -924,17 +871,10 @@ public class ManHinhNhapLoHangMoi extends JDialog {
                     btnDay.setBorder(BorderFactory.createLineBorder(BORDER));
                 }
 
-                btnDay.addActionListener(e -> {
-                    targetField.setText(date.format(DATE_FORMAT));
-                    setVisible(false);
-                });
-
+                btnDay.addActionListener(e -> { targetField.setText(date.format(DATE_FORMAT)); setVisible(false); });
                 pnlDays.add(btnDay);
             }
-
-            pnlDays.revalidate();
-            pnlDays.repaint();
-            pack();
+            pnlDays.revalidate(); pnlDays.repaint(); pack();
         }
     }
 }
