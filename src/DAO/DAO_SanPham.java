@@ -234,7 +234,17 @@ public class DAO_SanPham {
         }
         return "SP2024-0001"; 
     }
-
+    public boolean anSanPham(String id) {
+        String sql = "UPDATE SanPham SET trangThai = 'AN' WHERE id = ?";
+        Connection con = ConnectDB.getInstance().getConnection();
+        try (PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setString(1, id);
+            return pst.executeUpdate() > 0;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
     public boolean themSanPhamNhanh(String id, String danhMuc, String dang, String ten, String vietTat, String nsx, String hoatChat, double vat, String hamLuong, String moTa, String dvt) {
         String sql = "INSERT INTO SanPham (id, danhMuc, dang, ten, tenVietTat, nhaSanXuat, hoatChat, thueVAT, hamLuong, moTa, donViDoCoBan, ngayTao) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, GETDATE())";
         Connection con = ConnectDB.getInstance().getConnection();
@@ -309,7 +319,7 @@ public class DAO_SanPham {
                      "WHERE lh.sanPhamId = ? " +
                      "AND lh.soLuongLoHang > 0 " +
                      "AND lh.ngayHetHan >= GETDATE()";
-        Connection con = ConnectDB.getConnection();
+        Connection con = ConnectDB.getInstance().getConnection();
         try (PreparedStatement pst = con.prepareStatement(sql);) {
             pst.setString(1, maSP);
             try (ResultSet rs = pst.executeQuery()) {
