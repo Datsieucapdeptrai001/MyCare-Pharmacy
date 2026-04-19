@@ -1,57 +1,30 @@
 package Entity;
 
-import java.util.Objects;
-
 public class KhoHang {
-	private String id;
-	private int sucChua;
-	
-	public KhoHang() {
-		super();
-		// TODO Auto-generated constructor stub
-	}
-	
-	public KhoHang(String id, int sucChua) {
-		super();
-		this.id = id;
-		this.sucChua = sucChua;
-	}
-	
-	public String getId() {
-		return id;
-	}
+    private String id;
+    private String ten;
 
-	public void setId(String id) {
-		this.id = id;
-	}
+    public KhoHang() {
+    }
 
-	public int getSucChua() {
-		return sucChua;
-	}
+    public KhoHang(String id, String ten) {
+        this.id = id;
+        this.ten = ten;
+    }
 
-	public void setSucChua(int sucChua) {
-		this.sucChua = sucChua;
-	}
+    public String getId() {
+        return id;
+    }
 
-	@Override
-	public int hashCode() {
-		return Objects.hash(id, sucChua);
-	}
-	@Override
-	public boolean equals(Object obj) {
-		if (this == obj)
-			return true;
-		if (obj == null)
-			return false;
-		if (getClass() != obj.getClass())
-			return false;
-		KhoHang other = (KhoHang) obj;
-		return Objects.equals(id, other.id) && sucChua == other.sucChua;
-	}
+    public void setId(String id) {
+        this.id = id;
+    }
 
-	@Override
-	public String toString() {
-		return "KhoHang [id=" + id + ", sucChua=" + sucChua + "]";
-	}
-	
+    public String getTen() {
+        return ten;
+    }
+
+    public void setTen(String ten) {
+        this.ten = ten;
+    }
 }

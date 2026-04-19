@@ -1,16 +1,15 @@
 package GUI;
 
-import DAO.DAO_LoHang;
-
-import DAO.DAO_SanPham;
-import Entity.KhoHang;
+import BUS.BUS_Kho;
 import Entity.LoHang;
-import Entity.SanPham;
 import Enumeration.TrangThaiLoHang;
+import Utils.MenuIcon;
 
 import javax.swing.*;
 import javax.swing.border.AbstractBorder;
 import javax.swing.border.EmptyBorder;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
@@ -18,8 +17,8 @@ import java.awt.*;
 import java.awt.event.ItemEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.MouseMotionAdapter;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -28,21 +27,18 @@ import java.util.List;
 public class ManHinhLoHang extends JPanel {
 
     private final List<BatchItem> dsTatCa = new ArrayList<>();
-    private final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
-    // Thay thế bằng DAO thực tế của bạn
-    private final DAO_LoHang daoLoHang = new DAO_LoHang();
-    private final DAO_SanPham daoSanPham = new DAO_SanPham();
+    private final BUS_Kho busKho = new BUS_Kho();
 
-    // --- BẢNG MÀU CHUẨN UI/UX HIỆN ĐẠI ---
-    private static final Color BG_APP = new Color(241, 245, 249); 
+    private static final Color BG_APP = new Color(241, 245, 249);
     private static final Color BG_CARD = Color.WHITE;
     private static final Color BORDER_COLOR = new Color(226, 232, 240);
     private static final Color TEXT_PRIMARY = new Color(15, 23, 42);
     private static final Color TEXT_SECONDARY = new Color(100, 116, 139);
     private static final Color PRIMARY_BLUE = new Color(14, 116, 144);
-    
-    // Màu Semantic (Trạng thái)
+    private static final Color PRIMARY_BLUE_HOVER = new Color(22, 133, 163);
+
     private static final Color DANGER = new Color(239, 68, 68);
     private static final Color DANGER_SOFT = new Color(254, 242, 242);
     private static final Color WARNING = new Color(249, 115, 22);
@@ -50,11 +46,19 @@ public class ManHinhLoHang extends JPanel {
     private static final Color GOLD = new Color(234, 179, 8);
     private static final Color GOLD_SOFT = new Color(254, 252, 232);
     private static final Color SUCCESS = new Color(34, 197, 94);
+    private static final Color SUCCESS_HOVER = new Color(22, 163, 74);
     private static final Color SUCCESS_SOFT = new Color(240, 253, 244);
+    private static final Color HIDDEN = new Color(107, 114, 128);
+    private static final Color HIDDEN_SOFT = new Color(243, 244, 246);
+    
+    private static final Color ROW_HOVER = new Color(241, 245, 249);
 
-    // Các Component UI
     private JTextField txtSearch;
     private JCheckBox chkNear90;
+    private JCheckBox chkShowHidden;
+    private boolean hienLoAn = false;
+    private int hoveredRow = -1;
+
     private JLabel lblExpired, lblNear, lblWarning, lblGood;
     private JLabel lblWarningBadge, lblTotal;
     private JButton btnTatCa, btnDuocBan, btnHetHan, btnTamNgung;
@@ -66,31 +70,38 @@ public class ManHinhLoHang extends JPanel {
     public ManHinhLoHang() {
         setLayout(new BorderLayout());
         setBackground(BG_APP);
-        setBorder(new EmptyBorder(16, 16, 16, 16)); // Padding tổng
+        // THU GỌN LỀ NGOÀI APP ĐỂ TĂNG DIỆN TÍCH
+        setBorder(new EmptyBorder(8, 8, 8, 8));
 
         add(createMainCard(), BorderLayout.CENTER);
         loadDataFromDatabase();
     }
 
     private JPanel createMainCard() {
-        JPanel unifiedCard = new JPanel(new BorderLayout(0, 16));
+        JPanel unifiedCard = new JPanel(new BorderLayout(0, 12));
         unifiedCard.setBackground(BG_CARD);
+        // THU GỌN LỀ CỦA CARD CHÍNH ĐỂ BẢNG RỘNG HƠN
         unifiedCard.setBorder(new CompoundRoundBorder(
-                new ShadowBorder(new Color(0, 0, 0, 10), 16),
-                new Insets(16, 20, 20, 20)
+                new SmoothShadowBorder(new Color(0, 0, 0, 12), 16),
+                new Insets(16, 16, 16, 16)
         ));
 
         JPanel topSection = new JPanel();
         topSection.setOpaque(false);
         topSection.setLayout(new BoxLayout(topSection, BoxLayout.Y_AXIS));
-        
-        topSection.add(createToolbarHeader());
-        topSection.add(Box.createVerticalStrut(16));
+
+        topSection.add(createHeaderRow());
+        topSection.add(Box.createVerticalStrut(12)); // Giảm khoảng cách thừa
         topSection.add(createStatsRow());
-        topSection.add(Box.createVerticalStrut(12));
-        topSection.add(new JSeparator(SwingConstants.HORIZONTAL));
-        topSection.add(Box.createVerticalStrut(12));
-        topSection.add(createFilterRow());
+        topSection.add(Box.createVerticalStrut(16)); // Giảm khoảng cách thừa
+        
+        JSeparator sep = new JSeparator(SwingConstants.HORIZONTAL);
+        sep.setForeground(BORDER_COLOR);
+        sep.setBackground(Color.WHITE);
+        topSection.add(sep);
+        
+        topSection.add(Box.createVerticalStrut(12)); // Giảm khoảng cách thừa
+        topSection.add(createControlBarRow());
 
         unifiedCard.add(topSection, BorderLayout.NORTH);
         unifiedCard.add(createTableContainer(), BorderLayout.CENTER);
@@ -98,166 +109,272 @@ public class ManHinhLoHang extends JPanel {
         return unifiedCard;
     }
 
-    private JPanel createToolbarHeader() {
-        JPanel wrapper = new JPanel(new BorderLayout(12, 0));
+    // --- FIX LỖI ĐÈ NHAU BẰNG BOXLAYOUT CHO HEADER ---
+    private JPanel createHeaderRow() {
+        JPanel wrapper = new JPanel();
+        wrapper.setLayout(new BoxLayout(wrapper, BoxLayout.X_AXIS));
         wrapper.setOpaque(false);
 
-        // --- TRÁI: Tiêu đề ---
-        JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        // BÊN TRÁI: Tiêu đề + Cảnh báo
+        JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 0));
         left.setOpaque(false);
+        left.setAlignmentY(Component.CENTER_ALIGNMENT);
 
-        JLabel lblIcon = new JLabel("📚"); 
-        lblIcon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 24));
+        JLabel lblIcon = new JLabel(new MenuIcon("BOX"));
+        lblIcon.setForeground(PRIMARY_BLUE);
 
         JLabel lblTitle = new JLabel("QUẢN LÝ LÔ HÀNG");
         lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 22));
-        lblTitle.setForeground(PRIMARY_BLUE);
+        lblTitle.setForeground(TEXT_PRIMARY);
 
-        lblWarningBadge = new JLabel("⚠ 0 lô gần hết hạn!");
-        lblWarningBadge.setOpaque(true);
+        lblWarningBadge = new JLabel("0 lô cần chú ý!") {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(getBackground());
+                g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 16, 16);
+                g2.setColor(new Color(254, 202, 202));
+                g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 16, 16);
+                g2.dispose();
+                super.paintComponent(g);
+            }
+        };
+        lblWarningBadge.setIcon(new MenuIcon("WARNING"));
+        lblWarningBadge.setOpaque(false);
         lblWarningBadge.setBackground(DANGER_SOFT);
         lblWarningBadge.setForeground(DANGER);
         lblWarningBadge.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        lblWarningBadge.setBorder(new CompoundRoundBorder(
-                new RoundedLineBorder(DANGER_SOFT, 1, 10),
-                new Insets(4, 8, 4, 8) 
-        ));
+        lblWarningBadge.setIconTextGap(6);
+        lblWarningBadge.setBorder(new EmptyBorder(4, 12, 4, 12));
 
         left.add(lblIcon);
         left.add(lblTitle);
+        left.add(Box.createHorizontalStrut(4));
         left.add(lblWarningBadge);
 
-        // --- PHẢI: Thanh tìm kiếm & Các nút chức năng ---
-        JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 0));
+        // BÊN PHẢI: Tìm kiếm -> Làm mới -> Nhập lô hàng
+        JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         right.setOpaque(false);
+        right.setAlignmentY(Component.CENTER_ALIGNMENT);
 
-        // Tìm kiếm
-        txtSearch = new JTextField();
-        txtSearch.setPreferredSize(new Dimension(260, 38));
-        txtSearch.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        txtSearch.setBorder(new CompoundRoundBorder(
-                new RoundedLineBorder(BORDER_COLOR, 1, 18),
-                new Insets(0, 14, 0, 14) 
-        ));
-        txtSearch.setToolTipText("Nhập mã lô, tên sản phẩm để tìm kiếm...");
-        txtSearch.addActionListener(e -> refreshTable());
+        JComponent searchField = createSearchField();
+        searchField.setPreferredSize(new Dimension(240, 38));
 
-        // Nút Làm mới
-        JButton btnLamMoi = createButton("🔄 Làm mới", new Color(248, 250, 252), TEXT_PRIMARY, new Insets(8, 14, 8, 14));
+        JButton btnLamMoi = createHoverButton("Làm mới", new Color(248, 250, 252), new Color(226, 232, 240), TEXT_PRIMARY);
+        btnLamMoi.setIcon(new MenuIcon("REFRESH"));
         btnLamMoi.setBorder(new RoundedLineBorder(BORDER_COLOR, 1, 8));
+        btnLamMoi.setPreferredSize(new Dimension(106, 38));
         btnLamMoi.addActionListener(e -> {
             txtSearch.setText("");
-            chkNear90.setSelected(false);
+            if (chkNear90 != null) chkNear90.setSelected(false);
+            if (chkShowHidden != null) chkShowHidden.setSelected(false);
+            hienLoAn = false;
             filter = TrangThaiFilter.TAT_CA;
             setActiveFilterButton(btnTatCa);
             loadDataFromDatabase();
+            wrapper.requestFocus(); 
         });
 
-        // Checkbox Chỉ sắp hết hạn
-        JPanel chkPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 0));
-        chkPanel.setOpaque(false);
-        chkPanel.setBorder(new CompoundRoundBorder(new RoundedLineBorder(BORDER_COLOR, 1, 8), new Insets(4, 6, 4, 6)));
-        chkPanel.setBackground(Color.WHITE);
-        
-        chkNear90 = new JCheckBox("Chỉ sắp hết hạn (≤90 ngày)");
-        chkNear90.setOpaque(false);
-        chkNear90.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        chkNear90.setForeground(TEXT_PRIMARY);
-        chkNear90.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        chkNear90.addItemListener(e -> {
-            filter = e.getStateChange() == ItemEvent.SELECTED ? TrangThaiFilter.GAN_HET_HAN_90 : TrangThaiFilter.TAT_CA;
-            setActiveFilterButton(filter == TrangThaiFilter.TAT_CA ? btnTatCa : null);
-            refreshTable();
-        });
-        chkPanel.add(chkNear90);
-
-        // Nút Nhập lô hàng
-        JButton btnThemLo = createButton("+ Nhập lô hàng", DANGER, Color.WHITE, new Insets(8, 16, 8, 16));
+        JButton btnThemLo = createHoverButton("Nhập lô hàng", SUCCESS, SUCCESS_HOVER, Color.WHITE);
+        btnThemLo.setIcon(new MenuIcon("ADD"));
+        btnThemLo.setPreferredSize(new Dimension(150, 38)); 
+        btnThemLo.setFont(new Font("Segoe UI", Font.BOLD, 14));
         btnThemLo.addActionListener(e -> moManHinhNhapLoMoi());
 
-        right.add(txtSearch);
+        right.add(searchField);
         right.add(btnLamMoi);
-        right.add(chkPanel);
         right.add(btnThemLo);
 
-        wrapper.add(left, BorderLayout.WEST);
-        wrapper.add(right, BorderLayout.EAST);
+        // Ghép trái phải bằng lò xo (Glue) để chống đè nhau
+        wrapper.add(left);
+        wrapper.add(Box.createHorizontalGlue());
+        wrapper.add(right);
+
         return wrapper;
     }
 
     private JPanel createStatsRow() {
         JPanel row = new JPanel(new GridLayout(1, 4, 16, 0));
         row.setOpaque(false);
-        row.setPreferredSize(new Dimension(0, 90));
+        row.setPreferredSize(new Dimension(0, 96)); // Thu gọn chiều cao thẻ thống kê 1 chút
 
         lblExpired = statValueLabel();
         lblNear = statValueLabel();
         lblWarning = statValueLabel();
         lblGood = statValueLabel();
 
-        row.add(createStatCard("Đã hết hạn", "⛔", lblExpired, DANGER_SOFT, DANGER));
-        row.add(createStatCard("Gần hết hạn (≤30 ngày)", "⚠", lblNear, WARNING_SOFT, WARNING));
-        row.add(createStatCard("Cảnh báo (31-90 ngày)", "⏱", lblWarning, GOLD_SOFT, GOLD));
-        row.add(createStatCard("Còn hạn tốt (>90 ngày)", "✅", lblGood, SUCCESS_SOFT, SUCCESS));
+        row.add(createStatCard("Đã hết hạn", new MenuIcon("CANCEL"), lblExpired, DANGER_SOFT, DANGER));
+        row.add(createStatCard("Gần hết (≤30 ngày)", new MenuIcon("WARNING"), lblNear, WARNING_SOFT, WARNING));
+        row.add(createStatCard("Cảnh báo (31-90 ngày)", new MenuIcon("TIME"), lblWarning, GOLD_SOFT, GOLD));
+        row.add(createStatCard("Còn hạn (>90 ngày)", new MenuIcon("CHECK_CIRCLE"), lblGood, SUCCESS_SOFT, SUCCESS));
 
         return row;
     }
 
-    private JPanel createFilterRow() {
-        JPanel row = new JPanel(new BorderLayout());
-        row.setOpaque(false);
+    // --- FIX LỆCH DÒNG CONTROL BAR: Căn giữa theo trục Y ---
+    private JPanel createControlBarRow() {
+        JPanel wrapper = new JPanel();
+        wrapper.setLayout(new BoxLayout(wrapper, BoxLayout.X_AXIS));
+        wrapper.setOpaque(false);
 
-        JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        // BÊN TRÁI: Nhóm Tabs Lọc
+        JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 4));
         left.setOpaque(false);
+        left.setAlignmentY(Component.CENTER_ALIGNMENT);
 
-        JLabel lbl = new JLabel("Tình trạng:");
-        lbl.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        JLabel lbl = new JLabel("Lọc theo:  ");
+        lbl.setFont(new Font("Segoe UI", Font.BOLD, 14));
         lbl.setForeground(TEXT_SECONDARY);
 
-        btnTatCa = createFilterButton("Tất cả");
-        btnDuocBan = createFilterButton("Được bán");
-        btnHetHan = createFilterButton("Hết hạn");
-        btnTamNgung = createFilterButton("Tạm ngưng");
+        JPanel filterGroup = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 4)) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(getBackground());
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 10, 10);
+                g2.dispose();
+            }
+        };
+        filterGroup.setOpaque(false);
+        filterGroup.setBackground(new Color(241, 245, 249));
+
+        btnTatCa = createFilterButton("Tất cả", "PACKAGE");
+        btnDuocBan = createFilterButton("Được bán", "CHECK_CIRCLE");
+        btnHetHan = createFilterButton("Hết hạn", "TIME");
+        btnTamNgung = createFilterButton("Hết hàng", "BOX");
 
         btnTatCa.addActionListener(e -> switchFilter(TrangThaiFilter.TAT_CA, btnTatCa));
         btnDuocBan.addActionListener(e -> switchFilter(TrangThaiFilter.DUOC_BAN, btnDuocBan));
         btnHetHan.addActionListener(e -> switchFilter(TrangThaiFilter.HET_HAN, btnHetHan));
         btnTamNgung.addActionListener(e -> switchFilter(TrangThaiFilter.HET_HANG, btnTamNgung));
 
+        filterGroup.add(btnTatCa);
+        filterGroup.add(btnDuocBan);
+        filterGroup.add(btnHetHan);
+        filterGroup.add(btnTamNgung);
+
         left.add(lbl);
-        left.add(btnTatCa);
-        left.add(btnDuocBan);
-        left.add(btnHetHan);
-        left.add(btnTamNgung);
+        left.add(filterGroup);
 
-        lblTotal = new JLabel("0 / 0 lô hàng");
-        lblTotal.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        lblTotal.setForeground(TEXT_SECONDARY);
+        // BÊN PHẢI: Nhóm Checkbox
+        JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 16, 4));
+        right.setOpaque(false);
+        right.setAlignmentY(Component.CENTER_ALIGNMENT);
+        
+        chkNear90 = new JCheckBox("Chỉ sắp hết hạn");
+        setupCheckBox(chkNear90);
+        chkNear90.addItemListener(e -> {
+            filter = e.getStateChange() == ItemEvent.SELECTED ? TrangThaiFilter.GAN_HET_HAN_90 : TrangThaiFilter.TAT_CA;
+            setActiveFilterButton(filter == TrangThaiFilter.TAT_CA ? btnTatCa : null);
+            refreshTable();
+        });
 
-        row.add(left, BorderLayout.WEST);
-        row.add(lblTotal, BorderLayout.EAST);
+        chkShowHidden = new JCheckBox("Hiện lô ẩn");
+        setupCheckBox(chkShowHidden);
+        chkShowHidden.addItemListener(e -> {
+            hienLoAn = e.getStateChange() == ItemEvent.SELECTED;
+            loadDataFromDatabase();
+        });
+
+        right.add(chkNear90);
+        right.add(chkShowHidden);
+
+        wrapper.add(left);
+        wrapper.add(Box.createHorizontalGlue());
+        wrapper.add(right);
 
         setActiveFilterButton(btnTatCa);
-        return row;
+        return wrapper;
+    }
+    
+    private void setupCheckBox(JCheckBox chk) {
+        chk.setOpaque(false);
+        chk.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        chk.setForeground(TEXT_PRIMARY);
+        chk.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        chk.setFocusPainted(false);
+        chk.setIcon(new ModernCheckBoxIcon(false));
+        chk.setSelectedIcon(new ModernCheckBoxIcon(true));
+        chk.setIconTextGap(8);
+    }
+
+    private JComponent createSearchField() {
+        JPanel panel = new JPanel(new BorderLayout(10, 0));
+        panel.setBackground(Color.WHITE);
+        panel.setBorder(new CompoundRoundBorder(
+                new RoundedLineBorder(BORDER_COLOR, 1, 16),
+                new Insets(0, 12, 0, 12)
+        ));
+
+        JLabel icon = new JLabel(new MenuIcon("SEARCH"));
+        icon.setForeground(TEXT_SECONDARY);
+
+        txtSearch = new JTextField() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                if (getText().isEmpty() && !hasFocus()) {
+                    Graphics2D g2 = (Graphics2D) g.create();
+                    g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+                    g2.setColor(new Color(148, 163, 184)); 
+                    g2.setFont(getFont().deriveFont(Font.ITALIC));
+                    
+                    FontMetrics fm = g2.getFontMetrics();
+                    int y = (getHeight() - fm.getHeight()) / 2 + fm.getAscent();
+                    g2.drawString("Tìm mã lô, tên SP...", 2, y); 
+                    g2.dispose();
+                }
+            }
+        };
+        
+        txtSearch.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        txtSearch.setBorder(null);
+        txtSearch.setOpaque(false);
+        txtSearch.setForeground(TEXT_PRIMARY);
+        
+        txtSearch.addFocusListener(new java.awt.event.FocusAdapter() {
+            @Override public void focusGained(java.awt.event.FocusEvent evt) { txtSearch.repaint(); }
+            @Override public void focusLost(java.awt.event.FocusEvent evt) { txtSearch.repaint(); }
+        });
+
+        txtSearch.getDocument().addDocumentListener(new DocumentListener() {
+            @Override public void insertUpdate(DocumentEvent e) { refreshTable(); }
+            @Override public void removeUpdate(DocumentEvent e) { refreshTable(); }
+            @Override public void changedUpdate(DocumentEvent e) { refreshTable(); }
+        });
+
+        panel.add(icon, BorderLayout.WEST);
+        panel.add(txtSearch, BorderLayout.CENTER);
+        return panel;
     }
 
     private JPanel createTableContainer() {
-        JPanel wrap = new JPanel(new BorderLayout());
+        JPanel wrap = new JPanel(new BorderLayout(0, 8));
         wrap.setOpaque(false);
 
+        JPanel topInfo = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+        topInfo.setOpaque(false);
+        lblTotal = new JLabel("0 / 0 lô hàng");
+        lblTotal.setFont(new Font("Segoe UI", Font.ITALIC, 13));
+        lblTotal.setForeground(TEXT_SECONDARY);
+        topInfo.add(lblTotal);
+        wrap.add(topInfo, BorderLayout.NORTH);
+
         String[] cols = {
-                "#", "Mã lô", "Tên sản phẩm", "Tồn kho", "Giá nhập",
+                "#", "Mã lô", "Sản phẩm", "Tồn kho", "Giá nhập",
                 "Hạn sử dụng", "Còn lại", "Tình trạng", "Thao tác"
         };
 
         tableModel = new DefaultTableModel(cols, 0) {
-            @Override
-            public boolean isCellEditable(int row, int column) { return false; }
+            @Override public boolean isCellEditable(int row, int column) { return false; }
         };
 
         table = new JTable(tableModel);
-        table.setRowHeight(52); 
-        table.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        // TỐI ƯU ROW HEIGHT ĐỂ HIỂN THỊ ĐƯỢC NHIỀU DÒNG HƠN
+        table.setRowHeight(46);
+        table.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         table.setSelectionBackground(new Color(239, 246, 255));
         table.setSelectionForeground(TEXT_PRIMARY);
         table.setGridColor(new Color(241, 245, 249));
@@ -266,38 +383,62 @@ public class ManHinhLoHang extends JPanel {
         table.setDefaultRenderer(Object.class, new LoHangCellRenderer());
 
         JTableHeader header = table.getTableHeader();
-        header.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        header.setBackground(new Color(248, 250, 252)); 
-        header.setForeground(TEXT_PRIMARY);
-        header.setPreferredSize(new Dimension(header.getWidth(), 44));
+        header.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        header.setBackground(new Color(248, 250, 252));
+        header.setForeground(TEXT_SECONDARY);
+        header.setPreferredSize(new Dimension(header.getWidth(), 40));
         header.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, BORDER_COLOR));
 
-        table.getColumnModel().getColumn(0).setPreferredWidth(50);  
-        table.getColumnModel().getColumn(1).setPreferredWidth(120); 
-        table.getColumnModel().getColumn(2).setPreferredWidth(280); 
-        table.getColumnModel().getColumn(3).setPreferredWidth(100); 
-        table.getColumnModel().getColumn(4).setPreferredWidth(120); 
-        table.getColumnModel().getColumn(5).setPreferredWidth(130); 
-        table.getColumnModel().getColumn(6).setPreferredWidth(160); 
-        table.getColumnModel().getColumn(7).setPreferredWidth(130); 
-        table.getColumnModel().getColumn(8).setPreferredWidth(80);  
+        table.getColumnModel().getColumn(0).setPreferredWidth(40);
+        table.getColumnModel().getColumn(1).setPreferredWidth(140);
+        table.getColumnModel().getColumn(2).setPreferredWidth(320);
+        table.getColumnModel().getColumn(3).setPreferredWidth(90);
+        table.getColumnModel().getColumn(4).setPreferredWidth(110);
+        table.getColumnModel().getColumn(5).setPreferredWidth(120);
+        table.getColumnModel().getColumn(6).setPreferredWidth(150);
+        table.getColumnModel().getColumn(7).setPreferredWidth(120);
+        table.getColumnModel().getColumn(8).setPreferredWidth(70);
+        
+        table.addMouseMotionListener(new MouseMotionAdapter() {
+            @Override
+            public void mouseMoved(MouseEvent e) {
+                int row = table.rowAtPoint(e.getPoint());
+                if (hoveredRow != row) {
+                    hoveredRow = row;
+                    table.repaint();
+                }
+            }
+        });
 
         table.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseExited(MouseEvent e) {
+                hoveredRow = -1;
+                table.repaint();
+            }
+
             @Override
             public void mouseClicked(MouseEvent e) {
                 int row = table.rowAtPoint(e.getPoint());
                 int col = table.columnAtPoint(e.getPoint());
                 if (row >= 0 && col == 8) {
-                    String soLo = String.valueOf(table.getValueAt(row, 1));
-                    xoaLo(soLo);
+                    String maLo = String.valueOf(table.getValueAt(row, 1));
+                    BatchItem item = timBatchTheoSoLo(maLo);
+                    if (item == null) return;
+
+                    if ("Đã ẩn".equals(item.trangThai)) {
+                        khoiPhucLoHang(item.soLo);
+                    } else {
+                        anLoHang(item.soLo);
+                    }
                 }
             }
         });
 
         JScrollPane scroll = new JScrollPane(table);
-        scroll.setBorder(BorderFactory.createEmptyBorder());
+        scroll.setBorder(new RoundedLineBorder(BORDER_COLOR, 1, 8));
         scroll.getViewport().setBackground(Color.WHITE);
-        
+
         wrap.add(scroll, BorderLayout.CENTER);
         return wrap;
     }
@@ -305,38 +446,40 @@ public class ManHinhLoHang extends JPanel {
     private void loadDataFromDatabase() {
         dsTatCa.clear();
         try {
-            List<LoHang> dsLo = daoLoHang.layDSLoHang();
-            if(dsLo != null) {
+            busKho.kiemKeKho();
+            List<LoHang> dsLo = busKho.layDSLoHang(hienLoAn);
+            if (dsLo != null) {
                 for (LoHang lh : dsLo) {
                     if (lh == null) continue;
-
-                    String id = lh.getId() == null ? "" : lh.getId();
-                    String soLo = lh.getSoLoHang() == null ? "" : lh.getSoLoHang();
-                    String tenSanPham = "";
+                    String id = safe(lh.getId());
+                    String soLo = safe(lh.getSoLoHang());
+                    String maSP = "";
+                    String tenSP = "";
                     if (lh.getSanPhamId() != null) {
-                        SanPham sp = daoSanPham.getSanPhamTheoMa(lh.getSanPhamId().getId());
-                        if (sp != null && sp.getTen() != null) tenSanPham = sp.getTen();
+                        if (lh.getSanPhamId().getId() != null) maSP = lh.getSanPhamId().getId();
+                        if (lh.getSanPhamId().getTen() != null) tenSP = lh.getSanPhamId().getTen();
                     }
-
                     int soLuong = lh.getSoLuongLoHang();
                     int gia = lh.getGia();
-                    String hanSuDung = lh.getNgayHetHan() != null ? lh.getNgayHetHan().toLocalDate().format(DATE_FORMAT) : "";
+                    String hanSuDung = lh.getNgayHetHan() != null
+                            ? lh.getNgayHetHan().toLocalDate().format(DATE_FORMAT)
+                            : "";
                     String trangThai = convertTrangThaiToText(lh.getTrangThai());
-
-                    dsTatCa.add(new BatchItem(id, soLo, tenSanPham, soLuong, gia, hanSuDung, trangThai));
+                    dsTatCa.add(new BatchItem(id, soLo, maSP, tenSP, soLuong, gia, hanSuDung, trangThai));
                 }
             }
             updateStats();
             refreshTable();
         } catch (Exception e) {
             e.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Lỗi tải dữ liệu lô hàng!");
         }
     }
 
     private void updateStats() {
         int expired = 0, near = 0, warning = 0, good = 0;
-
         for (BatchItem item : dsTatCa) {
+            if ("Đã ẩn".equals(item.trangThai)) continue;
             String conLai = item.getConLai();
             if ("Hết hạn".equals(item.trangThai) || conLai.startsWith("Quá")) {
                 expired++;
@@ -347,15 +490,14 @@ public class ManHinhLoHang extends JPanel {
                 else good++;
             }
         }
-
         lblExpired.setText(String.valueOf(expired));
         lblNear.setText(String.valueOf(near));
         lblWarning.setText(String.valueOf(warning));
         lblGood.setText(String.valueOf(good));
-        
+
         int countDanger = near + expired;
-        if(countDanger > 0) {
-            lblWarningBadge.setText("⚠ " + countDanger + " lô cần chú ý!");
+        if (countDanger > 0) {
+            lblWarningBadge.setText(countDanger + " lô cần chú ý!");
             lblWarningBadge.setVisible(true);
         } else {
             lblWarningBadge.setVisible(false);
@@ -368,115 +510,117 @@ public class ManHinhLoHang extends JPanel {
 
         for (BatchItem item : dsTatCa) {
             String conLai = item.getConLai();
-            boolean matchKw = keyword.isEmpty() || item.soLo.toLowerCase().contains(keyword) || item.tenSanPham.toLowerCase().contains(keyword);
-            
+            boolean matchKw = keyword.isEmpty()
+                    || safe(item.soLo).toLowerCase().contains(keyword)
+                    || safe(item.maSanPham).toLowerCase().contains(keyword)
+                    || safe(item.tenSanPham).toLowerCase().contains(keyword);
+
             boolean matchFilter = switch (filter) {
                 case DUOC_BAN -> "Được bán".equals(item.trangThai);
                 case HET_HAN -> conLai.startsWith("Quá") || "Hết hạn".equals(item.trangThai);
                 case HET_HANG -> "Hết hàng".equals(item.trangThai);
-                case GAN_HET_HAN_90 -> !conLai.startsWith("Quá") && parseDays(conLai) <= 90;
+                case GAN_HET_HAN_90 -> !"Đã ẩn".equals(item.trangThai) && !conLai.startsWith("Quá") && parseDays(conLai) <= 90;
                 default -> true;
             };
-
-            if (matchKw && matchFilter) filtered.add(item);
+            if (matchKw && matchFilter) {
+                filtered.add(item);
+            }
         }
+
+        filtered.sort((a, b) -> {
+            int rankA = getPriority(a);
+            int rankB = getPriority(b);
+            if (rankA != rankB) return Integer.compare(rankA, rankB);
+            long daysA = getDaysRemaining(a);
+            long daysB = getDaysRemaining(b);
+            return Long.compare(daysA, daysB);
+        });
 
         tableModel.setRowCount(0);
         int stt = 1;
         for (BatchItem item : filtered) {
             tableModel.addRow(new Object[]{
-                    stt++, item.soLo, item.tenSanPham,
-                    formatNumber(item.tonKho), formatCurrency(item.giaNhap),
-                    item.hanSuDung, item.getConLai(), item.trangThai, ""
+                    stt++,
+                    item.soLo,
+                    item.maSanPham + (safe(item.tenSanPham).isEmpty() ? "" : " - " + item.tenSanPham),
+                    formatNumber(item.tonKho),
+                    formatCurrency(item.giaNhap),
+                    item.hanSuDung,
+                    item.getConLai(),
+                    item.trangThai,
+                    ""
             });
         }
         lblTotal.setText("Hiển thị " + filtered.size() + " / " + dsTatCa.size() + " lô");
     }
 
-    // --- LOGIC GỌI MÀN HÌNH NHẬP LÔ MỚI ---
+    private int getPriority(BatchItem item) {
+        if ("Đã ẩn".equals(item.trangThai)) return 5;
+        String conLai = item.getConLai();
+        if ("Hết hạn".equals(item.trangThai) || conLai.startsWith("Quá")) return 1;
+        int days = parseDays(conLai);
+        if (days <= 30) return 2;
+        if (days <= 90) return 3;
+        return 4;
+    }
+
+    private long getDaysRemaining(BatchItem item) {
+        if ("Đã ẩn".equals(item.trangThai)) return Long.MAX_VALUE;
+        try {
+            LocalDate hsd = LocalDate.parse(item.hanSuDung, DATE_FORMAT);
+            return ChronoUnit.DAYS.between(LocalDate.now(), hsd);
+        } catch (Exception e) {
+            return Long.MAX_VALUE;
+        }
+    }
+
     private void moManHinhNhapLoMoi() {
         Window owner = SwingUtilities.getWindowAncestor(this);
-
-        ManHinhNhapLoHangMoi dialog = new ManHinhNhapLoHangMoi(owner,
-                (sanPham, maLo, soLuong, giaNhap, hanSuDung, trangThai) -> {
-                    try {
-                        LoHang lo = new LoHang();
-                        lo.setId("LH" + System.currentTimeMillis());
-                        lo.setSoLoHang(maLo);
-                        lo.setSanPhamId(sanPham);
-                        lo.setSoLuongLoHang(soLuong);
-                        lo.setGia(giaNhap);
-                        lo.setNgayNhap(LocalDateTime.now());
-                        lo.setNgayHetHan(LocalDate.parse(hanSuDung, DATE_FORMAT).atStartOfDay());
-                        lo.setTrangThai(convertTextToTrangThai(trangThai));
-
-                        KhoHang kho = new KhoHang();
-                        kho.setId("KHO001");
-                        lo.setKhoHangId(kho);
-
-                        boolean ok = daoLoHang.themLoHang(lo);
-
-                        if (ok) {
-                            JOptionPane.showMessageDialog(this, "Thêm lô hàng thành công!");
-                            loadDataFromDatabase();
-                        } else {
-                            JOptionPane.showMessageDialog(this, "Thêm lô hàng thất bại!");
-                        }
-
-                    } catch (Exception ex) {
-                        ex.printStackTrace();
-                        JOptionPane.showMessageDialog(this, "Lỗi khi lưu lô hàng vào database!");
-                    }
-                });
-
+        ManHinhNhapLoHangMoi dialog = new ManHinhNhapLoHangMoi(owner, this::loadDataFromDatabase);
         dialog.setVisible(true);
     }
 
-    // --- LOGIC XÓA LÔ HÀNG ---
-    private void xoaLo(String soLo) {
+    private BatchItem timBatchTheoSoLo(String soLo) {
+        for (BatchItem bi : dsTatCa) {
+            if (safe(bi.soLo).equalsIgnoreCase(safe(soLo))) return bi;
+        }
+        return null;
+    }
+
+    private void anLoHang(String soLo) {
         int confirm = JOptionPane.showConfirmDialog(
-                this, 
-                "Bạn có chắc muốn xóa/tạm ngưng lô " + soLo + " không?", 
-                "Cảnh báo", 
-                JOptionPane.YES_NO_OPTION, 
-                JOptionPane.WARNING_MESSAGE
+                this, "Bạn có chắc muốn ẩn lô " + soLo + " không?",
+                "Xác nhận ẩn lô", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE
         );
-        
         if (confirm == JOptionPane.YES_OPTION) {
-             try {
-                BatchItem item = null;
-                for (BatchItem bi : dsTatCa) {
-                    if (bi.soLo.equalsIgnoreCase(soLo)) {
-                        item = bi;
-                        break;
-                    }
-                }
-                
-                if (item == null) {
-                    JOptionPane.showMessageDialog(this, "Không tìm thấy lô cần xóa!");
-                    return;
-                }
+            try {
+                BatchItem item = timBatchTheoSoLo(soLo);
+                if (item != null && busKho.anLoHang(item.id)) loadDataFromDatabase();
+                else JOptionPane.showMessageDialog(this, "Ẩn lô thất bại!");
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
 
-                // Cập nhật số lượng về 0 và trạng thái về HẾT HÀNG theo logic cũ của bạn
-                boolean ok1 = daoLoHang.capNhatSoLuongTon(item.id, 0);
-                boolean ok2 = daoLoHang.capNhatTrangThaiLo(item.id, TrangThaiLoHang.HET_HANG);
-
-                if (ok1 && ok2) {
-                    JOptionPane.showMessageDialog(this, "Đã cập nhật lô về trạng thái hết hàng!");
-                    loadDataFromDatabase();
-                } else {
-                    JOptionPane.showMessageDialog(this, "Cập nhật thất bại!");
-                }
-
-             } catch (Exception e) {
-                 e.printStackTrace();
-                 JOptionPane.showMessageDialog(this, "Lỗi khi xóa lô hàng!");
-             }
+    private void khoiPhucLoHang(String soLo) {
+        int confirm = JOptionPane.showConfirmDialog(
+                this, "Bạn có chắc muốn khôi phục lô " + soLo + " không?",
+                "Xác nhận khôi phục", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE
+        );
+        if (confirm == JOptionPane.YES_OPTION) {
+            try {
+                BatchItem item = timBatchTheoSoLo(soLo);
+                if (item != null && busKho.khoiPhucLoHang(item.id)) loadDataFromDatabase();
+                else JOptionPane.showMessageDialog(this, "Khôi phục lô thất bại!");
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
     }
 
     private void switchFilter(TrangThaiFilter newFilter, JButton source) {
-        chkNear90.setSelected(false);
+        if (chkNear90 != null) chkNear90.setSelected(false);
         filter = newFilter;
         setActiveFilterButton(source);
         refreshTable();
@@ -485,41 +629,70 @@ public class ManHinhLoHang extends JPanel {
     private void setActiveFilterButton(JButton active) {
         JButton[] list = {btnTatCa, btnDuocBan, btnHetHan, btnTamNgung};
         for (JButton b : list) {
-            b.setBackground(Color.WHITE);
+            if (b == null) continue;
+            b.setBackground(new Color(241, 245, 249)); 
             b.setForeground(TEXT_SECONDARY);
-            b.setBorder(new RoundedLineBorder(BORDER_COLOR, 1, 6));
         }
         if (active != null) {
-            active.setBackground(PRIMARY_BLUE);
-            active.setForeground(Color.WHITE);
-            active.setBorder(new RoundedLineBorder(PRIMARY_BLUE, 1, 6));
+            active.setBackground(Color.WHITE); 
+            active.setForeground(PRIMARY_BLUE);
+        }
+        for (JButton b : list) {
+            if (b != null) b.repaint();
         }
     }
 
-    private JPanel createStatCard(String title, String icon, JLabel value, Color bg, Color textC) {
+    private JButton createFilterButton(String text, String iconName) {
+        JButton btn = new JButton(text) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                
+                if (getModel().isRollover() && getBackground().equals(new Color(241, 245, 249))) {
+                    g2.setColor(new Color(226, 232, 240)); 
+                } else {
+                    g2.setColor(getBackground());
+                }
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 8, 8);
+                
+                if (getBackground().equals(Color.WHITE)) {
+                    g2.setColor(new Color(0, 0, 0, 15));
+                    g2.drawRoundRect(0, 0, getWidth()-1, getHeight()-1, 8, 8);
+                }
+                super.paintComponent(g);
+                g2.dispose();
+            }
+        };
+        btn.setIcon(new MenuIcon(iconName));
+        btn.setIconTextGap(6);
+        btn.setFocusPainted(false);
+        btn.setBorderPainted(false);
+        btn.setContentAreaFilled(false);
+        btn.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btn.setBorder(new EmptyBorder(6, 12, 6, 12)); 
+        return btn;
+    }
+
+    private JPanel createStatCard(String title, Icon icon, JLabel value, Color bg, Color textC) {
         JPanel p = new JPanel(new BorderLayout());
         p.setBackground(bg);
         p.setBorder(new CompoundRoundBorder(
                 new RoundedLineBorder(textC, 1, 12),
-                new Insets(12, 16, 12, 16) 
+                new Insets(12, 16, 12, 16)
         ));
-
         JLabel t = new JLabel(title);
         t.setFont(new Font("Segoe UI", Font.BOLD, 13));
         t.setForeground(TEXT_PRIMARY);
-
         JLabel ic = new JLabel(icon);
-        ic.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 18));
         ic.setForeground(textC);
-
         JPanel top = new JPanel(new FlowLayout(FlowLayout.CENTER, 8, 0));
         top.setOpaque(false);
         top.add(ic);
         top.add(t);
-
         value.setForeground(textC);
         value.setHorizontalAlignment(SwingConstants.CENTER);
-
         p.add(top, BorderLayout.NORTH);
         p.add(value, BorderLayout.CENTER);
         return p;
@@ -527,66 +700,54 @@ public class ManHinhLoHang extends JPanel {
 
     private JLabel statValueLabel() {
         JLabel lbl = new JLabel("0");
-        lbl.setFont(new Font("Segoe UI", Font.BOLD, 32));
+        lbl.setFont(new Font("Segoe UI", Font.BOLD, 30));
         return lbl;
     }
 
-    private JButton createFilterButton(String text) {
-        JButton btn = new JButton(text);
-        btn.setFocusPainted(false);
-        btn.setContentAreaFilled(true);
-        btn.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        btn.setMargin(new Insets(6, 14, 6, 14));
-        return btn;
-    }
-
-    private JButton createButton(String text, Color bg, Color fg, Insets padding) {
+    private JButton createHoverButton(String text, Color bg, Color hoverBg, Color fg) {
         JButton btn = new JButton(text);
         btn.setFocusPainted(false);
         btn.setBackground(bg);
         btn.setForeground(fg);
-        btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btn.setFont(new Font("Segoe UI", Font.BOLD, 13));
         btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         btn.setBorder(new RoundedLineBorder(bg, 1, 8));
+        btn.addMouseListener(new MouseAdapter() {
+            @Override public void mouseEntered(MouseEvent e) { btn.setBackground(hoverBg); }
+            @Override public void mouseExited(MouseEvent e) { btn.setBackground(bg); }
+        });
         return btn;
     }
 
     private int parseDays(String text) {
-        try { return Integer.parseInt(text.replaceAll("[^0-9]", "")); } catch (Exception e) { return 999; }
+        try { return Integer.parseInt(text.replaceAll("[^0-9]", "")); } 
+        catch (Exception e) { return 999; }
     }
+
     private String formatCurrency(int value) { return String.format("%,dđ", value); }
     private String formatNumber(int value) { return String.format("%,d", value); }
-    
+
     private String convertTrangThaiToText(TrangThaiLoHang tt) {
         if (tt == null) return "Không xác định";
-        if(tt == TrangThaiLoHang.HET_HAN) return "Hết hạn";
-        if(tt == TrangThaiLoHang.HET_HANG) return "Hết hàng";
+        if (tt == TrangThaiLoHang.AN) return "Đã ẩn";
+        if (tt == TrangThaiLoHang.HET_HAN) return "Hết hạn";
+        if (tt == TrangThaiLoHang.HET_HANG) return "Hết hàng";
         return "Được bán";
     }
 
-    private TrangThaiLoHang convertTextToTrangThai(String text) {
-        if (text == null) return TrangThaiLoHang.CON_HANG;
-        switch (text.trim()) {
-            case "Hết hạn": return TrangThaiLoHang.HET_HAN;
-            case "Hết hàng": return TrangThaiLoHang.HET_HANG;
-            case "Được bán":
-            default: return TrangThaiLoHang.CON_HANG;
-        }
-    }
+    private String safe(String s) { return s == null ? "" : s; }
 
-    // --- ENUM & LỚP DỮ LIỆU ---
     private enum TrangThaiFilter { TAT_CA, DUOC_BAN, HET_HAN, GAN_HET_HAN_90, HET_HANG }
 
     private class BatchItem {
-        String id, soLo, tenSanPham, hanSuDung, trangThai;
+        String id, soLo, maSanPham, tenSanPham, hanSuDung, trangThai;
         int tonKho, giaNhap;
-
-        BatchItem(String i, String sl, String tsp, int tk, int gn, String hsd, String tt) {
-            id = i; soLo = sl; tenSanPham = tsp; tonKho = tk; giaNhap = gn; hanSuDung = hsd; trangThai = tt;
+        BatchItem(String i, String sl, String msp, String tsp, int tk, int gn, String hsd, String tt) {
+            id = i; soLo = sl; maSanPham = msp; tenSanPham = tsp;
+            tonKho = tk; giaNhap = gn; hanSuDung = hsd; trangThai = tt;
         }
-
         String getConLai() {
+            if ("Đã ẩn".equals(trangThai)) return "--";
             try {
                 LocalDate hsd = LocalDate.parse(hanSuDung, DATE_FORMAT);
                 long days = ChronoUnit.DAYS.between(LocalDate.now(), hsd);
@@ -596,119 +757,167 @@ public class ManHinhLoHang extends JPanel {
         }
     }
 
-    // --- RENDERER CHO BẢNG ---
     private class LoHangCellRenderer extends DefaultTableCellRenderer {
-        private final Color ROW_COLOR = new Color(250, 252, 255); 
-
+        private final Color ROW_ALTERNATE = new Color(252, 253, 255);
         @Override
-        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
+                                                       boolean hasFocus, int row, int column) {
             JLabel lbl = (JLabel) super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+            String trangThaiRow = String.valueOf(table.getValueAt(row, 7));
+
+            lbl.setIcon(null);
             lbl.setBorder(new EmptyBorder(0, 10, 0, 10));
-            lbl.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+            lbl.setFont(new Font("Segoe UI", Font.PLAIN, 13));
             lbl.setHorizontalAlignment(SwingConstants.LEFT);
             lbl.setOpaque(true);
 
             if (isSelected) {
-                lbl.setBackground(new Color(224, 242, 254)); 
+                lbl.setBackground(new Color(224, 242, 254));
+                lbl.setForeground(TEXT_PRIMARY);
+            } else if (row == hoveredRow) {
+                lbl.setBackground(ROW_HOVER); 
                 lbl.setForeground(TEXT_PRIMARY);
             } else {
-                lbl.setBackground(row % 2 == 0 ? Color.WHITE : ROW_COLOR);
-                lbl.setForeground(TEXT_PRIMARY);
+                if ("Đã ẩn".equals(trangThaiRow)) {
+                    lbl.setBackground(row % 2 == 0 ? HIDDEN_SOFT : new Color(249, 250, 251));
+                    lbl.setForeground(HIDDEN);
+                } else {
+                    lbl.setBackground(row % 2 == 0 ? Color.WHITE : ROW_ALTERNATE);
+                    lbl.setForeground(TEXT_PRIMARY);
+                }
             }
 
-            // STT
             if (column == 0) {
-                lbl.setForeground(TEXT_SECONDARY);
+                lbl.setForeground("Đã ẩn".equals(trangThaiRow) ? HIDDEN : TEXT_SECONDARY);
                 lbl.setHorizontalAlignment(SwingConstants.CENTER);
-            }
-            // Mã lô
-            else if (column == 1) {
-                lbl.setForeground(PRIMARY_BLUE);
-                lbl.setFont(new Font("Segoe UI", Font.BOLD, 14));
-            }
-            // Tồn kho & Giá nhập
-            else if (column == 3 || column == 4) {
+            } else if (column == 1) {
+                lbl.setForeground("Đã ẩn".equals(trangThaiRow) ? HIDDEN : PRIMARY_BLUE);
+                lbl.setFont(new Font("Segoe UI", Font.BOLD, 13));
+            } else if (column == 3 || column == 4) {
                 lbl.setHorizontalAlignment(SwingConstants.RIGHT);
-                if(column == 3) lbl.setFont(new Font("Segoe UI", Font.BOLD, 14));
-            }
-            // HSD
-            else if(column == 5) {
+                if (column == 3) lbl.setFont(new Font("Segoe UI", Font.BOLD, 13));
+            } else if (column == 5) {
                 lbl.setHorizontalAlignment(SwingConstants.CENTER);
-            }
-            // Cột "Còn lại"
-            else if (column == 6) {
+            } else if (column == 6) {
                 String text = String.valueOf(value);
                 JPanel panel = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 10));
                 panel.setBackground(lbl.getBackground());
-                
-                JLabel pill = new JLabel(text);
-                pill.setFont(new Font("Segoe UI", Font.BOLD, 12));
-                pill.setOpaque(true);
-                pill.setBorder(new CompoundRoundBorder(new RoundedLineBorder(new Color(0,0,0,0), 0, 12), new Insets(4, 12, 4, 12)));
 
-                if (text.startsWith("Quá")) {
-                    pill.setText("⛔ " + text);
+                JLabel pill = new JLabel(text);
+                pill.setFont(new Font("Segoe UI", Font.BOLD, 11));
+                pill.setOpaque(true);
+                pill.setBorder(new CompoundRoundBorder(
+                        new RoundedLineBorder(new Color(0, 0, 0, 0), 0, 12),
+                        new Insets(3, 10, 3, 10)
+                ));
+
+                if ("Đã ẩn".equals(trangThaiRow)) {
+                    pill.setText("--"); pill.setIcon(new MenuIcon("CLOSE"));
+                    pill.setBackground(HIDDEN_SOFT); pill.setForeground(HIDDEN);
+                } else if (text.startsWith("Quá")) {
+                    pill.setText(text); pill.setIcon(new MenuIcon("WARNING"));
                     pill.setBackground(DANGER_SOFT); pill.setForeground(DANGER);
                 } else {
                     int days = parseDays(text);
                     if (days <= 30) {
-                        pill.setText("⚠ " + text);
+                        pill.setText(text); pill.setIcon(new MenuIcon("WARNING"));
                         pill.setBackground(WARNING_SOFT); pill.setForeground(WARNING);
                     } else if (days <= 90) {
-                        pill.setText("⏱ " + text);
+                        pill.setText(text); pill.setIcon(new MenuIcon("TIME"));
                         pill.setBackground(GOLD_SOFT); pill.setForeground(GOLD);
                     } else {
-                        pill.setText("✅ " + text);
+                        pill.setText(text); pill.setIcon(new MenuIcon("CHECK_CIRCLE"));
                         pill.setBackground(SUCCESS_SOFT); pill.setForeground(SUCCESS);
                     }
                 }
+                pill.setIconTextGap(4);
                 panel.add(pill);
                 return panel;
-            }
-            // Trạng thái
-            else if (column == 7) {
+            } else if (column == 7) {
                 String text = String.valueOf(value);
                 lbl.setHorizontalAlignment(SwingConstants.CENTER);
-                lbl.setFont(new Font("Segoe UI", Font.BOLD, 13));
-                if ("Được bán".equals(text)) lbl.setForeground(SUCCESS);
-                else if ("Hết hạn".equals(text)) lbl.setForeground(DANGER);
-                else lbl.setForeground(TEXT_SECONDARY);
-            }
-            // Nút Xóa
-            else if (column == 8) {
-                lbl.setHorizontalAlignment(SwingConstants.CENTER);
-                lbl.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 18));
-                lbl.setForeground(DANGER);
-                lbl.setText("🗑");
-                lbl.setToolTipText("Xóa lô hàng này");
-            }
+                lbl.setFont(new Font("Segoe UI", Font.BOLD, 12));
+                lbl.setIconTextGap(4);
 
+                if ("Được bán".equals(text)) { lbl.setForeground(SUCCESS); lbl.setIcon(new MenuIcon("CHECK_CIRCLE")); } 
+                else if ("Hết hạn".equals(text)) { lbl.setForeground(DANGER); lbl.setIcon(new MenuIcon("CANCEL")); } 
+                else if ("Đã ẩn".equals(text)) { lbl.setForeground(HIDDEN); lbl.setIcon(new MenuIcon("CLOSE")); } 
+                else { lbl.setForeground(TEXT_SECONDARY); lbl.setIcon(new MenuIcon("BOX")); }
+            } else if (column == 8) {
+                lbl.setHorizontalAlignment(SwingConstants.CENTER);
+                lbl.setText("");
+
+                if ("Đã ẩn".equals(trangThaiRow)) {
+                    lbl.setIcon(new MenuIcon("REFRESH"));
+                    lbl.setForeground(PRIMARY_BLUE);
+                    lbl.setToolTipText("Khôi phục lô hàng");
+                } else {
+                    lbl.setIcon(new MenuIcon("TRASH"));
+                    lbl.setForeground(DANGER);
+                    lbl.setToolTipText("Ẩn lô hàng");
+                }
+            }
             return lbl;
         }
     }
 
-    // --- CÁC CLASS ĐỊNH DẠNG UI CUSTOM ---
+    private static class ModernCheckBoxIcon implements Icon {
+        private final boolean selected;
+        public ModernCheckBoxIcon(boolean selected) { this.selected = selected; }
+        
+        @Override 
+        public void paintIcon(Component c, Graphics g, int x, int y) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            int size = 16;
+            int arc = 4;
+            int yOff = y + 2;
+            
+            if (selected) {
+                g2.setColor(PRIMARY_BLUE);
+                g2.fillRoundRect(x, yOff, size, size, arc, arc);
+                g2.setColor(Color.WHITE);
+                g2.setStroke(new BasicStroke(2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                g2.drawLine(x + 3, yOff + 8, x + 7, yOff + 12);
+                g2.drawLine(x + 7, yOff + 12, x + 13, yOff + 4);
+            } else {
+                g2.setColor(new Color(248, 250, 252));
+                g2.fillRoundRect(x, yOff, size, size, arc, arc);
+                g2.setColor(BORDER_COLOR);
+                g2.setStroke(new BasicStroke(1.5f));
+                g2.drawRoundRect(x, yOff, size, size, arc, arc);
+            }
+            g2.dispose();
+        }
+        @Override public int getIconWidth() { return 16; }
+        @Override public int getIconHeight() { return 20; }
+    }
+
     private static class RoundedLineBorder extends AbstractBorder {
         private final Color color;
         private final int thickness, radius;
         public RoundedLineBorder(Color c, int t, int r) { color = c; thickness = t; radius = r; }
-        @Override public void paintBorder(Component c, Graphics g, int x, int y, int w, int h) {
+        @Override
+        public void paintBorder(Component c, Graphics g, int x, int y, int w, int h) {
             Graphics2D g2 = (Graphics2D) g.create();
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             g2.setColor(color);
-            for (int i = 0; i < thickness; i++) g2.drawRoundRect(x + i, y + i, w - 1 - i * 2, h - 1 - i * 2, radius, radius);
+            for (int i = 0; i < thickness; i++) {
+                g2.drawRoundRect(x + i, y + i, w - 1 - i * 2, h - 1 - i * 2, radius, radius);
+            }
             g2.dispose();
         }
-        @Override public Insets getBorderInsets(Component c) { return new Insets(radius/2, radius/2, radius/2, radius/2); }
-        @Override public Insets getBorderInsets(Component c, Insets i) { i.left = i.right = i.top = i.bottom = radius/2; return i; }
+        @Override public Insets getBorderInsets(Component c) { return new Insets(radius / 2, radius / 2, radius / 2, radius / 2); }
+        @Override public Insets getBorderInsets(Component c, Insets i) { i.left = i.right = i.top = i.bottom = radius / 2; return i; }
     }
 
-    private static class ShadowBorder extends AbstractBorder {
+    private static class SmoothShadowBorder extends AbstractBorder {
         private final Color shadow;
         private final int radius;
-        public ShadowBorder(Color s, int r) { shadow = s; radius = r; }
+        public SmoothShadowBorder(Color s, int r) { shadow = s; radius = r; }
         @Override public Insets getBorderInsets(Component c) { return new Insets(4, 4, 8, 4); }
-        @Override public void paintBorder(Component c, Graphics g, int x, int y, int w, int h) {
+        @Override
+        public void paintBorder(Component c, Graphics g, int x, int y, int w, int h) {
             Graphics2D g2 = (Graphics2D) g.create();
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             for (int i = 0; i < 6; i++) {
@@ -721,51 +930,38 @@ public class ManHinhLoHang extends JPanel {
 
     private static class CompoundRoundBorder extends AbstractBorder {
         private final AbstractBorder outer;
-        private final Insets inner; 
-        
-        public CompoundRoundBorder(AbstractBorder o, Insets i) { 
-            outer = o; 
-            inner = i; 
-        }
-        
+        private final Insets inner;
+        public CompoundRoundBorder(AbstractBorder o, Insets i) { outer = o; inner = i; }
         @Override public Insets getBorderInsets(Component c) {
             Insets o = outer.getBorderInsets(c);
             return new Insets(o.top + inner.top, o.left + inner.left, o.bottom + inner.bottom, o.right + inner.right);
         }
-        
         @Override public Insets getBorderInsets(Component c, Insets insets) {
             Insets o = outer.getBorderInsets(c);
-            insets.top = o.top + inner.top;
-            insets.left = o.left + inner.left;
-            insets.bottom = o.bottom + inner.bottom;
-            insets.right = o.right + inner.right;
+            insets.top = o.top + inner.top; insets.left = o.left + inner.left;
+            insets.bottom = o.bottom + inner.bottom; insets.right = o.right + inner.right;
             return insets;
         }
-
-        @Override public void paintBorder(Component c, Graphics g, int x, int y, int w, int h) { 
-            outer.paintBorder(c, g, x, y, w, h); 
-        }
+        @Override public void paintBorder(Component c, Graphics g, int x, int y, int w, int h) { outer.paintBorder(c, g, x, y, w, h); }
     }
-    /**
-     * Phân quyền: Ẩn nút Thêm/Sửa/Xóa cho STAFF.
-     */
+
     public void setReadOnly(boolean readOnly) {
         if (!readOnly) return;
-
-        disableButtonsByText(this, "Thêm mới", "Nhập Excel", "Thêm", "Xóa", "Sửa", "Lưu", "+ Nhập lô hàng");
+        disableButtonsByText(this, "Thêm mới", "Nhập lô hàng", "Nhập Excel", "Thêm", "Xóa", "Sửa", "Lưu");
     }
 
-    private void disableButtonsByText(java.awt.Container container, String... texts) {
-        for (java.awt.Component c : container.getComponents()) {
-            if (c instanceof javax.swing.JButton) {
-                javax.swing.JButton btn = (javax.swing.JButton) c;
+    private void disableButtonsByText(Container container, String... texts) {
+        for (Component c : container.getComponents()) {
+            if (c instanceof JButton btn) {
                 for (String t : texts) {
-                    if (t.equals(btn.getText())) { btn.setVisible(false); break; }
+                    if (t.equals(btn.getText())) {
+                        btn.setVisible(false);
+                        break;
+                    }
                 }
-            } else if (c instanceof java.awt.Container) {
-                disableButtonsByText((java.awt.Container) c, texts);
+            } else if (c instanceof Container child) {
+                disableButtonsByText(child, texts);
             }
         }
     }
-
 }
