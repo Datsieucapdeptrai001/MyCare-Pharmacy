@@ -19,6 +19,7 @@ public class DAO_SanPham {
 
     public DAO_SanPham() {
     }
+    
     public List<Object[]> layDanhSachSanPhamChoBang() {
         List<Object[]> ds = new ArrayList<>();
         // Câu lệnh lấy danh sách sản phẩm. Tùy vào CSDL của bạn có cột nhaSanXuat, thueVAT không, 
@@ -60,6 +61,7 @@ public class DAO_SanPham {
         }
         return ds;
     }
+    
     // 1. Lấy danh sách toàn bộ Thuốc/Sản phẩm theo đúng tên hàm trong sơ đồ
     public List<SanPham> getDsThuoc() {
         List<SanPham> dsSanPham = new ArrayList<>();
@@ -166,6 +168,7 @@ public class DAO_SanPham {
         }
         return dsLoHang;
     }
+    
     public java.util.List<Object[]> timKiemSanPhamBan(String keyword) {
         java.util.List<Object[]> list = new java.util.ArrayList<>();
         java.sql.Connection con = null;
@@ -173,7 +176,6 @@ public class DAO_SanPham {
         java.sql.ResultSet rs = null;
 
         try {
-            // Thay bằng class Connection thật của bạn (VD: Database.getInstance().getConnection())
             con = ConnectDB.getConnection(); 
             
             // CÂU SQL: Nối 3 bảng SanPham, DonViDoLuong và LoHang (để lấy tồn kho)
@@ -219,6 +221,7 @@ public class DAO_SanPham {
         }
         return list;
     }
+    
     // 3. Cập nhật số lượng tồn kho
     public boolean capNhatSoLuongTon(String maLoHang, int soLuongMoi) {
         String sql = "UPDATE LoHang SET soLuongLoHang = ? WHERE id = ?";
@@ -232,7 +235,8 @@ public class DAO_SanPham {
         }
         return false;
     }
- // =====================================================================
+    
+    // =====================================================================
     // CÁC HÀM BỔ SUNG ĐỂ THÊM/SỬA/XÓA/TẠO MÃ TỰ ĐỘNG XUỐNG DATABASE
     // =====================================================================
     
@@ -341,5 +345,25 @@ public class DAO_SanPham {
             return pst.executeUpdate() > 0;
         } catch (Exception e) { e.printStackTrace(); }
         return false;
+    }
+
+    // ===========================================
+    // HÀM MỚI: LẤY DANH SÁCH TÊN SẢN PHẨM CHO COMBOBOX (GIAO DIỆN KHUYẾN MÃI)
+    // ===========================================
+    public List<String> layDanhSachTenSanPham() {
+        List<String> dsTenSP = new ArrayList<>();
+        Connection con = ConnectDB.getInstance().getConnection();
+        if (con == null) return dsTenSP;
+        
+        String sql = "SELECT ten FROM SanPham";
+        try (Statement stmt = con.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                dsTenSP.add(rs.getString("ten"));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return dsTenSP;
     }
 }

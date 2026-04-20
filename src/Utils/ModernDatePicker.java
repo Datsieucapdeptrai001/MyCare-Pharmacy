@@ -15,17 +15,40 @@ public class ModernDatePicker extends JDialog {
     private JTextField targetField;
 
     public ModernDatePicker(Window parent, JTextField targetField) {
-    	super(parent);
+        super(parent);
         setModal(true);
         this.targetField = targetField;
         setUndecorated(true);
-        setSize(280, 280);
+        
+        int popupWidth = 280;
+        int popupHeight = 280;
+        setSize(popupWidth, popupHeight);
+        
         getContentPane().setBackground(Color.WHITE);
         getRootPane().setBorder(BorderFactory.createLineBorder(Color.decode("#1967D2"), 1));
 
-        // Tính toán vị trí: Nổi lên ngay bên dưới ô Nhập ngày sinh
+        // =========================================================
+        // THUẬT TOÁN TÍNH TỌA ĐỘ THÔNG MINH (CHỐNG LẸM MÀN HÌNH)
+        // =========================================================
         Point p = targetField.getLocationOnScreen();
-        setLocation(p.x, p.y + targetField.getHeight() + 2);
+        Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+        
+        int xPosition = p.x;
+        // Mặc định là xổ xuống dưới ô text
+        int yPosition = p.y + targetField.getHeight() + 2; 
+        
+        // Nếu xổ xuống dưới mà bị lố quá chiều cao màn hình -> Bật ngược lên trên
+        if (yPosition + popupHeight > screenSize.height) {
+            yPosition = p.y - popupHeight - 2;
+        }
+        
+        // Đảm bảo không bị lẹm sang mép phải màn hình
+        if (xPosition + popupWidth > screenSize.width) {
+            xPosition = screenSize.width - popupWidth - 5;
+        }
+
+        setLocation(xPosition, yPosition);
+        // =========================================================
 
         setLayout(new BorderLayout());
 
