@@ -11,12 +11,15 @@ public class CaLamViec {
 	private double tienHeThongGhiNhan;
 	private double tienDauCa;
 	private double tienKetCa;
+	private int loaiCa;
+    private String ghiChuKetCa;
+	
 	public CaLamViec() {
 		super();
-		// TODO Auto-generated constructor stub
 	}
+	
 	public CaLamViec(String id, NhanVien nhanVienId, LocalDateTime thoiGianBatDau, LocalDateTime thoiGianKetThuc,
-			double tienHeThongGhiNhan, double tienDauCa, double tienKetCa) {
+			double tienHeThongGhiNhan, double tienDauCa, double tienKetCa, int loaiCa, String ghiChuKetCa) {
 		super();
 		this.id = id;
 		this.nhanVienId = nhanVienId;
@@ -25,7 +28,10 @@ public class CaLamViec {
 		this.tienHeThongGhiNhan = tienHeThongGhiNhan;
 		this.tienDauCa = tienDauCa;
 		this.tienKetCa = tienKetCa;
+		this.loaiCa = loaiCa;
+		this.ghiChuKetCa = ghiChuKetCa;
 	}
+
 	public String getId() {
 		return id;
 	}
@@ -67,6 +73,18 @@ public class CaLamViec {
 	}
 	public void setTienKetCa(double tienKetCa) {
 		this.tienKetCa = tienKetCa;
+	}
+	public int getLoaiCa() {
+		return loaiCa;
+	}
+	public void setLoaiCa(int loaiCa) {
+		this.loaiCa = loaiCa;
+	}
+	public String getGhiChuKetCa() {
+		return ghiChuKetCa;
+	}
+	public void setGhiChuKetCa(String ghiChuKetCa) {
+		this.ghiChuKetCa = ghiChuKetCa;
 	}
 	@Override
 	public int hashCode() {

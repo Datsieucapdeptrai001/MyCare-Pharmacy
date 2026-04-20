@@ -24,7 +24,9 @@ public class BUS_KhuyenMai {
         this.daoHinhThucKhuyenMai = new DAO_HinhThucKhuyenMai();
         this.daoSanPham = new DAO_SanPham(); // Khởi tạo
     }
-
+    public boolean capNhatTrangThai(String maKM, boolean trangThai) {
+        return daoKhuyenMai.capNhatTrangThai(maKM, trangThai);
+    }
     public int[] layCauHinhTichDiem() {
         return daoKhuyenMai.layCauHinhTichDiem();
     }

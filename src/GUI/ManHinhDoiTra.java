@@ -10,7 +10,7 @@ import java.awt.*;
 import java.awt.event.*;
 import java.util.ArrayList;
 import java.util.List;
-
+import BUS.*;
 public class ManHinhDoiTra extends JPanel {
 	
     private JTable table;
@@ -19,7 +19,7 @@ public class ManHinhDoiTra extends JPanel {
     private JButton[] statusBtns;
     private String filterStatus = "Tất cả";
     private JTextField txtSearch;
-    
+    private BUS_HoaDon busHD = new BUS_HoaDon();
     public ManHinhDoiTra() {
         initUI();
     }
@@ -265,6 +265,7 @@ public class ManHinhDoiTra extends JPanel {
             
             pnlAction.add(btnTiepNhan);
             pnlAction.add(btnTuChoi);
+            
         }
 
         public Component getTableCellRendererComponent(JTable t, Object v, boolean isSel, boolean hasF, int r, int c) {
@@ -298,9 +299,14 @@ public class ManHinhDoiTra extends JPanel {
                 lbl.setForeground(v.toString().equals("Trả hàng") ? Color.decode("#EF4444") : Color.decode("#0284C7"));
             }
             
-            if (c == 4 && v != null && !v.toString().equals("")) { // Cột LỖI 
-                lbl.setBackground(Color.decode("#FFEDD5"));
-                lbl.setForeground(Color.decode("#D97706"));
+            if (c == 4 && v != null) { // Cột LỖI
+                if (v.toString().equals("Lỗi nhà sản xuất")) {
+                    lbl.setBackground(Color.decode("#DCFCE7")); // Nền xanh (Ưu tiên)
+                    lbl.setForeground(Color.decode("#16A34A")); 
+                } else {
+                    lbl.setBackground(Color.decode("#FFEDD5")); // Nền cam
+                    lbl.setForeground(Color.decode("#D97706")); 
+                }
             }
 
             if (c == 5 && v != null && !v.toString().equals("---")) { // Cột TIỀN HOÀN 

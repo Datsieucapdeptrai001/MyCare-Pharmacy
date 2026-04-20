@@ -15,7 +15,9 @@ import java.awt.*;
 import java.util.List;
 
 public class ChiTietHoaDon extends JDialog {
-
+	private String bacSi = "";
+    private String coSo = "";
+    private String chuanDoan = "";
     private Color primaryGreen = Color.decode("#009643"); 
     private Color bgLight = Color.decode("#F8F9FA"); 
     private Color bgYellow = Color.decode("#FEF9C3"); 
@@ -36,7 +38,9 @@ public class ChiTietHoaDon extends JDialog {
     // --- THÊM 2 BIẾN MỚI ĐỂ XỬ LÝ ĐIỂM ---
     private long tienGiamTuDiemThucTe = 0; 
     private int diemHienTai = 0;
-    
+    private boolean isDaHuy = false; // Biến kiểm tra trạng thái hủy
+    private Color bgRed = Color.decode("#FEF2F2"); // Màu nền đỏ nhạt
+    private Color textRed = Color.decode("#DC2626"); // Màu chữ/viền đỏ đậm
     public ChiTietHoaDon(Frame parent, String maHD, String ngay, String khachHang, String sdt, String phuongThuc, String tongTienCu, String tenNhanVien, List<Object[]> dsSanPham) {
         super(parent, "Chi tiết hóa đơn", true);
         this.dsSanPham = dsSanPham;
@@ -71,21 +75,65 @@ public class ChiTietHoaDon extends JDialog {
             DAO.DAO_HoaDon daoHD = new DAO.DAO_HoaDon();
             Entity.HoaDon hd = daoHD.layHoaDonTheoMa(maHD);
             
-            if (hd != null && hd.getGhiChu() != null) {
-                String ghiChu = hd.getGhiChu();
-                if (phuongThuc.equals("Tiền mặt") && ghiChu.startsWith("CASH:")) {
-                    String cashPart = ghiChu.split("\\|")[0].trim();
-                    tienKhachDuaThucTe = Long.parseLong(cashPart.split(":")[1].trim());
+            if (hd != null) {
+                // Chỉ khai báo biến ghiChu 1 lần duy nhất ở đây
+                String ghiChu = hd.getGhiChu() != null ? hd.getGhiChu() : "";
+                
+                // --- KIỂM TRA NẾU HÓA ĐƠN ĐÃ HỦY ---
+                if (ghiChu.startsWith("Đã hủy") || ghiChu.contains("Đã hủy")) {
+                    this.isDaHuy = true;
+                    // Đổi tông màu chủ đạo sang Đỏ
+                    this.primaryGreen = textRed; 
+                    this.bgLight = bgRed;
                 }
                 
-                // Móc tiền giảm từ điểm ra
-                if (ghiChu.contains("Dùng điểm: -")) {
-                    String diemPart = ghiChu.substring(ghiChu.indexOf("Dùng điểm: -") + 12);
-                    diemPart = diemPart.split("\\|")[0].trim(); 
-                    tienGiamTuDiemThucTe = Long.parseLong(diemPart);
+                if (!ghiChu.isEmpty()) {
+                    // 2. Bóc tiền mặt (Quét tìm chính xác chữ CASH: ở bất kỳ đâu)
+                    if (phuongThuc.equals("Tiền mặt") && ghiChu.contains("CASH:")) {
+                        String[] parts = ghiChu.split("\\|");
+                        for (String p : parts) {
+                            p = p.trim();
+                            if (p.startsWith("CASH:")) {
+                                // Cắt bỏ chữ CASH:, chỉ lấy số và ép sạch các ký tự lạ
+                                String moneyStr = p.substring(5).replaceAll("[^0-9]", "");
+                                if (!moneyStr.isEmpty()) {
+                                    tienKhachDuaThucTe = Long.parseLong(moneyStr);
+                                }
+                                break;
+                            }
+                        }
+                    }
+                    
+                    // 3. Bóc tiền giảm từ điểm ra (An toàn tuyệt đối)
+                    if (ghiChu.contains("Dùng điểm: -")) {
+                        String[] parts = ghiChu.split("\\|");
+                        for (String p : parts) {
+                            p = p.trim();
+                            if (p.startsWith("Dùng điểm: -")) {
+                                String diemStr = p.substring(12).replaceAll("[^0-9]", "");
+                                if (!diemStr.isEmpty()) {
+                                    tienGiamTuDiemThucTe = Long.parseLong(diemStr);
+                                }
+                                break;
+                            }
+                        }
+                    }
+
+                    // 4. Bóc thông tin thuốc kê đơn
+                    if (ghiChu.contains("BS:")) {
+                        String[] parts = ghiChu.split("\\|");
+                        for (String p : parts) {
+                            p = p.trim();
+                            if (p.startsWith("BS:")) bacSi = p.substring(3).trim();
+                            else if (p.startsWith("CS:")) coSo = p.substring(3).trim();
+                            else if (p.startsWith("CD:")) chuanDoan = p.substring(3).trim();
+                        }
+                    }
                 }
             }
-        } catch (Exception e) { System.out.println("Lỗi Parse Ghi Chú: " + e.getMessage()); }
+        } catch (Exception e) { 
+            System.out.println("Lỗi Parse Ghi Chú: " + e.getMessage()); 
+        }
 
         // Tính ngược lại tiền giảm từ Mã Khuyến Mãi
         tienGiamGiaThucTe = (tamTinhThucTe + vatThucTe) - tongThanhToanThucTe - tienGiamTuDiemThucTe;
@@ -93,7 +141,7 @@ public class ChiTietHoaDon extends JDialog {
         
         tienThoiThucTe = tienKhachDuaThucTe - tongThanhToanThucTe;
         if (tienThoiThucTe < 0) tienThoiThucTe = 0;
-
+        
         String tongTienDungStr = String.format("%,d", tongThanhToanThucTe).replace(',', '.') + "đ";
 
         setSize(900, 750); 
@@ -115,7 +163,7 @@ public class ChiTietHoaDon extends JDialog {
         pnlBody.add(Box.createRigidArea(new Dimension(0, 15)));
         pnlBody.add(createProductTablePanel());
         pnlBody.add(Box.createRigidArea(new Dimension(0, 15)));
-        pnlBody.add(createSummaryPanel(phuongThuc)); 
+        pnlBody.add(createSummaryPanel(phuongThuc));
         pnlBody.add(Box.createRigidArea(new Dimension(0, 20)));
         pnlBody.add(createFooterTextPanel()); 
 
@@ -129,18 +177,28 @@ public class ChiTietHoaDon extends JDialog {
 
     private JPanel createHeaderPanel(String maHD, String ngay, String khachHang, String sdt, String phuongThuc, String tongTien) {
         JPanel pnlHeader = new JPanel(new BorderLayout());
-        pnlHeader.setBackground(primaryGreen);
+        
+        // 1. ĐỔI MÀU NỀN THEO TRẠNG THÁI HỦY
+        pnlHeader.setBackground(isDaHuy ? textRed : primaryGreen);
         pnlHeader.setBorder(new EmptyBorder(8, 15, 8, 15)); 
 
         JPanel pnlTitle = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
         pnlTitle.setOpaque(false);
-        JLabel lblTitle = new JLabel("Hóa đơn bán hàng — " + maHD);
+        
+        // 2. ĐỔI TIÊU ĐỀ THEO TRẠNG THÁI
+        String title = isDaHuy ? "Hóa đơn đã hủy — " : "Hóa đơn bán hàng — ";
+        JLabel lblTitle = new JLabel(title + maHD);
         lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 15));
         lblTitle.setForeground(Color.WHITE);
-        JLabel lblStatus = new JLabel("Hoàn thành");
-        lblStatus.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-        lblStatus.setForeground(Color.WHITE);
+        
+        // 3. ĐỔI NHÃN TRẠNG THÁI
+        JLabel lblStatus = new JLabel(isDaHuy ? "Đã hủy" : "Hoàn thành");
+        lblStatus.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        lblStatus.setForeground(isDaHuy ? textRed : primaryGreen); 
+        lblStatus.setBackground(Color.WHITE);
+        lblStatus.setOpaque(true); // Nền trắng chữ màu cho nổi bật
         lblStatus.setBorder(BorderFactory.createCompoundBorder(new LineBorder(Color.WHITE, 1, true), new EmptyBorder(2, 6, 2, 6)));
+        
         pnlTitle.add(lblTitle); pnlTitle.add(lblStatus);
 
         JPanel pnlActions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
@@ -162,38 +220,62 @@ public class ChiTietHoaDon extends JDialog {
                     writer.println("               MYCARE PHARMACY");
                     writer.println("   123 Nguyễn Huệ, Quận 1, TP. Hồ Chí Minh");
                     writer.println("================================================");
+                    
+                    if (isDaHuy) {
+                        writer.println("            *** HÓA ĐƠN ĐÃ HỦY ***");
+                        writer.println("================================================");
+                    }
+                    
                     writer.println("Số: " + maHD + " | Ngày: " + ngay);
                     writer.println("Nhân viên: " + tenNhanVien); 
                     writer.println("------------------------------------------------");
-                    writer.println("KHÁCH HÀNG: " + khachHang + " | SĐT: " + (sdt.isEmpty() ? "Trống" : sdt));
-                    if (!sdt.isEmpty()) writer.println("Điểm tích lũy hiện tại: " + String.format("%,d", diemHienTai) + " điểm");
+                    
+                    // Xóa chữ "Trống" - Nếu không có SĐT thì ẩn luôn đi
+                    String sdtStr = (sdt == null || sdt.isEmpty()) ? "" : " | SĐT: " + sdt;
+                    writer.println("KHÁCH HÀNG: " + khachHang + sdtStr);
+                    
+                    if (sdt != null && !sdt.isEmpty()) writer.println("Điểm tích lũy hiện tại: " + String.format("%,d", diemHienTai) + " điểm");
                     writer.println("THANH TOÁN: " + phuongThuc);
+                    
+                    // --- BỔ SUNG IN ĐƠN THUỐC BỊ THIẾU ---
+                    if (bacSi != null && !bacSi.isEmpty()) {
+                        writer.println("------------------------------------------------");
+                        writer.println("THÔNG TIN KÊ ĐƠN:");
+                        writer.println("Bác sĩ: " + bacSi);
+                        writer.println("Cơ sở: " + coSo);
+                        if (chuanDoan != null && !chuanDoan.isEmpty()) writer.println("Chẩn đoán: " + chuanDoan);
+                    }
+                    
                     writer.println("------------------------------------------------");
-                    writer.printf("%-5s | %-20s | %-5s | %-10s\n", "SL", "TÊN SẢN PHẨM", "ĐVT", "THÀNH TIỀN");
+                    writer.printf("%-4s | %-21s | %-4s | %-10s\n", "SL", "TÊN SẢN PHẨM", "ĐVT", "THÀNH TIỀN");
                     writer.println("------------------------------------------------");
                     
                     for (Object[] sp : dsSanPham) {
                         String tenSP = sp[1].toString().replaceAll("<[^>]*>", "").trim();
-                        if (tenSP.length() > 20) {
-                            tenSP = tenSP.substring(0, 17) + "..."; 
+                        if (tenSP.length() > 21) {
+                            tenSP = tenSP.substring(0, 18) + "..."; 
                         }
-                        writer.printf("%-5s | %-20s | %-5s | %-10s\n", sp[3].toString(), tenSP, sp[2].toString(), sp[6].toString());
+                        writer.printf("%-4s | %-21s | %-4s | %-10s\n", sp[3].toString(), tenSP, sp[2].toString(), sp[6].toString());
                     }
                     
                     writer.println("------------------------------------------------");
-                    writer.printf("%-35s %s\n", "Tạm tính:", String.format("%,d", tamTinhThucTe).replace(',', '.') + "đ");
-                    writer.printf("%-35s %s\n", "VAT (5%):", "+" + String.format("%,d", vatThucTe).replace(',', '.') + "đ");
+                    
+                    // FIX LỖI KHOẢNG TRỐNG: Chỉnh lại format cho gọn gàng, sát số tiền hơn
+                    writer.printf("%-25s %20s\n", "Tạm tính:", String.format("%,d", tamTinhThucTe).replace(',', '.') + "đ");
+                    writer.printf("%-25s %20s\n", "VAT (5%):", "+" + String.format("%,d", vatThucTe).replace(',', '.') + "đ");
                     if(tienGiamGiaThucTe > 0) {
-                        writer.printf("%-35s %s\n", "Giảm khuyến mãi:", "-" + String.format("%,d", tienGiamGiaThucTe).replace(',', '.') + "đ");
+                        writer.printf("%-25s %20s\n", "Giảm khuyến mãi:", "-" + String.format("%,d", tienGiamGiaThucTe).replace(',', '.') + "đ");
                     }
                     if(tienGiamTuDiemThucTe > 0) {
-                        writer.printf("%-35s %s\n", String.format("Dùng %d điểm:", tienGiamTuDiemThucTe/100), "-" + String.format("%,d", tienGiamTuDiemThucTe).replace(',', '.') + "đ");
+                        writer.printf("%-25s %20s\n", String.format("Dùng %d điểm:", tienGiamTuDiemThucTe/100), "-" + String.format("%,d", tienGiamTuDiemThucTe).replace(',', '.') + "đ");
                     }
                     writer.println("------------------------------------------------");
-                    writer.printf("%-35s %s\n", "TỔNG THANH TOÁN:", tongTien);
-                    if (phuongThuc.equals("Tiền mặt")) {
-                        writer.printf("%-35s %s\n", "TIỀN KHÁCH ĐƯA:", String.format("%,d", tienKhachDuaThucTe).replace(',', '.') + "đ");
-                        writer.printf("%-35s %s\n", "TIỀN THỐI LẠI:", String.format("%,d", tienThoiThucTe).replace(',', '.') + "đ");
+                    writer.printf("%-25s %20s\n", "TỔNG THANH TOÁN:", tongTien);
+                    
+                    // KHÔNG IN TIỀN KHÁCH ĐƯA NẾU LÀ HÓA ĐƠN HỦY
+                    if (!isDaHuy && phuongThuc.equals("Tiền mặt")) {
+                        writer.printf("%-25s %20s\n", "TIỀN KHÁCH ĐƯA:", String.format("%,d", tienKhachDuaThucTe).replace(',', '.') + "đ");
+                        writer.printf("%-25s %20s\n", "TIỀN THỐI LẠI:", String.format("%,d", tienThoiThucTe).replace(',', '.') + "đ");
                     }
                     writer.println("================================================");
                     JOptionPane.showMessageDialog(this, "Đã xuất file hóa đơn thành công!");
@@ -223,8 +305,14 @@ public class ChiTietHoaDon extends JDialog {
         lblAddress.setFont(new Font("Segoe UI", Font.PLAIN, 12)); lblAddress.setForeground(textGray);
         JLabel lblContact = new JLabel("Hotline: 1800 6868 · Email: support@mycare.vn", SwingConstants.CENTER);
         lblContact.setFont(new Font("Segoe UI", Font.PLAIN, 12)); lblContact.setForeground(textGray);
-        JLabel lblTitleHD = new JLabel("HÓA ĐƠN BÁN HÀNG", SwingConstants.CENTER);
-        lblTitleHD.setFont(new Font("Segoe UI", Font.BOLD, 16)); lblTitleHD.setBorder(new EmptyBorder(10, 0, 5, 0));
+        
+        // --- FIX LỖI TÊN HÓA ĐƠN Ở ĐÂY ---
+        String titleText = isDaHuy ? "HÓA ĐƠN ĐÃ HỦY" : "HÓA ĐƠN BÁN HÀNG";
+        JLabel lblTitleHD = new JLabel(titleText, SwingConstants.CENTER);
+        lblTitleHD.setFont(new Font("Segoe UI", Font.BOLD, 16)); 
+        lblTitleHD.setForeground(isDaHuy ? textRed : Color.decode("#152A4B")); // Đổi màu đỏ nếu hủy
+        lblTitleHD.setBorder(new EmptyBorder(10, 0, 5, 0));
+        
         JLabel lblDateInfo = new JLabel("Số: " + maHD + " · Ngày: " + ngay, SwingConstants.CENTER);
         lblDateInfo.setFont(new Font("Segoe UI", Font.PLAIN, 12)); lblDateInfo.setForeground(textGray);
 
@@ -249,23 +337,43 @@ public class ChiTietHoaDon extends JDialog {
     }
 
     private JPanel createCustomerAndInvoicePanel(String khachHang, String sdt, String phuongThuc) { 
-        JPanel pnl = new JPanel(new GridLayout(1, 2, 15, 0)); pnl.setBackground(Color.WHITE);
+        // Đếm số lượng ô cần hiển thị: Nếu có Tên bác sĩ thì chia làm 3 cột, nếu không thì 2 cột như cũ
+        int cols = (bacSi != null && !bacSi.isEmpty()) ? 3 : 2;
+        JPanel pnl = new JPanel(new GridLayout(1, cols, 15, 0)); 
+        pnl.setBackground(Color.WHITE);
+        
+        // --- CỘT 1: THÔNG TIN KHÁCH HÀNG ---
         JPanel pnlKhachHang = createInfoBox("THÔNG TIN KHÁCH HÀNG");
         pnlKhachHang.add(new JLabel("<html><b>" + khachHang + "</b></html>"));
-        pnlKhachHang.add(new JLabel("SĐT: " + (sdt.isEmpty() ? "Không cung cấp" : sdt)));
+        pnlKhachHang.add(new JLabel("SĐT: " + (sdt == null || sdt.isEmpty() ? "Không cung cấp" : sdt)));
         
-        // HIỂN THỊ SỐ ĐIỂM BÊN GÓC THÔNG TIN KHÁCH
-        if (!sdt.isEmpty()) {
-            JLabel lblDiem = new JLabel("Điểm tích lũy hiện tại: " + String.format("%,d", diemHienTai) + " điểm");
+        if (sdt != null && !sdt.isEmpty()) {
+            JLabel lblDiem = new JLabel("Điểm tích lũy: " + String.format("%,d", diemHienTai) + " điểm");
             lblDiem.setForeground(Color.decode("#E1304C"));
             lblDiem.setFont(new Font("Segoe UI", Font.BOLD, 12));
             pnlKhachHang.add(lblDiem);
         }
 
+        // --- CỘT 2: THÔNG TIN HÓA ĐƠN ---
         JPanel pnlHoaDon = createInfoBox("THÔNG TIN HÓA ĐƠN");
         pnlHoaDon.add(new JLabel("<html>Nhân viên: <b>" + this.tenNhanVien + "</b></html>"));
         pnlHoaDon.add(new JLabel("<html>Phương thức: <font color='#009643'><b>" + phuongThuc + "</b></font></html>")); 
-        pnl.add(pnlKhachHang); pnl.add(pnlHoaDon); return pnl;
+        
+        pnl.add(pnlKhachHang); 
+        pnl.add(pnlHoaDon); 
+        
+        // --- CỘT 3: THÔNG TIN KÊ ĐƠN (CHỈ XUẤT HIỆN KHI CÓ KÊ ĐƠN) ---
+        if (bacSi != null && !bacSi.isEmpty()) {
+            JPanel pnlKeDon = createInfoBox("THÔNG TIN KÊ ĐƠN");
+            pnlKeDon.add(new JLabel("<html>Bác sĩ: <b>" + bacSi + "</b></html>"));
+            pnlKeDon.add(new JLabel("<html>Cơ sở: <b>" + coSo + "</b></html>"));
+            if (chuanDoan != null && !chuanDoan.isEmpty()) {
+                pnlKeDon.add(new JLabel("<html>C.Đoán: <b>" + chuanDoan + "</b></html>"));
+            }
+            pnl.add(pnlKeDon);
+        }
+
+        return pnl;
     }
 
     private JPanel createInfoBox(String title) {
@@ -320,11 +428,10 @@ public class ChiTietHoaDon extends JDialog {
         lblGiamGiaValue.setForeground(Color.decode("#EF4444")); 
         pnlTotal.add(lblGiamGiaText); pnlTotal.add(lblGiamGiaValue);
 
-        // HIỂN THỊ DÒNG DÙNG ĐIỂM NẾU CÓ DÙNG
         if (tienGiamTuDiemThucTe > 0) {
             long diemDaDung = tienGiamTuDiemThucTe / 100;
             JLabel lblDiemText = new JLabel(String.format("Dùng %d điểm:", diemDaDung));
-            lblDiemText.setForeground(Color.decode("#F59E0B")); // Cam
+            lblDiemText.setForeground(Color.decode("#F59E0B")); 
             JLabel lblDiemValue = createRightAlignLabel("-" + String.format("%,d", tienGiamTuDiemThucTe).replace(',', '.') + "đ");
             lblDiemValue.setFont(new Font("Segoe UI", Font.BOLD, 13));
             lblDiemValue.setForeground(Color.decode("#F59E0B")); 
@@ -333,23 +440,37 @@ public class ChiTietHoaDon extends JDialog {
 
         JLabel lblTotalText = new JLabel("TỔNG THANH TOÁN:"); lblTotalText.setFont(new Font("Segoe UI", Font.BOLD, 13));
         JLabel lblTotalAmount = createRightAlignLabel(String.format("%,d", tongThanhToanThucTe).replace(',', '.') + "đ"); 
-        lblTotalAmount.setFont(new Font("Segoe UI", Font.BOLD, 16)); lblTotalAmount.setForeground(primaryGreen);
+        
+        // NẾU HỦY ĐỔI MÀU TỔNG TIỀN THÀNH ĐỎ
+        lblTotalAmount.setFont(new Font("Segoe UI", Font.BOLD, 16)); 
+        lblTotalAmount.setForeground(isDaHuy ? textRed : primaryGreen);
         pnlTotal.add(lblTotalText); pnlTotal.add(lblTotalAmount);
 
-        JPanel pnlPayment = new JPanel(new GridLayout(3, 2, 0, 8)); pnlPayment.setBackground(bgYellow);
-        pnlPayment.setBorder(BorderFactory.createCompoundBorder(new LineBorder(Color.decode("#FDE047"), 1, true), new EmptyBorder(10, 10, 10, 10)));
+        // --- FIX LỖI ẨN TIỀN KHÁCH ĐƯA Ở ĐÂY ---
+        JPanel pnlPayment = new JPanel(new GridLayout(3, 2, 0, 8)); 
+        pnlPayment.setBackground(isDaHuy ? bgRed : bgYellow);
+        pnlPayment.setBorder(BorderFactory.createCompoundBorder(new LineBorder(isDaHuy ? textRed : Color.decode("#FDE047"), 1, true), new EmptyBorder(10, 10, 10, 10)));
 
-        JLabel lblPayTitle = new JLabel("THANH TOÁN " + phuongThuc.toUpperCase());
-        lblPayTitle.setFont(new Font("Segoe UI", Font.BOLD, 13)); lblPayTitle.setForeground(Color.decode("#CA8A04"));
+        JLabel lblPayTitle = new JLabel(isDaHuy ? "TRẠNG THÁI HÓA ĐƠN" : "THANH TOÁN " + phuongThuc.toUpperCase());
+        lblPayTitle.setFont(new Font("Segoe UI", Font.BOLD, 13)); 
+        lblPayTitle.setForeground(isDaHuy ? textRed : Color.decode("#CA8A04"));
         pnlPayment.add(lblPayTitle); pnlPayment.add(new JLabel(""));
         
-        if(phuongThuc.equalsIgnoreCase("Chuyển khoản")) {
+        if (isDaHuy) {
+            // NẾU LÀ HÓA ĐƠN HỦY -> HIỂN THỊ CHỮ ĐÃ BỊ HỦY (KHÔNG HIỆN TIỀN)
+            JLabel lblHuy = new JLabel("ĐÃ BỊ HỦY");
+            lblHuy.setFont(new Font("Segoe UI", Font.BOLD, 16));
+            lblHuy.setForeground(textRed);
+            pnlPayment.add(lblHuy); pnlPayment.add(new JLabel(""));
+            pnlPayment.add(new JLabel("")); pnlPayment.add(new JLabel(""));
+        } else if(phuongThuc.equalsIgnoreCase("Chuyển khoản")) {
             JLabel lblStatusText = new JLabel("Trạng thái:");
-            JLabel lblStatusValue = createRightAlignLabel("Đã nhận chuyển khoản");
+            JLabel lblStatusValue = createRightAlignLabel("Đã nhận khoản");
             lblStatusValue.setForeground(primaryGreen); lblStatusValue.setFont(new Font("Segoe UI", Font.BOLD, 12));
             pnlPayment.add(lblStatusText); pnlPayment.add(lblStatusValue);
             pnlPayment.add(new JLabel("")); pnlPayment.add(new JLabel("")); 
         } else {
+            // HÓA ĐƠN BÌNH THƯỜNG -> IN TIỀN MẶT
             JLabel lblKhachDuaText = new JLabel("Tiền KH đưa:");
             JLabel lblKhachDuaValue = createRightAlignLabel(String.format("%,d", tienKhachDuaThucTe).replace(',', '.') + "đ");
             lblKhachDuaValue.setFont(new Font("Segoe UI", Font.BOLD, 12));

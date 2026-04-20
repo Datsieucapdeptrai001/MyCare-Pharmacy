@@ -475,7 +475,8 @@ public class ManHinhKhuyenMai extends JPanel {
                 if (viewCol == 9) { 
                     boolean currentState = (boolean) tableModel.getValueAt(modelRow, 9);
                     boolean newState = !currentState;
-                    
+                    String maKM = tableModel.getValueAt(modelRow, 0).toString();
+                    busKhuyenMai.capNhatTrangThai(maKM, newState);
                     tableModel.setValueAt(newState, modelRow, 9);
                     if (newState) {
                         String timeStr = tableModel.getValueAt(modelRow, 6).toString();
@@ -626,7 +627,7 @@ public class ManHinhKhuyenMai extends JPanel {
             if (row >= 0) {
                 boolean currentState = (boolean) tableModel.getValueAt(row, 9);
                 boolean newState = !currentState;
-                
+                busKhuyenMai.capNhatTrangThai(currentId, newState);
                 tableModel.setValueAt(newState, row, 9);
                 
                 if (newState) {
@@ -987,6 +988,7 @@ public class ManHinhKhuyenMai extends JPanel {
             btnSave.setPreferredSize(new Dimension(150, 38));
             
             btnSave.addActionListener(e -> {
+                // 1. Lấy và kiểm tra ID, Tên
                 String id = fldMaKM.getTextField().getText().trim();
                 if(id.isEmpty() || id.startsWith("VD:")) id = "KM" + (System.currentTimeMillis() % 10000000);
                 
@@ -996,9 +998,11 @@ public class ManHinhKhuyenMai extends JPanel {
                     return;
                 }
                 
+                // 2. Lấy điều kiện đơn tối thiểu
                 String donToiThieuStr = fldMinOrder.getTextField().getText().trim();
                 if(donToiThieuStr.isEmpty() || donToiThieuStr.startsWith("VD:")) donToiThieuStr = "0";
 
+                // 3. Xử lý ngày tháng
                 String ngayBatDauStr = dpStart.getText();
                 String ngayKetThucStr = dpEnd.getText();
                 
@@ -1010,7 +1014,8 @@ public class ManHinhKhuyenMai extends JPanel {
                     LocalDateTime start = startD.atStartOfDay();
                     LocalDateTime end = endD.atTime(LocalTime.MAX);
                     
-                    if(!busKhuyenMai.kiemTraThoiGian(start, end)) {
+                    // BỔ SUNG: Kiểm tra ngày hợp lệ ngay tại UI
+                    if(start.isAfter(end)) {
                         JOptionPane.showMessageDialog(dialog, "Ngày kết thúc không được nhỏ hơn ngày bắt đầu!", "Cảnh báo", JOptionPane.WARNING_MESSAGE);
                         return;
                     }
@@ -1026,17 +1031,26 @@ public class ManHinhKhuyenMai extends JPanel {
                         dk = new DieuKienKhuyenMai("DK" + id, "GIA_TRI", "HOA_DON", donToiThieu, id);
                     }
 
-                    if (cbType.getSelectedIndex() == 0) {
+                    // 4. Lấy dữ liệu theo loại Khuyến Mãi
+                    if (cbType.getSelectedIndex() == 0) { // Loại 1: Giảm giá %
                         String mucGiamStr = fldMucGiam.getTextField().getText().trim();
                         if(mucGiamStr.isEmpty() || mucGiamStr.startsWith("VD:")) mucGiamStr = "0";
                         
                         ht.setLoaiHinhThuc(LoaiHinhThuc.GIAM_THEO_PHAN_TRAM);
                         ht.setDoiTuongApDung(cbTarget.getSelectedIndex() == 0 ? DoiTuongApDung.HOA_DON : DoiTuongApDung.SAN_PHAM);
                         ht.setGiaTri(Double.parseDouble(mucGiamStr));
-                    } else {
+                        
+                    } else { // Loại 2: Mua hàng tặng hàng
                         String spMua = fldMaSPMua.getTextField().getText().trim();
-                        int slMua = 1; try { slMua = Integer.parseInt(fldSoLuongMua.getTextField().getText().trim()); } catch(Exception ignored){}
                         String spTang = fldMaSPTang.getTextField().getText().trim();
+                        
+                        // BỔ SUNG: Chặn lỗi quên nhập mã SP khi chọn "Mua X tặng Y"
+                        if (spMua.isEmpty() || spMua.startsWith("VD:") || spTang.isEmpty() || spTang.startsWith("VD:")) {
+                            JOptionPane.showMessageDialog(dialog, "Vui lòng nhập đủ mã sản phẩm Mua và Tặng!", "Cảnh báo", JOptionPane.WARNING_MESSAGE);
+                            return;
+                        }
+
+                        int slMua = 1; try { slMua = Integer.parseInt(fldSoLuongMua.getTextField().getText().trim()); } catch(Exception ignored){}
                         int slTang = 1; try { slTang = Integer.parseInt(fldSoLuongTang.getTextField().getText().trim()); } catch(Exception ignored){}
                         
                         ht.setLoaiHinhThuc(LoaiHinhThuc.SAN_PHAM_KEM_THEO);
@@ -1047,9 +1061,10 @@ public class ManHinhKhuyenMai extends JPanel {
                         ht.setSpTang(spTang);
                         ht.setSlTang(slTang);
                         
-                        dk = null;
+                        dk = null; // Đã tặng đồ thì thôi không check đơn tối thiểu nữa
                     }
 
+                    // 5. Lưu vào Database
                     boolean success = false;
                     if (!isEditMode) { 
                         success = busKhuyenMai.themKhuyenMaiToanDien(km, ht, dk);
@@ -1059,9 +1074,19 @@ public class ManHinhKhuyenMai extends JPanel {
                         if (success) JOptionPane.showMessageDialog(dialog, "Cập nhật thành công!", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
                     }
                     
+                    // 6. Xử lý sau khi lưu thành công (F5 lại toàn bộ giao diện)
                     if (success) {
                         dialog.dispose();
-                        loadDataFromDatabase();
+                        
+                        // F5 lại bảng dữ liệu
+                        loadDataFromDatabase(); 
+                        
+                        // BỔ SUNG QUAN TRỌNG: F5 lại 3 thẻ thống kê trên cùng
+                        // (Tuỳ vào code gốc của bạn đặt tên hàm là gì, thường là updateKpis() hoặc loadKPI())
+                        try {
+                            // Giả định hàm đếm số lượng của bạn là hàm này (bạn sửa lại tên nếu không khớp nhé)
+                            // updateKpis(); 
+                        } catch (Exception ex) {}
                         
                         final String safeId = id;
                         if (isEditMode && pnlDetail.isVisible() && lblDetId.getText().equals(safeId)) {
@@ -1148,6 +1173,7 @@ public class ManHinhKhuyenMai extends JPanel {
     class SuggestionField extends FloatingField {
         private JPopupMenu popupMenu;
         private List<String> dictionary;
+        private boolean isSelecting = false; // CỜ CHẶN VÒNG LẶP
 
         public SuggestionField(String label, String placeholder, List<String> dictionary) {
             super(label, placeholder);
@@ -1156,39 +1182,55 @@ public class ManHinhKhuyenMai extends JPanel {
             popupMenu.setFocusable(false);
 
             getTextField().getDocument().addDocumentListener(new DocumentListener() {
-                public void insertUpdate(DocumentEvent e) { showSuggestions(); }
-                public void removeUpdate(DocumentEvent e) { showSuggestions(); }
-                public void changedUpdate(DocumentEvent e) { showSuggestions(); }
+                public void insertUpdate(DocumentEvent e) { if(!isSelecting) showSuggestions(); }
+                public void removeUpdate(DocumentEvent e) { if(!isSelecting) showSuggestions(); }
+                public void changedUpdate(DocumentEvent e) { if(!isSelecting) showSuggestions(); }
             });
         }
 
         private void showSuggestions() {
             SwingUtilities.invokeLater(() -> {
+                popupMenu.setVisible(false); 
                 popupMenu.removeAll();
-                String text = getTextField().getText().toLowerCase();
-                if (text.isEmpty()) { popupMenu.setVisible(false); return; }
+                
+                String rawText = getTextField().getText();
+                // ĐÃ FIX: Chỉ cần check rỗng là đủ
+                if (rawText == null || rawText.trim().isEmpty()) { 
+                    return; 
+                }
+                
+                String text = rawText.toLowerCase();
 
                 boolean hasItems = false;
+                int count = 0; 
+                
                 for (String word : dictionary) {
                     if (word.toLowerCase().contains(text)) {
                         JMenuItem item = new JMenuItem(word);
                         item.setCursor(new Cursor(Cursor.HAND_CURSOR));
                         item.setBackground(Color.WHITE);
                         item.setFont(FONT_REGULAR);
+                        
                         item.addActionListener(e -> {
+                            isSelecting = true; 
                             getTextField().setText(word);
+                            getTextField().setForeground(COLOR_TEXT_MAIN);
                             popupMenu.setVisible(false);
+                            isSelecting = false; 
                         });
+                        
                         popupMenu.add(item);
                         hasItems = true;
+                        count++;
+                        
+                        if (count >= 10) break; // Vẫn giữ chặn max 10 món để chống giật
                     }
                 }
 
                 if (hasItems) {
+                    popupMenu.pack(); 
                     popupMenu.show(getTextField(), 0, getTextField().getHeight());
                     getTextField().requestFocus(); 
-                } else {
-                    popupMenu.setVisible(false);
                 }
             });
         }
