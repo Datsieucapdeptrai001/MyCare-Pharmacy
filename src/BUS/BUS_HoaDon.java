@@ -14,30 +14,45 @@ public class BUS_HoaDon {
     private DAO_ChiTietHoaDon daoCTHD = new DAO_ChiTietHoaDon();
     private DAO_PhanBoLoHang daoPB = new DAO_PhanBoLoHang();
     private DAO_LoHang daoLo = new DAO_LoHang();
+    
     public List<Object[]> layDanhSachHoaDonChoBang() {
-        return daoHD.layDanhSachHoaDonChoBang(); // daoHD là biến DAO_HoaDon bạn đã khai báo ở đầu file BUS
+        return daoHD.layDanhSachHoaDonChoBang(); 
     }
+    
     public HoaDon getHoaDonTheoMa(String maHD) {
-        return daoHD.timHoaDonTheoMa(maHD); // Gọi xuống DAO để lấy dữ liệu thực
+        return daoHD.timHoaDonTheoMa(maHD); 
     }
+    
     public HoaDon layHoaDonTheoMa(String maHD) {
-        return daoHD.layHoaDonTheoMa(maHD); // Gọi hàm đã có trong DAO_HoaDon
+        return daoHD.layHoaDonTheoMa(maHD); 
     }
+    
     public List<HoaDon> layTatCaHoaDon() {
         return daoHD.layTatCaHoaDon(); 
     }
+    
     public boolean thanhToan(HoaDon hd, List<ChiTietHoaDon> dsCTHD) {
         Connection con = ConnectDB.getInstance().getConnection();
         try {
             // Tắt Auto Commit để đảm bảo tính giao dịch (Transaction)
             con.setAutoCommit(false);
 
+            // --- ĐÃ FIX: XÓA NHÁP CŨ TRƯỚC KHI LƯU ĐỂ TRÁNH LỖI TRÙNG KHÓA CHÍNH ---
+            try (java.sql.PreparedStatement pstDelCT = con.prepareStatement("DELETE FROM ChiTietHoaDon WHERE hoaDonId = ?");
+                 java.sql.PreparedStatement pstDelHD = con.prepareStatement("DELETE FROM HoaDon WHERE id = ?")) {
+                pstDelCT.setString(1, hd.getId());
+                pstDelCT.executeUpdate();
+                pstDelHD.setString(1, hd.getId());
+                pstDelHD.executeUpdate();
+            } catch (Exception ex) {
+                // Bỏ qua nếu hóa đơn chưa từng tồn tại
+            }
+
             // 1. Lưu hóa đơn tổng
             if (!daoHD.themHoaDon(hd)) throw new Exception("Lỗi lưu hóa đơn");
 
             for (ChiTietHoaDon ct : dsCTHD) {
                 // 2. Lưu chi tiết từng mặt hàng
-                // (Lưu ý: Hàm của bạn tên là themCTHD, nếu bên DAO tên là themChiTietHoaDon thì bạn nhớ đổi lại cho khớp nhé)
                 if (!daoCTHD.themCTHD(ct)) throw new Exception("Lỗi lưu chi tiết");
 
                 // 3. Xử lý trừ kho theo lô (FEFO)
@@ -49,8 +64,6 @@ public class BUS_HoaDon {
 
                     int layDuoc = Math.min(lh.getSoLuongLoHang(), soLuongCanLay);
                     
-                    // --- ĐÃ FIX LỖI NULL ĐƠN VỊ ĐO LƯỜNG Ở ĐÂY ---
-                    // Đổi chữ "null" thành ct.getDonViDoLuongId()
                     PhanBoLoHang pb = new PhanBoLoHang(hd, ct.getDonViDoLuongId(), ct.getSanPhamId(), lh, layDuoc);
                     daoPB.themPhanBo(pb);
 

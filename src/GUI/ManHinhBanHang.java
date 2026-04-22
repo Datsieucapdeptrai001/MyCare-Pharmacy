@@ -291,6 +291,8 @@ public class ManHinhBanHang extends JPanel {
 
         JScrollPane sp = new JScrollPane(table);
         sp.setBorder(BorderFactory.createLineBorder(Color.decode("#DFE3E8")));
+        sp.getVerticalScrollBar().setUI(new Utils.ModernScrollBarUI());
+        sp.getVerticalScrollBar().setPreferredSize(new Dimension(10, 0));
         this.add(sp, BorderLayout.CENTER);
 
         // ==================== 5. PHÂN TRANG ====================

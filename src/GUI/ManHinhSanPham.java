@@ -461,6 +461,22 @@ public class ManHinhSanPham extends JPanel {
             @Override protected JButton createArrowButton() {
                 JButton btn = new JButton("\u25BC"); btn.setFont(new Font("Segoe UI", Font.PLAIN, 10)); btn.setForeground(Color.GRAY); btn.setBackground(Color.WHITE); btn.setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8)); btn.setFocusPainted(false); btn.setContentAreaFilled(false); btn.setOpaque(true); btn.setCursor(new Cursor(Cursor.HAND_CURSOR)); return btn;
             }
+            
+            // --- THÊM ĐOẠN NÀY ĐỂ FIX THANH CUỘN CỦA DROPDOWN ---
+            @Override
+            protected javax.swing.plaf.basic.ComboPopup createPopup() {
+                return new javax.swing.plaf.basic.BasicComboPopup(comboBox) {
+                    @Override
+                    protected JScrollPane createScroller() {
+                        JScrollPane scroller = new JScrollPane(list, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+                        scroller.getVerticalScrollBar().setUI(new Utils.ModernScrollBarUI()); // Gắn thanh cuộn xịn
+                        scroller.getVerticalScrollBar().setPreferredSize(new Dimension(8, 0));
+                        scroller.setBorder(BorderFactory.createLineBorder(Color.decode("#DFE3E8")));
+                        return scroller;
+                    }
+                };
+            }
+            // ----------------------------------------------------
         });
         cb.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(COLOR_BORDER), new EmptyBorder(0, 5, 0, 5)));
     }
@@ -1283,7 +1299,7 @@ public class ManHinhSanPham extends JPanel {
         currentFilteredData.addAll(allDataMock);
         updatePagination();
     }
-
+    
     public void setReadOnly(boolean isReadOnly) {
         // Nếu isReadOnly = true (là Staff), ta sẽ khóa các nút thay đổi dữ liệu (false)
         // Nếu isReadOnly = false (là Admin), ta mở lại các nút (true)
