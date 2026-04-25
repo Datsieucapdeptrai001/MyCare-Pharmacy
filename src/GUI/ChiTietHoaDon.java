@@ -142,7 +142,7 @@ public class ChiTietHoaDon extends JDialog {
             tienGiamGiaThucTe = (tamTinhThucTe + vatThucTe) - tongThanhToanThucTe - tienGiamTuDiemThucTe;
             if (tienGiamGiaThucTe < 0) tienGiamGiaThucTe = 0;
         } else {
-            tienGiamGiaThucTe = 0; // Ép về 0 nếu không xài mã
+            tienGiamGiaThucTe = 0; // Ép về 0 tuyệt đối nếu không xài mã
         }
         // Tính ngược lại tiền giảm từ Mã Khuyến Mãi
         tienGiamGiaThucTe = (tamTinhThucTe + vatThucTe) - tongThanhToanThucTe - tienGiamTuDiemThucTe;

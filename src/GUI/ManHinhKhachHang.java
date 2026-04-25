@@ -426,6 +426,7 @@ public class ManHinhKhachHang extends JPanel {
         return pnl;
     }
 
+ // --- FIX LỖI CRASH KHI CLICK VÀO KHÁCH HÀNG (Lỗi cắt dấu gạch ngang của ID) ---
     private void updateDetailSidebar(int modelRow) {
         String id = model.getValueAt(modelRow, 0).toString();
         String name = model.getValueAt(modelRow, 1).toString();
@@ -443,7 +444,12 @@ public class ManHinhKhachHang extends JPanel {
         lblDetGenderDOB.setText(" " + gender + " • 01/01/1990");
         lblDetPhone.setText(" " + phone);
         
-        String dummyEmail = "khachhang." + id.split("-")[1] + "@email.com";
+        // FIX: Xử lý an toàn khi tạo email giả
+        String emailPart = id; // Mặc định lấy nguyên cái ID
+        if (id.contains("-")) {
+            emailPart = id.split("-")[1]; // Nếu có dấu - thì lấy phần đuôi
+        }
+        String dummyEmail = "khachhang." + emailPart + "@email.com";
         lblDetEmail.setText(" " + dummyEmail.toLowerCase());
 
         lblDetOrders.setText(orders);
