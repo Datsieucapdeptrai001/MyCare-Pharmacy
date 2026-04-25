@@ -193,7 +193,21 @@ public class ManHinhKhachHang extends JPanel {
 
         model.addTableModelListener(e -> {
             if (lblTotalKhachHang != null) lblTotalKhachHang.setText(String.valueOf(model.getRowCount()));
-            tinhTongDiemTichLuy(); // Đảm bảo điểm cũng được cập nhật khi thêm/xóa/sửa hàng
+            tinhTongDiemTichLuy(); // Đảm bảo tổng điểm trên cùng cũng được cập nhật
+            
+            // --- THÊM LOGIC MỚI: Tự động cập nhật điểm lên thanh Sidebar nếu nó đang mở ---
+            if (e.getType() == javax.swing.event.TableModelEvent.UPDATE) {
+                SwingUtilities.invokeLater(() -> {
+                    int selectedRow = table.getSelectedRow();
+                    if (selectedRow >= 0) {
+                        int modelRow = table.convertRowIndexToModel(selectedRow);
+                        // Kiểm tra nếu dòng bị thay đổi dữ liệu trùng với dòng khách hàng đang chọn xem
+                        if (e.getFirstRow() == modelRow && pnlDetail != null && pnlDetail.isVisible()) {
+                            updateDetailSidebar(modelRow); // Ép thanh bên phải load lại điểm ngay lập tức
+                        }
+                    }
+                });
+            }
             
             if (e.getType() == javax.swing.event.TableModelEvent.INSERT) {
                 SwingUtilities.invokeLater(() -> {

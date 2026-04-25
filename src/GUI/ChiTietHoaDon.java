@@ -70,7 +70,8 @@ public class ChiTietHoaDon extends JDialog {
         }
 
         // Bóc tách Ghi chú lấy Tiền Khách Đưa và Số điểm dùng
-        tienKhachDuaThucTe = tongThanhToanThucTe; 
+        tienKhachDuaThucTe = tongThanhToanThucTe;
+        boolean hasKhuyenMai = false; // THÊM BIẾN NÀY
         try {
             DAO.DAO_HoaDon daoHD = new DAO.DAO_HoaDon();
             Entity.HoaDon hd = daoHD.layHoaDonTheoMa(maHD);
@@ -88,6 +89,9 @@ public class ChiTietHoaDon extends JDialog {
                 }
                 
                 if (!ghiChu.isEmpty()) {
+                	if (ghiChu.contains("KM:")) {
+                        hasKhuyenMai = true;
+                    }
                     // 2. Bóc tiền mặt (Quét tìm chính xác chữ CASH: ở bất kỳ đâu)
                     if (phuongThuc.equals("Tiền mặt") && ghiChu.contains("CASH:")) {
                         String[] parts = ghiChu.split("\\|");
@@ -134,7 +138,12 @@ public class ChiTietHoaDon extends JDialog {
         } catch (Exception e) { 
             System.out.println("Lỗi Parse Ghi Chú: " + e.getMessage()); 
         }
-
+        if (hasKhuyenMai) {
+            tienGiamGiaThucTe = (tamTinhThucTe + vatThucTe) - tongThanhToanThucTe - tienGiamTuDiemThucTe;
+            if (tienGiamGiaThucTe < 0) tienGiamGiaThucTe = 0;
+        } else {
+            tienGiamGiaThucTe = 0; // Ép về 0 nếu không xài mã
+        }
         // Tính ngược lại tiền giảm từ Mã Khuyến Mãi
         tienGiamGiaThucTe = (tamTinhThucTe + vatThucTe) - tongThanhToanThucTe - tienGiamTuDiemThucTe;
         if (tienGiamGiaThucTe < 0) tienGiamGiaThucTe = 0;
