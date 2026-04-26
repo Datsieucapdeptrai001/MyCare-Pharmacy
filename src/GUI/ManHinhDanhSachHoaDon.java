@@ -162,7 +162,10 @@ public class ManHinhDanhSachHoaDon extends JPanel {
 
         this.add(pnlContent, BorderLayout.CENTER);
     }
-
+    public void refreshData() {
+        model.setRowCount(0); // Xóa dữ liệu cũ trên bảng
+        loadData();           // Gọi hàm loadData đã có của bạn để đổ lại dữ liệu mới nhất
+    }
     public void loadData() {
         model.setRowCount(0);
         List<Object[]> ds = dao_HoaDon.layDanhSachHoaDonChoBang();

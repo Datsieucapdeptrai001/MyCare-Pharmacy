@@ -338,7 +338,10 @@ public class MenuIcon implements Icon {
                 g2d.fillRect(11, 9, 2, 6);             // Thập dọc
                 g2d.fillRect(9, 11, 6, 2);             // Thập ngang
                 break;
-
+            case "CORRECT": // Icon dấu Tick (V) báo thành công
+                g2d.setStroke(new BasicStroke(2.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                g2d.drawPolyline(new int[]{x + 5, x + 10, x + 18}, new int[]{y + 12, y + 16, y + 6}, 3);
+                break;
             
         }
 

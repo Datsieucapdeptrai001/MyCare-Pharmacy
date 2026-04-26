@@ -80,6 +80,12 @@ public class TaoHoaDon extends JDialog {
     private JLabel lblDungDiemText;
     private CustomToggleSwitch toggleDungDiem;
     private JPanel pnlVoucherTags;
+    private JPanel pnlChuyenKhoanWrapper;
+    private JLabel lblQRCode;
+    private JLabel lblQRAmount;
+    private JLabel lblExactValue;
+    private java.util.List<int[]> listCounters = new java.util.ArrayList<>();
+    private java.util.List<JLabel> listCountLabels = new java.util.ArrayList<>();
  // Thêm dòng này ngay cạnh pendingPhoneToLink của bạn
     public static String pendingPhoneToLink = null;
     public static String pendingNameToLink = null; // Thêm biến nhớ Tên
@@ -389,10 +395,9 @@ public class TaoHoaDon extends JDialog {
             styleButton(btnXoaDon, Color.decode("#EF4444")); 
             
             btnXoaDon.addActionListener(e -> {
-                int confirm = JOptionPane.showConfirmDialog(this, "Bạn có chắc chắn muốn HỦY hóa đơn này không?", "Xác nhận hủy", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+                boolean confirm = showCustomConfirmDialog("Xác nhận hủy", "Bạn có chắc chắn muốn HỦY hóa đơn này không?<br>Thao tác này không thể hoàn tác.");
                 
-                if (confirm == JOptionPane.YES_OPTION) {
-                    // FIX: Thêm try-with-resources để đóng PreparedStatement và Connection
+                if (confirm) {
                     if (this.maHDDangSua != null && !this.maHDDangSua.isEmpty()) {
                         String sql = "UPDATE HoaDon SET ghiChu = N'Đã hủy' WHERE id = ?"; 
                         try (java.sql.Connection con = ConnectDB.getInstance().getConnection();
@@ -403,7 +408,7 @@ public class TaoHoaDon extends JDialog {
                             
                         } catch (Exception ex) {
                             ex.printStackTrace();
-                            JOptionPane.showMessageDialog(this, "Lỗi khi hủy: " + ex.getMessage());
+                            showCustomNotification("LỖI", "Lỗi khi hủy: " + ex.getMessage(), "ERROR");
                             return;
                         }
                     }
@@ -412,7 +417,7 @@ public class TaoHoaDon extends JDialog {
                         mainTableModel.setValueAt("Đã hủy", this.editingModelRow, 6); 
                     }
 
-                    JOptionPane.showMessageDialog(this, "Đã hủy hóa đơn thành công!");
+                    showCustomNotification("THÀNH CÔNG", "Đã hủy hóa đơn thành công!", "SUCCESS");
                     this.dispose(); 
                 }
             });
@@ -430,17 +435,28 @@ public class TaoHoaDon extends JDialog {
 
         btnThanhToan.addActionListener(e -> {
             if (productModel.getRowCount() == 0) {
-                JOptionPane.showMessageDialog(this, "Vui lòng thêm ít nhất 1 sản phẩm vào hóa đơn!", "Cảnh báo", JOptionPane.WARNING_MESSAGE);
+                showCustomNotification("CẢNH BÁO", "Vui lòng thêm ít nhất 1 sản phẩm vào hóa đơn!", "WARNING");
                 return;
             }
-
+            if ("Chuyển khoản".equals(phuongThuc)) {
+                boolean xacNhan = showCustomConfirmDialog(
+                    "Xác nhận nhận tiền", 
+                    "Khách hàng đang thanh toán bằng hình thức <b>CHUYỂN KHOẢN</b>.<br><br>" +
+                    "Nhân viên vui lòng kiểm tra App Ngân hàng hoặc SMS.<br>" +
+                    "Bạn xác nhận <b>ĐÃ NHẬN ĐỦ TIỀN</b> chưa?"
+                );
+                
+                if (!xacNhan) {
+                    return; 
+                }
+            }
             if (pnlDonThuoc.isVisible()) {
                 String bacSi = txtBacSi.getText().trim();
                 String coSo = txtCoSo.getText().trim();
                 
                 if (bacSi.isEmpty() || bacSi.contains("BS. Nguyễn") || 
                     coSo.isEmpty() || coSo.contains("BV Bạch Mai")) {
-                    JOptionPane.showMessageDialog(this, "Đơn hàng này có THUỐC KÊ ĐƠN.\nVui lòng nhập đầy đủ Tên Bác Sĩ và Cơ Sở Khám Bệnh!", "Thiếu thông tin", JOptionPane.WARNING_MESSAGE);
+                    showCustomNotification("THIẾU THÔNG TIN", "Đơn hàng này có THUỐC KÊ ĐƠN.\nVui lòng nhập đầy đủ Tên Bác Sĩ và Cơ Sở Khám Bệnh!", "WARNING");
                     return; 
                 }
             }
@@ -449,10 +465,9 @@ public class TaoHoaDon extends JDialog {
             String sdt = isCustomerLinked ? linkedSdtKH : txtPhone.getText().replace("Số điện thoại (tuỳ chọn)", "");
             String tongTien = lblTotalPriceValue.getText();
 
-            // FIX: Sử dụng try-with-resources cho Connection bao bọc toàn bộ giao dịch thanh toán
             try (java.sql.Connection con = ConnectDB.getInstance().getConnection()) {
 
-                String maHDMoi = (editingModelRow != -1) ? maHDDangSua.replace("-TEMP", "") : phatSinhMaHoaDon();
+            	String maHDMoi = (editingModelRow != -1) ? maHDDangSua.replace("-LuuNhap", "") : phatSinhMaHoaDon();
                 Entity.HoaDon hd = new Entity.HoaDon();
                 hd.setId(maHDMoi);
                 hd.setLoaiHD(Enumeration.LoaiHoaDon.BAN_HANG);
@@ -588,21 +603,22 @@ public class TaoHoaDon extends JDialog {
                             }
                             
                             String msgThongBao = "Thanh toán thành công!\n";
-                            if(diemDaDung > 0) msgThongBao += "➖ Đã sử dụng: " + diemDaDung + " điểm\n";
-                            if(diemCongMoi > 0) msgThongBao += "➕ Tích lũy thêm: " + diemCongMoi + " điểm\n";
+                            if(diemDaDung > 0) msgThongBao += "- Đã sử dụng: " + String.format("%,d", diemDaDung) + " điểm\n";
+                            if(diemCongMoi > 0) msgThongBao += "+ Tích lũy thêm: " + String.format("%,d", diemCongMoi) + " điểm\n";
                             
-                            JOptionPane.showMessageDialog(this, msgThongBao, "Hoàn tất", JOptionPane.INFORMATION_MESSAGE);
+                            showCustomNotification("HOÀN TẤT", msgThongBao, "SUCCESS");
                         } catch (Exception ex) {
                             ex.printStackTrace();
-                            JOptionPane.showMessageDialog(this, "Thanh toán thành công nhưng có lỗi khi cập nhật điểm!", "Cảnh báo", JOptionPane.WARNING_MESSAGE);
+                            showCustomNotification("CẢNH BÁO", "Thanh toán thành công nhưng có lỗi khi cập nhật điểm!", "WARNING");
                         }
                     } else {
-                        JOptionPane.showMessageDialog(this, "Thanh toán thành công!\nHóa đơn và Tồn kho đã được cập nhật.", "Hoàn tất", JOptionPane.INFORMATION_MESSAGE);
+                        showCustomNotification("HOÀN TẤT", "Thanh toán thành công!\nHóa đơn và Tồn kho đã được cập nhật.", "SUCCESS");
                     }
 
                     String ngayStr = java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
                     if (editingModelRow != -1) {
-                        mainTableModel.setValueAt(maHDMoi, editingModelRow, 0); 
+                        mainTableModel.setValueAt(maHDMoi, editingModelRow, 0);
+                        mainTableModel.setValueAt(ngayStr, editingModelRow, 1);
                         mainTableModel.setValueAt(khach, editingModelRow, 2);         
                         mainTableModel.setValueAt(sdt, editingModelRow, 3);           
                         mainTableModel.setValueAt(phuongThuc, editingModelRow, 4);   
@@ -613,12 +629,19 @@ public class TaoHoaDon extends JDialog {
                     }
                     dispose(); 
                 } else {
-                    JOptionPane.showMessageDialog(this, "Lỗi Database: Kho không đủ hàng hoặc dữ liệu sai!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+                	showCustomNotification("TỪ CHỐI THANH TOÁN", "Hệ thống từ chối giao dịch!\nVui lòng kiểm tra lại số lượng tồn kho.", "WARNING");
                 }
 
             } catch(Exception ex) {
                 ex.printStackTrace();
-                JOptionPane.showMessageDialog(this, "Lỗi hệ thống: " + ex.getMessage(), "Lỗi Nghiêm Trọng", JOptionPane.ERROR_MESSAGE);
+                String errorMsg = ex.getMessage();
+                if (errorMsg != null && errorMsg.toLowerCase().contains("kho không đủ")) {
+                    showCustomNotification("TỒN KHO KHÔNG ĐỦ", 
+                        errorMsg + "\n\nVui lòng giảm số lượng trong đơn hoặc nhập thêm hàng vào kho!", 
+                        "WARNING");
+                } else {
+                    showCustomNotification("LỖI HỆ THỐNG", "Đã xảy ra lỗi: " + errorMsg, "ERROR");
+                }
             }
         });
 
@@ -677,14 +700,28 @@ public class TaoHoaDon extends JDialog {
             new EmptyBorder(12, 15, 12, 15)
         ));
 
-        JPanel pnlLeft = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        JPanel pnlLeft = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 0)); // Tăng khoảng cách 15px cho thoáng
         pnlLeft.setOpaque(false);
         
-        JLabel lblIcon = new JLabel("P", SwingConstants.CENTER); 
-        lblIcon.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        // --- FIX: Biến ô chữ P thành một ĐỒNG XU TRÒN to đẹp, không bao giờ bị dính vách ---
+        JLabel lblIcon = new JLabel("P", SwingConstants.CENTER) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(Color.decode("#FEF2F2")); // Nền đỏ nhạt
+                g2.fillOval(0, 0, getWidth(), getHeight());
+                g2.setColor(Color.decode("#EE4D2D")); // Viền cam đỏ
+                g2.setStroke(new java.awt.BasicStroke(2f));
+                g2.drawOval(1, 1, getWidth()-3, getHeight()-3); // Bo viền tròn khít
+                super.paintComponent(g);
+                g2.dispose();
+            }
+        };
+        lblIcon.setFont(new Font("Segoe UI", Font.BOLD, 18)); // Chữ P to rõ ràng
         lblIcon.setForeground(Color.decode("#EE4D2D"));
-        lblIcon.setBorder(BorderFactory.createLineBorder(Color.decode("#EE4D2D"), 2, true));
-        lblIcon.setPreferredSize(new Dimension(26, 26));
+        lblIcon.setPreferredSize(new Dimension(38, 38)); // Phóng to đồng xu lên 38x38
+        lblIcon.setBorder(null); // Xóa bỏ cái viền hình vuông bị lỗi cũ
 
         lblDungDiemText = new JLabel("Dùng 0 điểm (-0đ)");
         lblDungDiemText.setFont(new Font("Segoe UI", Font.PLAIN, 15));
@@ -706,19 +743,32 @@ public class TaoHoaDon extends JDialog {
     private void recalculateTotals() {
         if (productModel == null) return;
         
-        long tongTien = 0;
+        long tongTien = 0;     // Tiền hàng (Tạm tính)
+        long tongVat = 0;      // Tổng tiền thuế VAT
         int soLuongSanPham = 0;
+        
+        // --- THÊM MỚI: BIẾN KIỂM TRA THUỐC KÊ ĐƠN ---
+        boolean hasThuocKeDon = false; 
 
         for (int i = 0; i < productModel.getRowCount(); i++) {
             try {
-                // 1. Lấy Số lượng (Thường ở cột 2)
+                // --- THÊM MỚI: Quét cột số 6 xem có chứa chữ "kê đơn" không ---
+                Object danhMucObj = getSafeValue(productModel, i, 6);
+                if (danhMucObj != null) {
+                    String dm = danhMucObj.toString().toLowerCase();
+                    if (dm.contains("kê đơn") && !dm.contains("không")) {
+                        hasThuocKeDon = true;
+                    }
+                }
+
+                // 1. Lấy Số lượng (Cột 2)
                 int sl = 0;
                 Object slObj = getSafeValue(productModel, i, 2);
                 if (slObj != null) {
                     sl = Integer.parseInt(slObj.toString().trim());
                 }
 
-                // 2. Lấy Đơn giá (Thường ở cột 3) - Cắt bỏ ký tự 'đ' và dấu chấm
+                // 2. Lấy Đơn giá (Cột 3)
                 long donGia = 0;
                 Object donGiaObj = getSafeValue(productModel, i, 3);
                 if (donGiaObj != null) {
@@ -726,60 +776,116 @@ public class TaoHoaDon extends JDialog {
                     if (!donGiaStr.isEmpty()) donGia = Long.parseLong(donGiaStr);
                 }
 
-                // 3. Lấy Tiền giảm giá mỗi SP (Thường ở cột 4)
-                long tienGiamSP = 0;
-                Object giamObj = getSafeValue(productModel, i, 4);
-                if (giamObj != null) {
-                     String giamStr = giamObj.toString().replaceAll("[^0-9]", "");
-                     if (!giamStr.isEmpty()) tienGiamSP = Long.parseLong(giamStr);
-                }
-                
-                // 4. Lấy Hệ số quy đổi (Thường ở cột 10)
-                int heSo = 1;
-                Object heSoObj = getSafeValue(productModel, i, 10);
-                if (heSoObj != null) {
-                    String heSoStr = heSoObj.toString().trim();
-                    if (!heSoStr.isEmpty()) heSo = Integer.parseInt(heSoStr);
-                }
-
-                // 5. Cộng dồn tiền ( (Số lượng * Đơn giá / Hệ số) - Giảm giá SP )
-                long thanhTien = (sl * donGia / (heSo > 0 ? heSo : 1)) - tienGiamSP;
-                tongTien += (thanhTien > 0 ? thanhTien : 0); // Không cho âm tiền
+                // 3. Tính tiền trước VAT (Tạm tính từng món)
+                long thanhTien = sl * donGia;
+                tongTien += thanhTien;
                 soLuongSanPham += sl;
+
+                // 4. Lấy % VAT (Cột 4) và tính VAT thực tế
+                double thueSuat = 0.0;
+                Object vatObj = getSafeValue(productModel, i, 4);
+                if (vatObj != null) {
+                    String vatStr = vatObj.toString().replace("%", "").trim();
+                    if (!vatStr.isEmpty()) {
+                        thueSuat = Double.parseDouble(vatStr) / 100.0;
+                    }
+                }
+                tongVat += (long) (thanhTien * thueSuat);
 
             } catch (Exception ex) {
                 System.out.println("Lỗi định dạng số ở dòng " + i + ": " + ex.getMessage());
             }
         }
 
-        // Cập nhật lên UI
+        // --- THÊM MỚI: TỰ ĐỘNG BẬT/TẮT BẢNG KÊ ĐƠN & RENDER LẠI GIAO DIỆN ---
+        if (pnlDonThuoc != null && pnlDonThuoc.isVisible() != hasThuocKeDon) {
+            pnlDonThuoc.setVisible(hasThuocKeDon);
+            this.revalidate(); // Yêu cầu vẽ lại giao diện cho khít
+            this.repaint();
+        }
+
+        // --- TỔNG HỢP VÀ CẬP NHẬT BIẾN ---
         if (lblTotalItems != null) {
             lblTotalItems.setText(String.format("Tổng sản phẩm: %d", soLuongSanPham));
         }
 
-        // Tính các chỉ số phụ
-        this.tongHoaDon = tongTien;
         this.tamTinh = tongTien;
-        this.vat = (long) (this.tongHoaDon * 0.08); // Giả sử VAT 8%
+        this.vat = tongVat;
         
-        long totalToPay = this.tongHoaDon + this.vat;
+long totalToPay = this.tamTinh + this.vat;
         
-        // Trừ điểm tích lũy khách hàng (nếu có)
+        // 1. Trừ tiền giảm giá từ Khuyến mãi (Ưu tiên trừ trước)
+        totalToPay -= tienGiamGia; 
+        if (totalToPay < 0) totalToPay = 0;
+        
+        // 2. FIX LỖI NUỐT ĐIỂM: Trừ điểm tích lũy khách hàng (Không trừ lố)
         if (isDungDiem) {
-            long tienGiamDiem = diemHienTaiKH * 100L;
-            totalToPay -= tienGiamDiem;
+            long maxTienGiam = diemHienTaiKH * 100L;
+            if (maxTienGiam > totalToPay) {
+                // Nếu điểm khách lớn hơn tiền hóa đơn -> Chỉ trừ đúng bằng số tiền hóa đơn (làm tròn theo 100đ)
+                this.tienGiamTuDiem = (totalToPay / 100L) * 100L; 
+            } else {
+                this.tienGiamTuDiem = maxTienGiam; // Nếu không đủ thì dùng hết điểm
+            }
+            totalToPay -= this.tienGiamTuDiem;
+        } else {
+            this.tienGiamTuDiem = 0; 
         }
         
-        // Trừ tiền giảm giá từ Khuyến mãi (nếu có)
-        totalToPay -= tienGiamGia; 
-        
+        // Đảm bảo tổng tiền không bị âm
         if (totalToPay < 0) totalToPay = 0;
+        
+        // Gán lại để hàm khác (như thanh toán, tiền khách đưa) xài đúng
+        this.tongHoaDon = totalToPay; 
 
-        // Đổ số liệu ra giao diện (Đã format tiền tệ)
-        if (lblSubTotal != null) lblSubTotal.setText(String.format("%,d", this.tamTinh).replace(',', '.') + "đ");
-        if (lblVAT != null) lblVAT.setText(String.format("%,d", this.vat).replace(',', '.') + "đ");
-        if (lblTotal != null) lblTotal.setText(String.format("%,d", totalToPay).replace(',', '.') + "đ");
-        if (lblCustomerPay != null) lblCustomerPay.setText(String.format("%,d", totalToPay).replace(',', '.') + "đ");
+        // --- ĐỔ SỐ LIỆU RA GIAO DIỆN ---
+        if (lblSubtotalValue != null) {
+            lblSubtotalValue.setText(String.format("%,d", this.tamTinh).replace(',', '.') + "đ");
+        }
+        if (lblVatValue != null) {
+            lblVatValue.setText("+" + String.format("%,d", this.vat).replace(',', '.') + "đ");
+        }
+        if (lblDiscountValue != null) {
+            lblDiscountValue.setText("-" + String.format("%,d", tienGiamGia).replace(',', '.') + "đ");
+        }
+        if (lblDungDiemValue != null) {
+            lblDungDiemValue.setText("-" + String.format("%,d", this.tienGiamTuDiem).replace(',', '.') + "đ");
+        }
+        if (lblTotalPriceValue != null) {
+            lblTotalPriceValue.setText(String.format("%,d", totalToPay).replace(',', '.') + "đ");
+        }
+        if (lblQRAmount != null) {
+            lblQRAmount.setText("Cần thanh toán: " + String.format("%,d", totalToPay).replace(',', '.') + "đ");
+        }
+        if (lblExactValue != null) {
+            lblExactValue.setText(String.format("%,d", totalToPay).replace(',', '.') + "đ");
+        }
+
+        // --- FIX UI/UX: CẬP NHẬT TRỰC TIẾP ĐIỂM CÒN LẠI LÊN GIAO DIỆN NGAY LẬP TỨC ---
+        if (lblDungDiemText != null) {
+            int diemThucTeDung = (int)(this.tienGiamTuDiem / 100L);
+            
+            // Đổi chữ hiển thị trên công tắc bật/tắt
+            if (isDungDiem) {
+                lblDungDiemText.setText(String.format("Dùng %,d điểm", diemThucTeDung) + " (-" + String.format("%,d", this.tienGiamTuDiem).replace(',', '.') + "đ)");
+            } else {
+                lblDungDiemText.setText(String.format("Dùng %,d điểm", diemHienTaiKH) + " (-" + String.format("%,d", diemHienTaiKH * 100L).replace(',', '.') + "đ)");
+            }
+            
+            // Ép điểm của khách hàng trên bảng thông tin xanh nhạt thụt giảm ngay lập tức
+            if (lblLinkedPoints != null && isCustomerLinked) {
+                int diemConLai = diemHienTaiKH - diemThucTeDung;
+                lblLinkedPoints.setText(String.format("%,d", diemConLai).replace(',', '.') + " điểm");
+                lblLinkedMoney.setText("≈ " + String.format("%,d", diemConLai * 100L).replace(',', '.') + "đ");
+            }
+        }
+
+        // Nếu đang ở tab mã QR, update lại QR với số tiền mới
+        if ("Chuyển khoản".equals(phuongThuc) && lblQRCode != null) {
+            loadQRCodeVCB(lblQRCode); 
+        }
+        
+        capNhatTongTien();
     }
     private Object getSafeValue(javax.swing.table.TableModel model, int row, int col) {
         try {
@@ -865,72 +971,88 @@ public class TaoHoaDon extends JDialog {
 
      pnlWrapper.add(pnlTagsContainer, BorderLayout.CENTER);
 
-        btnApply.addActionListener(e -> {
-            String code = txtVoucherInput.getText().trim();
-            if(code.isEmpty() || code.equals("NHẬP MÃ HOẶC CHỌN BÊN DƯỚI...")) return;
+     btnApply.addActionListener(e -> {
+         String code = txtVoucherInput.getText().trim();
+         if(code.isEmpty() || code.equals("NHẬP MÃ HOẶC CHỌN BÊN DƯỚI...")) return;
 
-            long tongTienDK = tamTinh + vat; 
-            String sqlCheck = "SELECT h.loaiHinhThuc, h.giaTri AS mucGiam, ISNULL(d.giaTri, 0) AS donToiThieu " +
-                              "FROM KhuyenMai k " +
-                              "JOIN HinhThucKhuyenMai h ON k.id = h.khuyenMaiId " +
-                              "LEFT JOIN DieuKienKhuyenMai d ON k.id = d.khuyenMaiId " +
-                              "WHERE k.id = ? AND k.ngayBatDau <= GETDATE() AND k.ngayKetThuc >= GETDATE()";
-            
-            // FIX: Đóng DB an toàn cho hành động check áp mã
-            try (java.sql.Connection con = ConnectDB.getInstance().getConnection();
-                 java.sql.PreparedStatement pst = con.prepareStatement(sqlCheck)) {
-                 
-                pst.setString(1, code);
-                try (java.sql.ResultSet rsCheck = pst.executeQuery()) {
-                    if(rsCheck.next()) {
-                        String loaiKM = rsCheck.getString("loaiHinhThuc");
-                        double giaTri = rsCheck.getDouble("mucGiam");
-                        long donToiThieu = (long) rsCheck.getDouble("donToiThieu");
+         long tongTienDK = tamTinh + vat; 
+         String sqlCheck = "SELECT h.loaiHinhThuc, h.giaTri AS mucGiam, ISNULL(d.giaTri, 0) AS donToiThieu " +
+                           "FROM KhuyenMai k " +
+                           "JOIN HinhThucKhuyenMai h ON k.id = h.khuyenMaiId " +
+                           "LEFT JOIN DieuKienKhuyenMai d ON k.id = d.khuyenMaiId " +
+                           "WHERE k.id = ? AND k.ngayBatDau <= GETDATE() AND k.ngayKetThuc >= GETDATE()";
+         
+         try (java.sql.Connection con = ConnectDB.getInstance().getConnection();
+              java.sql.PreparedStatement pst = con.prepareStatement(sqlCheck)) {
+              
+             pst.setString(1, code);
+             try (java.sql.ResultSet rsCheck = pst.executeQuery()) {
+                 if(rsCheck.next()) {
+                     String loaiKM = rsCheck.getString("loaiHinhThuc");
+                     double giaTri = rsCheck.getDouble("mucGiam");
+                     long donToiThieu = (long) rsCheck.getDouble("donToiThieu");
 
-                        if (tongTienDK < donToiThieu) {
-                            JOptionPane.showMessageDialog(this, 
-                                "Chưa đạt giá trị đơn tối thiểu (" + String.format("%,d", donToiThieu).replace(',', '.') + "đ) để áp dụng mã này!", 
-                                "Cảnh báo", JOptionPane.WARNING_MESSAGE);
-                            return;
-                        }
+                     if (tongTienDK < donToiThieu) {
+                         showCustomNotification("CẢNH BÁO", "Chưa đạt giá trị đơn tối thiểu (" + String.format("%,d", donToiThieu).replace(',', '.') + "đ) để áp dụng mã này!", "WARNING");
+                         return;
+                     }
 
-                        if(loaiKM != null && loaiKM.trim().toUpperCase().contains("PHAN_TRAM")) {
-                            tienGiamGia = (long) (tongTienDK * (giaTri / 100.0));
-                        } else {
-                            tienGiamGia = (long) giaTri; 
-                        }
+                     if(loaiKM != null && loaiKM.trim().toUpperCase().contains("PHAN_TRAM")) {
+                         tienGiamGia = (long) (tongTienDK * (giaTri / 100.0));
+                     } else {
+                         tienGiamGia = (long) giaTri; 
+                     }
 
-                        maKhuyenMaiApDung = code;
-                    } else {
-                        tienGiamGia = 0;
-                        maKhuyenMaiApDung = "";
-                        JOptionPane.showMessageDialog(this, "Mã khuyến mãi không tồn tại hoặc đã hết hạn!", "Lỗi", JOptionPane.ERROR_MESSAGE);
-                    }
-                }
-                recalculateTotals(); 
+                     maKhuyenMaiApDung = code;
+                 } else {
+                     tienGiamGia = 0;
+                     maKhuyenMaiApDung = "";
+                     showCustomNotification("LỖI", "Mã khuyến mãi không tồn tại hoặc đã hết hạn!", "ERROR");
+                 }
+             }
+             recalculateTotals(); 
 
-            } catch(Exception ex) {
-                ex.printStackTrace();
-            }
-        });
+         } catch(Exception ex) {
+             ex.printStackTrace();
+         }
+     });
 
         return pnlWrapper;
     }
 
     private JPanel createSectionPanel(String title, String iconType, JPanel content) {
-        JPanel pnl = new JPanel(new BorderLayout(0, 10)); 
+        // Tăng khoảng cách dọc giữa các thành phần lên 15px cho thoáng
+        JPanel pnl = new JPanel(new BorderLayout(0, 15)); 
         pnl.setBackground(Color.WHITE);
-
+        
+        // 1. Thêm viền bo góc mỏng và lề (padding) bên trong Card
+        pnl.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(Color.decode("#DFE3E8"), 1, true),
+            new javax.swing.border.EmptyBorder(15, 20, 15, 20)
+        ));
+        
+        // 2. Tạo một Header Panel để chứa tiêu đề và đường gạch chân mờ
+        JPanel pnlHeader = new JPanel(new BorderLayout());
+        pnlHeader.setOpaque(false);
+        // Đường line phân cách mỏng màu xám siêu nhạt
+        pnlHeader.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, Color.decode("#F1F3F5"))); 
+        
         JLabel lblTitle = new JLabel(title);
         if (iconType != null) {
             lblTitle.setIcon(new MenuIcon(iconType)); 
-            lblTitle.setIconTextGap(8); 
+            lblTitle.setIconTextGap(10); // Tăng khoảng cách giữa Icon và Text
         }
-        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 15));
-        lblTitle.setForeground(Color.decode("#212B36"));
+        
+        // 3. Tinh chỉnh Font chữ và màu sắc cho hiện đại hơn
+        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 16)); 
+        lblTitle.setForeground(Color.decode("#152A4B")); // Sử dụng màu xanh đen chủ đạo
+        lblTitle.setBorder(new javax.swing.border.EmptyBorder(0, 0, 10, 0)); // Cách đường gạch chân 10px
 
-        pnl.add(lblTitle, BorderLayout.NORTH);
+        pnlHeader.add(lblTitle, BorderLayout.WEST);
+
+        pnl.add(pnlHeader, BorderLayout.NORTH);
         pnl.add(content, BorderLayout.CENTER);
+        
         return pnl;
     }
     
@@ -1047,21 +1169,64 @@ public class TaoHoaDon extends JDialog {
         customerSuggestionPopup = new JPopupMenu();
         customerSuggestionPopup.setBorder(BorderFactory.createLineBorder(Color.decode("#DFE3E8")));
 
+     // --- FIX CHUỘT: BỌC DANH SÁCH VÀO PANEL TRUNG GIAN ĐỂ CHỐNG "NUỐT CLICK" ---
         txtSearch.addKeyListener(new KeyAdapter() {
             @Override
-            public void keyReleased(KeyEvent e) {
+            public void keyPressed(KeyEvent e) {
                 if (e.getKeyCode() == KeyEvent.VK_ENTER) {
-                    customerSuggestionPopup.setVisible(false);
+                    if (customerSuggestionPopup.isVisible() && customerSuggestionPopup.getComponentCount() > 0) {
+                        // Do ta đã bọc trong 1 cái rổ (pnlList), nên Component(0) của popup chính là cái rổ
+                        Component wrapperPnl = customerSuggestionPopup.getComponent(0);
+                        if (wrapperPnl instanceof JPanel && ((JPanel) wrapperPnl).getComponentCount() > 0) {
+                            // Lấy tiếp Component(0) bên trong cái rổ (Chính là khách hàng đầu tiên)
+                            Component firstItem = ((JPanel) wrapperPnl).getComponent(0);
+                            
+                            if (firstItem instanceof JPanel) {
+                                JPanel targetPnl = (JPanel) firstItem;
+                                String id = targetPnl.getName();
+
+                                customerSuggestionPopup.setVisible(false);
+                                txtSearch.setText(id);
+                                txtSearch.setForeground(Color.BLACK);
+
+                                SwingUtilities.invokeLater(() -> {
+                                    for (Component c : txtSearch.getParent().getComponents()) {
+                                        if (c instanceof JButton) {
+                                            ((JButton) c).doClick();
+                                            break;
+                                        }
+                                    }
+                                });
+                            }
+                        }
+                    } else {
+                        for (Component c : txtSearch.getParent().getComponents()) {
+                            if (c instanceof JButton) { ((JButton) c).doClick(); break; }
+                        }
+                    }
+                    e.consume();
+                }
+            }
+
+            @Override
+            public void keyReleased(KeyEvent e) {
+                if (e.getKeyCode() == KeyEvent.VK_ENTER || e.getKeyCode() == KeyEvent.VK_UP || e.getKeyCode() == KeyEvent.VK_DOWN) {
                     return;
                 }
+                
                 String text = txtSearch.getText().trim();
-                if (text.isEmpty()) {
+                if (text.isEmpty() || text.equals("Nhập SĐT hoặc mã KH để liên kết điểm thưởng...")) {
                     customerSuggestionPopup.setVisible(false);
                     return;
                 }
 
                 customerSuggestionPopup.removeAll();
                 boolean hasResult = false;
+
+                // TẠO RỔ CHỨA: Bọc các gợi ý vào Panel trung gian để JPopupMenu không ăn mất chuột
+                JPanel pnlList = new JPanel();
+                pnlList.setLayout(new BoxLayout(pnlList, BoxLayout.Y_AXIS));
+                pnlList.setBackground(Color.WHITE);
 
                 Window parentWindow = SwingUtilities.getWindowAncestor(TaoHoaDon.this);
                 if (parentWindow instanceof MainDashboard) {
@@ -1075,7 +1240,7 @@ public class TaoHoaDon extends JDialog {
                             String diem = khModel.getValueAt(i, 5).toString();
 
                             if (sdt.startsWith(text) || ten.toLowerCase().contains(text.toLowerCase())) {
-                                customerSuggestionPopup.add(createCustomerSuggestionItem(ma, ten, sdt, diem));
+                                pnlList.add(createCustomerSuggestionItem(ma, ten, sdt, diem));
                                 hasResult = true;
                                 count++;
                             }
@@ -1085,6 +1250,8 @@ public class TaoHoaDon extends JDialog {
                 }
 
                 if (hasResult) {
+                    customerSuggestionPopup.add(pnlList); // Ném nguyên cái rổ chứa vào Popup
+                    customerSuggestionPopup.pack(); // Ép popup tự động co giãn ôm sát cái rổ
                     customerSuggestionPopup.show(txtSearch, 0, txtSearch.getHeight());
                     txtSearch.requestFocus(); 
                 } else {
@@ -1181,16 +1348,36 @@ public class TaoHoaDon extends JDialog {
         pnlNameInfo.add(lblLinkedName);
         pnlNameInfo.add(lblLinkedSub);
         
-        JPanel pnlPoints = new JPanel(new GridLayout(2, 1, 0, 2));
-        pnlPoints.setOpaque(false);
-        lblLinkedPoints = new JLabel("200 điểm", SwingConstants.RIGHT);
-        lblLinkedPoints.setFont(new Font("Segoe UI", Font.BOLD, 13));
+     // =========================================================
+        // --- FIX: GIAO DIỆN ĐIỂM SỐ RỘNG RÃI & CÓ ICON CORRECT ---
+        // =========================================================
+        JPanel pnlPointsLayout = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 0));
+        pnlPointsLayout.setOpaque(false);
+
+        lblLinkedPoints = new JLabel("0 điểm");
+        lblLinkedPoints.setIcon(new MenuIcon("CORRECT")); 
+        lblLinkedPoints.setIconTextGap(6); 
+        lblLinkedPoints.setFont(new Font("Segoe UI", Font.BOLD, 14)); 
         lblLinkedPoints.setForeground(Color.decode("#9333EA")); 
-        lblLinkedMoney = new JLabel("≈ 200.000đ", SwingConstants.RIGHT);
-        lblLinkedMoney.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        lblLinkedMoney.setForeground(Color.GRAY);
-        pnlPoints.add(lblLinkedPoints);
-        pnlPoints.add(lblLinkedMoney);
+        lblLinkedPoints.setBackground(Color.decode("#F3E8FF")); 
+        lblLinkedPoints.setOpaque(true);
+        lblLinkedPoints.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(Color.decode("#E9D5FF"), 1, true),
+            BorderFactory.createEmptyBorder(6, 12, 6, 12) 
+        ));
+        
+        lblLinkedMoney = new JLabel("≈ 0đ");
+        lblLinkedMoney.setFont(new Font("Segoe UI", Font.PLAIN, 14)); 
+        lblLinkedMoney.setForeground(Color.decode("#4B5563")); 
+        lblLinkedMoney.setBackground(Color.decode("#F3F4F6")); 
+        lblLinkedMoney.setOpaque(true);
+        lblLinkedMoney.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(Color.decode("#E5E7EB"), 1, true),
+            BorderFactory.createEmptyBorder(6, 12, 6, 12) 
+        ));
+
+        pnlPointsLayout.add(lblLinkedPoints);
+        pnlPointsLayout.add(lblLinkedMoney);
         
         JButton btnUnlink = new JButton(); 
         btnUnlink.setIcon(new MenuIcon("CLOSE")); 
@@ -1210,17 +1397,38 @@ public class TaoHoaDon extends JDialog {
             pnlDungDiem.setVisible(false);
             recalculateTotals();
 
+            if (txtSearch != null) {
+                txtSearch.setText("Nhập SĐT hoặc mã KH để liên kết điểm thưởng...");
+                txtSearch.setForeground(Color.GRAY);
+            }
+            if (txtName != null) {
+                txtName.setText("Tên khách (bỏ trống = Khách lẻ)");
+                txtName.setForeground(Color.GRAY);
+            }
+            if (txtPhone != null) {
+                txtPhone.setText("Số điện thoại (tuỳ chọn)");
+                txtPhone.setForeground(Color.GRAY);
+            }
+
             pnlLinkedCustomer.setVisible(false);
             pnlInputFields.setVisible(true);
             CardLayout cl = (CardLayout)(pnlBadgeWrap.getLayout());
             cl.show(pnlBadgeWrap, "LE");
+            
+            if (customerSuggestionPopup != null) {
+                customerSuggestionPopup.setVisible(false);
+            }
+            
             pnlBody.revalidate(); pnlBody.repaint();
         });
         
         JPanel pnlRightInfo = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 0));
         pnlRightInfo.setOpaque(false);
-        pnlRightInfo.add(pnlPoints);
+        pnlRightInfo.add(pnlPointsLayout);
         pnlRightInfo.add(btnUnlink);
+        // =========================================================
+        
+        
         
         pnlLinkedCustomer.add(lblLinkedAvatar, BorderLayout.WEST);
         pnlLinkedCustomer.add(pnlNameInfo, BorderLayout.CENTER);
@@ -1231,9 +1439,21 @@ public class TaoHoaDon extends JDialog {
         pnlBody.add(pnlWarn);
         pnlBody.add(pnlLinkedCustomer);
 
+     // --- XỬ LÝ KHI BẤM NÚT TRA CỨU HOẶC ẤN ENTER ---
         btnSearch.addActionListener(e -> {
             String keyword = txtSearch.getText().trim();
-            if (keyword.isEmpty() || keyword.equals("Nhập SĐT hoặc mã KH để liên kết điểm thưởng...")) return;
+            
+            // 1. NẾU Ô TRỐNG HOẶC CHƯA NHẬP GÌ -> Hiện thẳng bảng cảnh báo đỏ
+            if (keyword.isEmpty() || keyword.equals("Nhập SĐT hoặc mã KH để liên kết điểm thưởng...")) {
+                if (customerSuggestionPopup != null) customerSuggestionPopup.setVisible(false);
+                pnlWarn.setVisible(true);
+                pnlLinkedCustomer.setVisible(false);
+                pnlInputFields.setVisible(true);
+                CardLayout cl = (CardLayout)(pnlBadgeWrap.getLayout());
+                cl.show(pnlBadgeWrap, "LE");
+                pnlBody.revalidate(); pnlBody.repaint();
+                return;
+            }
 
             boolean found = false;
             Window parentWindow = SwingUtilities.getWindowAncestor(this);
@@ -1285,12 +1505,15 @@ public class TaoHoaDon extends JDialog {
             }
 
             if (found) {
+                // TÌM THẤY -> Ẩn cảnh báo đỏ, hiện thông tin khách
                 pnlWarn.setVisible(false);
                 pnlInputFields.setVisible(false);     
                 pnlLinkedCustomer.setVisible(true);   
                 CardLayout cl = (CardLayout)(pnlBadgeWrap.getLayout());
                 cl.show(pnlBadgeWrap, "LINKED");      
             } else {
+                // KHÔNG TÌM THẤY -> Ẩn Popup xổ xuống, bung bảng cảnh báo đỏ bên dưới
+                if (customerSuggestionPopup != null) customerSuggestionPopup.setVisible(false);
                 pnlWarn.setVisible(true);
                 pnlLinkedCustomer.setVisible(false);
                 pnlInputFields.setVisible(true);
@@ -1303,7 +1526,6 @@ public class TaoHoaDon extends JDialog {
         btnAddCustomer.addActionListener(e -> {
             Window owner = this.getOwner(); 
             if (owner instanceof MainDashboard) {
-                // 1. Ghi nhớ số điện thoại đang gõ dở vào biến toàn cục
                 String searchedText = txtSearch.getText().trim();
                 if (!searchedText.isEmpty() && !searchedText.equals("Nhập SĐT hoặc mã KH để liên kết điểm thưởng...")) {
                     ManHinhBanHang.pendingPhoneToLink = searchedText; 
@@ -1316,27 +1538,22 @@ public class TaoHoaDon extends JDialog {
                     ManHinhBanHang.pendingPhoneToLink = phoneInput; 
                 }
 
-                
-                // 2. Cố gắng lưu nháp (Nếu giỏ hàng có đồ)
                 luuNhapHoaDon(true); 
                 
-                // 3. GHI NHỚ ĐỂ MỞ LẠI (ĐÃ FIX LỖI GIỎ HÀNG TRỐNG)
                 if (this.maHDDangSua != null && !this.maHDDangSua.isEmpty()) {
-                    ManHinhBanHang.pendingDraftIdToOpen = this.maHDDangSua; // Mở lại đơn cũ
+                    ManHinhBanHang.pendingDraftIdToOpen = this.maHDDangSua; 
                 } else {
-                    ManHinhBanHang.pendingDraftIdToOpen = "NEW_INVOICE"; // Báo hiệu mở đơn mới toanh
+                    ManHinhBanHang.pendingDraftIdToOpen = "NEW_INVOICE"; 
                 }
                 
-                // 4. Đóng popup hiện tại 
                 this.dispose();
                 
-                // 5. Nhảy sang tab Khách hàng
                 ((MainDashboard) owner).chuyenSangTabKhachHang(true); 
                 
-                JOptionPane.showMessageDialog(owner, 
+                showCustomNotification("HƯỚNG DẪN", 
                     "Đã chuyển sang màn hình Khách Hàng.\n" +
                     "Tạo xong khách hàng, hãy bấm lại vào tab Bán Hàng, hệ thống sẽ tự động mở lại hóa đơn này!", 
-                    "Hướng dẫn", JOptionPane.INFORMATION_MESSAGE);
+                    "SUCCESS");
             }
         });
 
@@ -1591,10 +1808,113 @@ public class TaoHoaDon extends JDialog {
         tbl.getColumnModel().getColumn(5).setPreferredWidth(100); 
         tbl.getColumnModel().getColumn(6).setPreferredWidth(40);  
 
+       
+
         javax.swing.table.DefaultTableCellRenderer centerRenderer = new javax.swing.table.DefaultTableCellRenderer();
         centerRenderer.setHorizontalAlignment(JLabel.CENTER);
-        for(int i=1; i<=4; i++) tbl.getColumnModel().getColumn(i).setCellRenderer(centerRenderer);
         
+        // FIX 1: Bỏ cột Số Lượng (Cột 2) ra khỏi danh sách hiển thị Text thường
+        tbl.getColumnModel().getColumn(1).setCellRenderer(centerRenderer);
+        tbl.getColumnModel().getColumn(3).setCellRenderer(centerRenderer);
+        tbl.getColumnModel().getColumn(4).setCellRenderer(centerRenderer);
+        tbl.putClientProperty("terminateEditOnFocusLost", Boolean.TRUE);
+        
+        tbl.setSelectionBackground(Color.decode("#E0F2FE"));
+        // 2. EDITOR (Bộ xử lý khi nhấp chuột vào)
+        class SpinnerCellRenderer extends JSpinner implements javax.swing.table.TableCellRenderer {
+            public SpinnerCellRenderer() {
+                super(new SpinnerNumberModel(1, 1, 9999, 1));
+                JSpinner.DefaultEditor editor = (JSpinner.DefaultEditor) getEditor();
+                editor.getTextField().setHorizontalAlignment(JTextField.CENTER);
+                editor.getTextField().setFont(new Font("Segoe UI", Font.BOLD, 14));
+                
+                // LÀM GỌN: Xóa sạch viền cứng nhiều lớp của Java bằng EmptyBorder
+                setBorder(BorderFactory.createEmptyBorder());
+                editor.setBorder(BorderFactory.createEmptyBorder());
+                editor.getTextField().setBorder(BorderFactory.createEmptyBorder());
+            }
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+                try { setValue(Integer.parseInt(value.toString())); } catch (Exception e) {}
+                
+                // Đồng bộ nền khít 100% với dòng của bảng
+                Color bg = isSelected ? table.getSelectionBackground() : Color.WHITE;
+                setBackground(bg);
+                ((JSpinner.DefaultEditor) getEditor()).getTextField().setBackground(bg);
+                ((JSpinner.DefaultEditor) getEditor()).getTextField().setForeground(Color.decode("#111827"));
+                return this;
+            }
+        }
+        tbl.getColumnModel().getColumn(2).setCellRenderer(new SpinnerCellRenderer());
+        class SpinnerCellEditor extends javax.swing.AbstractCellEditor implements javax.swing.table.TableCellEditor {
+            private JSpinner spinner;
+
+            public SpinnerCellEditor() {
+                // FIX 1: Tăng giới hạn tối đa lên 999.999 để bạn gõ số lượng lớn (như 10010) không bị lỗi
+                spinner = new JSpinner(new SpinnerNumberModel(1, 1, 999999, 1));
+                JSpinner.DefaultEditor editor = (JSpinner.DefaultEditor) spinner.getEditor();
+                editor.getTextField().setHorizontalAlignment(JTextField.CENTER);
+                editor.getTextField().setFont(new Font("Segoe UI", Font.BOLD, 14));
+                
+                spinner.setBorder(BorderFactory.createLineBorder(Color.decode("#1967D2"), 2));
+                editor.setBorder(BorderFactory.createEmptyBorder());
+                editor.getTextField().setBorder(BorderFactory.createEmptyBorder());
+                
+                editor.getTextField().addKeyListener(new java.awt.event.KeyAdapter() {
+                    public void keyTyped(java.awt.event.KeyEvent e) {
+                        if (!Character.isDigit(e.getKeyChar())) e.consume(); 
+                    }
+                    // FIX 2: Đã xóa sự kiện keyReleased ở đây để chống lỗi nhảy con trỏ chuột khi gõ
+                });
+
+                editor.getTextField().addFocusListener(new java.awt.event.FocusAdapter() {
+                    public void focusGained(java.awt.event.FocusEvent e) {
+                        SwingUtilities.invokeLater(editor.getTextField()::selectAll); 
+                    }
+                });
+                
+                // Khi bấm mũi tên Tăng/Giảm thì vẫn cho phép tiền nhảy ngay lập tức
+                spinner.addChangeListener(e -> {
+                    int row = tbl.getEditingRow();
+                    if (row >= 0) {
+                        productModel.setValueAt(spinner.getValue().toString(), row, 2);
+                    }
+                });
+            }
+
+            @Override
+            public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row, int column) {
+                try { spinner.setValue(Integer.parseInt(value.toString())); } catch (Exception e) { spinner.setValue(1); }
+                ((JSpinner.DefaultEditor) spinner.getEditor()).getTextField().setBackground(Color.WHITE);
+                return spinner;
+            }
+
+            @Override
+            public Object getCellEditorValue() { return spinner.getValue().toString(); }
+
+            // --- FIX 3: BỔ SUNG HÀM NÀY ---
+            // Đảm bảo khi bạn gõ phím xong (Bấm Enter hoặc Click ra chỗ khác), số đang gõ dở sẽ được lưu lại
+            @Override
+            public boolean stopCellEditing() {
+                try {
+                    spinner.commitEdit(); // Ép JSpinner ghi nhận số vừa gõ
+                } catch (java.text.ParseException e) {
+                    // Bỏ qua lỗi parse
+                }
+                return super.stopCellEditing();
+            }
+
+            @Override
+            public boolean isCellEditable(java.util.EventObject e) {
+                if (e instanceof java.awt.event.MouseEvent) {
+                    return ((java.awt.event.MouseEvent) e).getClickCount() >= 1; 
+                }
+                return true;
+            }
+        }
+        
+        tbl.getColumnModel().getColumn(2).setCellEditor(new SpinnerCellEditor());
+
         tbl.getColumnModel().getColumn(5).setCellRenderer(new javax.swing.table.DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable table, Object value, boolean isSel, boolean hasFocus, int r, int c) {
@@ -1636,16 +1956,23 @@ public class TaoHoaDon extends JDialog {
                 int col = tbl.columnAtPoint(e.getPoint());
                 
                 if (row >= 0) {
+                    // 1. Xử lý nút thùng rác (Cột 6)
                     if (col == 6 && SwingUtilities.isLeftMouseButton(e)) { 
+                        if (tbl.isEditing()) tbl.getCellEditor().stopCellEditing(); // Phải dừng edit trước khi xóa dòng
                         productModel.removeRow(row);
                         recalculateTotals();
                         luuNhapHoaDon(true);
                         sp.revalidate(); sp.repaint();
-                        return; // FIX: Ngăn crash OutOfBounds sau khi xóa dòng
+                        return; 
                     } 
                     
-                    if (tbl.isEditing()) tbl.getCellEditor().stopCellEditing(); 
+                    // --- FIX LỖI TẮT KHUNG NHẬP LIỆU ---
+                    // Chỉ đóng ô nhập liệu (stopCellEditing) nếu người dùng click chuột sang một CỘT KHÁC cột Số lượng (2)
+                    if (tbl.isEditing() && tbl.getEditingColumn() != col) {
+                        tbl.getCellEditor().stopCellEditing(); 
+                    }
 
+                    // 2. Click chuột trái/phải vào các cột tên sản phẩm để tăng giảm SL (Tính năng phụ của bạn)
                     if (col != 2 && col != 3 && col != 6) {
                         int slHienTai = Integer.parseInt(productModel.getValueAt(row, 2).toString());
                         
@@ -1656,9 +1983,10 @@ public class TaoHoaDon extends JDialog {
                             if (slHienTai > 1) {
                                 productModel.setValueAt(String.valueOf(slHienTai - 1), row, 2);
                             } else {
+                                if (tbl.isEditing()) tbl.getCellEditor().stopCellEditing();
                                 productModel.removeRow(row);
                                 recalculateTotals();
-                                return; // FIX: Ngăn crash OutOfBounds
+                                return; 
                             }
                         }
                     }
@@ -1667,6 +1995,7 @@ public class TaoHoaDon extends JDialog {
         });
 
         tbl.addKeyListener(new java.awt.event.KeyAdapter() {
+            // keyPressed: Chỉ dùng để bắt các phím chức năng (+, -, Enter)
             @Override
             public void keyPressed(java.awt.event.KeyEvent e) {
                 int row = tbl.getSelectedRow();
@@ -1682,8 +2011,28 @@ public class TaoHoaDon extends JDialog {
                         } else {
                             productModel.removeRow(row);
                             recalculateTotals();
-                            return; // FIX: Ngăn crash OutOfBounds
                         }
+                    }
+                }
+            }
+
+            // keyTyped: Dùng để bắt ký tự chữ/số mà khách gõ vào
+            @Override
+            public void keyTyped(java.awt.event.KeyEvent e) {
+                int row = tbl.getSelectedRow();
+                if (row >= 0 && !tbl.isEditing()) {
+                    char c = e.getKeyChar();
+                    // Nếu là phím số (0-9)
+                    if (Character.isDigit(c)) {
+                        tbl.editCellAt(row, 2); // Buộc mở ô số lượng
+                        Component editor = tbl.getEditorComponent();
+                        if (editor instanceof JSpinner) {
+                            JSpinner spinner = (JSpinner) editor;
+                            JSpinner.DefaultEditor spinEditor = (JSpinner.DefaultEditor) spinner.getEditor();
+                            spinEditor.getTextField().setText(String.valueOf(c)); // Đè phím số vừa gõ vào
+                            spinEditor.getTextField().requestFocus(); 
+                        }
+                        e.consume(); // Chặn Java Swing tự động in đúp ký tự
                     }
                 }
             }
@@ -1726,15 +2075,37 @@ public class TaoHoaDon extends JDialog {
                         pnlList.setBackground(Color.WHITE);
 
                         if (ketQua != null && !ketQua.isEmpty()) {
+                            hasResult = true; 
+                            
+                            // --- FIX LAG: ĐẶT GIỚI HẠN SỐ LƯỢNG UI RENDER ---
+                            int count = 0;
+                            int MAX_ITEMS = 12; // Chỉ vẽ tối đa 12 kết quả để đảm bảo độ mượt tuyệt đối
+
                             for (Object[] row : ketQua) {
+                                if (count >= MAX_ITEMS) break; // Ngắt vòng lặp ngay khi đủ 12 món
+
                                 String id = row[0].toString();
                                 String ten = row[1].toString();
                                 String donVi = row[2] != null ? row[2].toString() : "";
                                 long giaBan = Math.round(Double.parseDouble(row[3].toString()));
                                 String gia = String.valueOf(giaBan); 
                                 String tonKho = row[4] != null ? row[4].toString() : "0";
-                                
                                 String danhMuc = (row.length > 5 && row[5] != null) ? row[5].toString() : "Khác";
+
+                                // Lấy VAT
+                                String thueVat = "0%";
+                                if (row.length > 6 && row[6] != null) {
+                                    String rawVat = row[6].toString().trim();
+                                    try {
+                                        double v = Double.parseDouble(rawVat);
+                                        if (v > 0 && v < 1) v = v * 100; 
+                                        thueVat = (int)v + "%";
+                                    } catch (Exception ex) {
+                                        thueVat = rawVat + (rawVat.contains("%") ? "" : "%");
+                                    }
+                                } else {
+                                    thueVat = "5%"; 
+                                }
 
                                 String iconType = "PACKAGE"; 
                                 String dmCheck = danhMuc.toLowerCase();
@@ -1744,9 +2115,19 @@ public class TaoHoaDon extends JDialog {
                                 else if (dmCheck.contains("chức năng") || dmCheck.contains("tpcn")) iconType = "LEAF";         
                                 else if (dmCheck.contains("vật tư") || dmCheck.contains("y tế")) iconType = "MEDICAL_TOOL"; 
 
-                                pnlList.add(createSuggestionItem(suggestionPopup, txtSearchProduct, iconType, ten, donVi, gia, tonKho, danhMuc));
+                                pnlList.add(createSuggestionItem(suggestionPopup, txtSearchProduct, iconType, ten, donVi, gia, tonKho, danhMuc, thueVat));
+                                
+                                count++; // Tăng biến đếm
                             }
-                            hasResult = true;
+                            
+                            // THÊM: Hiển thị dòng thông báo nếu còn nhiều sản phẩm bị ẩn đi
+                            if (ketQua.size() > MAX_ITEMS) {
+                                JLabel lblMore = new JLabel("Còn " + (ketQua.size() - MAX_ITEMS) + " sản phẩm khác. Vui lòng gõ thêm chi tiết...");
+                                lblMore.setFont(new Font("Segoe UI", Font.ITALIC, 12));
+                                lblMore.setForeground(Color.GRAY);
+                                lblMore.setBorder(new EmptyBorder(8, 15, 8, 15));
+                                pnlList.add(lblMore);
+                            }
                         }
 
                         if (hasResult) {
@@ -1754,17 +2135,29 @@ public class TaoHoaDon extends JDialog {
                             scrollPane.setBorder(null);
                             scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
                             scrollPane.getVerticalScrollBar().setUnitIncrement(16); 
+
+                            scrollPane.getVerticalScrollBar().setUI(new Utils.ModernScrollBarUI());
+                            scrollPane.getVerticalScrollBar().setPreferredSize(new Dimension(8, 0));
                             
                             int listHeight = pnlList.getPreferredSize().height;
                             scrollPane.setPreferredSize(new Dimension(pnlSearchWrapper.getWidth(), Math.min(listHeight, 300)));
                             
                             suggestionPopup.add(scrollPane);
+                            
+                            // --- FIX LỖI: ÉP POPUP PHẢI GIÃN RA VỪA KHÍT NỘI DUNG ---
+                            suggestionPopup.pack(); 
+                            // -------------------------------------------------------
+                            
                             suggestionPopup.show(pnlSearchWrapper, 0, pnlSearchWrapper.getHeight());
                         } else {
                             JMenuItem emptyItem = new JMenuItem("Không tìm thấy sản phẩm nào phù hợp...");
                             emptyItem.setEnabled(false);
                             suggestionPopup.add(emptyItem);
-                            suggestionPopup.setPreferredSize(new Dimension(pnlSearchWrapper.getWidth(), suggestionPopup.getPreferredSize().height));
+                            
+                            // --- FIX LỖI: ÉP POPUP PHẢI GIÃN RA ---
+                            suggestionPopup.pack(); 
+                            // --------------------------------------
+                            
                             suggestionPopup.show(pnlSearchWrapper, 0, pnlSearchWrapper.getHeight());
                         }
                         txtSearchProduct.requestFocus(); 
@@ -1779,10 +2172,79 @@ public class TaoHoaDon extends JDialog {
         
         searchTimer.setRepeats(false); 
 
-        txtSearchProduct.addKeyListener(new java.awt.event.KeyAdapter() {
+txtSearchProduct.addKeyListener(new java.awt.event.KeyAdapter() {
+            
+            // --- THÊM MỚI: BẮT PHÍM ENTER ĐỂ THÊM NHANH ---
+            @Override
+            public void keyPressed(java.awt.event.KeyEvent e) {
+                if (e.getKeyCode() == java.awt.event.KeyEvent.VK_ENTER) {
+                    // Nếu có gợi ý đang mở và luồng tìm kiếm đã lấy được dữ liệu
+                    if (suggestionPopup.isVisible() && currentSearchWorker != null && currentSearchWorker.isDone()) {
+                        try {
+                            java.util.List<Object[]> ketQua = currentSearchWorker.get();
+                            if (ketQua != null && !ketQua.isEmpty()) {
+                                // Tự động lấy món ĐẦU TIÊN trong danh sách gợi ý
+                                Object[] firstItem = ketQua.get(0);
+                                
+                                String name = firstItem[1].toString();
+                                String unit = firstItem[2] != null ? firstItem[2].toString() : "";
+                                long giaBan = Math.round(Double.parseDouble(firstItem[3].toString()));
+                                String price = String.valueOf(giaBan);
+                                String danhMuc = (firstItem.length > 5 && firstItem[5] != null) ? firstItem[5].toString() : "Khác";
+                                
+                                String thueVat = "5%";
+                                if (firstItem.length > 6 && firstItem[6] != null) {
+                                    String rawVat = firstItem[6].toString().trim();
+                                    try {
+                                        double v = Double.parseDouble(rawVat);
+                                        if (v > 0 && v < 1) v = v * 100; 
+                                        thueVat = (int)v + "%";
+                                    } catch (Exception ex) {
+                                        thueVat = rawVat + (rawVat.contains("%") ? "" : "%");
+                                    }
+                                }
+
+                                // Logic: Kiểm tra xem đã có trong giỏ hàng chưa
+                                boolean daTonTai = false;
+                                int rowIndex = -1;
+                                int currentQty = 0;
+                                for (int i = 0; i < productModel.getRowCount(); i++) {
+                                    if (productModel.getValueAt(i, 0).toString().equals(name) &&
+                                        productModel.getValueAt(i, 1).toString().equals(unit)) {
+                                        daTonTai = true;
+                                        rowIndex = i;
+                                        currentQty = Integer.parseInt(productModel.getValueAt(i, 2).toString());
+                                        break;
+                                    }
+                                }
+
+                                if (daTonTai) {
+                                    currentQty++; // Tăng 1
+                                    productModel.setValueAt(String.valueOf(currentQty), rowIndex, 2);
+                                    productModel.setValueAt(String.format("%,d", giaBan * currentQty).replace(',', '.') + "đ", rowIndex, 5);
+                                } else {
+                                    productModel.addRow(new Object[]{
+                                        name, unit, "1", price, thueVat, String.format("%,d", giaBan).replace(',', '.') + "đ", danhMuc 
+                                    });
+                                }
+                                
+                                recalculateTotals();
+                                suggestionPopup.setVisible(false); // Đóng popup
+                                txtSearchProduct.setText(""); // Xóa trắng ô để gõ/bắn mã tiếp theo
+                            }
+                        } catch (Exception ex) {
+                            ex.printStackTrace();
+                        }
+                    }
+                }
+            }
+
             @Override
             public void keyReleased(java.awt.event.KeyEvent e) {
-                if (e.getKeyCode() == java.awt.event.KeyEvent.VK_UP || e.getKeyCode() == java.awt.event.KeyEvent.VK_DOWN) {
+                // Bổ sung chặn VK_ENTER để không gọi lặp lại tìm kiếm
+                if (e.getKeyCode() == java.awt.event.KeyEvent.VK_UP || 
+                    e.getKeyCode() == java.awt.event.KeyEvent.VK_DOWN || 
+                    e.getKeyCode() == java.awt.event.KeyEvent.VK_ENTER) {
                     return; 
                 }
                 searchTimer.restart(); 
@@ -1821,12 +2283,34 @@ public class TaoHoaDon extends JDialog {
         pnlMethod.add(pnlButtons, BorderLayout.CENTER);
 
         JPanel pnlTienMatWrapper = createCashGridPanel();
+        pnlChuyenKhoanWrapper = new JPanel(new BorderLayout());
+        pnlChuyenKhoanWrapper.setBackground(Color.WHITE);
+        pnlChuyenKhoanWrapper.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(Color.decode("#E5E7EB"), 1, true),
+            new EmptyBorder(15, 15, 15, 15)
+        ));
+        pnlChuyenKhoanWrapper.setAlignmentX(Component.LEFT_ALIGNMENT);
+        JLabel lblQRTriGia = new JLabel("Quét mã qua ứng dụng Ngân hàng", SwingConstants.CENTER);
+        lblQRTriGia.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        lblQRTriGia.setForeground(Color.decode("#009A33")); 
 
+        lblQRCode = new JLabel("Đang tạo mã QR...", SwingConstants.CENTER);
+        lblQRCode.setPreferredSize(new Dimension(200, 200));
+        lblQRCode.setBorder(BorderFactory.createLineBorder(Color.decode("#F3F4F6"), 2));
+        lblQRAmount = new JLabel("Cần thanh toán: 0đ", SwingConstants.CENTER);
+        lblQRAmount.setFont(new Font("Segoe UI", Font.BOLD, 18)); 
+        lblQRAmount.setForeground(Color.decode("#DC2626")); 
+
+        pnlChuyenKhoanWrapper.add(lblQRTriGia, BorderLayout.NORTH);
+        pnlChuyenKhoanWrapper.add(lblQRCode, BorderLayout.CENTER);
+        pnlChuyenKhoanWrapper.add(lblQRAmount, BorderLayout.SOUTH);
+        pnlChuyenKhoanWrapper.setVisible(false); 
+        
         JPanel pnlNote = new JPanel(new BorderLayout(0, 5));
         pnlNote.setBackground(Color.WHITE);
         JLabel lblNote = new JLabel("Ghi chú");
         lblNote.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        
+        pnlNote.setMaximumSize(new Dimension(Integer.MAX_VALUE, 70));
         JTextField txtNote = new JTextField("Ghi chú thêm...");
         txtNote.setForeground(Color.GRAY);
         txtNote.setPreferredSize(new Dimension(0, 40));
@@ -1854,7 +2338,7 @@ public class TaoHoaDon extends JDialog {
         pnlFinal.add(createWhiteLabel("Tạm tính:")); 
         lblSubtotalValue = createWhiteLabel("0đ", SwingConstants.RIGHT);
         pnlFinal.add(lblSubtotalValue);
-
+        
         pnlFinal.add(createWhiteLabel("VAT:")); 
         lblVatValue = createWhiteLabel("+0đ", SwingConstants.RIGHT);
         pnlFinal.add(lblVatValue);
@@ -1875,8 +2359,13 @@ public class TaoHoaDon extends JDialog {
         lblTotalPriceValue = new JLabel("0đ");
         lblTotalPriceValue.setFont(new Font("Segoe UI", Font.BOLD, 24)); lblTotalPriceValue.setForeground(Color.YELLOW);
         lblTotalPriceValue.setHorizontalAlignment(SwingConstants.RIGHT);
-
         pnlFinal.add(lblTotal); pnlFinal.add(lblTotalPriceValue);
+
+        // --- ĐÃ FIX: Gói pnlFinal vào một Wrapper để chống lỗi giãn theo chiều dọc ---
+        JPanel pnlFinalWrapper = new JPanel(new BorderLayout());
+        pnlFinalWrapper.setBackground(Color.WHITE);
+        pnlFinalWrapper.setAlignmentX(Component.LEFT_ALIGNMENT);
+        pnlFinalWrapper.add(pnlFinal, BorderLayout.NORTH); 
 
         JPanel pnlCenter = new JPanel();
         pnlCenter.setLayout(new BoxLayout(pnlCenter, BoxLayout.Y_AXIS));
@@ -1885,16 +2374,17 @@ public class TaoHoaDon extends JDialog {
         pnlMethod.setAlignmentX(Component.LEFT_ALIGNMENT);
         pnlTienMatWrapper.setAlignmentX(Component.LEFT_ALIGNMENT);
         pnlNote.setAlignmentX(Component.LEFT_ALIGNMENT);
-        pnlFinal.setAlignmentX(Component.LEFT_ALIGNMENT);
         
         pnlCenter.add(pnlMethod);
         pnlCenter.add(Box.createRigidArea(new Dimension(0, 10)));
         pnlCenter.add(pnlTienMatWrapper); 
+        pnlCenter.add(pnlChuyenKhoanWrapper); 
         pnlCenter.add(Box.createRigidArea(new Dimension(0, 15)));
         pnlCenter.add(pnlNote);
         pnlCenter.add(Box.createRigidArea(new Dimension(0, 20)));
-        pnlCenter.add(pnlFinal);
-
+        pnlCenter.add(pnlFinalWrapper); // Add cái bọc ngoài thay vì add trực tiếp
+        pnlCenter.add(Box.createVerticalGlue()); // Khóa keo dán lại
+        
         pnlWrapper.add(pnlCenter, BorderLayout.CENTER);
         
         btnTienMat.addActionListener(e -> {
@@ -1902,6 +2392,7 @@ public class TaoHoaDon extends JDialog {
             setPaymentBtnActive(btnTienMat);
             setPaymentBtnInactive(btnChuyenKhoan);
             pnlTienMatWrapper.setVisible(true); 
+            pnlChuyenKhoanWrapper.setVisible(false); 
             pnlWrapper.revalidate(); pnlWrapper.repaint();
         });
 
@@ -1910,6 +2401,9 @@ public class TaoHoaDon extends JDialog {
             setPaymentBtnActive(btnChuyenKhoan);
             setPaymentBtnInactive(btnTienMat);
             pnlTienMatWrapper.setVisible(false); 
+            pnlChuyenKhoanWrapper.setVisible(true);  
+            
+            loadQRCodeVCB(lblQRCode);
             pnlWrapper.revalidate(); pnlWrapper.repaint();
         });
 
@@ -1938,22 +2432,24 @@ public class TaoHoaDon extends JDialog {
     }
 
     private JPanel createCashGridPanel() {
+        listCounters.clear();
+        listCountLabels.clear();
         JPanel pnl = new JPanel(new BorderLayout(0, 10));
-        pnl.setBackground(Color.decode("#FFFBEB"));
+        // ĐỔI: Nền từ vàng nhạt sang Xanh dương siêu nhạt (#F0F9FF)
+        pnl.setBackground(Color.decode("#F0F9FF")); 
         pnl.setBorder(BorderFactory.createCompoundBorder(
-        	    BorderFactory.createLineBorder(Color.decode("#E5E7EB"), 1, true),
-        	    new EmptyBorder(2, 6, 2, 6) // <--- CHỈNH THÔNG SỐ Ở ĐÂY
-        	));
+                BorderFactory.createLineBorder(Color.decode("#DBEAFE"), 1, true),
+                new EmptyBorder(5, 10, 5, 10) 
+            ));
 
         JPanel pnlHeader = new JPanel(new BorderLayout());
         pnlHeader.setOpaque(false);
         JLabel lblTitle = new JLabel("Tiền khách đưa");
-        lblTitle.setIconTextGap(8);
         lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        lblTitle.setForeground(Color.decode("#B45309"));
+        lblTitle.setForeground(Color.decode("#1E40AF")); // Đổi tiêu đề sang Xanh đậm
 
         JButton btnChon = new JButton("Chọn mệnh giá");
-        btnChon.setBackground(Color.decode("#F59E0B"));
+        btnChon.setBackground(Color.decode("#3B82F6")); // Nút bấm màu Xanh Blue rực
         btnChon.setForeground(Color.WHITE);
         btnChon.setFocusPainted(false);
         btnChon.setBorderPainted(false);
@@ -1966,6 +2462,7 @@ public class TaoHoaDon extends JDialog {
         JPanel pnlGrid = new JPanel(new GridLayout(3, 3, 10, 10));
         pnlGrid.setOpaque(false);
         
+        // Giữ nguyên các ô tiền mệnh giá (vì mỗi ô đã có màu đặc trưng rồi)
         pnlGrid.add(createMoneyCell("500.000đ", 500000, "#3B82F6")); 
         pnlGrid.add(createMoneyCell("200.000đ", 200000, "#D946EF")); 
         pnlGrid.add(createMoneyCell("100.000đ", 100000, "#10B981")); 
@@ -1976,20 +2473,32 @@ public class TaoHoaDon extends JDialog {
         pnlGrid.add(createMoneyCell("2.000đ", 2000, "#6B7280"));   
         pnlGrid.add(createMoneyCell("1.000đ", 1000, "#6B7280"));   
 
+        JPanel pnlTopRow = new JPanel(new GridLayout(1, 3, 10, 10));
+        pnlTopRow.setOpaque(false);
+        pnlTopRow.add(new JLabel()); 
+        pnlTopRow.add(createExactMoneyCell()); // Ô Vừa đủ tông xanh nằm đây
+        pnlTopRow.add(new JLabel()); 
+
+        JPanel pnlCenterWrapper = new JPanel(new BorderLayout(0, 10));
+        pnlCenterWrapper.setOpaque(false);
+        pnlCenterWrapper.add(pnlTopRow, BorderLayout.NORTH);
+        pnlCenterWrapper.add(pnlGrid, BorderLayout.CENTER);
+
         JPanel pnlFooter = new JPanel(new BorderLayout());
         pnlFooter.setOpaque(false);
+        // ĐỔI: Đường gạch chân sang màu Xanh nhạt
         pnlFooter.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createMatteBorder(1, 0, 0, 0, Color.decode("#FDE047")),
-            new EmptyBorder(10, 0, 0, 0)
+            BorderFactory.createMatteBorder(1, 0, 0, 0, Color.decode("#93C5FD")),
+            new EmptyBorder(10, 0, 5, 0)
         ));
         
         JLabel lblTotalText = new JLabel("Tổng tiền mặt");
         lblTotalText.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        lblTotalText.setForeground(Color.decode("#D97706"));
+        lblTotalText.setForeground(Color.decode("#1E3A8A")); // Chữ xanh đen
         
         lblTotalValue = new JLabel("0đ");
         lblTotalValue.setFont(new Font("Segoe UI", Font.BOLD, 16));
-        lblTotalValue.setForeground(Color.decode("#D97706"));
+        lblTotalValue.setForeground(Color.decode("#1D4ED8")); // Tiền nhảy màu xanh đậm
         
         JPanel pnlInfoRight = new JPanel(new GridLayout(2, 1));
         pnlInfoRight.setOpaque(false);
@@ -2003,7 +2512,7 @@ public class TaoHoaDon extends JDialog {
         pnlFooter.add(pnlInfoRight, BorderLayout.EAST);
 
         pnl.add(pnlHeader, BorderLayout.NORTH);
-        pnl.add(pnlGrid, BorderLayout.CENTER);
+        pnl.add(pnlCenterWrapper, BorderLayout.CENTER); 
         pnl.add(pnlFooter, BorderLayout.SOUTH);
 
         return pnl;
@@ -2079,50 +2588,235 @@ public class TaoHoaDon extends JDialog {
         }
     }
 
+ // --- FIX: GẮN SỰ KIỆN CHUỘT CHO CẢ KHUNG LẪN CHỮ ĐỂ NHẤP CHUỘT NHẠY 100% ---
     private JPanel createCustomerSuggestionItem(String id, String name, String phone, String points) {
-        JPanel pnl = new JPanel(new BorderLayout(10, 0));
+        JPanel pnl = new JPanel(new BorderLayout());
         pnl.setBackground(Color.WHITE);
-        pnl.setBorder(new EmptyBorder(8, 12, 8, 12));
         pnl.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        pnl.setBorder(new EmptyBorder(5, 10, 5, 10));
+        pnl.setName(id); // Cất giấu Mã KH (ID) vào thuộc tính Name để lấy cho chuẩn
 
-        JLabel lblInfo = new JLabel("<html><b>" + name + "</b> - " + phone + "</html>");
-        lblInfo.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        
-        JLabel lblPts = new JLabel(points + "đ");
-        lblPts.setForeground(Color.decode("#9333EA")); 
-        lblPts.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        String htmlText = "<html><div style='width: 220px;'>"
+                        + "<span style='font-size: 13px; font-weight: bold; color: #111827;'>" + name + "</span>"
+                        + "<span style='font-size: 13px; color: #6B7280;'> - " + phone + "</span><br>"
+                        + "<span style='font-size: 11px; color: #9333EA;'>Tích lũy: " + points + "đ</span>"
+                        + "</div></html>";
 
+        JLabel lblInfo = new JLabel(htmlText);
+        lblInfo.setCursor(new Cursor(Cursor.HAND_CURSOR)); // Hiển thị hình bàn tay khi rê vào chữ
         pnl.add(lblInfo, BorderLayout.CENTER);
-        pnl.add(lblPts, BorderLayout.EAST);
 
-        pnl.addMouseListener(new MouseAdapter() {
+        // Đóng gói sự kiện chuột vào một biến chung
+        java.awt.event.MouseAdapter clickHandler = new java.awt.event.MouseAdapter() {
             @Override
-            public void mousePressed(MouseEvent e) {
-                txtSearch.setText(phone);
-                customerSuggestionPopup.setVisible(false);
-                for (java.awt.event.ActionListener al : ((JButton)((JPanel)txtSearch.getParent()).getComponent(1)).getActionListeners()) {
-                    al.actionPerformed(new java.awt.event.ActionEvent(this, java.awt.event.ActionEvent.ACTION_PERFORMED, ""));
-                }
+            public void mouseEntered(java.awt.event.MouseEvent e) {
+                pnl.setBackground(Color.decode("#F3F4F6")); // Hover đổi màu
             }
             @Override
-            public void mouseEntered(MouseEvent e) { pnl.setBackground(Color.decode("#F3F4F6")); }
+            public void mouseExited(java.awt.event.MouseEvent e) {
+                pnl.setBackground(Color.WHITE);
+            }
             @Override
-            public void mouseExited(MouseEvent e) { pnl.setBackground(Color.WHITE); }
-        });
+            public void mousePressed(java.awt.event.MouseEvent e) {
+                if (SwingUtilities.isLeftMouseButton(e)) {
+                    customerSuggestionPopup.setVisible(false);
+                    txtSearch.setText(id); 
+                    txtSearch.setForeground(Color.BLACK);
+                    
+                    // Kích hoạt nút Tra Cứu
+                    SwingUtilities.invokeLater(() -> {
+                        for (Component c : txtSearch.getParent().getComponents()) {
+                            if (c instanceof JButton) {
+                                ((JButton) c).doClick();
+                                break;
+                            }
+                        }
+                    });
+                }
+            }
+        };
+
+        // GẮN SỰ KIỆN CHO CẢ KHUNG PANEL LẪN DÒNG CHỮ (Tránh bị chữ nuốt click)
+        pnl.addMouseListener(clickHandler);
+        lblInfo.addMouseListener(clickHandler);
 
         return pnl;
     }
+ // ========================================================================
+    // BỘ THÔNG BÁO UI/UX GIAO DIỆN CHUẨN MỚI
+    // ========================================================================
+    private void showCustomNotification(String titleText, String message, String type) {
+        JDialog dialog = new JDialog(this, true); 
+        dialog.setUndecorated(true);
+        dialog.setBackground(new Color(0, 0, 0, 0));
 
+        JPanel pnlMain = new JPanel(new BorderLayout());
+        pnlMain.setBorder(BorderFactory.createLineBorder(Color.decode("#1E3A8A"), 2));
+        pnlMain.setBackground(Color.WHITE);
+
+        // 1. HEADER 
+        JPanel pnlHeader = new JPanel(new BorderLayout());
+        pnlHeader.setBackground(Color.decode("#1E3A8A"));
+        pnlHeader.setPreferredSize(new Dimension(0, 45));
+        JLabel lblTitle = new JLabel(titleText.toUpperCase(), SwingConstants.CENTER);
+        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        lblTitle.setForeground(Color.WHITE);
+        pnlHeader.add(lblTitle, BorderLayout.CENTER);
+
+        // 2. BODY 
+        JPanel pnlBody = new JPanel(null);
+        pnlBody.setBackground(Color.WHITE);
+        pnlBody.setPreferredSize(new Dimension(420, 110));
+
+        JPanel pnlIcon = new JPanel() {
+            @Override protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                Color mainColor = type.equals("ERROR") ? Color.decode("#EF4444") : 
+                                  (type.equals("SUCCESS") ? Color.decode("#10B981") : Color.decode("#F59E0B"));
+                Color bgColor = type.equals("ERROR") ? Color.decode("#FEE2E2") : 
+                                (type.equals("SUCCESS") ? Color.decode("#D1FAE5") : Color.decode("#FEF3C7"));
+                
+                g2.setColor(bgColor);
+                g2.fillOval(0, 0, 50, 50);
+                g2.setColor(mainColor);
+                g2.setStroke(new java.awt.BasicStroke(3f));
+                g2.drawOval(0, 0, 50, 50);
+                
+                g2.setFont(new Font("Segoe UI", Font.BOLD, 26));
+                FontMetrics fm = g2.getFontMetrics();
+                String symbol = type.equals("ERROR") ? "X" : (type.equals("SUCCESS") ? "V" : "!");
+                int x = (50 - fm.stringWidth(symbol)) / 2;
+                int y = ((50 - fm.getHeight()) / 2) + fm.getAscent();
+                g2.drawString(symbol, x, y);
+                g2.dispose();
+            }
+        };
+        pnlIcon.setBounds(20, 25, 50, 50);
+        pnlIcon.setOpaque(false);
+
+        JTextArea msg = new JTextArea(message);
+        msg.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        msg.setForeground(Color.decode("#333333"));
+        msg.setWrapStyleWord(true);
+        msg.setLineWrap(true);
+        msg.setOpaque(false);
+        msg.setEditable(false);
+        msg.setFocusable(false);
+        
+        JScrollPane scroll = new JScrollPane(msg);
+        scroll.setBounds(85, 20, 315, 80);
+        scroll.setBorder(null);
+        scroll.setOpaque(false);
+        scroll.getViewport().setOpaque(false);
+
+        pnlBody.add(pnlIcon);
+        pnlBody.add(scroll);
+
+        // 3. FOOTER
+        JPanel pnlFooter = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 10));
+        pnlFooter.setBackground(Color.WHITE);
+        JButton btnClose = new JButton("Đóng");
+        btnClose.setPreferredSize(new Dimension(100, 35));
+        btnClose.setBackground(Color.decode("#1E3A8A"));
+        btnClose.setForeground(Color.WHITE);
+        btnClose.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btnClose.setFocusPainted(false);
+        btnClose.setBorderPainted(false);
+        btnClose.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnClose.addActionListener(e -> dialog.dispose());
+        pnlFooter.add(btnClose);
+
+        pnlMain.add(pnlHeader, BorderLayout.NORTH);
+        pnlMain.add(pnlBody, BorderLayout.CENTER);
+        pnlMain.add(pnlFooter, BorderLayout.SOUTH);
+
+        dialog.add(pnlMain);
+        dialog.pack();
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+    }
+
+    private boolean showCustomConfirmDialog(String titleText, String message) {
+        final boolean[] result = {false};
+        
+        // Dùng WindowAncestor để popup luôn nằm chính giữa màn hình cha
+        Window parentWindow = SwingUtilities.getWindowAncestor(this);
+        JDialog dialog = new JDialog(parentWindow != null ? (Frame) parentWindow : null, true);
+        dialog.setUndecorated(true);
+        dialog.setBackground(new Color(0, 0, 0, 0));
+
+        JPanel pnlMain = new JPanel(new BorderLayout());
+        pnlMain.setBorder(BorderFactory.createLineBorder(Color.decode("#1E3A8A"), 2));
+        pnlMain.setBackground(Color.WHITE);
+
+        JPanel pnlHeader = new JPanel(new BorderLayout());
+        pnlHeader.setBackground(Color.decode("#1E3A8A"));
+        pnlHeader.setPreferredSize(new Dimension(0, 45));
+        JLabel lblTitle = new JLabel(titleText.toUpperCase(), SwingConstants.CENTER);
+        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        lblTitle.setForeground(Color.WHITE);
+        pnlHeader.add(lblTitle, BorderLayout.CENTER);
+
+        JPanel pnlBody = new JPanel(new BorderLayout());
+        pnlBody.setBackground(Color.WHITE);
+        // FIX: Tăng khoảng trống 4 góc lên 20px để chữ không bị sát mép
+        pnlBody.setBorder(new EmptyBorder(20, 20, 20, 20)); 
+        
+        // Bỏ CSS font-size, chỉ dùng HTML để xuống dòng và in đậm
+        JLabel msg = new JLabel("<html><div style='text-align: center;'>" + message.replace("\n", "<br>") + "</div></html>", SwingConstants.CENTER);
+        msg.setFont(new Font("Segoe UI", Font.PLAIN, 15)); // Set font trực tiếp bằng Java
+        msg.setForeground(Color.decode("#333333"));
+        pnlBody.add(msg, BorderLayout.CENTER);
+
+        JPanel pnlFooter = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 15));
+        pnlFooter.setBackground(Color.WHITE);
+        
+        JButton btnYes = new JButton("Đồng ý");
+        btnYes.setPreferredSize(new Dimension(110, 38));
+        btnYes.setBackground(Color.decode("#EF4444")); 
+        btnYes.setForeground(Color.WHITE);
+        btnYes.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btnYes.setFocusPainted(false);
+        btnYes.setBorderPainted(false);
+        btnYes.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnYes.addActionListener(e -> { result[0] = true; dialog.dispose(); });
+
+        JButton btnNo = new JButton("Hủy");
+        btnNo.setPreferredSize(new Dimension(110, 38));
+        btnNo.setBackground(Color.decode("#1E3A8A"));
+        btnNo.setForeground(Color.WHITE);
+        btnNo.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btnNo.setFocusPainted(false);
+        btnNo.setBorderPainted(false);
+        btnNo.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnNo.addActionListener(e -> dialog.dispose());
+
+        pnlFooter.add(btnYes); pnlFooter.add(btnNo);
+
+        pnlMain.add(pnlHeader, BorderLayout.NORTH);
+        pnlMain.add(pnlBody, BorderLayout.CENTER);
+        pnlMain.add(pnlFooter, BorderLayout.SOUTH);
+
+        dialog.add(pnlMain);
+        
+        // FIX QUAN TRỌNG: Tăng kích thước khung lên 440x260 để chứa đủ 5 dòng chữ
+        dialog.setSize(440, 260); 
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+
+        return result[0];
+    }
     private void luuNhapHoaDon(boolean isAutoSave) {
         try {
             java.awt.KeyboardFocusManager.getCurrentKeyboardFocusManager().clearGlobalFocusOwner();
 
             if (productModel.getRowCount() == 0) {
-                if (!isAutoSave) JOptionPane.showMessageDialog(this, "Hóa đơn chưa có sản phẩm nào để lưu nháp!", "Cảnh báo", JOptionPane.WARNING_MESSAGE);
+                if (!isAutoSave) showCustomNotification("CẢNH BÁO", "Hóa đơn chưa có sản phẩm nào để lưu nháp!", "WARNING");
                 return;
             }
 
-            // FIX: Bao bọc bằng try-with-resources
             try (java.sql.Connection con = ConnectDB.getInstance().getConnection()) {
                 
                 String rawName = txtName.getText().trim();
@@ -2135,12 +2829,8 @@ public class TaoHoaDon extends JDialog {
                     rawPhone = "";
                 }
 
-                // --- BẮT ĐẦU ĐOẠN FIX BỔ SUNG ---
-                // Nếu người dùng nhập SĐT ở ô tìm kiếm (txtSearch) nhưng chưa liên kết, 
-                // ta vẫn phải "vét" cái SĐT đó để lưu vào hoá đơn nháp
                 String txtSearchValue = txtSearch.getText().trim();
                 if (rawPhone.isEmpty() && !txtSearchValue.isEmpty() && !txtSearchValue.contains("Nhập SĐT")) {
-                    // Nếu gõ toàn số (khoảng 9-11 số), gán luôn nó làm số điện thoại nháp
                     if (txtSearchValue.matches("^[0-9]{9,11}$")) {
                         rawPhone = txtSearchValue;
                     }
@@ -2153,7 +2843,7 @@ public class TaoHoaDon extends JDialog {
                 DAO.DAO_ChiTietHoaDon daoCT = new DAO.DAO_ChiTietHoaDon();
                 
                 Entity.HoaDon hd = new Entity.HoaDon();
-                String maHD = (this.maHDDangSua != null && !this.maHDDangSua.isEmpty()) ? this.maHDDangSua : "HD-" + System.currentTimeMillis(); 
+                String maHD = (this.maHDDangSua != null && !this.maHDDangSua.isEmpty()) ? this.maHDDangSua : phatSinhMaHoaDon() + "-LuuNhap";
                 hd.setId(maHD);
                 hd.setNgayLapHD(java.time.LocalDateTime.now());
                 
@@ -2269,10 +2959,11 @@ public class TaoHoaDon extends JDialog {
                     }
                     
                     String tongTien = lblTotalPriceValue.getText();
-                    String ngayStr = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+                    String ngayStr = java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
 
                     if (editingModelRow != -1) {
-                        mainTableModel.setValueAt(maHD, editingModelRow, 0); 
+                        mainTableModel.setValueAt(maHD, editingModelRow, 0);
+                        mainTableModel.setValueAt(ngayStr, editingModelRow, 1);
                         mainTableModel.setValueAt(khach, editingModelRow, 2);  
                         mainTableModel.setValueAt(sdt, editingModelRow, 3);    
                         mainTableModel.setValueAt("Tiền mặt", editingModelRow, 4);   
@@ -2285,7 +2976,7 @@ public class TaoHoaDon extends JDialog {
                     }
                     
                     if (!isAutoSave) {
-                        JOptionPane.showMessageDialog(this, "Đã lưu nháp hóa đơn thành công!", "Thành công", JOptionPane.INFORMATION_MESSAGE);
+                        showCustomNotification("THÀNH CÔNG", "Đã lưu nháp hóa đơn thành công!", "SUCCESS");
                         this.dispose(); 
                     }
                 }
@@ -2295,7 +2986,8 @@ public class TaoHoaDon extends JDialog {
         }
     }
     
-    private JPanel createSuggestionItem(JPopupMenu popup, JTextField txtSearch, String iconType, String name, String unit, String price, String stock, String danhMuc) {
+ // THÊM: Biến "String vat" ở cuối cùng
+    private JPanel createSuggestionItem(JPopupMenu popup, JTextField txtSearch, String iconType, String name, String unit, String price, String stock, String danhMuc, String vat) {
         JPanel pnl = new JPanel(new BorderLayout(10, 0));
         pnl.setBackground(Color.WHITE);
         pnl.setBorder(new EmptyBorder(10, 15, 10, 15));
@@ -2390,13 +3082,9 @@ public class TaoHoaDon extends JDialog {
 
         pnl.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
-            public void mouseEntered(java.awt.event.MouseEvent e) {
-                pnl.setBackground(Color.decode("#F3F4F6")); 
-            }
+            public void mouseEntered(java.awt.event.MouseEvent e) { pnl.setBackground(Color.decode("#F3F4F6")); }
             @Override
-            public void mouseExited(java.awt.event.MouseEvent e) {
-                pnl.setBackground(Color.WHITE);
-            }
+            public void mouseExited(java.awt.event.MouseEvent e) { pnl.setBackground(Color.WHITE); }
             @Override
             public void mousePressed(java.awt.event.MouseEvent e) {
                 boolean isLeftClick = SwingUtilities.isLeftMouseButton(e);
@@ -2425,9 +3113,9 @@ public class TaoHoaDon extends JDialog {
                         long donGia = Long.parseLong(price);
                         productModel.setValueAt(String.format("%,d", donGia * currentQty).replace(',', '.') + "đ", rowIndex, 5);
                     } else {
-                        // FIX: Truyền thêm giá trị % VAT mặc định, bạn có thể thay đổi sau nếu có DB
+                        // FIX: Truyền biến 'vat' lấy từ DB vào đây thay vì gán cứng "5%"
                         productModel.addRow(new Object[]{
-                            name, unit, "1", price, "5%", String.format("%,d", Integer.parseInt(price)).replace(',', '.') + "đ", 
+                            name, unit, "1", price, vat, String.format("%,d", Integer.parseInt(price)).replace(',', '.') + "đ", 
                             danhMuc 
                         });
                     }
@@ -2512,21 +3200,31 @@ public class TaoHoaDon extends JDialog {
         int year = java.time.Year.now().getValue();
         String maMoi = "HD-" + year + "-0001"; 
         
-        String sql = "SELECT MAX(id) FROM HoaDon WHERE id LIKE 'HD-" + year + "-%'";
-        // FIX: Đóng Connection an toàn
+        // Tìm tất cả các mã trong năm hiện tại
+        String sql = "SELECT id FROM HoaDon WHERE id LIKE 'HD-" + year + "-%'";
+        
         try (java.sql.Connection con = ConnectDB.getInstance().getConnection();
              java.sql.Statement st = con.createStatement();
              java.sql.ResultSet rs = st.executeQuery(sql)) {
              
-            if (rs.next()) {
-                String maxId = rs.getString(1);
-                if (maxId != null) {
-                    String[] parts = maxId.split("-");
-                    if (parts.length == 3) {
-                        int stt = Integer.parseInt(parts[2]) + 1;
-                        maMoi = String.format("HD-%d-%04d", year, stt);
-                    }
+            int maxStt = 0;
+            while (rs.next()) {
+                String id = rs.getString("id"); // VD: HD-2026-0001 hoặc HD-2026-0001-LuuNhap
+                String[] parts = id.split("-");
+                // Lấy phần tử số 3 (index 2) chính là số thứ tự 0001
+                if (parts.length >= 3) {
+                    try {
+                        int stt = Integer.parseInt(parts[2]);
+                        if (stt > maxStt) {
+                            maxStt = stt;
+                        }
+                    } catch (Exception ignored) {}
                 }
+            }
+            
+            // Nếu đã có hóa đơn trong năm, cộng thêm 1
+            if (maxStt > 0) {
+                maMoi = String.format("HD-%d-%04d", year, maxStt + 1);
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -2571,11 +3269,55 @@ public class TaoHoaDon extends JDialog {
         pnlVoucherTags.revalidate();
         pnlVoucherTags.repaint();
     }
-    
+    private JPanel createExactMoneyCell() {
+        JPanel pnl = new JPanel(new BorderLayout());
+        pnl.setBackground(Color.WHITE);
+        // Đổi viền sang màu Xanh biển đậm (Indigo/Blue)
+        pnl.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(Color.decode("#2563EB"), 1, true),
+            new EmptyBorder(8, 10, 8, 10) 
+        ));
+        pnl.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+        lblExactValue = new JLabel("0đ");
+        lblExactValue.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        lblExactValue.setForeground(Color.decode("#2563EB")); // Chữ màu xanh
+
+        JLabel lblTextRight = new JLabel("");
+        lblTextRight.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        lblTextRight.setForeground(Color.decode("#1E3A8A")); // Chữ xanh đen đậm
+        
+        pnl.add(lblExactValue, BorderLayout.WEST);
+        pnl.add(lblTextRight, BorderLayout.EAST);
+
+        java.awt.event.MouseAdapter clickAdapter = new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseEntered(java.awt.event.MouseEvent e) { pnl.setBackground(Color.decode("#EFF6FF")); } // Hover xanh nhạt
+            @Override
+            public void mouseExited(java.awt.event.MouseEvent e) { pnl.setBackground(Color.WHITE); }
+            @Override
+            public void mousePressed(java.awt.event.MouseEvent e) {
+                if (SwingUtilities.isLeftMouseButton(e)) {
+                    pnl.setBackground(Color.decode("#DBEAFE")); 
+                    for (int[] c : listCounters) c[0] = 0;
+                    for (JLabel l : listCountLabels) l.setText("0");
+                    tongTienMat = tongHoaDon;
+                    capNhatTongTien();
+                }
+            }
+            @Override
+            public void mouseReleased(java.awt.event.MouseEvent e) { pnl.setBackground(Color.decode("#EFF6FF")); }
+        };
+
+        pnl.addMouseListener(clickAdapter);
+        lblExactValue.addMouseListener(clickAdapter);
+        lblTextRight.addMouseListener(clickAdapter);
+
+        return pnl;
+    }
     public void loadDuLieuHoaDonNhap(String maHoaDon) {
         this.maHDDangSua = maHoaDon;
         
-        // --- FIX TRIỆT ĐỂ: Trì hoãn việc load dữ liệu cho đến khi Giao diện vẽ xong toàn bộ 11 cột ---
         SwingUtilities.invokeLater(() -> {
             productModel.setRowCount(0); 
             
@@ -2583,21 +3325,35 @@ public class TaoHoaDon extends JDialog {
                 DAO_ChiTietHoaDon daoCT = new DAO_ChiTietHoaDon();
                 java.util.List<Object[]> dsMonHang = daoCT.layDuLieuChoTaoHoaDon(maHoaDon);
                 
-                // Lúc này giao diện đã load xong, getColumnCount() chắc chắn sẽ lấy đúng 11 cột
                 int colCount = Math.max(productModel.getColumnCount(), 11); 
                 
                 for (Object[] row : dsMonHang) {
                     Object[] fullRow = new Object[colCount];
                     for (int j = 0; j < colCount; j++) fullRow[j] = ""; 
                     
-                    // Chống Null cho các cột tính toán ẩn
-                    if (colCount > 4) fullRow[4] = "0";     
+                    if (colCount > 4) fullRow[4] = "0%";     
                     if (colCount > 9) fullRow[9] = "999";   
                     if (colCount > 10) fullRow[10] = "1";    
                     
                     for (int j = 0; j < Math.min(row.length, colCount); j++) {
                         if (row[j] != null) fullRow[j] = row[j];
                     }
+                    
+                    String tenSP = fullRow[0].toString();
+                    try (java.sql.Connection con = ConnectDB.getInstance().getConnection();
+                         java.sql.PreparedStatement pst = con.prepareStatement("SELECT thueVAT FROM SanPham WHERE ten = ?")) {
+                        pst.setString(1, tenSP);
+                        try (java.sql.ResultSet rs = pst.executeQuery()) {
+                            if (rs.next()) {
+                                double v = rs.getDouble("thueVAT");
+                                if (v > 0 && v < 1) v = v * 100; 
+                                fullRow[4] = (int)v + "%";
+                            }
+                        }
+                    } catch(Exception ex) {
+                        System.out.println("Lỗi lấy VAT cho hóa đơn nháp: " + ex.getMessage());
+                    }
+                    
                     productModel.addRow(fullRow);
                 }
                 
@@ -2606,7 +3362,6 @@ public class TaoHoaDon extends JDialog {
                 
                 if (hdGoc != null) {
                     if (hdGoc.getKhachHangId() != null && hdGoc.getKhachHangId().getId() != null) {
-                        
                         DAO_KhachHang daoKH = new DAO_KhachHang();
                         KhachHang kh = daoKH.timKhachHangTheoMa(hdGoc.getKhachHangId().getId());
                         
@@ -2648,16 +3403,78 @@ public class TaoHoaDon extends JDialog {
                 
                 this.revalidate();
                 this.repaint();
-                
                 recalculateTotals(); 
                 
             } catch (Exception e) {
                 e.printStackTrace();
-                JOptionPane.showMessageDialog(this, "Lỗi khi tải hóa đơn nháp: " + e.getMessage());
+                showCustomNotification("LỖI", "Lỗi khi tải hóa đơn nháp: " + e.getMessage(), "ERROR");
             } 
-        }); // --- Kết thúc khối trì hoãn ---
+        }); 
     }
-    
+    private void loadQRCodeVCB(JLabel lblQRCode) {
+        lblQRCode.setIcon(null);
+        lblQRCode.setText("Đang tạo mã QR Vietcombank...");
+
+        // 1. Lấy thẳng tổng tiền cuối cùng đã được hệ thống tính toán
+        long finalTotalAmount = this.tongHoaDon;
+        
+        // Nếu chưa có món hàng nào (0đ) thì không cần gọi API tạo mã làm gì
+        if (finalTotalAmount <= 0) {
+            lblQRCode.setText("Vui lòng thêm sản phẩm!");
+            return;
+        }
+
+        // 2. CẤU HÌNH THÔNG TIN TÀI KHOẢN VCB
+        String bankBin = "vcb"; 
+        String stk = "1038858525"; 
+        String tenTK = "MAI TRUNG KIEN"; 
+        
+        String maHD = (this.maHDDangSua != null && !this.maHDDangSua.isEmpty()) ? this.maHDDangSua : "HD_MOI";
+        String loiNhan = "Thanh toan " + maHD;
+
+        // 3. Tiến hành gọi API chạy ngầm
+        SwingWorker<ImageIcon, Void> worker = new SwingWorker<ImageIcon, Void>() {
+            @Override
+            protected ImageIcon doInBackground() throws Exception {
+                String encodedLoiNhan = java.net.URLEncoder.encode(loiNhan, "UTF-8").replace("+", "%20");
+                String encodedTenTK = java.net.URLEncoder.encode(tenTK, "UTF-8").replace("+", "%20");
+                
+                String apiUrl = String.format(
+                    "https://img.vietqr.io/image/%s-%s-compact2.png?amount=%d&addInfo=%s&accountName=%s",
+                    bankBin, stk, finalTotalAmount, encodedLoiNhan, encodedTenTK
+                );
+
+                java.net.URL url = new java.net.URL(apiUrl);
+                java.net.HttpURLConnection connection = (java.net.HttpURLConnection) url.openConnection();
+                connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
+                connection.setConnectTimeout(5000); 
+                connection.setReadTimeout(5000);
+                
+                java.io.InputStream in = connection.getInputStream();
+                java.awt.image.BufferedImage image = javax.imageio.ImageIO.read(in);
+                
+                if (image == null) {
+                    throw new Exception("Không nhận được dữ liệu ảnh từ API VietQR!");
+                }
+                
+                Image scaledImg = image.getScaledInstance(230, 260, Image.SCALE_SMOOTH);
+                return new ImageIcon(scaledImg);
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    ImageIcon icon = get();
+                    lblQRCode.setText("");
+                    lblQRCode.setIcon(icon);
+                } catch (Exception ex) {
+                    System.err.println("Lỗi load QR: " + ex.getMessage());
+                    lblQRCode.setText("Lỗi tạo QR. Vui lòng thử lại!");
+                }
+            }
+        };
+        worker.execute();
+    }
     private void styleButton(JButton btn, Color color) {
         btn.setBackground(color);
         btn.setForeground(Color.WHITE);

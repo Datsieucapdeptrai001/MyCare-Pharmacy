@@ -345,7 +345,7 @@ public class MainDashboard extends JFrame {
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
             ConnectDB.getInstance().connect();
-            new MainDashboard().setVisible(true);
+            new ManHinhDangNhap().setVisible(true);
         });
     }
 }
