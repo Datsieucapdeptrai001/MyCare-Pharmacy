@@ -58,6 +58,7 @@ public class ManHinhLoHang extends JPanel {
     private JCheckBox chkShowHidden;
     private boolean hienLoAn = false;
     private int hoveredRow = -1;
+    private boolean isStaffRole = false;
 
     private JLabel lblExpired, lblNear, lblWarning, lblGood;
     private JLabel lblWarningBadge, lblTotal;
@@ -422,6 +423,16 @@ public class ManHinhLoHang extends JPanel {
                 int row = table.rowAtPoint(e.getPoint());
                 int col = table.columnAtPoint(e.getPoint());
                 if (row >= 0 && col == 8) {
+                    
+                    // --- BẮT ĐẦU CHẶN STAFF ---
+                    if (isStaffRole) {
+                        JOptionPane.showMessageDialog(wrap, 
+                            "Nhân viên Dược sĩ không có quyền Ẩn hoặc Khôi phục lô hàng!", 
+                            "Từ chối quyền truy cập", JOptionPane.WARNING_MESSAGE);
+                        return; // Ngắt luôn, không cho chạy xuống dưới
+                    }
+                    // --- KẾT THÚC CHẶN STAFF ---
+
                     String maLo = String.valueOf(table.getValueAt(row, 1));
                     BatchItem item = timBatchTheoSoLo(maLo);
                     if (item == null) return;
@@ -846,15 +857,19 @@ public class ManHinhLoHang extends JPanel {
             } else if (column == 8) {
                 lbl.setHorizontalAlignment(SwingConstants.CENTER);
                 lbl.setText("");
-
-                if ("Đã ẩn".equals(trangThaiRow)) {
-                    lbl.setIcon(new MenuIcon("REFRESH"));
-                    lbl.setForeground(PRIMARY_BLUE);
-                    lbl.setToolTipText("Khôi phục lô hàng");
+                if (isStaffRole) {
+                    lbl.setIcon(null);
+                    lbl.setToolTipText("Không có quyền thao tác");
                 } else {
-                    lbl.setIcon(new MenuIcon("TRASH"));
-                    lbl.setForeground(DANGER);
-                    lbl.setToolTipText("Ẩn lô hàng");
+                    if ("Đã ẩn".equals(trangThaiRow)) {
+                        lbl.setIcon(new MenuIcon("REFRESH"));
+                        lbl.setForeground(PRIMARY_BLUE);
+                        lbl.setToolTipText("Khôi phục lô hàng");
+                    } else {
+                        lbl.setIcon(new MenuIcon("TRASH"));
+                        lbl.setForeground(DANGER);
+                        lbl.setToolTipText("Ẩn lô hàng");
+                    }
                 }
             }
             return lbl;
@@ -946,8 +961,14 @@ public class ManHinhLoHang extends JPanel {
     }
 
     public void setReadOnly(boolean readOnly) {
+        this.isStaffRole = readOnly;
+        
         if (!readOnly) return;
         disableButtonsByText(this, "Thêm mới", "Nhập lô hàng", "Nhập Excel", "Thêm", "Xóa", "Sửa", "Lưu");
+        if (table != null) {
+            javax.swing.table.TableColumn columnThaoTac = table.getColumnModel().getColumn(8);
+            table.removeColumn(columnThaoTac); 
+        }
     }
 
     private void disableButtonsByText(Container container, String... texts) {
