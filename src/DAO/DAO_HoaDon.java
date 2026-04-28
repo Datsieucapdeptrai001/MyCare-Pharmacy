@@ -90,6 +90,57 @@ public class DAO_HoaDon {
         }
         return ds;
     }
+    
+    public List<Object[]> layDanhSachHoaDonCuaNhanVien(String maNV) {
+        List<Object[]> ds = new ArrayList<>();
+        
+        // CÂU SQL: Copy y hệt của Admin nhưng thêm điều kiện lọc theo Mã NV
+        String sql = "SELECT hd.id, hd.ngayLapHD, kh.hoVaTen, kh.sdt, hd.phuongThucThanhToan, hd.ghiChu, " +
+                     "SUM(ct.soLuong * dv.gia) as tongTien " +
+                     "FROM HoaDon hd " +
+                     "LEFT JOIN KhachHang kh ON hd.khachHangId = kh.id " +
+                     "LEFT JOIN ChiTietHoaDon ct ON hd.id = ct.hoaDonId " +
+                     "LEFT JOIN DonViDoLuong dv ON ct.donViDoLuongId = dv.id AND ct.sanPhamId = dv.sanPhamId " +
+                     "WHERE hd.loaiHD = 'BAN_HANG' AND hd.nhanVienId = ? " + // <--- LỌC CHUẨN Ở ĐÂY
+                     "GROUP BY hd.id, hd.ngayLapHD, kh.hoVaTen, kh.sdt, hd.phuongThucThanhToan, hd.ghiChu " +
+                     "ORDER BY hd.ngayLapHD DESC";
+
+        Connection con = ConnectDB.getInstance().getConnection();
+        try (PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setString(1, maNV); // Truyền mã nhân viên vào
+            
+            try (ResultSet rs = pst.executeQuery()) {
+                DecimalFormat df = new DecimalFormat("#,###đ");
+                DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+
+                while (rs.next()) {
+                    String maHD = rs.getString("id");
+                    String ngay = rs.getTimestamp("ngayLapHD") != null ? rs.getTimestamp("ngayLapHD").toLocalDateTime().format(dtf) : "";
+                    String tenKH = rs.getString("hoVaTen") != null ? rs.getString("hoVaTen") : "Khách lẻ";
+                    String sdt = rs.getString("sdt") != null ? rs.getString("sdt") : "";
+                    
+                    String pttt = rs.getString("phuongThucThanhToan");
+                    String pt = (pttt != null && pttt.equals("TIEN_MAT")) ? "Tiền mặt" : "Chuyển khoản";
+                    
+                    String tongTien = df.format(rs.getDouble("tongTien"));
+                    
+                    // ĐỒNG BỘ LOGIC TRẠNG THÁI VỚI ADMIN
+                    String ghiChu = rs.getString("ghiChu");
+                    String trangThai = "Hoàn thành";
+                    if (ghiChu != null) {
+                        if (ghiChu.equals("Lưu nháp")) trangThai = "Đang xử lý";
+                        else if (ghiChu.contains("Đã hủy")) trangThai = "Đã hủy";
+                    }
+                    
+                    // Trả về đúng 7 cột mà ManHinhDanhSachHoaDon đang chờ đợi
+                    ds.add(new Object[]{maHD, ngay, tenKH, sdt, pt, tongTien, trangThai});
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return ds;
+    }
 
     public HoaDon timHoaDonTheoMa(String maHD) {
         HoaDon hd = null;

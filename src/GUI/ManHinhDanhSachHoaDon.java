@@ -13,6 +13,7 @@ import java.util.List;
 import DAO.DAO_HoaDon;
 import Utils.MenuIcon;
 import Utils.ModernScrollBarUI;
+import Utils.UserSession;
 
 public class ManHinhDanhSachHoaDon extends JPanel {
     private JTable table;
@@ -168,7 +169,15 @@ public class ManHinhDanhSachHoaDon extends JPanel {
     }
     public void loadData() {
         model.setRowCount(0);
-        List<Object[]> ds = dao_HoaDon.layDanhSachHoaDonChoBang();
+        boolean isAdmin = UserSession.getInstance().isAdmin();
+        List<Object[]> ds;
+        
+        if (isAdmin) {
+            ds = dao_HoaDon.layDanhSachHoaDonChoBang();
+        } else {
+            String maNV = UserSession.getInstance().getMaNhanVien(); 
+            ds = dao_HoaDon.layDanhSachHoaDonCuaNhanVien(maNV);
+        }
         
         int countSuccess = 0, countPending = 0, countCancel = 0, countReturn = 0;
 
@@ -184,7 +193,6 @@ public class ManHinhDanhSachHoaDon extends JPanel {
         }
 
         pnlCards.removeAll(); 
-        // TRUYỀN THÊM BIẾN ICON VÀO HÀM TẠO THẺ
         pnlCards.add(createSummaryCard("HOÀN THÀNH", countSuccess, "#10B981", "CHECK_CIRCLE")); 
         pnlCards.add(createSummaryCard("ĐANG XỬ LÝ", countPending, "#F59E0B", "CLOCK")); 
         pnlCards.add(createSummaryCard("ĐÃ HỦY", countCancel, "#EF4444", "CANCEL"));      
@@ -405,5 +413,8 @@ public class ManHinhDanhSachHoaDon extends JPanel {
             }
             return lbl;
         }
+    }
+    public void setReadOnly(boolean readOnly) {
+        loadData(); 
     }
 }

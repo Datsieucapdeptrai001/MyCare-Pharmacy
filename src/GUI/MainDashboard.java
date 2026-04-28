@@ -46,12 +46,8 @@ public class MainDashboard extends JFrame {
         menuButtons = new ArrayList<>();
         cardLayout  = new CardLayout();
         cardPanel   = new JPanel(cardLayout);
-        
-        // 1. CHỈ GIỮ LẠI CÁC MÀN HÌNH PHỤ NÀY (Vì tụi nó không bị trùng)
-        cardPanel.add(new ManHinhDanhSachHoaDon(), "DanhSachHD");
-        cardPanel.add(new ManHinhDoiTra(), "DoiTra");
 
-        // 2. KHỞI TẠO CÁC MÀN HÌNH CHÍNH BẰNG BIẾN (Để lát cầm đầu tụi nó khóa quyền)
+        // 1. Khởi tạo các instance (Dùng biến để Dashboard "nắm đầu" tụi nó)
         ManHinhChinh     mhChinh    = new ManHinhChinh();
         ManHinhBanHang   mhBanHang  = new ManHinhBanHang();
         ManHinhSanPham   mhSanPham  = new ManHinhSanPham();
@@ -61,8 +57,10 @@ public class MainDashboard extends JFrame {
         ManHinhNhanVien  mhNhanVien = new ManHinhNhanVien();
         ManHinhKhachHang mhKhachHang= new ManHinhKhachHang();
         ManHinhHuongDan  mhHuongDan = new ManHinhHuongDan();
+        ManHinhDanhSachHoaDon mhDanhSachHD = new ManHinhDanhSachHoaDon();
+        ManHinhDoiTra         mhDoiTra     = new ManHinhDoiTra();
 
-        // 3. ADD VÀO CARDPANEL (Mỗi cái tên gọi đúng 1 lần thôi)
+        // 2. Add vào cardPanel
         cardPanel.add(mhChinh,     "Màn hình chính");
         cardPanel.add(mhBanHang,   "Bán hàng & Đổi trả");
         cardPanel.add(mhSanPham,   "Sản phẩm");
@@ -72,14 +70,17 @@ public class MainDashboard extends JFrame {
         cardPanel.add(mhNhanVien,  "Nhân viên");
         cardPanel.add(mhKhachHang, "Khách hàng");
         cardPanel.add(mhHuongDan,  "Hướng dẫn");
-        
-        // 4. KÍCH HOẠT PHÂN QUYỀN
+        cardPanel.add(mhDanhSachHD, "DanhSachHD");
+        cardPanel.add(mhDoiTra,     "DoiTra");
+
+        // 3. Phân quyền
         if (!isAdmin) {
             mhSanPham.setReadOnly(true); 
             mhLoHang.setReadOnly(true);
             mhKhuyenMai.setReadOnly(true);
             mhNhanVien.setReadOnly(true);
             mhKhachHang.setReadOnly(true);
+            mhDanhSachHD.setReadOnly(true);
         }
 
         JPanel sidebar    = createSidebar();
@@ -92,6 +93,7 @@ public class MainDashboard extends JFrame {
 
         cardLayout.show(cardPanel, "Màn hình chính");
     }
+    
     public void chuyenSangTabBanHang() {
         for (JButton btn : menuButtons) {
             if (btn.getText().contains("Bán hàng")) {
