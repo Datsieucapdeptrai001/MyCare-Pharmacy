@@ -69,6 +69,7 @@ public class ManHinhKhuyenMai extends JPanel {
     private RoundedButton btnDetailEdit, btnDetailToggle, btnDetailDelete;
 
     private JTextField txtTienMua, txtDiemThuong, txtTienDoi, txtDiemToiThieu;
+    private boolean isStaffRole = false;
 
     public ManHinhKhuyenMai() {
         System.setProperty("awt.useSystemAAFontSettings", "on");
@@ -472,7 +473,13 @@ public class ManHinhKhuyenMai extends JPanel {
                 
                 int modelRow = tblKhuyenMai.convertRowIndexToModel(viewRow);
 
-                if (viewCol == 9) { 
+                if (viewCol == 9) {
+                    if (isStaffRole) {
+                        JOptionPane.showMessageDialog(ManHinhKhuyenMai.this, 
+                            "Nhân viên không có quyền Bật/Tắt chương trình khuyến mại!", 
+                            "Từ chối quyền truy cập", JOptionPane.WARNING_MESSAGE);
+                        return;
+                    }
                     boolean currentState = (boolean) tableModel.getValueAt(modelRow, 9);
                     boolean newState = !currentState;
                     String maKM = tableModel.getValueAt(modelRow, 0).toString();
@@ -1445,8 +1452,22 @@ public class ManHinhKhuyenMai extends JPanel {
     }
 
     public void setReadOnly(boolean readOnly) {
+        this.isStaffRole = readOnly;
         if (!readOnly) return;
-        disableButtonsByText(this, "Thêm mới", "Nhập Excel", "Thêm", "Xóa", "Sửa", "Lưu", "Lưu cài đặt", "Chỉnh sửa", "Xóa chương trình", "Lưu chương trình", "Cập nhật");
+        
+        // Khóa các nút chuẩn
+        disableButtonsByText(this, "Thêm mới", "Nhập Excel", "Thêm", "Xóa", "Sửa", "Lưu", "Lưu cài đặt", "Chỉnh sửa", "Xóa chương trình", "Lưu chương trình", "Cập nhật", "Tạm dừng", "Kích hoạt lại");
+
+        // Bổ sung 1: Khóa cứng 3 nút ở thanh chi tiết (vì nó hay đổi tên động)
+        if (btnDetailEdit != null) btnDetailEdit.setVisible(false);
+        if (btnDetailToggle != null) btnDetailToggle.setVisible(false);
+        if (btnDetailDelete != null) btnDetailDelete.setVisible(false);
+
+        // Bổ sung 2: Rút luôn cột "Bật/Tắt" (Cột số 9) ra khỏi bảng để STAFF khỏi ngứa tay
+        if (tblKhuyenMai != null) {
+            javax.swing.table.TableColumn colToggle = tblKhuyenMai.getColumnModel().getColumn(9);
+            tblKhuyenMai.removeColumn(colToggle);
+        }
     }
 
     private void disableButtonsByText(java.awt.Container container, String... texts) {
