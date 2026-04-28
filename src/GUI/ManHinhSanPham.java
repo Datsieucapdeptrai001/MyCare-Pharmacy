@@ -174,10 +174,8 @@ public class ManHinhSanPham extends JPanel {
     private boolean detailVisible = false;
     private boolean isAdding       = false;
     private boolean uomAutoChanging = false;
-	private Component btnThem;
-	private Component btnXoa;
-	private Component btnSua;
-	private Component btnLuu;
+    private JButton topBtnThem, topBtnNhap, topBtnXuat;
+    private boolean isStaffRole = false;
 
     private static final String[] COLS_COLLAPSED = {"Mã", "Tên", "Loại", "Hoạt chất"};
     private static final String[] COLS_EXPANDED  = {"Mã", "Tên", "Loại", "Hoạt chất", "Dạng bào chế", "NSX", "VAT"};
@@ -509,6 +507,10 @@ public class ManHinhSanPham extends JPanel {
         JButton btnNhap   = createBtnWithIcon("Nhập Excel", "#0EA5E9", new MenuIcon("IMPORT"));  btnNhap.setPreferredSize(new Dimension(130, 36));
         JButton btnThem   = createBtnWithIcon("Thêm mới",   "#E11D48", new MenuIcon("ADD"));     btnThem.setPreferredSize(new Dimension(125, 36));
 
+        this.topBtnXuat = btnXuat;
+        this.topBtnNhap = btnNhap;
+        this.topBtnThem = btnThem;
+        
         btnTim.addActionListener(e -> doSearch());
         btnLamMoi.addActionListener(e -> {
             txtTimKiem.setText("");
@@ -921,9 +923,21 @@ public class ManHinhSanPham extends JPanel {
         clLoai.show(pnlLoai, edit ? "EDIT" : "VIEW"); clDang.show(pnlDang, edit ? "EDIT" : "VIEW"); clNSX.show(pnlNSX, edit ? "EDIT" : "VIEW"); clDVT.show(pnlDVT, edit ? "EDIT" : "VIEW");
         if (edit && !isAdding) { cbLoaiCT.setSelectedItem(txtLoaiView.getText()); cbDang.setSelectedItem(txtDangView.getText()); cbNhaSX.setSelectedItem(txtNSXView.getText()); cbDVT.setSelectedItem(txtDVTView.getText()); }
         modelDonVi.setEditable(edit);
+        
         pnlActionBottom.removeAll();
-        if (edit) { if (isAdding) pnlActionBottom.add(btnXacNhanThem); else pnlActionBottom.add(btnLuuBottom); pnlActionBottom.add(btnHuyBottom); }
-        else { pnlActionBottom.add(btnCapNhatBottom); pnlActionBottom.add(btnXoaBottom); }
+        
+        if (edit) { 
+            if (isAdding) pnlActionBottom.add(btnXacNhanThem); 
+            else pnlActionBottom.add(btnLuuBottom); 
+            pnlActionBottom.add(btnHuyBottom); 
+        }
+        else { 
+            // THÊM ĐÚNG IF NÀY ĐỂ CHẶN: Chỉ khi KHÔNG PHẢI là Nhân viên mới hiện 2 nút này
+            if (!isStaffRole) {
+                pnlActionBottom.add(btnCapNhatBottom); 
+                pnlActionBottom.add(btnXoaBottom); 
+            }
+        }
         pnlActionBottom.revalidate(); pnlActionBottom.repaint();
     }
 
@@ -1301,15 +1315,13 @@ public class ManHinhSanPham extends JPanel {
     }
     
     public void setReadOnly(boolean isReadOnly) {
-        // Nếu isReadOnly = true (là Staff), ta sẽ khóa các nút thay đổi dữ liệu (false)
-        // Nếu isReadOnly = false (là Admin), ta mở lại các nút (true)
+        this.isStaffRole = isReadOnly;
         
-        boolean canEdit = !isReadOnly; 
-       
-        btnThem.setEnabled(canEdit); 
-        btnXoa.setEnabled(canEdit);
-        btnSua.setEnabled(canEdit);
-        btnLuu.setEnabled(canEdit);
-        
+        // Nếu là Staff (isReadOnly = true) -> Ẩn các nút Thêm, Nhập, Xuất
+        if (isReadOnly) {
+            if (topBtnThem != null) topBtnThem.setVisible(false);
+            if (topBtnNhap != null) topBtnNhap.setVisible(false);
+            if (topBtnXuat != null) topBtnXuat.setVisible(false);
+        }
     }
 }

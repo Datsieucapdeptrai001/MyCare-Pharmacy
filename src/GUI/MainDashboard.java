@@ -46,18 +46,12 @@ public class MainDashboard extends JFrame {
         menuButtons = new ArrayList<>();
         cardLayout  = new CardLayout();
         cardPanel   = new JPanel(cardLayout);
-     // 1. Màn hình Bán hàng (Dùng đúng tên trong MenuItems)
-        cardPanel.add(new ManHinhBanHang(), "Bán hàng & Đổi trả"); 
         
-        // 2. Màn hình Danh sách hóa đơn (Dùng tên viết liền cho dễ quản lý)
+        // 1. CHỈ GIỮ LẠI CÁC MÀN HÌNH PHỤ NÀY (Vì tụi nó không bị trùng)
         cardPanel.add(new ManHinhDanhSachHoaDon(), "DanhSachHD");
-        
-        // 3. Màn hình Đổi trả
         cardPanel.add(new ManHinhDoiTra(), "DoiTra");
 
-        // Các menu khác giữ nguyên...
-        cardPanel.add(new ManHinhSanPham(), "Sản phẩm");
-        cardPanel.add(new ManHinhKhachHang(), "Khách hàng");
+        // 2. KHỞI TẠO CÁC MÀN HÌNH CHÍNH BẰNG BIẾN (Để lát cầm đầu tụi nó khóa quyền)
         ManHinhChinh     mhChinh    = new ManHinhChinh();
         ManHinhBanHang   mhBanHang  = new ManHinhBanHang();
         ManHinhSanPham   mhSanPham  = new ManHinhSanPham();
@@ -68,6 +62,7 @@ public class MainDashboard extends JFrame {
         ManHinhKhachHang mhKhachHang= new ManHinhKhachHang();
         ManHinhHuongDan  mhHuongDan = new ManHinhHuongDan();
 
+        // 3. ADD VÀO CARDPANEL (Mỗi cái tên gọi đúng 1 lần thôi)
         cardPanel.add(mhChinh,     "Màn hình chính");
         cardPanel.add(mhBanHang,   "Bán hàng & Đổi trả");
         cardPanel.add(mhSanPham,   "Sản phẩm");
@@ -77,14 +72,14 @@ public class MainDashboard extends JFrame {
         cardPanel.add(mhNhanVien,  "Nhân viên");
         cardPanel.add(mhKhachHang, "Khách hàng");
         cardPanel.add(mhHuongDan,  "Hướng dẫn");
-
-        // Phân quyền: STAFF bị readonly
-//        if (!isAdmin) {
-//            mhSanPham.setReadOnly(true);
-//            mhLoHang.setReadOnly(true);
-//            mhKhuyenMai.setReadOnly(true);
-//            mhNhanVien.setReadOnly(true);
-//        }
+        
+        // 4. KÍCH HOẠT PHÂN QUYỀN
+        if (!isAdmin) {
+            mhSanPham.setReadOnly(true); 
+            mhLoHang.setReadOnly(true);
+            mhKhuyenMai.setReadOnly(true);
+            mhNhanVien.setReadOnly(true);
+        }
 
         JPanel sidebar    = createSidebar();
         JPanel rightPanel = new JPanel(new BorderLayout());
