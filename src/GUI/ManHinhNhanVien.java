@@ -6,6 +6,7 @@ import Entity.TaiKhoan;
 import Enumeration.ChucVu;
 import Enumeration.TrangThaiLamViec;
 import Utils.MenuIcon;
+import Utils.UserSession;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -206,13 +207,23 @@ public class ManHinhNhanVien extends JPanel {
         loadData();
     }
 
-    // ==================== TẢI DỮ LIỆU TỪ TẦNG BUS ====================
+ // ==================== TẢI DỮ LIỆU TỪ TẦNG BUS ====================
     public void loadData() {
         model.setRowCount(0); 
         List<NhanVien> dsNhanVien = busNhanVien.layDSNhanVien();
         
+        // --- THÊM 2 BIẾN NÀY ĐỂ LẤY THÔNG TIN NGƯỜI ĐANG ĐĂNG NHẬP ---
+        boolean isAdmin = UserSession.getInstance().isAdmin();
+        String currentUserName = UserSession.getInstance().getTenHienThi();
+        
         if (dsNhanVien != null) {
             for (NhanVien nv : dsNhanVien) {
+                
+                // 🛡️ CHẶN DỮ LIỆU: Nếu không phải ADMIN và tên không trùng với người đang đăng nhập -> Bỏ qua, không hiển thị!
+                if (!isAdmin && !nv.getHoVaTen().equals(currentUserName)) {
+                    continue; 
+                }
+
                 String chucVuUI = (nv.getChucVu() == ChucVu.NGUOI_QUAN_LY) ? "Quản lý" : "Dược sĩ";
                 
                 String trangThaiUI = "Đang làm việc";
@@ -220,7 +231,7 @@ public class ManHinhNhanVien extends JPanel {
                 else if (nv.getTrangThaiLamViec() == TrangThaiLamViec.THOI_VIEC) trangThaiUI = "Đã nghỉ việc";
 
                 model.addRow(new Object[]{
-                    nv.getNhanVien(), 
+                    nv.getNhanVien(), // <--- TRẢ LẠI HÀM ZIN CỦA ÔNG RỒI NÈ
                     nv.getHoVaTen(), 
                     nv.getSoChungChiHanhNghe() == null ? "" : nv.getSoChungChiHanhNghe(), 
                     nv.getSdt(), 
@@ -526,7 +537,12 @@ public class ManHinhNhanVien extends JPanel {
     public void setReadOnly(boolean readOnly) {
         if (!readOnly) return;
         if (btnAdd != null) btnAdd.setVisible(false);
+        if (btnEdit != null) btnEdit.setVisible(false);
         disableButtonsByText(this, "Thêm mới", "Nhập Excel", "Thêm", "Xóa", "Sửa", "Lưu");
+        if (table != null) {
+            javax.swing.table.TableColumn colThaoTac = table.getColumnModel().getColumn(7);
+            table.removeColumn(colThaoTac);
+        }
     }
 
     private void disableButtonsByText(java.awt.Container container, String... texts) {
