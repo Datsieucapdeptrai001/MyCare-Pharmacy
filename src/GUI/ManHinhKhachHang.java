@@ -27,6 +27,7 @@ public class ManHinhKhachHang extends JPanel {
     private JLabel lblDetOrders, lblDetPoints, lblDetTotalSpend, lblDetLastVisit;
     private JButton btnEdit;
     private JButton btnAdd;
+    private boolean isStaffRole = false;
 
     public ManHinhKhachHang() {
         initUI();
@@ -550,5 +551,26 @@ public class ManHinhKhachHang extends JPanel {
             lblTotalKhachHang.setText(String.valueOf(model.getRowCount()));
         }
         tinhTongDiemTichLuy();
+    }
+    public void setReadOnly(boolean readOnly) {
+        this.isStaffRole = readOnly;
+        if (!readOnly) return;
+        disableButtonsByText(this, "Xóa", "Xóa khách hàng", "Xóa KH", "Delete");
+    }
+
+    private void disableButtonsByText(Container container, String... texts) {
+        for (Component c : container.getComponents()) {
+            if (c instanceof JButton) {
+                JButton btn = (JButton) c;
+                for (String t : texts) {
+                    if (t.equalsIgnoreCase(btn.getText())) {
+                        btn.setVisible(false);
+                        break;
+                    }
+                }
+            } else if (c instanceof Container) {
+                disableButtonsByText((Container) c, texts);
+            }
+        }
     }
 }

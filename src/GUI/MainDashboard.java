@@ -79,6 +79,7 @@ public class MainDashboard extends JFrame {
             mhLoHang.setReadOnly(true);
             mhKhuyenMai.setReadOnly(true);
             mhNhanVien.setReadOnly(true);
+            mhKhachHang.setReadOnly(true);
         }
 
         JPanel sidebar    = createSidebar();
