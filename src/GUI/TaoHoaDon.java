@@ -1744,8 +1744,11 @@ long totalToPay = this.tamTinh + this.vat;
             }
         };
         
+     // ====================================================================
+        // 1. LẮNG NGHE SỰ THAY ĐỔI ĐỂ TỰ ĐỘNG NHÂN THÀNH TIỀN & ĐỔI ĐƠN GIÁ
         // ====================================================================
-        // 1. LẮNG NGHE SỰ THAY ĐỔI ĐỂ TỰ ĐỘNG NHÂN THÀNH TIỀN
+     // ====================================================================
+        // 1. LẮNG NGHE SỰ THAY ĐỔI ĐỂ TỰ ĐỘNG NHÂN THÀNH TIỀN & ĐỔI ĐƠN GIÁ
         // ====================================================================
         productModel.addTableModelListener(e -> {
             if (isTableUpdating) return; 
@@ -1759,7 +1762,46 @@ long totalToPay = this.tamTinh + this.vat;
                     SwingUtilities.invokeLater(() -> {
                         isTableUpdating = true; 
                         try {
-                            // Lấy Số lượng (Ép về 1 nếu nhập bậy)
+                            // --- BƯỚC 1: XỬ LÝ KHI ĐỔI ĐƠN VỊ TÍNH (Cột 1) ---
+                            if (col == 1) {
+                                // Lấy Tên SP trực tiếp từ cột 0
+                                String tenSP = productModel.getValueAt(row, 0).toString().trim();
+                                String donViMoi = productModel.getValueAt(row, 1).toString().trim();
+                                double giaBanMoi = 0;
+                                
+                                // Truy vấn Database để tìm giá mới dựa vào TÊN SẢN PHẨM thay vì Mã SP
+                                try (java.sql.Connection con = ConnectDB.getInstance().getConnection()) {
+                                    // 1. Thử tìm trong bảng Đơn vị quy đổi trước
+                                    String sqlQuyDoi = "SELECT dv.gia FROM DonViDoLuong dv JOIN SanPham sp ON dv.sanPhamId = sp.id WHERE sp.ten = ? AND dv.ten = ?";
+                                    try (java.sql.PreparedStatement pst = con.prepareStatement(sqlQuyDoi)) {
+                                        pst.setString(1, tenSP);
+                                        pst.setString(2, donViMoi);
+                                        try (java.sql.ResultSet rs = pst.executeQuery()) {
+                                            if (rs.next()) giaBanMoi = rs.getDouble("gia");
+                                        }
+                                    }
+                                    
+                                    // 2. Nếu không có trong bảng quy đổi, lấy giá gốc từ bảng SanPham
+                                    if (giaBanMoi <= 0) {
+                                        String sqlGoc = "SELECT giaBan FROM SanPham WHERE ten = ?";
+                                        try (java.sql.PreparedStatement pst = con.prepareStatement(sqlGoc)) {
+                                            pst.setString(1, tenSP);
+                                            try (java.sql.ResultSet rs = pst.executeQuery()) {
+                                                if (rs.next()) giaBanMoi = rs.getDouble("giaBan");
+                                            }
+                                        }
+                                    }
+                                } catch (Exception ex) {
+                                    System.out.println("Lỗi truy vấn giá: " + ex.getMessage());
+                                }
+                                
+                                // Ép Đơn giá mới lên Bảng (Cột 3)
+                                if (giaBanMoi > 0) {
+                                    productModel.setValueAt(String.format("%,d", (long)giaBanMoi).replace(',', '.') + "đ", row, 3);
+                                }
+                            }
+
+                            // --- BƯỚC 2: XỬ LÝ SỐ LƯỢNG VÀ THÀNH TIỀN ---
                             String slStr = productModel.getValueAt(row, 2).toString().trim();
                             int sl = 1;
                             try {
@@ -1767,20 +1809,27 @@ long totalToPay = this.tamTinh + this.vat;
                                 if (sl <= 0) sl = 1; 
                             } catch (Exception ex) { sl = 1; }
 
-                            // Lấy Đơn giá
+                            // [QUAN TRỌNG - CHỐNG GIẬT UI] 
+                            // CHỈ ghi đè lại ô Số Lượng nếu người dùng vừa thao tác trên Cột 2 (Số lượng) 
+                            // VÀ nhập sai định dạng (vd: gõ chữ thay vì số). Tuyệt đối không can thiệp khi đang ở Cột 1.
+                            if (col == 2 && !slStr.equals(String.valueOf(sl))) {
+                                productModel.setValueAt(String.valueOf(sl), row, 2); 
+                            }
+
+                            // Lấy Đơn giá (đã được làm mới tự động nếu vừa đổi ĐVT ở Bước 1)
                             String giaStr = productModel.getValueAt(row, 3).toString().replaceAll("[^0-9]", "");
                             long donGia = 0;
                             try { donGia = Long.parseLong(giaStr); } catch (Exception ex) {}
 
-                            // Tự động nhân Thành tiền
+                            // Tính lại Thành tiền và đẩy lên cột 5
                             long thanhTien = sl * donGia;
-                            
-                            productModel.setValueAt(String.valueOf(sl), row, 2); 
                             productModel.setValueAt(String.format("%,d", thanhTien).replace(',', '.') + "đ", row, 5);
                             
-                            // Gọi hàm tính lại Tổng Hóa Đơn
-                            recalculateTotals();
+                            // Cập nhật lại Tổng Hóa Đơn bên dưới
+                            recalculateTotals(); 
                             
+                        } catch (Exception ex) {
+                             System.out.println("Lỗi tính toán bảng Hóa đơn: " + ex.getMessage());
                         } finally {
                             isTableUpdating = false; 
                         }
@@ -2001,7 +2050,7 @@ long totalToPay = this.tamTinh + this.vat;
                 if (row >= 0) {
                     // 1. Xử lý nút thùng rác (Cột 6)
                     if (col == 6 && SwingUtilities.isLeftMouseButton(e)) { 
-                        if (tbl.isEditing()) tbl.getCellEditor().stopCellEditing(); // Phải dừng edit trước khi xóa dòng
+                        if (tbl.isEditing()) tbl.getCellEditor().stopCellEditing(); 
                         productModel.removeRow(row);
                         recalculateTotals();
                         luuNhapHoaDon(true);
@@ -2010,13 +2059,13 @@ long totalToPay = this.tamTinh + this.vat;
                     } 
                     
                     // --- FIX LỖI TẮT KHUNG NHẬP LIỆU ---
-                    // Chỉ đóng ô nhập liệu (stopCellEditing) nếu người dùng click chuột sang một CỘT KHÁC cột Số lượng (2)
                     if (tbl.isEditing() && tbl.getEditingColumn() != col) {
                         tbl.getCellEditor().stopCellEditing(); 
                     }
 
-                    // 2. Click chuột trái/phải vào các cột tên sản phẩm để tăng giảm SL (Tính năng phụ của bạn)
-                    if (col != 2 && col != 3 && col != 6) {
+                    // 2. FIX LỖI NHẢY SỐ LƯỢNG KHI BẤM ĐVT: 
+                    // CHỈ cho phép click chuột trái/phải để tăng giảm SL khi bấm vào CỘT 0 (Tên Sản Phẩm)
+                    if (col == 0) {
                         int slHienTai = Integer.parseInt(productModel.getValueAt(row, 2).toString());
                         
                         if (SwingUtilities.isLeftMouseButton(e)) {

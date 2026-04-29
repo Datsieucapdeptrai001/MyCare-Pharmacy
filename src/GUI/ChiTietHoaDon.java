@@ -46,175 +46,90 @@ public class ChiTietHoaDon extends JDialog {
         this.dsSanPham = dsSanPham;
         this.tenNhanVien = tenNhanVien;
 
-        try { tongThanhToanThucTe = Long.parseLong(tongTienCu.replaceAll("[^0-9]", "")); } catch (Exception e) {}
+        long targetGross = 0;
+        try { targetGross = Long.parseLong(tongTienCu.replaceAll("[^0-9]", "")); } catch (Exception e) {}
 
-        // Tính tiền ban đầu dựa trên danh sách sản phẩm
-        for (Object[] sp : dsSanPham) {
-            try {
-                long donGia = Long.parseLong(sp[4].toString().replaceAll("[^0-9]", ""));
-                int sl = Integer.parseInt(sp[3].toString());
-                long thanhTienCuaSP = Long.parseLong(sp[6].toString().replaceAll("[^0-9]", ""));
-                
-                long tienChuaVat = donGia * sl;
-                tamTinhThucTe += tienChuaVat;
-                vatThucTe += (thanhTienCuaSP - tienChuaVat);
-            } catch (Exception e) {}
-        }
-        
-        // ========================================================
-        // 1. LẤY ĐIỂM TÍCH LŨY (GỌI QUA TẦNG BUS_KhachHang)
-        // ========================================================
-        if (sdt != null && !sdt.isEmpty()) {
-            try {
-                BUS.BUS_KhachHang busKH = new BUS.BUS_KhachHang();
-                Entity.KhachHang kh = busKH.getKhachHangTheoSDT(sdt);
-                if (kh != null) diemHienTai = kh.getDiemTichLuy();
-            } catch (Exception e) { System.out.println("Lỗi lấy KH: " + e.getMessage()); }
-        }
+        boolean hasKhuyenMai = false;
+        this.tienKhachDuaThucTe = 0;
+        this.tienGiamTuDiemThucTe = 0;
+        this.tienGiamGiaThucTe = 0;
 
-        tienKhachDuaThucTe = tongThanhToanThucTe;
-        boolean hasKhuyenMai = false; 
-        
-        // ========================================================
-        // 2. BÓC TÁCH GHI CHÚ & LẤY TÊN NHÂN VIÊN (GỌI QUA BUS_HoaDon)
-        // ========================================================
         try {
+            BUS.BUS_KhachHang busKH = new BUS.BUS_KhachHang();
+            Entity.KhachHang kh = busKH.getKhachHangTheoSDT(sdt);
+            if (kh != null) this.diemHienTai = kh.getDiemTichLuy();
+
             BUS.BUS_HoaDon busHD = new BUS.BUS_HoaDon();
             Entity.HoaDon hd = busHD.layHoaDonTheoMa(maHD);
             
             if (hd != null) {
-                // FIX: Lấy tên chuẩn xác từ Database chống lỗi đổi ca
-            	if (hd.getNhanVienId() != null && hd.getNhanVienId().getHoVaTen() != null) {
+                if (hd.getNhanVienId() != null && hd.getNhanVienId().getHoVaTen() != null) {
                     this.tenNhanVien = hd.getNhanVienId().getHoVaTen();
                 }
-
                 String ghiChu = hd.getGhiChu() != null ? hd.getGhiChu() : "";
-                
-                if (ghiChu.startsWith("Đã hủy") || ghiChu.contains("Đã hủy")) {
+                if (ghiChu.contains("Đã hủy")) {
                     this.isDaHuy = true;
-                    this.primaryGreen = textRed; 
-                    this.bgLight = bgRed;
+                    this.primaryGreen = Color.decode("#EF4444");
+                    this.bgLight = Color.decode("#FEE2E2");
                 }
-                
-                if (!ghiChu.isEmpty()) {
-                    if (ghiChu.contains("KM:")) {
-                        hasKhuyenMai = true;
-                    }
-                    
-                    String[] parts = ghiChu.split("\\|");
-                    for (String p : parts) {
-                        p = p.trim();
-                        if (phuongThuc.equals("Tiền mặt") && p.startsWith("CASH:")) {
-                            String moneyStr = p.substring(5).replaceAll("[^0-9]", "");
-                            if (!moneyStr.isEmpty()) {
-                                try { tienKhachDuaThucTe = Long.parseLong(moneyStr); } catch (Exception ex) {}
-                            }
-                        } else if (p.startsWith("Dùng điểm: -")) {
-                            String diemStr = p.substring(12).replaceAll("[^0-9]", "");
-                            if (!diemStr.isEmpty()) {
-                                try { tienGiamTuDiemThucTe = Long.parseLong(diemStr); } catch (Exception ex) {}
-                            }
-                        } else if (p.startsWith("BS:")) bacSi = p.substring(3).trim();
-                        else if (p.startsWith("CS:")) coSo = p.substring(3).trim();
-                        else if (p.startsWith("CD:")) chuanDoan = p.substring(3).trim();
-                    }
+                if (ghiChu.contains("KM:")) hasKhuyenMai = true;
+
+                String[] parts = ghiChu.split("\\|");
+                for (String p : parts) {
+                    p = p.trim();
+                    if (p.startsWith("CASH:")) {
+                        this.tienKhachDuaThucTe = Long.parseLong(p.substring(5).replaceAll("[^0-9]", ""));
+                    } else if (p.startsWith("Dùng điểm: -")) {
+                        this.tienGiamTuDiemThucTe = Long.parseLong(p.substring(12).replaceAll("[^0-9]", ""));
+                    } else if (p.startsWith("BS:")) bacSi = p.substring(3).trim();
+                    else if (p.startsWith("CS:")) coSo = p.substring(3).trim();
+                    else if (p.startsWith("CD:")) chuanDoan = p.substring(3).trim();
                 }
             }
-        } catch (Exception e) { System.out.println("Lỗi gọi HD: " + e.getMessage()); }
+        } catch (Exception e) {}
 
-        long targetGross = tongThanhToanThucTe + tienGiamTuDiemThucTe; 
-        long currentGross = tamTinhThucTe + vatThucTe; 
+        // =====================================================================
+        // THUẬT TOÁN TOÁN HỌC THUẦN TÚY: TÔN TRỌNG TUYỆT ĐỐI ĐƠN GIÁ TỪ DATABASE
+        // =====================================================================
+        this.tamTinhThucTe = 0;
+        this.vatThucTe = 0;
         
-        if (!hasKhuyenMai && currentGross != targetGross && currentGross > 0) {
-            tamTinhThucTe = 0;
-            vatThucTe = 0;
+        for (Object[] sp : dsSanPham) {
+            // Lấy nguyên bản Đơn giá đang có
+            long donGia = Long.parseLong(sp[4].toString().replaceAll("[^0-9]", ""));
+            int sl = Integer.parseInt(sp[3].toString());
+            double vatPercent = 0.0;
+            try { vatPercent = Double.parseDouble(sp[5].toString().replace("%", "").trim()); } catch(Exception ex) {}
             
-            for (Object[] sp : dsSanPham) {
-                long donGiaHienTai = Long.parseLong(sp[4].toString().replaceAll("[^0-9]", ""));
-                int sl = Integer.parseInt(sp[3].toString());
-                double vatPercent = 5.0; 
-                try {
-                    vatPercent = Double.parseDouble(sp[5].toString().replace("%", "").trim());
-                } catch(Exception ex) {}
-
-                long currentSPGross = Math.round(donGiaHienTai * sl * (1 + vatPercent / 100.0));
-                double tiLeSP = (double) currentSPGross / currentGross;
-                long targetSPGross = Math.round(targetGross * tiLeSP); 
-
-                long donGiaCu = donGiaHienTai;
-                double vatCuPercent = vatPercent;
-
-                // THUẬT TOÁN TÌM GIÁ TRÒN ĐẸP: 
-                // Thử các mốc VAT chuẩn để tìm lại giá gốc nguyên thủy (thường là số chẵn hàng trăm)
-                double minError = Double.MAX_VALUE;
-                double[] standardVats = {5.0, 8.0, 10.0, 0.0};
-                
-                for (double v : standardVats) {
-                    double theoreticalPrice = targetSPGross / (sl * (1.0 + v / 100.0));
-                    // Tìm số tiền làm tròn đến hàng trăm gần nhất (vd: 3402.77 -> 3400.0)
-                    double roundedPrice100 = Math.round(theoreticalPrice / 100.0) * 100.0;
-                    
-                    // Đo độ sai lệch. Sai lệch càng thấp (gần 0) tức là giá đó càng chuẩn xác
-                    double error = Math.abs(theoreticalPrice - roundedPrice100);
-                    
-                    if (error < minError) {
-                        minError = error;
-                        donGiaCu = (long) roundedPrice100;
-                        vatCuPercent = v;
-                    }
-                }
-                
-                // Nếu giá gốc thực sự lẻ (minError > 10đ), fallback tính giá chính xác theo VAT hiện tại
-                if (minError > 10.0) { 
-                    donGiaCu = Math.round(targetSPGross / (sl * (1.0 + vatPercent / 100.0)));
-                    vatCuPercent = vatPercent;
-                }
-
-                // Cập nhật lại phép toán dựa trên Giá Cũ và VAT Cũ đã tìm được
-                long tienChuaVatCu = donGiaCu * sl;
-                long vatCu = Math.round(tienChuaVatCu * (vatCuPercent / 100.0));
-                long thanhTienCu = tienChuaVatCu + vatCu;
-                
-                sp[4] = String.format("%,d", donGiaCu).replace(',', '.') + "đ";
-                sp[5] = (int) vatCuPercent + "%"; 
-                sp[6] = String.format("%,d", thanhTienCu).replace(',', '.') + "đ";
-                
-                tamTinhThucTe += tienChuaVatCu;
-                vatThucTe += vatCu;
-            }
+            // Tính toán tuyến tính: Thành tiền = Đơn giá x SL
+            long tienChuaVat = donGia * sl; 
+            long tienVat = Math.round(tienChuaVat * (vatPercent / 100.0));
             
-            // Bù trừ vài đồng lẻ do phép chia lấy tròn
-            long lech = targetGross - (tamTinhThucTe + vatThucTe);
-            vatThucTe += lech; 
+            sp[4] = String.format("%,d", donGia).replace(',', '.') + "đ";
+            sp[6] = String.format("%,d", tienChuaVat).replace(',', '.') + "đ"; // Đảm bảo Thành tiền luôn khớp
             
-            if (dsSanPham.size() > 0) {
-                Object[] lastSp = dsSanPham.get(dsSanPham.size() - 1);
-                long oldThanhTien = Long.parseLong(lastSp[6].toString().replaceAll("[^0-9]", ""));
-                lastSp[6] = String.format("%,d", oldThanhTien + lech).replace(',', '.') + "đ";
-            }
+            this.tamTinhThucTe += tienChuaVat;
+            this.vatThucTe += tienVat;
         }
-        
-        // =========================================================================
-        // 4. CHỐT SỔ TIỀN THANH TOÁN
-        // =========================================================================
-        if (hasKhuyenMai) {
-            tienGiamGiaThucTe = (tamTinhThucTe + vatThucTe) - tongThanhToanThucTe - tienGiamTuDiemThucTe;
-            if (tienGiamGiaThucTe < 0) tienGiamGiaThucTe = 0;
-        } else {
-            tienGiamGiaThucTe = 0; 
-            tongThanhToanThucTe = tamTinhThucTe + vatThucTe - tienGiamTuDiemThucTe; 
-        }
-        
-        if (tienKhachDuaThucTe < tongThanhToanThucTe) {
-             tienKhachDuaThucTe = tongThanhToanThucTe;
-        }
-        
-        tienThoiThucTe = tienKhachDuaThucTe - tongThanhToanThucTe;
-        if (tienThoiThucTe < 0) tienThoiThucTe = 0;
-        
-        String tongTienDungStr = String.format("%,d", tongThanhToanThucTe).replace(',', '.') + "đ";
 
-        // --- KHỞI TẠO UI ---
+        // Chốt Tổng thanh toán
+        this.tongThanhToanThucTe = this.tamTinhThucTe + this.vatThucTe - this.tienGiamTuDiemThucTe;
+        
+        // Chỉ ghi nhận tiền giảm giá khi có mã KM thực sự
+        if (hasKhuyenMai && targetGross > 0 && targetGross < this.tongThanhToanThucTe) {
+            this.tienGiamGiaThucTe = this.tongThanhToanThucTe - targetGross;
+            this.tongThanhToanThucTe = targetGross;
+        }
+
+        if (this.tienKhachDuaThucTe == 0) {
+            this.tienKhachDuaThucTe = this.tongThanhToanThucTe;
+        }
+        this.tienThoiThucTe = this.tienKhachDuaThucTe - this.tongThanhToanThucTe;
+        if (this.tienThoiThucTe < 0) this.tienThoiThucTe = 0;
+
+        // --- GIAO DIỆN ---
+        String tongTienDungStr = String.format("%,d", this.tongThanhToanThucTe).replace(',', '.') + "đ";
+
         setSize(900, 750); 
         setLocationRelativeTo(parent);
         setUndecorated(true); 

@@ -150,19 +150,27 @@ public class DAO_SanPham {
 
     public List<Object[]> timKiemSanPhamBan(String text) {
         List<Object[]> ds = new ArrayList<>();
-        String sql = "SELECT sp.id, sp.ten, sp.donViDoCoBan, lh.gia AS giaBan, " +
+        
+        // FIX: Thay 'lh.gia' thành 'sp.giaBan' để lấy đúng giá bán niêm yết
+        // Đồng thời cập nhật GROUP BY để gộp đúng theo giá bán của sản phẩm
+        String sql = "SELECT sp.id, sp.ten, sp.donViDoCoBan, sp.giaBan, " +
                          "SUM(lh.soLuongLoHang) AS soLuongTon, sp.danhMuc " +
                          "FROM SanPham sp JOIN LoHang lh ON sp.id = lh.sanPhamId " +
                          "WHERE (sp.ten LIKE ? OR sp.tenVietTat LIKE ? OR sp.hoatChat LIKE ? " +
-                         "       OR sp.id LIKE ? OR sp.maVach LIKE ?) " +
+                         "       OR sp.id LIKE ?) " +
                          "AND lh.trangThai != 'HET_HAN' " +
-                         "GROUP BY sp.id, sp.ten, sp.donViDoCoBan, lh.gia, sp.danhMuc " +
+                         "GROUP BY sp.id, sp.ten, sp.donViDoCoBan, sp.giaBan, sp.danhMuc " +
                          "HAVING SUM(lh.soLuongLoHang) > 0";
+                         
         try (Connection con = ConnectDB.getInstance().getConnection();
                 PreparedStatement pst = con.prepareStatement(sql)) {
                 String p = "%" + text + "%";
-                pst.setString(1, p); pst.setString(2, p);
-                pst.setString(3, p); pst.setString(4, p); pst.setString(5, p);
+                
+                pst.setString(1, p); 
+                pst.setString(2, p);
+                pst.setString(3, p); 
+                pst.setString(4, p); 
+                
                 try (ResultSet rs = pst.executeQuery()) {
                     while (rs.next()) {
                         String danhMucDB = rs.getString("danhMuc");
