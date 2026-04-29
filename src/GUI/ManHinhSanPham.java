@@ -110,15 +110,15 @@ public class ManHinhSanPham extends JPanel {
     }
 
     public static class Product {
-        private String id, barcode, name, shortName, manufacturer, activeIngredient, strength, description, baseUnitOfMeasure;
+        private String id, name, shortName, manufacturer, activeIngredient, strength, description, baseUnitOfMeasure;
         private ProductCategory category; private DosageForm form; private double vat;
         private Set<UnitOfMeasure> unitOfMeasureSet = new HashSet<>();
         private Set<Lot> lotSet = new HashSet<>();
         public Product(String id, String bc, ProductCategory cat, DosageForm frm, String nm, String sn, String mfg, String act, double v, String str, String desc, String baseUom) {
-            this.id = id; this.barcode = bc; this.category = cat; this.form = frm; this.name = nm; this.shortName = sn; this.manufacturer = mfg; this.activeIngredient = act; this.vat = v; this.strength = str; this.description = desc; this.baseUnitOfMeasure = baseUom;
+            this.id = id; this.category = cat; this.form = frm; this.name = nm; this.shortName = sn; this.manufacturer = mfg; this.activeIngredient = act; this.vat = v; this.strength = str; this.description = desc; this.baseUnitOfMeasure = baseUom;
         }
         public String getId() { return id; } public void setId(String id) { this.id = id; }
-        public String getName() { return name; } public String getBarcode() { return barcode; } public String getShortName() { return shortName; }
+        public String getName() { return name; } public String getShortName() { return shortName; }
         public String getManufacturer() { return manufacturer; } public String getActiveIngredient() { return activeIngredient; }
         public String getStrength() { return strength; } public String getDescription() { return description; }
         public ProductCategory getCategory() { return category; } public DosageForm getForm() { return form; }
@@ -158,6 +158,7 @@ public class ManHinhSanPham extends JPanel {
     private javax.swing.JCheckBox chkThungRac;
 
     private JTextField txtId, txtTen, txtVietTat, txtHoatChat, txtHamLuong, txtVAT;
+    private JTextField txtGiaBan;
     private JTextArea  txtMoTa;
     private CardLayout clLoai, clDang, clNSX, clDVT;
     private JPanel     pnlLoai, pnlDang, pnlNSX, pnlDVT;
@@ -177,8 +178,8 @@ public class ManHinhSanPham extends JPanel {
     private JButton topBtnThem, topBtnNhap, topBtnXuat;
     private boolean isStaffRole = false;
 
-    private static final String[] COLS_COLLAPSED = {"Mã", "Tên", "Loại", "Hoạt chất"};
-    private static final String[] COLS_EXPANDED  = {"Mã", "Tên", "Loại", "Hoạt chất", "Dạng bào chế", "NSX", "VAT"};
+	private static final String[] COLS_COLLAPSED = {"Mã", "Tên", "Loại", "Hoạt chất", "Giá bán"};
+    private static final String[] COLS_EXPANDED  = {"Mã", "Tên", "Loại", "Hoạt chất", "Dạng bào chế", "NSX", "VAT", "Giá bán"};
 
     public ManHinhSanPham() {
         UIManager.put("TextField.inactiveForeground", Color.BLACK);
@@ -203,6 +204,7 @@ public class ManHinhSanPham extends JPanel {
         add(pnlBody, BorderLayout.CENTER);
 
         loadDataFromDatabase();
+        capNhatDữLiệuComboBoxTuDB();
         setDetailVisible(false);
     }
 
@@ -377,8 +379,19 @@ public class ManHinhSanPham extends JPanel {
     }
 
     private String mapToDbDang(String uiText) {
-        if (uiText.contains("Dung dịch") || uiText.contains("Si rô") || uiText.contains("nhỏ giọt") || uiText.contains("Súc miệng")) return "DANG_LONG";
-        return "DANG_RAN";
+        if (uiText == null) return "VIEN_NEN"; // Đề phòng lỗi NullPointerException
+        
+        switch (uiText) {
+            case "Viên nang": return "VIEN_NANG";
+            case "Viên sủi": return "VIEN_SUI";
+            case "Thuốc bột": return "THUOC_BOT";
+            case "Kẹo ngậm": return "KEO_NGAM";
+            case "Dung dịch": return "DUNG_DICH";
+            case "Hỗn dịch": return "HON_DICH";
+            case "Thuốc nhỏ giọt": return "THUOC_NHO_GIOT";
+            case "Súc miệng": return "SUC_MIENG";
+            default: return "VIEN_NEN";
+        }
     }
 
     // ========================================================================
@@ -394,6 +407,9 @@ public class ManHinhSanPham extends JPanel {
             if (pnlRightDetail.getParent() != null) pnlBody.remove(pnlRightDetail);
             rebuildTableColumns(COLS_EXPANDED);
             scrollTblSanPham.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+            resetBorder(txtTen); resetBorder(txtVietTat); resetBorder(txtHoatChat); 
+            resetBorder(txtHamLuong); resetBorder(txtVAT); 
+            if (txtGiaBan != null) resetBorder(txtGiaBan);
         }
         
         tblSanPham.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
@@ -459,22 +475,6 @@ public class ManHinhSanPham extends JPanel {
             @Override protected JButton createArrowButton() {
                 JButton btn = new JButton("\u25BC"); btn.setFont(new Font("Segoe UI", Font.PLAIN, 10)); btn.setForeground(Color.GRAY); btn.setBackground(Color.WHITE); btn.setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8)); btn.setFocusPainted(false); btn.setContentAreaFilled(false); btn.setOpaque(true); btn.setCursor(new Cursor(Cursor.HAND_CURSOR)); return btn;
             }
-            
-            // --- THÊM ĐOẠN NÀY ĐỂ FIX THANH CUỘN CỦA DROPDOWN ---
-            @Override
-            protected javax.swing.plaf.basic.ComboPopup createPopup() {
-                return new javax.swing.plaf.basic.BasicComboPopup(comboBox) {
-                    @Override
-                    protected JScrollPane createScroller() {
-                        JScrollPane scroller = new JScrollPane(list, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-                        scroller.getVerticalScrollBar().setUI(new Utils.ModernScrollBarUI()); // Gắn thanh cuộn xịn
-                        scroller.getVerticalScrollBar().setPreferredSize(new Dimension(8, 0));
-                        scroller.setBorder(BorderFactory.createLineBorder(Color.decode("#DFE3E8")));
-                        return scroller;
-                    }
-                };
-            }
-            // ----------------------------------------------------
         });
         cb.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(COLOR_BORDER), new EmptyBorder(0, 5, 0, 5)));
     }
@@ -503,8 +503,8 @@ public class ManHinhSanPham extends JPanel {
 
         JButton btnTim    = createBtnWithIcon("Tìm",        "#1D68B2", new MenuIcon("SEARCH"));  btnTim.setPreferredSize(new Dimension(95, 36));
         JButton btnLamMoi = createBtnWithIcon("Làm mới",    "#64748B", new MenuIcon("REFRESH")); btnLamMoi.setPreferredSize(new Dimension(115, 36));
-        JButton btnXuat   = createBtnWithIcon("Xuất Excel", "#22C55E", new MenuIcon("EXPORT"));  btnXuat.setPreferredSize(new Dimension(130, 36));
-        JButton btnNhap   = createBtnWithIcon("Nhập Excel", "#0EA5E9", new MenuIcon("IMPORT"));  btnNhap.setPreferredSize(new Dimension(130, 36));
+        btnXuatTop = createBtnWithIcon("Xuất Excel", "#22C55E", new MenuIcon("EXPORT"));  btnXuatTop.setPreferredSize(new Dimension(130, 36));
+        btnNhapTop = createBtnWithIcon("Nhập Excel", "#0EA5E9", new MenuIcon("IMPORT"));  btnNhapTop.setPreferredSize(new Dimension(130, 36));
         JButton btnThem   = createBtnWithIcon("Thêm mới",   "#E11D48", new MenuIcon("ADD"));     btnThem.setPreferredSize(new Dimension(125, 36));
 
         this.topBtnXuat = btnXuat;
@@ -520,12 +520,12 @@ public class ManHinhSanPham extends JPanel {
             setDetailVisible(false);
         });
         
-        btnXuat.addActionListener(e -> thucHienXuatExcelThang());
-        btnNhap.addActionListener(e -> thucHienNhapExcelThang());
+        btnXuatTop.addActionListener(e -> thucHienXuatExcelThang());
+        btnNhapTop.addActionListener(e -> thucHienNhapExcelThang());
         btnThem.addActionListener(e -> batDauThemMoi());
 
         pnlRight.add(btnTim); pnlRight.add(btnLamMoi);
-        pnlRight.add(btnXuat); pnlRight.add(btnNhap);
+        pnlRight.add(btnXuatTop); pnlRight.add(btnNhapTop);
         pnlRight.add(btnThem);
         pnl.add(pnlLeft); pnl.add(Box.createHorizontalGlue()); pnl.add(pnlRight);
         return pnl;
@@ -600,7 +600,7 @@ public class ManHinhSanPham extends JPanel {
         tblSanPham = new JTable(modelSanPham); setupTableStyle(tblSanPham);
         tblSanPham.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
         applyTableCellRenderers();
-        int[] widths = {130, 200, 140, 130, 110, 100, 60};
+        int[] widths = {90, 250, 130, 180, 100, 150, 50, 90};
         for (int i = 0; i < widths.length; i++) tblSanPham.getColumnModel().getColumn(i).setPreferredWidth(widths[i]);
 
         tblSanPham.addMouseListener(new MouseAdapter() {
@@ -646,12 +646,13 @@ public class ManHinhSanPham extends JPanel {
         for (int i = start; i < end; i++) {
             Object[] row = currentFilteredData.get(i);
             if (detailVisible) {
-                modelSanPham.addRow(new Object[]{row[0], row[1], row[2], row[3]});
+                modelSanPham.addRow(new Object[]{row[0], row[1], row[2], row[3], row[7]});
             } else {
                 String dang = row.length > 4 ? row[4].toString() : "";
                 String nsx = row.length > 5 ? row[5].toString() : "DHG Pharma";
                 String vat = row.length > 6 ? row[6].toString() : "10%";
-                modelSanPham.addRow(new Object[]{row[0], row[1], row[2], row[3], dang, nsx, vat});
+                String giaBan = row.length > 7 ? row[7].toString() : "0";
+                modelSanPham.addRow(new Object[]{row[0], row[1], row[2], row[3], dang, nsx, vat, giaBan});
             }
         }
     }
@@ -689,9 +690,17 @@ public class ManHinhSanPham extends JPanel {
         addFormField(pnlForm, "Tên viết tắt",   txtVietTat = new JTextField(), g, 1, 2, 1);
 
         cbLoaiCT = new JComboBox<>(new String[]{"Thuốc không kê đơn", "Thuốc kê đơn", "Sản phẩm chức năng", "Mỹ phẩm"}); applyFlatComboBoxStyle(cbLoaiCT);
-        cbDang   = new JComboBox<>(new String[]{"Viên nén", "Viên nang", "Dung dịch", "Si rô", "Viên sủi", "Thuốc bột", "Kẹo ngậm", "Thuốc nhỏ giọt", "Súc miệng"}); applyFlatComboBoxStyle(cbDang);
+        cbDang   = new JComboBox<>(new String[]{"Viên nén", "Viên nang", "Viên sủi", "Thuốc bột", "Kẹo ngậm", "Dung dịch", "Hỗn dịch", "Thuốc nhỏ giọt", "Súc miệng"}); applyFlatComboBoxStyle(cbDang);
         cbNhaSX  = new JComboBox<>(new String[]{"DHG Pharma", "Traphaco", "Sanofi", "Domesco"}); applyFlatComboBoxStyle(cbNhaSX);
         cbDVT    = new JComboBox<>(new String[]{"Viên", "Chai", "Hộp", "Vỉ", "Ống"}); applyFlatComboBoxStyle(cbDVT);
+     // Tự động nhảy VAT
+        cbLoaiCT.addActionListener(e -> {
+            if (cbLoaiCT.getSelectedItem() != null && txtVAT != null) {
+                String loai = cbLoaiCT.getSelectedItem().toString();
+                // Thuốc là 5%, TPCN/Mỹ phẩm là 8%
+                txtVAT.setText(loai.contains("Thuốc") ? "5.0" : "8.0"); 
+            }
+        });
 
         pnlLoai = new JPanel(clLoai = new CardLayout()); txtLoaiView = createViewField(); pnlLoai.add(txtLoaiView, "VIEW"); pnlLoai.add(cbLoaiCT, "EDIT");
         pnlDang = new JPanel(clDang = new CardLayout()); txtDangView = createViewField(); pnlDang.add(txtDangView, "VIEW"); pnlDang.add(cbDang,   "EDIT");
@@ -705,8 +714,9 @@ public class ManHinhSanPham extends JPanel {
         addCustomField(pnlForm, "Nhà sản xuất", pnlNSX,  g, 0, 8);
         addCustomField(pnlForm, "ĐVT gốc",      pnlDVT,  g, 1, 8);
         addFormField(pnlForm,   "VAT (%)",      txtVAT      = new JTextField(), g, 0, 10, 1);
+        addFormField(pnlForm, "Giá bán (VNĐ) *",txtGiaBan = new JTextField(), g, 1, 10, 1);
 
-        g.gridx = 0; g.gridy = 12; g.gridwidth = 2;
+        g.gridx = 0; g.gridy = 14; g.gridwidth = 2;
         JLabel lblMoTa = new JLabel("Mô tả"); lblMoTa.setFont(FONT_NORMAL); lblMoTa.setForeground(Color.BLACK); pnlForm.add(lblMoTa, g);
         g.gridy++;
         txtMoTa = new JTextArea() {
@@ -727,17 +737,31 @@ public class ManHinhSanPham extends JPanel {
 
         pnlScrollContent.add(pnlForm); pnlScrollContent.add(Box.createVerticalStrut(10));
 
-        JPanel pnlDonViWrap = createSubTable("Đơn vị quy đổi", new String[]{"Tên ĐV", "Quy đổi"}, 140);
+     // Bảng đơn vị quy đổi 3 cột
+        JPanel pnlDonViWrap = createSubTable("Đơn vị quy đổi", new String[]{"Tên ĐV", "Tỷ lệ", "Giá bán (VNĐ)"}, 140);
         tblDonVi   = (JTable) ((JScrollPane) pnlDonViWrap.getComponent(1)).getViewport().getView();
-        modelDonVi = new ToggleEditableTableModel(new String[]{"Tên ĐV", "Quy đổi"}, 0);
+        
+        modelDonVi = new ToggleEditableTableModel(new String[]{"Tên ĐV", "Tỷ lệ", "Giá bán (VNĐ)"}, 0);
         tblDonVi.setModel(modelDonVi); setupTableStyle(tblDonVi);
+        
         modelDonVi.addTableModelListener(e -> {
             if (uomAutoChanging) return; uomAutoChanging = true;
             try {
-                if (modelDonVi.getRowCount() == 0) { modelDonVi.addRow(new Object[2]); return; }
+                int row = e.getFirstRow(); int col = e.getColumn();
+                
+                // Gõ Tỷ lệ -> Tự tính tiền nhưng vẫn cho sửa
+                if (col == 1 && row >= 0 && row < modelDonVi.getRowCount()) {
+                    try {
+                        double tiLe = Double.parseDouble(modelDonVi.getValueAt(row, 1).toString());
+                        double giaGoc = txtGiaBan != null && !txtGiaBan.getText().isEmpty() ? Double.parseDouble(txtGiaBan.getText().replace(",", "")) : 0;
+                        modelDonVi.setValueAt(String.format("%,.0f", tiLe * giaGoc), row, 2);
+                    } catch (Exception ignored) {}
+                }
+
+                if (modelDonVi.getRowCount() == 0) { modelDonVi.addRow(new Object[3]); return; }
                 int last = modelDonVi.getRowCount() - 1; boolean complete = true;
-                for (int c = 0; c < 2; c++) if (modelDonVi.getValueAt(last, c) == null || modelDonVi.getValueAt(last, c).toString().isEmpty()) { complete = false; break; }
-                if (complete) modelDonVi.addRow(new Object[2]);
+                for (int c = 0; c < 2; c++) if (modelDonVi.getValueAt(last, c) == null || modelDonVi.getValueAt(last, c).toString().trim().isEmpty()) { complete = false; break; }
+                if (complete) modelDonVi.addRow(new Object[3]);
             } finally { uomAutoChanging = false; }
         });
         pnlScrollContent.add(pnlDonViWrap);
@@ -789,8 +813,6 @@ public class ManHinhSanPham extends JPanel {
         });
         btnXoaBottom.addActionListener(e -> {
             if (txtId.getText().isEmpty()) return;
-            
-            // Nếu nút đang là Khôi phục
             if (btnXoaBottom.getText().equals("Khôi phục")) {
                 BUS_SanPham bus = new BUS_SanPham();
                 if (bus.khoiPhucSP(txtId.getText())) {
@@ -815,14 +837,26 @@ public class ManHinhSanPham extends JPanel {
 
     private void batDauThemMoi() {
         isAdding = true;
+        resetBorder(txtTen); resetBorder(txtVietTat); resetBorder(txtHoatChat); 
+        resetBorder(txtHamLuong); resetBorder(txtVAT); 
+        if (txtGiaBan != null) resetBorder(txtGiaBan);
         txtTen.setText(""); txtVietTat.setText(""); txtHoatChat.setText(""); txtHamLuong.setText(""); txtVAT.setText("10"); txtMoTa.setText("");
         txtLoaiView.setText(""); txtDangView.setText(""); txtNSXView.setText(""); txtDVTView.setText("");
+        
+        if (txtGiaBan != null) txtGiaBan.setText(""); 
+        
         cbLoaiCT.setSelectedIndex(0); cbDang.setSelectedIndex(0); cbNhaSX.setSelectedIndex(0); cbDVT.setSelectedIndex(0);
+        // Kích hoạt lại logic VAT vì setSelectedIndex(0) không trigger ActionListener khi item đã chọn sẵn
+        if (txtVAT != null && cbLoaiCT.getSelectedItem() != null) {
+            String loaiInit = cbLoaiCT.getSelectedItem().toString();
+            txtVAT.setText(loaiInit.contains("Thuốc") ? "5.0" : "8.0");
+        }
         
         BUS_SanPham bus = new BUS_SanPham();
-        txtId.setText(bus.taoMaMoi());
+        String maMoi = bus.taoMaMoi(); 
+        txtId.setText(maMoi);
         
-        uomAutoChanging = true; modelDonVi.setRowCount(0); modelDonVi.addRow(new Object[2]); uomAutoChanging = false;
+        uomAutoChanging = true; modelDonVi.setRowCount(0); modelDonVi.addRow(new Object[3]); uomAutoChanging = false;
         modelLoHang.setRowCount(0);
         tblSanPham.clearSelection();
         setDetailVisible(true); 
@@ -835,33 +869,94 @@ public class ManHinhSanPham extends JPanel {
         clearDetailForm();
         tblSanPham.clearSelection();
     }
+    private void resetBorder(JTextField t) { if(t!=null) t.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(COLOR_BORDER), new EmptyBorder(0, 8, 0, 8))); }
+    private void setErrorBorder(JTextField t) { if(t!=null) t.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(Color.RED, 2), new EmptyBorder(0, 8, 0, 8))); }
 
     private void thucHienLuu() {
+        // Reset viền báo lỗi
+        resetBorder(txtTen); resetBorder(txtVietTat); resetBorder(txtHoatChat); 
+        resetBorder(txtHamLuong); resetBorder(txtVAT); 
+        if(txtGiaBan != null) resetBorder(txtGiaBan);
+
         String ma = txtId.getText(); 
         String ten = txtTen.getText().trim();
         String hoatChat = txtHoatChat.getText().trim();
         String vietTat = txtVietTat.getText().trim();
         String hamLuong = txtHamLuong.getText().trim();
         String vatStr = txtVAT.getText().trim();
+        String giaBanStr = txtGiaBan != null ? txtGiaBan.getText().trim().replace(",", "") : "";
 
-        // 1. KIỂM TRA RỖNG: Ép buộc người dùng phải nhập đủ các trường quan trọng
-        if (ten.isEmpty() || hoatChat.isEmpty() || vietTat.isEmpty() || hamLuong.isEmpty() || vatStr.isEmpty()) { 
-            showCustomNotification("THIẾU THÔNG TIN", "Vui lòng điền đầy đủ các ô: Tên, Viết tắt, Hoạt chất, Hàm lượng và VAT!", "WARNING"); 
+        // =========================================================
+        // [ĐÃ FIX] BẮT LỖI CHI TIẾT VÀ BÔI ĐỎ TỪNG Ô TRỐNG
+        // =========================================================
+        List<String> errors = new ArrayList<>();
+        JTextField firstError = null;
+
+        if (ten.isEmpty()) { errors.add("Tên sản phẩm"); setErrorBorder(txtTen); if(firstError==null) firstError = txtTen; }
+        if (vietTat.isEmpty()) { errors.add("Tên viết tắt"); setErrorBorder(txtVietTat); if(firstError==null) firstError = txtVietTat; }
+        if (hoatChat.isEmpty()) { errors.add("Hoạt chất"); setErrorBorder(txtHoatChat); if(firstError==null) firstError = txtHoatChat; }
+        if (hamLuong.isEmpty()) { errors.add("Hàm lượng"); setErrorBorder(txtHamLuong); if(firstError==null) firstError = txtHamLuong; }
+        if (vatStr.isEmpty()) { errors.add("Thuế VAT (%)"); setErrorBorder(txtVAT); if(firstError==null) firstError = txtVAT; }
+        if (giaBanStr.isEmpty()) { errors.add("Giá bán (VNĐ)"); if(txtGiaBan!=null) setErrorBorder(txtGiaBan); if(firstError==null) firstError = txtGiaBan; }
+
+        if (!errors.isEmpty()) {
+            showCustomNotification("THIẾU THÔNG TIN", "Vui lòng nhập đầy đủ các ô sau:\n- " + String.join("\n- ", errors), "WARNING");
+            if (firstError != null) firstError.requestFocus(); // Tự động trỏ chuột về ô lỗi đầu tiên
             return; 
         }
 
-        // 2. KIỂM TRA ĐỊNH DẠNG: Thuế VAT phải là số và không được âm
-        double vat = 0;
+        // =========================================================
+        // [ĐÃ FIX] BẮT LỖI SỐ: GIÁ BÁN KHÔNG ĐƯỢC PHÉP = 0
+        // =========================================================
+        double vat = 0, giaBan = 0;
         try {
             vat = Double.parseDouble(vatStr);
+            giaBan = Double.parseDouble(giaBanStr);
+            
             if (vat < 0) {
-                showCustomNotification("SAI ĐỊNH DẠNG", "Thuế VAT không được là số âm!", "ERROR"); 
+                setErrorBorder(txtVAT);
+                showCustomNotification("SAI ĐỊNH DẠNG", "Thuế VAT không được là số âm!", "ERROR");
+                txtVAT.requestFocus();
+                return;
+            }
+            if (giaBan <= 0) { // Đã sửa thành <= 0
+                if (txtGiaBan != null) setErrorBorder(txtGiaBan);
+                showCustomNotification("GIÁ BÁN KHÔNG HỢP LỆ", "Giá bán phải là số dương lớn hơn 0!", "ERROR");
+                if (txtGiaBan != null) txtGiaBan.requestFocus();
                 return;
             }
         } catch (NumberFormatException e) {
-            showCustomNotification("SAI ĐỊNH DẠNG", "Thuế VAT phải là một con số hợp lệ!", "ERROR"); 
+            setErrorBorder(txtVAT); if(txtGiaBan!=null) setErrorBorder(txtGiaBan);
+            showCustomNotification("SAI ĐỊNH DẠNG", "VAT và Giá bán phải là số hợp lệ!", "ERROR"); 
             return;
         }
+
+     // Thu thập bảng quy đổi 3 cột
+        List<Object[]> dsDonVi = new ArrayList<>();
+        String dvtGoc = cbDVT.getSelectedItem().toString().trim();
+        boolean daCoDvtGoc = false;
+
+        for (int i = 0; i < modelDonVi.getRowCount(); i++) {
+            Object tenDVObj = modelDonVi.getValueAt(i, 0);
+            Object quyDoiDV = modelDonVi.getValueAt(i, 1);
+            Object giaDVObj = modelDonVi.getValueAt(i, 2); 
+
+            if (tenDVObj != null && !tenDVObj.toString().trim().isEmpty() && quyDoiDV != null && giaDVObj != null) {
+                try {
+                    String tenDV = tenDVObj.toString().trim();
+                    double tiLe = Double.parseDouble(quyDoiDV.toString().trim());
+                    double gia = Double.parseDouble(giaDVObj.toString().replace(",", "").trim());
+
+                    if (tenDV.equalsIgnoreCase(dvtGoc)) {
+                        dsDonVi.add(new Object[]{tenDV, 1.0, giaBan}); // Ép đồng bộ giá
+                        daCoDvtGoc = true;
+                    } else if (tiLe > 1) {
+                        dsDonVi.add(new Object[]{tenDV, tiLe, gia});
+                    }
+                } catch (Exception ignored) {} 
+            }
+        }
+        if (!daCoDvtGoc) dsDonVi.add(new Object[]{dvtGoc, 1.0, giaBan});
         
         String loai = cbLoaiCT.getSelectedItem().toString();
         String dangBaoChe = cbDang.getSelectedItem().toString();
@@ -878,11 +973,12 @@ public class ManHinhSanPham extends JPanel {
         BUS_SanPham bus = new BUS_SanPham();
         boolean success = false;
 
+        // Truyền thêm "dsDonVi" vào hàm của BUS
         if (isAdding) {
-            success = bus.themSP(ma, dbDanhMuc, dbDang, ten, vietTat, nsx, hoatChat, vat, hamLuong, moTa, dvt);
+            success = bus.themSP(ma, dbDanhMuc, dbDang, ten, vietTat, nsx, hoatChat, vat, hamLuong, moTa, dvt, giaBan, dsDonVi);
             if(success) showCustomNotification("THÊM MỚI THÀNH CÔNG", "Đã thêm sản phẩm vào Database thành công!", "SUCCESS");
         } else {
-            success = bus.capNhatSP(ma, dbDanhMuc, dbDang, ten, vietTat, nsx, hoatChat, vat, hamLuong, moTa, dvt);
+            success = bus.capNhatSP(ma, dbDanhMuc, dbDang, ten, vietTat, nsx, hoatChat, vat, hamLuong, moTa, dvt, giaBan, dsDonVi);
             if(success) showCustomNotification("CẬP NHẬT THÀNH CÔNG", "Cập nhật Database thành công!", "SUCCESS");
         }
 
@@ -919,6 +1015,7 @@ public class ManHinhSanPham extends JPanel {
         txtHoatChat.setEditable(edit);txtHoatChat.setBackground(bg);
         txtHamLuong.setEditable(edit);txtHamLuong.setBackground(bg);
         txtVAT.setEditable(edit);     txtVAT.setBackground(bg);
+        if (txtGiaBan != null) { txtGiaBan.setEditable(edit); txtGiaBan.setBackground(bg); }
         txtMoTa.setEditable(edit); txtMoTa.setBackground(edit ? Color.WHITE : COLOR_DISABLED_BG); scrollMoTa.getViewport().setBackground(edit ? Color.WHITE : COLOR_DISABLED_BG);
         clLoai.show(pnlLoai, edit ? "EDIT" : "VIEW"); clDang.show(pnlDang, edit ? "EDIT" : "VIEW"); clNSX.show(pnlNSX, edit ? "EDIT" : "VIEW"); clDVT.show(pnlDVT, edit ? "EDIT" : "VIEW");
         if (edit && !isAdding) { cbLoaiCT.setSelectedItem(txtLoaiView.getText()); cbDang.setSelectedItem(txtDangView.getText()); cbNhaSX.setSelectedItem(txtNSXView.getText()); cbDVT.setSelectedItem(txtDVTView.getText()); }
@@ -994,26 +1091,69 @@ public class ManHinhSanPham extends JPanel {
     }
 
     private void hienThiChiTietSanPham(int row) {
-        Object[] data = currentFilteredData.get((currentPageMock - 1) * itemsPerPageMock + row);
+    	resetBorder(txtTen); resetBorder(txtVietTat); resetBorder(txtHoatChat); 
+        resetBorder(txtHamLuong); resetBorder(txtVAT); 
+        if (txtGiaBan != null) resetBorder(txtGiaBan);
+    	Object[] data = currentFilteredData.get((currentPageMock - 1) * itemsPerPageMock + row);
         String maSP = data[0].toString();
-        txtId.setText(maSP); txtTen.setText(data[1].toString());
-        String loai = data[2].toString();
+        txtId.setText(maSP);
+        txtTen.setText(data[1].toString());                              // [1] = ten
+        String loai = data[2].toString();                                // [2] = loai
         txtLoaiView.setText(loai);
         if (loai.equals("Thuốc kê đơn")) txtLoaiView.setDisabledTextColor(Color.decode("#EF4444")); else if (loai.equals("Sản phẩm chức năng")) txtLoaiView.setDisabledTextColor(Color.decode("#10B981")); else txtLoaiView.setDisabledTextColor(Color.decode("#2179E0"));
-        txtHoatChat.setText(data[3].toString());
-        String dangBaoChe = (data.length > 4) ? data[4].toString() : "Viên nén";
+        txtHoatChat.setText(data[3].toString());                         // [3] = hoatChat
+        String dangBaoChe = (data.length > 4) ? data[4].toString() : "Viên nén"; // [4] = dang
         txtDangView.setText(dangBaoChe);
         txtVietTat.setText(txtTen.getText().split(" ")[0]);
-        txtHamLuong.setText(""); txtVAT.setText(data.length > 6 ? data[6].toString().replace("%", "") : "10"); txtMoTa.setText(""); txtNSXView.setText(data.length > 5 ? data[5].toString() : "DHG Pharma");
-        String dvtGoc = dangBaoChe.contains("Dung dịch") || dangBaoChe.contains("Si rô") ? "Chai" : "Viên";
-        txtDVTView.setText(dvtGoc);
-        uomAutoChanging = true; modelDonVi.setRowCount(0);
-        if (dvtGoc.equals("Viên")) { modelDonVi.addRow(new Object[]{"Vỉ", "10"}); modelDonVi.addRow(new Object[]{"Hộp", "100"}); } else if (dvtGoc.equals("Chai")) { modelDonVi.addRow(new Object[]{"Thùng", "24"}); }
-        modelDonVi.addRow(new Object[2]); uomAutoChanging = false;
-        
+        txtHamLuong.setText("");
+        txtNSXView.setText(data.length > 5 ? data[5].toString() : "DHG Pharma"); // [5] = nsx
+        txtVAT.setText(data.length > 6 ? data[6].toString().replace("%", "") : "10"); // [6] = vat
+        txtMoTa.setText("");
+        if (txtGiaBan != null) txtGiaBan.setText(data.length > 7 ? data[7].toString().replace(",", "") : "0"); // [7] = giaBan
+
         BUS_SanPham bus = new BUS_SanPham();
-        List<LoHang> listLo = bus.layLoTheoSP(maSP);
+        Entity.SanPham spDayDu = bus.getSanPhamDayDu(maSP);
+        
+        // Tạm đoán ban đầu
+        String dvtGoc = dangBaoChe.contains("Dung dịch") || dangBaoChe.contains("Si rô") ? "Chai" : "Viên";
+        
+        if (spDayDu != null) {
+            if (spDayDu.getHamLuong() != null) txtHamLuong.setText(spDayDu.getHamLuong());
+            if (spDayDu.getMoTa() != null) txtMoTa.setText(spDayDu.getMoTa());
+            if (spDayDu.getTenVietTat() != null) txtVietTat.setText(spDayDu.getTenVietTat());
+            if (txtGiaBan != null) txtGiaBan.setText(String.valueOf((long) spDayDu.getGiaBan()));
+            
+            // LẤY CHUẨN XÁC TỪ DATABASE ĐÈ LÊN SỰ "ĐOÁN MÒ"
+            if (spDayDu.getDonViDoCoBan() != null && !spDayDu.getDonViDoCoBan().isEmpty()) {
+                dvtGoc = spDayDu.getDonViDoCoBan();
+            }
+        }
+        
+        // Gắn ĐVT gốc chuẩn lên giao diện
+        txtDVTView.setText(dvtGoc);
+
+     // Load đơn vị quy đổi 3 cột từ DB
+        uomAutoChanging = true;
+        modelDonVi.setRowCount(0);
+        
+        List<Object[]> dsQuyDoi = bus.layDonViQuyDoiTheoSP(maSP); 
+        
+        if (dsQuyDoi != null) {
+            for (Object[] dv : dsQuyDoi) {
+                String tenDV = dv[0].toString();
+                double tiLeDb = Double.parseDouble(dv[1].toString());
+                Object tiLeHienThi = (tiLeDb == (long) tiLeDb) ? (long) tiLeDb : tiLeDb;
+                String giaHienThi = (dv.length > 2) ? dv[2].toString() : "0"; 
+                
+                // Đồng bộ giá của ĐVT gốc lên ô Giá Bán phía trên đã được set từ SanPham.giaBan — không overwrite ở đây
+                
+                modelDonVi.addRow(new Object[]{tenDV, tiLeHienThi, giaHienThi});
+            }
+        }
+        modelDonVi.addRow(new Object[3]); 
+        uomAutoChanging = false;
         modelLoHang.setRowCount(0);
+        List<LoHang> listLo = bus.layLoTheoSP(maSP);
         DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
         if(listLo != null) {
             for(LoHang lh : listLo) {
@@ -1031,7 +1171,11 @@ public class ManHinhSanPham extends JPanel {
     private void clearDetailForm() {
         txtId.setText(""); txtTen.setText(""); txtVietTat.setText(""); txtHoatChat.setText(""); txtHamLuong.setText(""); txtVAT.setText(""); txtMoTa.setText("");
         txtLoaiView.setText(""); txtDangView.setText(""); txtNSXView.setText(""); txtDVTView.setText("");
+        if (txtGiaBan != null) txtGiaBan.setText("");
         modelDonVi.setRowCount(0); modelLoHang.setRowCount(0);
+        resetBorder(txtTen); resetBorder(txtVietTat); resetBorder(txtHoatChat); 
+        resetBorder(txtHamLuong); resetBorder(txtVAT); 
+        if (txtGiaBan != null) resetBorder(txtGiaBan);
     }
 
     private JTextField createViewField() { JTextField t = new JTextField(); t.setEditable(false); t.setFont(FONT_NORMAL); t.setDisabledTextColor(Color.BLACK); t.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(COLOR_BORDER), new EmptyBorder(0, 8, 0, 8))); return t; }
@@ -1250,16 +1394,29 @@ public class ManHinhSanPham extends JPanel {
                             }
                             
                             if (spCu != null) {
-                                bus.capNhatSP(spCu.getId(), mapToDbDanhMuc(loai), mapToDbDang(dang), ten, vietTat, nsx, hoatChat, vat, hamLuong, moTa, donVi);
+                                double giaBanCu = spCu.getGiaBan();
+                                bus.capNhatSP(spCu.getId(), mapToDbDanhMuc(loai), mapToDbDang(dang), ten, vietTat, nsx, hoatChat, vat, hamLuong, moTa, donVi, giaBanCu);
                                 updateCount++;
                             } else {
+                                // Đọc giaBan từ cột 11 của file Excel (không hardcode = 0)
+                                double giaBanMoi = 0;
+                                try {
+                                    String giaBanStr = formatter.formatCellValue(row.getCell(11))
+                                                                .replace(",", "").replace(".", "").trim();
+                                    if (!giaBanStr.isEmpty() && !giaBanStr.equals("NULL"))
+                                        giaBanMoi = Double.parseDouble(giaBanStr);
+                                } catch (Exception ignored) {}
+                                if (giaBanMoi <= 0) {
+                                    missingDataRows.add(i + 1); // Bỏ qua dòng không có giá hợp lệ
+                                    continue;
+                                }
                                 String newId = bus.taoMaMoi();
-                                boolean isSaved = bus.themSP(newId, mapToDbDanhMuc(loai), mapToDbDang(dang), ten, vietTat, nsx, hoatChat, vat, hamLuong, moTa, donVi);
-                                if(isSaved) {
+                                boolean isSaved = bus.themSP(newId, mapToDbDanhMuc(loai), mapToDbDang(dang), ten, vietTat, nsx, hoatChat, vat, hamLuong, moTa, donVi, giaBanMoi);
+                                if (isSaved) {
                                     successCount++;
                                     SanPham newSp = new SanPham();
                                     newSp.setId(newId); newSp.setTen(ten);
-                                    dsHienTai.add(newSp); 
+                                    dsHienTai.add(newSp);
                                 }
                             }
                         } catch (Exception rowEx) {
@@ -1313,7 +1470,32 @@ public class ManHinhSanPham extends JPanel {
         currentFilteredData.addAll(allDataMock);
         updatePagination();
     }
-    
+    private void capNhatDữLiệuComboBoxTuDB() {
+        BUS_SanPham bus = new BUS_SanPham();
+        
+        // Cập nhật ComboBox Nhà sản xuất
+        List<String> dsNSX = bus.layDanhSachNhaSanXuat();
+        cbNhaSX.removeAllItems();
+        // Thêm lại các giá trị mặc định nếu muốn
+        cbNhaSX.addItem("DHG Pharma"); cbNhaSX.addItem("Traphaco"); 
+        for (String nsx : dsNSX) {
+            // Kiểm tra tránh trùng với các mục mặc định vừa thêm
+            boolean exists = false;
+            for(int i=0; i<cbNhaSX.getItemCount(); i++) if(cbNhaSX.getItemAt(i).equals(nsx)) exists = true;
+            if(!exists) cbNhaSX.addItem(nsx);
+        }
+
+        // Cập nhật ComboBox Đơn vị tính
+        List<String> dsDVT = bus.layDanhSachDonViTinh();
+        cbDVT.removeAllItems();
+        cbDVT.addItem("Viên"); cbDVT.addItem("Chai");
+        for (String dvt : dsDVT) {
+            boolean exists = false;
+            for(int i=0; i<cbDVT.getItemCount(); i++) if(cbDVT.getItemAt(i).equals(dvt)) exists = true;
+            if(!exists) cbDVT.addItem(dvt);
+        }
+    }
+
     public void setReadOnly(boolean isReadOnly) {
         this.isStaffRole = isReadOnly;
         
