@@ -335,19 +335,19 @@ public class MenuIcon implements Icon {
                 );
                 break;
 
-            case "CALENDAR": // Lịch (Dùng cho bộ lọc năm / section title ngày)
-                g2d.drawRoundRect(x + 2, y + 4, 18, 15, 3, 3);  // Khung lịch
-                g2d.drawLine(x + 2, y + 8, x + 20, y + 8);      // Đường kẻ ngang tiêu đề
-                g2d.drawLine(x + 7,  y + 2, x + 7,  y + 6);     // Núm trái
-                g2d.drawLine(x + 15, y + 2, x + 15, y + 6);     // Núm phải
-                // 6 chấm ô ngày (2 hàng × 3 cột)
-                g2d.fillOval(x + 5,  y + 11, 2, 2);
-                g2d.fillOval(x + 10, y + 11, 2, 2);
-                g2d.fillOval(x + 15, y + 11, 2, 2);
-                g2d.fillOval(x + 5,  y + 15, 2, 2);
-                g2d.fillOval(x + 10, y + 15, 2, 2);
-                g2d.fillOval(x + 15, y + 15, 2, 2);
-                break;
+//            case "CALENDAR": // Lịch (Dùng cho bộ lọc năm / section title ngày)
+//                g2d.drawRoundRect(x + 2, y + 4, 18, 15, 3, 3);  // Khung lịch
+//                g2d.drawLine(x + 2, y + 8, x + 20, y + 8);      // Đường kẻ ngang tiêu đề
+//                g2d.drawLine(x + 7,  y + 2, x + 7,  y + 6);     // Núm trái
+//                g2d.drawLine(x + 15, y + 2, x + 15, y + 6);     // Núm phải
+//                // 6 chấm ô ngày (2 hàng × 3 cột)
+//                g2d.fillOval(x + 5,  y + 11, 2, 2);
+//                g2d.fillOval(x + 10, y + 11, 2, 2);
+//                g2d.fillOval(x + 15, y + 11, 2, 2);
+//                g2d.fillOval(x + 5,  y + 15, 2, 2);
+//                g2d.fillOval(x + 10, y + 15, 2, 2);
+//                g2d.fillOval(x + 15, y + 15, 2, 2);
+//                break;
 
             case "TROPHY": // Cúp chiến thắng (Top sản phẩm bán chạy)
                 g2d.drawArc(x + 5, y + 2, 12, 12, 0, 180);      // Miệng cúp
