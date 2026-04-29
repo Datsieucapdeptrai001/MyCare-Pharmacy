@@ -11,7 +11,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.Statement;  
 import java.util.ArrayList;
 import java.util.List;
 
@@ -439,5 +439,22 @@ public class DAO_SanPham {
             while (rs.next()) ds.add(rs.getString(1));
         } catch (SQLException e) { e.printStackTrace(); }
         return ds;
+    }
+
+    public boolean laSanPhamDaAn(String maSP) {
+        String sql = "SELECT COUNT(*) FROM SanPham WHERE id = ? AND trangThai = 'AN'";
+        Connection con = ConnectDB.getInstance().getConnection();
+
+        try (PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setString(1, maSP);
+            try (ResultSet rs = pst.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1) > 0;
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
     }
 }

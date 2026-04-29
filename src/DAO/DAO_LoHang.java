@@ -10,7 +10,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.Statement;  
 import java.util.ArrayList;
 import java.util.List;
 
@@ -31,7 +31,9 @@ public class DAO_LoHang {
             sql = "SELECT lh.*, sp.ten AS tenSanPham " +
                   "FROM LoHang lh " +
                   "LEFT JOIN SanPham sp ON lh.sanPhamId = sp.id " +
-                  "ORDER BY CASE WHEN lh.trangThai = 'AN' THEN 1 ELSE 0 END, lh.ngayHetHan ASC, lh.ngayNhap ASC";
+                  "ORDER BY " +
+                  "CASE WHEN ISNULL(lh.trangThai, 'CON_HANG') = 'AN' THEN 1 ELSE 0 END, " +
+                  "lh.ngayHetHan ASC, lh.ngayNhap ASC";
         } else {
             sql = "SELECT lh.*, sp.ten AS tenSanPham " +
                   "FROM LoHang lh " +
@@ -42,13 +44,8 @@ public class DAO_LoHang {
 
         Connection con = ConnectDB.getInstance().getConnection();
 
-        if (con == null) {
-            throw new RuntimeException("Không kết nối được database. Connection đang null.");
-        }
-
         try (Statement stmt = con.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
-
             while (rs.next()) {
                 dsLoHang.add(mapLoHang(rs));
             }
@@ -65,14 +62,13 @@ public class DAO_LoHang {
         String sql = "SELECT lh.*, sp.ten AS tenSanPham " +
                      "FROM LoHang lh " +
                      "LEFT JOIN SanPham sp ON lh.sanPhamId = sp.id " +
-                     "WHERE lh.trangThai = 'AN' " +
-                     "ORDER BY lh.ngayNhap DESC";
+                     "WHERE ISNULL(lh.trangThai, 'CON_HANG') = 'AN' " +
+                     "ORDER BY lh.ngayNhap DESC, lh.ngayHetHan ASC";
 
         Connection con = ConnectDB.getInstance().getConnection();
 
         try (PreparedStatement pst = con.prepareStatement(sql);
              ResultSet rs = pst.executeQuery()) {
-
             while (rs.next()) {
                 dsLoHang.add(mapLoHang(rs));
             }
@@ -148,7 +144,7 @@ public class DAO_LoHang {
                      "WHERE lh.sanPhamId = ? " +
                      "  AND lh.soLuongLoHang > 0 " +
                      "  AND ISNULL(lh.trangThai, 'CON_HANG') NOT IN (?, ?) " +
-                     "ORDER BY lh.ngayHetHan ASC";
+                     "ORDER BY lh.ngayHetHan ASC, lh.ngayNhap ASC";
 
         try (PreparedStatement pst = con.prepareStatement(sql)) {
             pst.setString(1, maSP);
@@ -166,9 +162,10 @@ public class DAO_LoHang {
     }
 
     public boolean themLoHang(LoHang lo) {
-        String sql = "INSERT INTO LoHang(id, soLoHang, soLuongLoHang, gia, ngayNhap, ngayHetHan, trangThai, sanPhamId, khoHangId) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        Connection  con = ConnectDB.getInstance().getConnection();
-        if (con == null) return false;
+        String sql = "INSERT INTO LoHang(id, soLoHang, soLuongLoHang, gia, ngayNhap, ngayHetHan, trangThai, sanPhamId, khoHangId) " +
+                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+        Connection con = ConnectDB.getInstance().getConnection();
 
         try (PreparedStatement pst = con.prepareStatement(sql)) {
             pst.setString(1, lo.getId());
@@ -339,7 +336,6 @@ public class DAO_LoHang {
 
     public boolean dongBoTrangThaiLoHang() {
         Connection con = ConnectDB.getInstance().getConnection();
-        if (con == null) return false;
 
         try {
             con.setAutoCommit(false);
@@ -382,6 +378,26 @@ public class DAO_LoHang {
                 con.setAutoCommit(true);
             } catch (Exception ignored) {
             }
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public boolean ghiLogLoHang(String hanhDong, String loHangId, String soLoHang, int soLuongCu, int soLuongMoi, String ghiChu) {
+        String sql = "INSERT INTO LogLoHang(hanhDong, loHangId, soLoHang, soLuongCu, soLuongMoi, ghiChu) " +
+                     "VALUES (?, ?, ?, ?, ?, ?)";
+
+        Connection con = ConnectDB.getInstance().getConnection();
+
+        try (PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setString(1, hanhDong);
+            pst.setString(2, loHangId);
+            pst.setString(3, soLoHang);
+            pst.setInt(4, soLuongCu);
+            pst.setInt(5, soLuongMoi);
+            pst.setString(6, ghiChu);
+            return pst.executeUpdate() > 0;
+        } catch (Exception e) {
             e.printStackTrace();
             return false;
         }

@@ -11,7 +11,7 @@ public class BUS_SanPham {
     private final DAO_SanPham daoSanPham = new DAO_SanPham();
 
     public BUS_SanPham() { }
-    
+
     public List<SanPham> traCuuSanPham(String tuKhoa) {
         return daoSanPham.timKiemSanPhamDoiTra(tuKhoa);
     }
