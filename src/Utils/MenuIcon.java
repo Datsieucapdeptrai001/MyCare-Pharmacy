@@ -11,6 +11,11 @@ public class MenuIcon implements Icon {
         this.type = type;
     }
 
+    public MenuIcon(String type, int size) {
+        this.type = type;
+        this.size = size;
+    }
+
     @Override
     public int getIconWidth() {
         return size;
@@ -342,9 +347,70 @@ public class MenuIcon implements Icon {
                 g2d.setStroke(new BasicStroke(2.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
                 g2d.drawPolyline(new int[]{x + 5, x + 10, x + 18}, new int[]{y + 12, y + 16, y + 6}, 3);
                 break;
-            
-        }
 
-        g2d.dispose();
+            case "STOP": // Icon vuông đặc (Dùng cho nút Kết ca / Dừng)
+                g2d.fillRoundRect(x + 5, y + 5, 12, 12, 3, 3);
+                break;
+
+            case "LOCK": // Ổ khóa (Dùng cho chức năng chỉ dành cho Quản lý)
+                g2d.drawRoundRect(x + 4, y + 10, 14, 10, 3, 3); // Thân ổ khóa
+                g2d.drawArc(x + 7, y + 3, 8, 10, 0, 180);       // Cung tròn trên
+                g2d.drawLine(x + 7, y + 8, x + 7, y + 10);      // Nối cung vào thân trái
+                g2d.drawLine(x + 15, y + 8, x + 15, y + 10);    // Nối cung vào thân phải
+                g2d.fillOval(x + 10, y + 14, 2, 2);             // Lỗ khóa
+                break;
+
+            case "RETURN": // Mũi tên hoàn trả (↩ Đổi / Trả hàng)
+                g2d.drawArc(x + 3, y + 5, 14, 10, 0, 180);      // Cung trên
+                g2d.drawLine(x + 3, y + 10, x + 3, y + 15);     // Đuôi đi xuống
+                g2d.drawPolyline(
+                    new int[]{x + 1, x + 4, x + 7},
+                    new int[]{y + 13, y + 16, y + 13},
+                    3  // Đầu mũi tên
+                );
+                break;
+
+            case "CALENDAR": // Lịch (Dùng cho bộ lọc năm / section title ngày)
+                g2d.drawRoundRect(x + 2, y + 4, 18, 15, 3, 3);  // Khung lịch
+                g2d.drawLine(x + 2, y + 8, x + 20, y + 8);      // Đường kẻ ngang tiêu đề
+                g2d.drawLine(x + 7,  y + 2, x + 7,  y + 6);     // Núm trái
+                g2d.drawLine(x + 15, y + 2, x + 15, y + 6);     // Núm phải
+                // 6 chấm ô ngày (2 hàng × 3 cột)
+                g2d.fillOval(x + 5,  y + 11, 2, 2);
+                g2d.fillOval(x + 10, y + 11, 2, 2);
+                g2d.fillOval(x + 15, y + 11, 2, 2);
+                g2d.fillOval(x + 5,  y + 15, 2, 2);
+                g2d.fillOval(x + 10, y + 15, 2, 2);
+                g2d.fillOval(x + 15, y + 15, 2, 2);
+                break;
+
+            case "TROPHY": // Cúp chiến thắng (Top sản phẩm bán chạy)
+                g2d.drawArc(x + 5, y + 2, 12, 12, 0, 180);      // Miệng cúp
+                g2d.drawLine(x + 5,  y + 8,  x + 5,  y + 12);  // Thân trái
+                g2d.drawLine(x + 17, y + 8,  x + 17, y + 12);  // Thân phải
+                g2d.drawArc(x + 8, y + 10, 6, 6, 180, 180);    // Đáy cúp tròn
+                g2d.drawLine(x + 11, y + 16, x + 11, y + 18);  // Cổ đế
+                g2d.drawLine(x + 7,  y + 18, x + 15, y + 18);  // Đế
+                g2d.drawArc(x + 1,  y + 4, 6, 6, 90,  180);   // Tai trái
+                g2d.drawArc(x + 15, y + 4, 6, 6, 270, 180);   // Tai phải
+                break;
+
+            case "INFO_CIRCLE": // Vòng tròn + chữ i (Thông tin / Bước hướng dẫn)
+                g2d.drawOval(x + 2, y + 2, 18, 18);                          // Vòng tròn
+                g2d.fillOval(x + 10, y + 6, 2, 2);                           // Chấm trên chữ i
+                g2d.setStroke(new BasicStroke(2.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                g2d.drawLine(x + 11, y + 10, x + 11, y + 16);               // Thân chữ i
+                break;
+
+            case "BELL": // Chuông thông báo
+                g2d.drawLine(x + 11, y + 1, x + 11, y + 4);                 // Dây treo
+                g2d.drawArc(x + 4, y + 3, 14, 12, 0, 180);                  // Mái chuông
+                g2d.drawLine(x + 4,  y + 9,  x + 4,  y + 15);              // Thân trái
+                g2d.drawLine(x + 18, y + 9,  x + 18, y + 15);              // Thân phải
+                g2d.drawLine(x + 2,  y + 15, x + 20, y + 15);              // Miệng chuông
+                g2d.drawArc(x + 8, y + 15, 6, 4, 180, 180);                 // Núm lắc
+                break;
+
+        }
     }
 }
