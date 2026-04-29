@@ -99,6 +99,26 @@ public class DAO_ChiTietHoaDon {
 
         return false;
     }
+    
+    public boolean themCTHD(Connection con, ChiTietHoaDon cthd) throws SQLException {
+        if (cthd == null
+                || cthd.getHoaDonId() == null
+                || cthd.getDonViDoLuongId() == null
+                || cthd.getSanPhamId() == null) {
+            return false;
+        }
+
+        String sql = "INSERT INTO ChiTietHoaDon (hoaDonId, donViDoLuongId, sanPhamId, soLuong) VALUES (?, ?, ?, ?)";
+
+        try (PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setString(1, cthd.getHoaDonId().getId());
+            pst.setString(2, cthd.getDonViDoLuongId().getId());
+            pst.setString(3, cthd.getSanPhamId().getId());
+            pst.setInt(4, cthd.getSoLuong());
+
+            return pst.executeUpdate() > 0;
+        }
+    }
 
     // Hàm nạp dữ liệu riêng cho bảng Tạo Hóa Đơn (Lưu nháp)
     public List<Object[]> layDuLieuChoTaoHoaDon(String maHD) {

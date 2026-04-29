@@ -421,4 +421,44 @@ public class DAO_LoHang {
 
         return lh;
     }
+ // DAO_LoHang.java — thêm method này
+    public int xuatKhoFEFO(String maSP, int soLuongCanXuat) {
+        Connection con = null;
+        int soLuongBanDau = soLuongCanXuat;
+
+        try {
+            con = ConnectDB.getInstance().getConnection();
+            con.setAutoCommit(false);
+
+            List<LoHang> dsLo = layLoTheoSP(con, maSP);   // gọi overload nội bộ
+            int soLuongConThieu = soLuongCanXuat;
+
+            for (LoHang lh : dsLo) {
+                if (soLuongConThieu == 0) break;
+                if (lh == null || lh.getSoLuongLoHang() <= 0) continue;
+                if (lh.getTrangThai() == TrangThaiLoHang.AN) continue;
+
+                int soLuongXuat = Math.min(lh.getSoLuongLoHang(), soLuongConThieu);
+                int soLuongMoi = lh.getSoLuongLoHang() - soLuongXuat;
+
+                boolean ok = capNhatSoLuongVaTrangThaiLo(con, lh.getId(), soLuongMoi);  // overload nội bộ
+                if (!ok) throw new SQLException("Không cập nhật được lô: " + lh.getId());
+
+                soLuongConThieu -= soLuongXuat;
+            }
+
+            if (soLuongConThieu > 0)
+                throw new SQLException("Kho không đủ hàng. Còn thiếu " + soLuongConThieu + " đơn vị.");
+
+            con.commit();
+            return 0;
+
+        } catch (Exception e) {
+            try { if (con != null) con.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
+            e.printStackTrace();
+            return soLuongBanDau;
+        } finally {
+            try { if (con != null) con.setAutoCommit(true); } catch (SQLException e) { e.printStackTrace(); }
+        }
+    }
 }

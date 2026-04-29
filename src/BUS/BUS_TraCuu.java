@@ -2,7 +2,6 @@ package BUS;
 
 import DAO.DAO_SanPham;
 import Entity.SanPham;
-import ConnectDB.ConnectDB;
 import java.util.ArrayList;
 import java.util.List;
 

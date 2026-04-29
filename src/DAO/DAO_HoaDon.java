@@ -1,10 +1,13 @@
 package DAO;
 
 import ConnectDB.ConnectDB;
+import Entity.ChiTietHoaDon;
 import Entity.HoaDon;
 import Entity.KhachHang;
 import Entity.KhuyenMai;
+import Entity.LoHang;
 import Entity.NhanVien;
+import Entity.PhanBoLoHang;
 import Enumeration.LoaiHoaDon;
 import Enumeration.PhuongThucThanhToan;
 
@@ -372,5 +375,87 @@ public class DAO_HoaDon {
         }
 
         return false;
+    }
+    public boolean luuGiaoDichThanhToan(HoaDon hd, List<ChiTietHoaDon> dsCTHD,
+                                        DAO_ChiTietHoaDon daoCTHD,
+                                        DAO_LoHang daoLo,
+                                        DAO_PhanBoLoHang daoPB) {
+        Connection con = null;
+        try {
+            con = ConnectDB.getInstance().getConnection();
+            con.setAutoCommit(false);
+
+            // Xóa nháp cũ nếu tồn tại
+            try (PreparedStatement pDel1 = con.prepareStatement("DELETE FROM ChiTietHoaDon WHERE hoaDonId = ?");
+                 PreparedStatement pDel2 = con.prepareStatement("DELETE FROM HoaDon WHERE id = ?")) {
+                pDel1.setString(1, hd.getId()); pDel1.executeUpdate();
+                pDel2.setString(1, hd.getId()); pDel2.executeUpdate();
+            } catch (Exception ignored) {}
+
+            if (!themHoaDon(con, hd)) throw new Exception("Lỗi lưu hóa đơn");
+
+            for (ChiTietHoaDon ct : dsCTHD) {
+                if (!daoCTHD.themCTHD(con, ct)) throw new Exception("Lỗi lưu chi tiết");
+
+                List<LoHang> dsLo = daoLo.layLoTheoSP(con, ct.getSanPhamId().getId());
+                int canLay = ct.getSoLuong();
+
+                for (LoHang lh : dsLo) {
+                    if (canLay <= 0) break;
+                    int layDuoc = Math.min(lh.getSoLuongLoHang(), canLay);
+
+                    daoPB.themPhanBo(con, new PhanBoLoHang(hd, ct.getDonViDoLuongId(), ct.getSanPhamId(), lh, layDuoc));
+                    daoLo.capNhatSoLuongVaTrangThaiLo(con, lh.getId(), lh.getSoLuongLoHang() - layDuoc);
+                    canLay -= layDuoc;
+                }
+                if (canLay > 0) throw new Exception("Kho không đủ hàng: " + ct.getSanPhamId().getId());
+            }
+
+            con.commit();
+            return true;
+        } catch (Exception e) {
+            try { if (con != null) con.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
+            e.printStackTrace();
+            return false;
+        } finally {
+            try { if (con != null) con.setAutoCommit(true); } catch (SQLException e) { e.printStackTrace(); }
+        }
+    }
+
+    // Hàm mới này nhận Connection từ bên ngoài truyền vào, không tự tạo Connection mới
+    public boolean themHoaDon(Connection con, HoaDon hd) throws SQLException {
+        String sql = "INSERT INTO HoaDon (id, loaiHD, ghiChu, ngayLapHD, nhanVienId, khachHangId, khuyenMaiId, phuongThucThanhToan, hoaDonGocId) "
+                   + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        
+        // Lưu ý: Không dùng try-with-resources cho Connection ở đây, vì mình cần giữ nó mở cho các thao tác khác
+        try (PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setString(1, hd.getId());
+            pst.setString(2, hd.getLoaiHD().name());
+            pst.setString(3, hd.getGhiChu());
+            pst.setTimestamp(4, Timestamp.valueOf(hd.getNgayLapHD()));
+            pst.setString(5, hd.getNhanVienId().getNhanVien());
+
+            if (hd.getKhachHangId() != null) {
+                pst.setString(6, hd.getKhachHangId().getId());
+            } else {
+                pst.setNull(6, java.sql.Types.NVARCHAR);
+            }
+
+            if (hd.getKhuyenMaiId() != null) {
+                pst.setString(7, hd.getKhuyenMaiId().getId());
+            } else {
+                pst.setNull(7, java.sql.Types.NVARCHAR);
+            }
+
+            pst.setString(8, hd.getPhuongThucThanhToan().name());
+
+            if (hd.getHoaDonGocId() != null) {
+                pst.setString(9, hd.getHoaDonGocId().getId());
+            } else {
+                pst.setNull(9, java.sql.Types.NVARCHAR);
+            }
+
+            return pst.executeUpdate() > 0;
+        }
     }
 }

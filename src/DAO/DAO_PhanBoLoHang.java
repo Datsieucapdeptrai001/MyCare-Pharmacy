@@ -26,4 +26,17 @@ public class DAO_PhanBoLoHang {
             return false;
         }
     }
+    public boolean themPhanBo(Connection con, PhanBoLoHang pb) throws SQLException {
+        String sql = "INSERT INTO PhanBoLoHang (hoaDonId, sanPhamId, donViDoLuongId, loHangId, soLuong) VALUES (?, ?, ?, ?, ?)";
+
+        try (PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setString(1, pb.getHoaDonId().getId());
+            pst.setString(2, pb.getSanPhamId().getId());
+            pst.setString(3, pb.getDonViDoLuong().getId());
+            pst.setString(4, pb.getLoHangId().getId());
+            pst.setInt(5, pb.getSoLuong());
+
+            return pst.executeUpdate() > 0;
+        }
+    }
 }

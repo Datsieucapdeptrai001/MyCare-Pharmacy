@@ -3,10 +3,6 @@ package BUS;
 import DAO.DAO_LoHang;
 import Entity.LoHang;
 import Enumeration.TrangThaiLoHang;
-import ConnectDB.ConnectDB;
-
-import java.sql.Connection;
-import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -55,67 +51,10 @@ public class BUS_Kho {
     }
 
     public int xuLyXuatKhoFEFO(String maSP, int soLuongCanXuat) {
-        if (maSP == null || maSP.trim().isEmpty() || soLuongCanXuat <= 0) {
+        if (maSP == null || maSP.trim().isEmpty() || soLuongCanXuat <= 0)
             throw new IllegalArgumentException("Mã sản phẩm hoặc số lượng cần xuất không hợp lệ.");
-        }
 
-        Connection con = null;
-        int soLuongBanDau = soLuongCanXuat;
-
-        try {
-            con = ConnectDB.getInstance().getConnection();
-            con.setAutoCommit(false);
-
-            List<LoHang> dsLo = daoLoHang.layLoTheoSP(con, maSP);
-            int soLuongConThieu = soLuongCanXuat;
-
-            for (LoHang lh : dsLo) {
-                if (soLuongConThieu == 0) break;
-                if (lh == null || lh.getSoLuongLoHang() <= 0) continue;
-                if (lh.getTrangThai() == TrangThaiLoHang.AN) continue;
-
-                int soLuongDaXuat = xuatTuMotLo(con, lh, soLuongConThieu);
-                soLuongConThieu -= soLuongDaXuat;
-            }
-
-            if (soLuongConThieu > 0) {
-                throw new SQLException("Kho không đủ hàng. Còn thiếu " + soLuongConThieu + " đơn vị.");
-            }
-
-            con.commit();
-            return 0;
-
-        } catch (Exception e) {
-            try {
-                if (con != null) con.rollback();
-            } catch (SQLException ex) {
-                ex.printStackTrace();
-            }
-            e.printStackTrace();
-            return soLuongBanDau;
-
-        } finally {
-            try {
-                if (con != null) {
-                    con.setAutoCommit(true);
-                }
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
-    private int xuatTuMotLo(Connection con, LoHang lh, int soLuongCanXuat) throws SQLException {
-        int soLuongTrongLo = lh.getSoLuongLoHang();
-        int soLuongXuatThucTe = Math.min(soLuongTrongLo, soLuongCanXuat);
-        int soLuongMoi = soLuongTrongLo - soLuongXuatThucTe;
-
-        boolean ok = daoLoHang.capNhatSoLuongVaTrangThaiLo(con, lh.getId(), soLuongMoi);
-        if (!ok) {
-            throw new SQLException("Không cập nhật được số lượng/trạng thái cho lô " + lh.getId());
-        }
-
-        return soLuongXuatThucTe;
+        return daoLoHang.xuatKhoFEFO(maSP, soLuongCanXuat); // DAO lo hết
     }
 
     public boolean kiemKeKho() {
