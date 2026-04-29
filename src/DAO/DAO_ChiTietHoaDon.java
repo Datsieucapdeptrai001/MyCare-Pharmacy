@@ -19,7 +19,6 @@ public class DAO_ChiTietHoaDon {
 
     public List<Object[]> layDanhSachSanPhamTheoMaHD(String maHD) {
         List<Object[]> list = new ArrayList<>();
-        // Đưa Connection ra ngoài, gọi 1 lần duy nhất
         Connection con = ConnectDB.getInstance().getConnection();
         
         String sql = "SELECT sp.ten AS TenSP, dv.ten AS DVT, ct.soLuong AS SL, " +
@@ -29,7 +28,6 @@ public class DAO_ChiTietHoaDon {
                      "JOIN DonViDoLuong dv ON ct.donViDoLuongId = dv.id AND ct.sanPhamId = dv.sanPhamId " +
                      "WHERE ct.hoaDonId = ?";
                      
-        // Sử dụng try-with-resources CHỈ CHO PreparedStatement và ResultSet để tự động dọn rác
         try (PreparedStatement pstm = con.prepareStatement(sql)) {
             pstm.setString(1, maHD);
             
@@ -40,7 +38,14 @@ public class DAO_ChiTietHoaDon {
                     String dvt = rs.getString("DVT");
                     int sl = rs.getInt("SL");
                     double donGia = rs.getDouble("DonGia");
-                    double vatPercent = rs.getDouble("VAT"); // Ví dụ: 5.0 hoặc 8.0
+                    double vatPercent = rs.getDouble("VAT"); // Lấy giá trị VAT từ Database
+                    
+                    // =======================================================
+                    // FIX LỖI 0% VAT: Xử lý số thập phân (VD: 0.05 -> 5.0)
+                    // =======================================================
+                    if (vatPercent > 0 && vatPercent < 1) {
+                        vatPercent = vatPercent * 100;
+                    }
 
                     // Tính toán thành tiền: (Số lượng * Đơn giá) + Tiền VAT
                     double tienChuaVAT = sl * donGia;
@@ -50,7 +55,7 @@ public class DAO_ChiTietHoaDon {
                     // Format chuỗi tiền tệ (vd: 25000 -> 25.000đ)
                     String strDonGia = String.format("%,d", (long)donGia).replace(',', '.') + "đ";
                     String strThanhTien = String.format("%,d", (long)thanhTien).replace(',', '.') + "đ";
-                    String strVAT = (int)vatPercent + "%";
+                    String strVAT = (int)vatPercent + "%"; // Bây giờ (int) 5.0 sẽ ra chuẩn 5%
 
                     // Tạo mảng Object đúng 7 cột mà UI ChiTietHoaDon đang yêu cầu:
                     Object[] row = new Object[]{
@@ -70,7 +75,6 @@ public class DAO_ChiTietHoaDon {
             System.err.println("Lỗi SQL layDanhSachSanPhamTheoMaHD: " + e.getMessage());
             e.printStackTrace();
         } 
-        // Không cần block finally nữa vì try-with-resources đã lo việc đóng pstm và rs
         
         return list;
     }

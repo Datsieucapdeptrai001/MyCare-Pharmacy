@@ -17,7 +17,12 @@ public class BUS_KhachHang {
     public List<KhachHang> getDSKhachHang() {
         return daoKhachHang.getDSKhachHang();
     }
-
+    public KhachHang getKhachHangTheoSDT(String sdt) {
+        if (sdt == null || sdt.trim().isEmpty()) {
+            return null;
+        }
+        return daoKhachHang.getKhachHangTheoSDT(sdt);
+    }
     public boolean validateThongTin(KhachHang kh) {
         if (kh.getId() == null || kh.getId().trim().isEmpty()) {
             System.out.println("Lỗi: Mã khách hàng không được để trống.");

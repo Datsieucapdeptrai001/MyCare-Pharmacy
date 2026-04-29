@@ -254,6 +254,7 @@ public class ManHinhBanHang extends JPanel {
         table.getColumnModel().getColumn(8).setMaxWidth(0);
         table.setDefaultRenderer(Object.class, new ModernTableRenderer());
 
+     // Tìm đến đoạn xử lý sự kiện click table trong ManHinhBanHang.java
         table.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mouseClicked(java.awt.event.MouseEvent e) {
@@ -271,14 +272,17 @@ public class ManHinhBanHang extends JPanel {
                     String status = table.getValueAt(viewRow, 6).toString();
                     
                     Window p = SwingUtilities.getWindowAncestor(ManHinhBanHang.this);
-                    String tenNhanVienHienTai = "Nguyễn Tuấn Đạt"; 
+
+                    // 1. FIX TÊN NHÂN VIÊN: Lấy từ phiên làm việc hiện tại
+                    String tenNhanVienHienTai = Utils.UserSession.getInstance().getTenHienThi();
 
                     if (status.equals("Đang xử lý")) {
                         TaoHoaDon dialogSua = new TaoHoaDon((Frame) p, model, modelRow, maHoaDon, khach, sdt); 
                         dialogSua.setVisible(true);
                     } else {
-                        DAO.DAO_ChiTietHoaDon daoCTHD = new DAO.DAO_ChiTietHoaDon();
-                        java.util.List<Object[]> listSanPham = daoCTHD.layDanhSachSanPhamTheoMaHD(maHoaDon);
+                        // 2. THAY ĐỔI: Sử dụng BUS thay vì trực tiếp gọi DAO
+                        BUS.BUS_ChiTietHoaDon busCTHD = new BUS.BUS_ChiTietHoaDon();
+                        java.util.List<Object[]> listSanPham = busCTHD.layDanhSachSanPhamTheoMaHD(maHoaDon);
 
                         ChiTietHoaDon dialogChiTiet = new ChiTietHoaDon(
                             (Frame) p, maHoaDon, ngay, khach, sdt, phuongThuc, tongTien, tenNhanVienHienTai, listSanPham
