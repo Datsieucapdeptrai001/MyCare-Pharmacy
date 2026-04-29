@@ -18,6 +18,7 @@ public class SanPham {
     private String moTa;
     private String donViDoCoBan;
     private LocalDateTime ngayTao;
+    private double giaBan;
 
     public SanPham() {
     }
@@ -116,6 +117,14 @@ public class SanPham {
 
     public void setNgayTao(LocalDateTime ngayTao) {
         this.ngayTao = ngayTao;
+    }
+
+    public double getGiaBan() {
+        return giaBan;
+    }
+
+    public void setGiaBan(double giaBan) {
+        this.giaBan = giaBan;
     }
 
     @Override
