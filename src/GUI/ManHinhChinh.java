@@ -624,7 +624,9 @@ public class ManHinhChinh extends JPanel {
         long tienHT     = tienDauCa + (long) tmCa;   // Tiền hệ thống (tự tính)
 
         // Thời gian ca
-        String tenCa = (ca != null) ? "Ca " + ca.getLoaiCa() : "—";
+        String[] CA_LABELS = { "Ca Sáng", "Ca Chiều", "Ca Tối" };
+        String tenCa = (ca != null && ca.getLoaiCa() >= 0 && ca.getLoaiCa() <= 2)
+                ? CA_LABELS[ca.getLoaiCa()] : "—";
         String tenNV = UserSession.getInstance().getTenHienThi();
         String gioBD = "—";
         String thoiGian = "—";

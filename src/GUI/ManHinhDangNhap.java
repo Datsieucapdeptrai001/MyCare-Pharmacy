@@ -331,6 +331,7 @@ public class ManHinhDangNhap extends JFrame {
                     ca.setTienDauCa(dlg.getTongTienDauCa());
                     ca.setTienHeThongGhiNhan(0);
                     ca.setTienKetCa(0);
+                    ca.setLoaiCa(dlg.getSelectedCa()); // ✅ Fix: lưu đúng loại ca
                     new DAO.DAO_CaLamViec().themCa(ca);
                     UserSession.getInstance().setCaHienTai(ca);
                 }
@@ -508,6 +509,6 @@ public class ManHinhDangNhap extends JFrame {
     }
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> new MainDashboard().setVisible(true));
+        SwingUtilities.invokeLater(() -> new ManHinhDangNhap().setVisible(true));
     }
 }
