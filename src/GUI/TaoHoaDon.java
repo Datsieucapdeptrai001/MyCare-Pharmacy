@@ -1738,10 +1738,15 @@ long totalToPay = this.tamTinh + this.vat;
         String[] cols = {"Sản phẩm", "ĐVT", "SL", "Đơn giá", "VAT%", "Thành tiền", ""};
         productModel = new DefaultTableModel(cols, 0) {
             @Override
-            public boolean isCellEditable(int row, int column) {
-                return column == 2 || column == 3; 
+            public boolean isCellEditable(int r, int c) {
+                // FIX: Chỉ cho phép sửa Cột SL (2), ĐVT (1), và Nút xóa (6)
+            	return c == 2 || c == 6 || c == 1; 
             }
         };
+        
+        // ====================================================================
+        // 1. LẮNG NGHE SỰ THAY ĐỔI ĐỂ TỰ ĐỘNG NHÂN THÀNH TIỀN
+        // ====================================================================
         productModel.addTableModelListener(e -> {
             if (isTableUpdating) return; 
 
@@ -1749,27 +1754,31 @@ long totalToPay = this.tamTinh + this.vat;
                 int row = e.getFirstRow();
                 int col = e.getColumn();
                 
-                if (row >= 0 && (col == 2 || col == 3)) {
+                // Nếu sửa Số Lượng (Cột 2) hoặc đổi ĐVT (Cột 1)
+                if (row >= 0 && (col == 2 || col == 1)) {
                     SwingUtilities.invokeLater(() -> {
                         isTableUpdating = true; 
                         try {
+                            // Lấy Số lượng (Ép về 1 nếu nhập bậy)
                             String slStr = productModel.getValueAt(row, 2).toString().trim();
                             int sl = 1;
                             try {
                                 sl = Integer.parseInt(slStr);
                                 if (sl <= 0) sl = 1; 
-                            } catch (Exception ex) {
-                                sl = 1; 
-                            }
+                            } catch (Exception ex) { sl = 1; }
 
+                            // Lấy Đơn giá
                             String giaStr = productModel.getValueAt(row, 3).toString().replaceAll("[^0-9]", "");
                             long donGia = 0;
                             try { donGia = Long.parseLong(giaStr); } catch (Exception ex) {}
 
+                            // Tự động nhân Thành tiền
                             long thanhTien = sl * donGia;
+                            
                             productModel.setValueAt(String.valueOf(sl), row, 2); 
                             productModel.setValueAt(String.format("%,d", thanhTien).replace(',', '.') + "đ", row, 5);
                             
+                            // Gọi hàm tính lại Tổng Hóa Đơn
                             recalculateTotals();
                             
                         } finally {
@@ -1780,11 +1789,45 @@ long totalToPay = this.tamTinh + this.vat;
             }
         });
 
+        // ====================================================================
+        // 2. KHỞI TẠO BẢNG VỚI COMBOBOX ĐỘNG THEO DẠNG THUỐC (CỘT 1)
+        // ====================================================================
         JTable tbl = new JTable(productModel) {
             @Override
             public Dimension getPreferredScrollableViewportSize() {
                 int tableHeight = getRowCount() * getRowHeight();
                 return new Dimension(getPreferredSize().width, tableHeight);
+            }
+
+            @Override
+            public javax.swing.table.TableCellEditor getCellEditor(int row, int column) {
+                if (column == 1) { // Rơi vào đúng Cột Đơn Vị Tính
+                    String dvtHienTai = "";
+                    Object val = getValueAt(row, 1);
+                    if (val != null) dvtHienTai = val.toString().trim();
+                    
+                    JComboBox<String> cbDVT = new JComboBox<>();
+                    cbDVT.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+                    cbDVT.setBackground(Color.WHITE);
+                    
+                    // Logic phân loại thông minh
+                    if (dvtHienTai.equalsIgnoreCase("Viên") || dvtHienTai.equalsIgnoreCase("Vỉ") || 
+                        dvtHienTai.equalsIgnoreCase("Hộp") || dvtHienTai.equalsIgnoreCase("Gói")) {
+                        cbDVT.addItem("Viên"); cbDVT.addItem("Vỉ"); cbDVT.addItem("Hộp");
+                    } 
+                    else if (dvtHienTai.equalsIgnoreCase("Lọ") || dvtHienTai.equalsIgnoreCase("Chai") || 
+                             dvtHienTai.equalsIgnoreCase("Ống") || dvtHienTai.equalsIgnoreCase("Dung dịch")) {
+                        cbDVT.addItem("Lọ"); cbDVT.addItem("Chai"); cbDVT.addItem("Hộp"); 
+                    } 
+                    else if (dvtHienTai.equalsIgnoreCase("Tuýp")) {
+                        cbDVT.addItem("Tuýp"); cbDVT.addItem("Hộp");
+                    } 
+                    else {
+                        cbDVT.addItem(dvtHienTai); cbDVT.addItem("Hộp");
+                    }
+                    return new DefaultCellEditor(cbDVT);
+                }
+                return super.getCellEditor(row, column);
             }
         };
         

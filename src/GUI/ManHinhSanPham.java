@@ -501,14 +501,14 @@ public class ManHinhSanPham extends JPanel {
             @Override public void changedUpdate(DocumentEvent e) { doSearch(); }
         });
 
-        JButton btnTim    = createBtnWithIcon("Tìm",        "#1D68B2", new MenuIcon("SEARCH"));  btnTim.setPreferredSize(new Dimension(95, 36));
-        JButton btnLamMoi = createBtnWithIcon("Làm mới",    "#64748B", new MenuIcon("REFRESH")); btnLamMoi.setPreferredSize(new Dimension(115, 36));
-        btnXuatTop = createBtnWithIcon("Xuất Excel", "#22C55E", new MenuIcon("EXPORT"));  btnXuatTop.setPreferredSize(new Dimension(130, 36));
-        btnNhapTop = createBtnWithIcon("Nhập Excel", "#0EA5E9", new MenuIcon("IMPORT"));  btnNhapTop.setPreferredSize(new Dimension(130, 36));
-        JButton btnThem   = createBtnWithIcon("Thêm mới",   "#E11D48", new MenuIcon("ADD"));     btnThem.setPreferredSize(new Dimension(125, 36));
+        JButton btnTim     = createBtnWithIcon("Tìm",        "#1D68B2", new MenuIcon("SEARCH"));  btnTim.setPreferredSize(new Dimension(95, 36));
+        JButton btnLamMoi  = createBtnWithIcon("Làm mới",    "#64748B", new MenuIcon("REFRESH")); btnLamMoi.setPreferredSize(new Dimension(115, 36));
+        JButton btnXuatTop = createBtnWithIcon("Xuất Excel", "#22C55E", new MenuIcon("EXPORT"));  btnXuatTop.setPreferredSize(new Dimension(130, 36));
+        JButton btnNhapTop = createBtnWithIcon("Nhập Excel", "#0EA5E9", new MenuIcon("IMPORT"));  btnNhapTop.setPreferredSize(new Dimension(130, 36));
+        JButton btnThem    = createBtnWithIcon("Thêm mới",   "#E11D48", new MenuIcon("ADD"));     btnThem.setPreferredSize(new Dimension(125, 36));
 
-        this.topBtnXuat = btnXuat;
-        this.topBtnNhap = btnNhap;
+        this.topBtnXuat = btnXuatTop;
+        this.topBtnNhap = btnNhapTop;
         this.topBtnThem = btnThem;
         
         btnTim.addActionListener(e -> doSearch());
@@ -1395,10 +1395,11 @@ public class ManHinhSanPham extends JPanel {
                             
                             if (spCu != null) {
                                 double giaBanCu = spCu.getGiaBan();
-                                bus.capNhatSP(spCu.getId(), mapToDbDanhMuc(loai), mapToDbDang(dang), ten, vietTat, nsx, hoatChat, vat, hamLuong, moTa, donVi, giaBanCu);
+                                // ĐÃ FIX: Thêm tham số new ArrayList<>() vào cuối hàm
+                                bus.capNhatSP(spCu.getId(), mapToDbDanhMuc(loai), mapToDbDang(dang), ten, vietTat, nsx, hoatChat, vat, hamLuong, moTa, donVi, giaBanCu, new ArrayList<>());
                                 updateCount++;
                             } else {
-                                // Đọc giaBan từ cột 11 của file Excel (không hardcode = 0)
+                                // Đọc giaBan từ cột 11 của file Excel
                                 double giaBanMoi = 0;
                                 try {
                                     String giaBanStr = formatter.formatCellValue(row.getCell(11))
@@ -1411,7 +1412,8 @@ public class ManHinhSanPham extends JPanel {
                                     continue;
                                 }
                                 String newId = bus.taoMaMoi();
-                                boolean isSaved = bus.themSP(newId, mapToDbDanhMuc(loai), mapToDbDang(dang), ten, vietTat, nsx, hoatChat, vat, hamLuong, moTa, donVi, giaBanMoi);
+                                // ĐÃ FIX: Thêm tham số new ArrayList<>() vào cuối hàm
+                                boolean isSaved = bus.themSP(newId, mapToDbDanhMuc(loai), mapToDbDang(dang), ten, vietTat, nsx, hoatChat, vat, hamLuong, moTa, donVi, giaBanMoi, new ArrayList<>());
                                 if (isSaved) {
                                     successCount++;
                                     SanPham newSp = new SanPham();
