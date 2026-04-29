@@ -11,10 +11,10 @@ public class BUS_SanPham {
     private final DAO_SanPham daoSanPham = new DAO_SanPham();
 
     public BUS_SanPham() { }
-    
+
     public List<SanPham> traCuuSanPham(String tuKhoa) {
-        // Xóa dsFake và gọi thẳng xuống DAO
-        return daoSanPham.timKiemSanPhamDoiTra(tuKhoa);
+        if (tuKhoa == null) tuKhoa = "";
+        return daoSanPham.timKiemSanPhamDoiTra(tuKhoa.trim());
     }
 
     public boolean kiemTraThongTinSP(SanPham sp) {
@@ -27,7 +27,14 @@ public class BUS_SanPham {
 
     public double tinhGiaBanTheoDonVi(String maSP, String donViMuonBan) {
         if (isBlank(maSP) || isBlank(donViMuonBan)) return 0.0;
-        return 5000.0;
+
+        List<LoHang> dsLo = daoSanPham.layLoTheoSP(maSP.trim());
+        if (dsLo == null || dsLo.isEmpty()) return 0.0;
+
+        LoHang loDauTien = dsLo.get(0);
+        if (loDauTien == null) return 0.0;
+
+        return loDauTien.getGia();
     }
 
     public List<LoHang> layLoTheoSP(String maSP) {
@@ -118,6 +125,11 @@ public class BUS_SanPham {
     public boolean khoiPhucSP(String maSP) {
         if (isBlank(maSP)) return false;
         return daoSanPham.khoiPhucSanPham(maSP.trim());
+    }
+
+    public boolean laSanPhamDaAn(String maSP) {
+        if (isBlank(maSP)) return false;
+        return daoSanPham.laSanPhamDaAn(maSP.trim());
     }
 
     private boolean isBlank(String s) {

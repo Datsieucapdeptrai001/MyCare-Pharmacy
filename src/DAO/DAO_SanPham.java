@@ -11,7 +11,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.Statement;  
 import java.util.ArrayList;
 import java.util.List;
 
@@ -25,8 +25,8 @@ public class DAO_SanPham {
         String sql = "SELECT id, ten, danhMuc, ISNULL(hoatChat, '') AS hoatChat, dang, " +
                 "ISNULL(nhaSanXuat, 'Khác') AS nhaSanXuat, ISNULL(thueVAT, 0) AS thueVAT " +
                 "FROM SanPham " +
-                "WHERE ISNULL(trangThai, 'HOAT_DONG') != 'AN'";
-        
+                "WHERE ISNULL(trangThai, 'HOAT_DONG') <> 'AN'";
+
         Connection con = ConnectDB.getInstance().getConnection();
         try (PreparedStatement pst = con.prepareStatement(sql);
              ResultSet rs = pst.executeQuery()) {
@@ -34,21 +34,21 @@ public class DAO_SanPham {
             while (rs.next()) {
                 String ma = rs.getString("id");
                 String ten = rs.getString("ten");
-                
+
                 String danhMucDB = rs.getString("danhMuc");
-                String loai = "Sản phẩm chức năng"; 
+                String loai = "Sản phẩm chức năng";
                 if ("THUOC_KE_DON".equals(danhMucDB)) loai = "Thuốc kê đơn";
                 else if ("THUOC_KHONG_KE_DON".equals(danhMucDB)) loai = "Thuốc không kê đơn";
 
                 String hoatChat = rs.getString("hoatChat");
-                
+
                 String dangDB = rs.getString("dang");
                 String dang = "Viên nén";
                 if ("DANG_LONG".equals(dangDB)) dang = "Dung dịch";
 
                 String nsx = rs.getString("nhaSanXuat");
                 String vat = rs.getDouble("thueVAT") + "%";
-                
+
                 ds.add(new Object[]{ma, ten, loai, hoatChat, dang, nsx, vat});
             }
         } catch (Exception e) {
@@ -59,7 +59,7 @@ public class DAO_SanPham {
 
     public List<SanPham> getDsThuoc() {
         List<SanPham> dsSanPham = new ArrayList<>();
-        String sql = "SELECT * FROM SanPham WHERE ISNULL(trangThai, 'HOAT_DONG') != 'AN'";
+        String sql = "SELECT * FROM SanPham WHERE ISNULL(trangThai, 'HOAT_DONG') <> 'AN'";
         Connection con = ConnectDB.getInstance().getConnection();
 
         try (Statement stmt = con.createStatement();
@@ -133,8 +133,8 @@ public class DAO_SanPham {
         String sql = "SELECT * FROM LoHang " +
                      "WHERE sanPhamId = ? " +
                      "AND soLuongLoHang > 0 " +
-                     "AND trangThai NOT IN ('HET_HAN', 'AN') " +
-                     "ORDER BY ngayHetHan ASC";
+                     "AND ISNULL(trangThai, 'CON_HANG') NOT IN ('HET_HAN', 'AN') " +
+                     "ORDER BY ngayHetHan ASC, ngayNhap ASC";
         Connection con = ConnectDB.getInstance().getConnection();
 
         try (PreparedStatement pst = con.prepareStatement(sql)) {
@@ -146,12 +146,20 @@ public class DAO_SanPham {
                     lh.setSoLoHang(rs.getString("soLoHang"));
                     lh.setSoLuongLoHang(rs.getInt("soLuongLoHang"));
                     lh.setGia(rs.getInt("gia"));
-                    if (rs.getString("trangThai") != null) lh.setTrangThai(TrangThaiLoHang.valueOf(rs.getString("trangThai")));
-                    
-                    if (rs.getTimestamp("ngayHetHan") != null) lh.setNgayHetHan(rs.getTimestamp("ngayHetHan").toLocalDateTime());
-                    if (rs.getTimestamp("ngayNhap") != null) lh.setNgayNhap(rs.getTimestamp("ngayNhap").toLocalDateTime());
-                    
-                    SanPham sp = new SanPham(); sp.setId(rs.getString("sanPhamId"));
+
+                    if (rs.getString("trangThai") != null) {
+                        lh.setTrangThai(TrangThaiLoHang.valueOf(rs.getString("trangThai")));
+                    }
+
+                    if (rs.getTimestamp("ngayHetHan") != null) {
+                        lh.setNgayHetHan(rs.getTimestamp("ngayHetHan").toLocalDateTime());
+                    }
+                    if (rs.getTimestamp("ngayNhap") != null) {
+                        lh.setNgayNhap(rs.getTimestamp("ngayNhap").toLocalDateTime());
+                    }
+
+                    SanPham sp = new SanPham();
+                    sp.setId(rs.getString("sanPhamId"));
                     lh.setSanPhamId(sp);
 
                     dsLoHang.add(lh);
@@ -166,24 +174,36 @@ public class DAO_SanPham {
     public List<Object[]> timKiemSanPhamBan(String text) {
         List<Object[]> ds = new ArrayList<>();
         Connection con = ConnectDB.getInstance().getConnection();
+
         try {
             String sql = "SELECT sp.id AS id, sp.ten AS ten, sp.donViDoCoBan AS donVi, " +
-                         "lh.gia AS giaBan, SUM(lh.soLuongLoHang) AS soLuongTon, sp.danhMuc AS danhMuc " +
+                         "       ISNULL(MAX(lh.gia), 0) AS giaBan, " +
+                         "       ISNULL(SUM(CASE " +
+                         "           WHEN lh.soLuongLoHang > 0 " +
+                         "            AND lh.ngayHetHan >= GETDATE() " +
+                         "            AND ISNULL(lh.trangThai, 'CON_HANG') NOT IN ('AN', 'HET_HAN') " +
+                         "           THEN lh.soLuongLoHang ELSE 0 END), 0) AS soLuongTon, " +
+                         "       sp.danhMuc AS danhMuc " +
                          "FROM SanPham sp " +
-                         "JOIN LoHang lh ON sp.id = lh.sanPhamId " +
-                         "WHERE (sp.ten LIKE ? OR sp.id LIKE ?) AND lh.trangThai != 'HET_HAN' " +
-                         "GROUP BY sp.id, sp.ten, sp.donViDoCoBan, lh.gia, sp.danhMuc " +
-                         "HAVING SUM(lh.soLuongLoHang) > 0";
-            
-            try(PreparedStatement pst = con.prepareStatement(sql)){
+                         "LEFT JOIN LoHang lh ON sp.id = lh.sanPhamId " +
+                         "WHERE ISNULL(sp.trangThai, 'HOAT_DONG') <> 'AN' " +
+                         "  AND (sp.ten LIKE ? OR sp.id LIKE ?) " +
+                         "GROUP BY sp.id, sp.ten, sp.donViDoCoBan, sp.danhMuc " +
+                         "HAVING ISNULL(SUM(CASE " +
+                         "           WHEN lh.soLuongLoHang > 0 " +
+                         "            AND lh.ngayHetHan >= GETDATE() " +
+                         "            AND ISNULL(lh.trangThai, 'CON_HANG') NOT IN ('AN', 'HET_HAN') " +
+                         "           THEN lh.soLuongLoHang ELSE 0 END), 0) > 0";
+
+            try (PreparedStatement pst = con.prepareStatement(sql)) {
                 String searchPattern = "%" + text + "%";
                 pst.setString(1, searchPattern);
                 pst.setString(2, searchPattern);
-                
-                try(ResultSet rs = pst.executeQuery()){
+
+                try (ResultSet rs = pst.executeQuery()) {
                     while (rs.next()) {
                         String danhMucDB = rs.getString("danhMuc");
-                        String loai = "Khác"; 
+                        String loai = "Khác";
                         if (danhMucDB != null) {
                             if (danhMucDB.equals("THUOC_KE_DON")) loai = "Thuốc kê đơn";
                             else if (danhMucDB.equals("THUOC_KHONG_KE_DON")) loai = "Thuốc không kê đơn";
@@ -191,14 +211,14 @@ public class DAO_SanPham {
                             else if (danhMucDB.equals("MY_PHAM")) loai = "Mỹ phẩm";
                             else if (danhMucDB.equals("VAT_TU_Y_TE")) loai = "Vật tư y tế";
                         }
-                        
+
                         ds.add(new Object[]{
-                            rs.getString("id"),
-                            rs.getString("ten"),
-                            rs.getString("donVi"),
-                            rs.getDouble("giaBan"),
-                            rs.getInt("soLuongTon"),
-                            loai 
+                                rs.getString("id"),
+                                rs.getString("ten"),
+                                rs.getString("donVi"),
+                                rs.getDouble("giaBan"),
+                                rs.getInt("soLuongTon"),
+                                loai
                         });
                     }
                 }
@@ -234,15 +254,16 @@ public class DAO_SanPham {
         try (PreparedStatement pst = con.prepareStatement(sql);
              ResultSet rs = pst.executeQuery()) {
             if (rs.next()) {
-                String lastId = rs.getString("id"); 
+                String lastId = rs.getString("id");
                 int number = Integer.parseInt(lastId.split("-")[1]);
                 return String.format("SP2024-%04d", number + 1);
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
-        return "SP2024-0001"; 
+        return "SP2024-0001";
     }
+
     public boolean anSanPham(String id) {
         String sql = "UPDATE SanPham SET trangThai = 'AN' WHERE id = ?";
         Connection con = ConnectDB.getInstance().getConnection();
@@ -254,8 +275,10 @@ public class DAO_SanPham {
         }
         return false;
     }
+
     public boolean themSanPhamNhanh(String id, String danhMuc, String dang, String ten, String vietTat, String nsx, String hoatChat, double vat, String hamLuong, String moTa, String dvt) {
-        String sql = "INSERT INTO SanPham (id, danhMuc, dang, ten, tenVietTat, nhaSanXuat, hoatChat, thueVAT, hamLuong, moTa, donViDoCoBan, ngayTao) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, GETDATE())";
+        String sql = "INSERT INTO SanPham (id, danhMuc, dang, ten, tenVietTat, nhaSanXuat, hoatChat, thueVAT, hamLuong, moTa, donViDoCoBan, ngayTao, trangThai) " +
+                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, GETDATE(), 'HOAT_DONG')";
         Connection con = ConnectDB.getInstance().getConnection();
         try (PreparedStatement pst = con.prepareStatement(sql)) {
             pst.setString(1, id);
@@ -301,23 +324,23 @@ public class DAO_SanPham {
     public List<SanPham> timKiemSanPhamDoiTra(String tuKhoa) {
         List<SanPham> ds = new ArrayList<>();
         String sql = "SELECT * FROM SanPham WHERE ten LIKE ? OR id LIKE ?";
-        
+
         Connection con = ConnectDB.getInstance().getConnection();
         try (PreparedStatement pst = con.prepareStatement(sql)) {
             pst.setString(1, "%" + tuKhoa + "%");
             pst.setString(2, "%" + tuKhoa + "%");
-            
-            try(ResultSet rs = pst.executeQuery()){
+
+            try (ResultSet rs = pst.executeQuery()) {
                 while (rs.next()) {
                     SanPham sp = new SanPham();
                     sp.setId(rs.getString("id"));
                     sp.setTen(rs.getString("ten"));
-                    
+
                     String danhMucStr = rs.getString("danhMuc");
                     if (danhMucStr != null && !danhMucStr.isEmpty()) {
                         sp.setDanhMuc(Enumeration.DanhMucSanPham.valueOf(danhMucStr));
                     }
-                    
+
                     ds.add(sp);
                 }
             }
@@ -338,16 +361,17 @@ public class DAO_SanPham {
         }
         return false;
     }
-    // Lấy số lượng tồn:
+
     public int getSoLuongTon(String maSP) {
-        // Cộng toàn bộ số lượng các lô còn hạn sử dụng
         String sql = "SELECT ISNULL(SUM(lh.soLuongLoHang), 0) AS tonKho " +
                      "FROM LoHang lh " +
                      "WHERE lh.sanPhamId = ? " +
                      "AND lh.soLuongLoHang > 0 " +
-                     "AND lh.ngayHetHan >= GETDATE()";
+                     "AND lh.ngayHetHan >= GETDATE() " +
+                     "AND ISNULL(lh.trangThai, 'CON_HANG') NOT IN ('AN', 'HET_HAN')";
         Connection con = ConnectDB.getInstance().getConnection();
-        try (PreparedStatement pst = con.prepareStatement(sql);) {
+
+        try (PreparedStatement pst = con.prepareStatement(sql)) {
             pst.setString(1, maSP);
             try (ResultSet rs = pst.executeQuery()) {
                 if (rs.next()) return rs.getInt("tonKho");
@@ -357,7 +381,7 @@ public class DAO_SanPham {
         }
         return 0;
     }
-    // Lấy danh sách sản phẩm đã ẩn
+
     public List<Object[]> layDanhSachSanPhamDaAn() {
         List<Object[]> ds = new ArrayList<>();
         String sql = "SELECT id, ten, danhMuc, hoatChat, dang, nhaSanXuat, thueVAT " +
@@ -367,9 +391,13 @@ public class DAO_SanPham {
              ResultSet rs = pst.executeQuery()) {
             while (rs.next()) {
                 ds.add(new Object[]{
-                        rs.getString("id"), rs.getString("ten"), rs.getString("danhMuc"),
-                        rs.getString("hoatChat"), rs.getString("dang"),
-                        rs.getString("nhaSanXuat"), rs.getDouble("thueVAT") + "%"
+                        rs.getString("id"),
+                        rs.getString("ten"),
+                        rs.getString("danhMuc"),
+                        rs.getString("hoatChat"),
+                        rs.getString("dang"),
+                        rs.getString("nhaSanXuat"),
+                        rs.getDouble("thueVAT") + "%"
                 });
             }
         } catch (Exception e) {
@@ -390,14 +418,11 @@ public class DAO_SanPham {
         return false;
     }
 
-    // ===========================================
-    // HÀM MỚI: LẤY DANH SÁCH TÊN SẢN PHẨM CHO COMBOBOX (GIAO DIỆN KHUYẾN MÃI)
-    // ===========================================
     public List<String> layDanhSachTenSanPham() {
         List<String> dsTenSP = new ArrayList<>();
         Connection con = ConnectDB.getInstance().getConnection();
         if (con == null) return dsTenSP;
-        
+
         String sql = "SELECT ten FROM SanPham";
         try (Statement stmt = con.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
@@ -408,5 +433,22 @@ public class DAO_SanPham {
             e.printStackTrace();
         }
         return dsTenSP;
+    }
+
+    public boolean laSanPhamDaAn(String maSP) {
+        String sql = "SELECT COUNT(*) FROM SanPham WHERE id = ? AND trangThai = 'AN'";
+        Connection con = ConnectDB.getInstance().getConnection();
+
+        try (PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setString(1, maSP);
+            try (ResultSet rs = pst.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1) > 0;
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
     }
 }
