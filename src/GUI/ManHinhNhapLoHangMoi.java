@@ -91,7 +91,7 @@ public class ManHinhNhapLoHangMoi extends JDialog {
 
         setUndecorated(true);
         setBackground(BG_TRANSPARENT);
-        setSize(580, 560); 
+        setSize(580, 620); 
         setLocationRelativeTo(owner);
 
         setShape(new RoundRectangle2D.Double(0, 0, getWidth(), getHeight(), 16, 16)); 
@@ -102,7 +102,6 @@ public class ManHinhNhapLoHangMoi extends JDialog {
     private JPanel createMainUI() {
         JPanel root = new JPanel(new BorderLayout());
         root.setBackground(CARD_BG);
-        // Đổi màu viền ngoài cùng thành viền xanh cho đồng bộ
         root.setBorder(BorderFactory.createLineBorder(PRIMARY, 2));
 
         root.add(createHeader(), BorderLayout.NORTH);
@@ -114,9 +113,9 @@ public class ManHinhNhapLoHangMoi extends JDialog {
 
     private JPanel createHeader() {
         JPanel header = new JPanel(new BorderLayout());
-        header.setBackground(HEADER_BG); // Sử dụng màu xanh đậm
+        header.setBackground(HEADER_BG);
         header.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(8, 80, 100)), // Viền dưới đậm hơn
+                BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(8, 80, 100)),
                 new EmptyBorder(16, 24, 16, 20)
         ));
 
@@ -124,11 +123,11 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         left.setOpaque(false);
 
         JLabel lblIcon = new JLabel(new MenuIcon("ADD"));
-        lblIcon.setForeground(Color.WHITE); // Đổi icon thành màu trắng
+        lblIcon.setForeground(Color.WHITE);
 
         JLabel title = new JLabel("Thêm Lô Hàng");
         title.setFont(FONT_TITLE);
-        title.setForeground(Color.WHITE); // Đổi chữ thành màu trắng
+        title.setForeground(Color.WHITE);
 
         left.add(lblIcon);
         left.add(title);
@@ -138,10 +137,10 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         btnClose.setFocusPainted(false);
         btnClose.setBorderPainted(false);
         btnClose.setContentAreaFilled(false);
-        btnClose.setForeground(new Color(255, 255, 255, 180)); // Trắng mờ
+        btnClose.setForeground(new Color(255, 255, 255, 180));
         btnClose.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         btnClose.addMouseListener(new MouseAdapter() {
-            @Override public void mouseEntered(MouseEvent e) { btnClose.setForeground(Color.WHITE); } // Sáng lên khi hover
+            @Override public void mouseEntered(MouseEvent e) { btnClose.setForeground(Color.WHITE); }
             @Override public void mouseExited(MouseEvent e) { btnClose.setForeground(new Color(255, 255, 255, 180)); }
         });
         btnClose.addActionListener(e -> dispose());
@@ -194,7 +193,6 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.insets = new Insets(0, 0, 16, 0); 
 
-        // Thêm Icon màu xanh cho các nhãn
         gbc.gridy = 0;
         body.add(createFullWidthField("Sản phẩm (Chọn hoặc nhập mới) *", comboSanPhamWrapper, errSanPham, "SEARCH"), gbc);
 
@@ -229,12 +227,12 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         txtTimSanPham.setBorder(null);
 
         JButton btnDrop = new JButton("▼");
-        btnDrop.setFont(new Font("Segoe UI", Font.PLAIN, 10));
+        btnDrop.setFont(new Font("Segoe UI", Font.BOLD, 12));
         btnDrop.setFocusPainted(false);
         btnDrop.setContentAreaFilled(false);
         btnDrop.setBorder(new EmptyBorder(0, 12, 0, 12));
         btnDrop.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        btnDrop.setForeground(PRIMARY); // Đổi mũi tên sang màu Primary cho đẹp
+        btnDrop.setForeground(PRIMARY); 
 
         setupAutocompletePopup(wrap);
 
@@ -323,7 +321,7 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         });
 
         JScrollPane scroll = new JScrollPane(listSanPham);
-        scroll.setBorder(BorderFactory.createLineBorder(PRIMARY)); // Viền popup xanh
+        scroll.setBorder(BorderFactory.createLineBorder(PRIMARY, 2));
         scroll.getVerticalScrollBar().setPreferredSize(new Dimension(8, 0));
 
         popupSanPham = new JPopupMenu();
@@ -356,8 +354,18 @@ public class ManHinhNhapLoHangMoi extends JDialog {
 
     private void showProductPopup(JPanel anchorPanel) {
         int popupHeight = listSanPham.getPreferredScrollableViewportSize().height;
+        int yPos = anchorPanel.getHeight() + 2;
+
+        try {
+            Point screenLoc = anchorPanel.getLocationOnScreen();
+            Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+            if (screenLoc.y + yPos + popupHeight > screenSize.height - 40) {
+                yPos = -popupHeight - 2; 
+            }
+        } catch(Exception e) {}
+
         popupSanPham.setPopupSize(anchorPanel.getWidth(), popupHeight + 4);
-        popupSanPham.show(anchorPanel, 0, anchorPanel.getHeight() + 2);
+        popupSanPham.show(anchorPanel, 0, yPos);
         txtTimSanPham.requestFocus();
     }
 
@@ -392,10 +400,10 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         btnCal.setContentAreaFilled(false);
         btnCal.setBorder(new EmptyBorder(0, 12, 0, 12));
         btnCal.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        btnCal.setForeground(PRIMARY); // Mũi tên xanh
+        btnCal.setForeground(PRIMARY);
 
-        CustomDatePicker datePickerPopup = new CustomDatePicker(txtHanSuDung);
-        btnCal.addActionListener(e -> datePickerPopup.show(wrap, 0, wrap.getHeight() + 4));
+        CustomDatePicker datePickerPopup = new CustomDatePicker(this, txtHanSuDung);
+        btnCal.addActionListener(e -> datePickerPopup.showPopup(wrap));
 
         txtHanSuDung.addFocusListener(new FocusAdapter() {
             @Override public void focusGained(FocusEvent e) { sharedBorder.setFocused(true); wrap.repaint(); }
@@ -408,7 +416,6 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         return wrap;
     }
 
-    // --- TÁCH ICON RA KHỎI TEXT ĐỂ TÔ MÀU ĐỘC LẬP ---
     private JPanel createFullWidthField(String title, JComponent field, JLabel error, String iconName) {
         JPanel block = new JPanel(new BorderLayout(0, 8));
         block.setOpaque(false);
@@ -418,13 +425,13 @@ public class ManHinhNhapLoHangMoi extends JDialog {
 
         if (iconName != null && !iconName.isEmpty()) {
             JLabel lblIcon = new JLabel(new MenuIcon(iconName));
-            lblIcon.setForeground(PRIMARY); // Icon màu XANH rực rỡ
+            lblIcon.setForeground(PRIMARY); 
             titlePanel.add(lblIcon);
         }
 
         JLabel lblTitle = new JLabel(title);
         lblTitle.setFont(FONT_LABEL);
-        lblTitle.setForeground(TEXT_PRIMARY); // Chữ màu ĐEN XÁM đậm
+        lblTitle.setForeground(TEXT_PRIMARY);
         titlePanel.add(lblTitle);
 
         JPanel fieldWrapper = new JPanel(new BorderLayout(0, 4));
@@ -460,8 +467,8 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 0));
         actions.setOpaque(false);
 
-        JButton btnCancel = createSecondaryButton("Hủy");
-        JButton btnSubmit = createPrimaryButton("Lưu lô hàng");
+        JButton btnCancel = createSecondaryButton("✖  Hủy");
+        JButton btnSubmit = createPrimaryButton("✔  Lưu lô hàng");
 
         btnCancel.addActionListener(e -> dispose());
         btnSubmit.addActionListener(e -> handleSubmit());
@@ -506,7 +513,6 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         btn.setBorder(new EmptyBorder(10, 24, 10, 24));
         btn.setOpaque(true);
-        btn.setHorizontalTextPosition(SwingConstants.RIGHT);
 
         btn.addMouseListener(new MouseAdapter() {
             @Override public void mouseEntered(MouseEvent e) { btn.setBackground(SUCCESS_HOVER); }
@@ -528,7 +534,6 @@ public class ManHinhNhapLoHangMoi extends JDialog {
                 new EmptyBorder(9, 23, 9, 23)
         ));
         btn.setOpaque(true);
-        btn.setHorizontalTextPosition(SwingConstants.RIGHT);
 
         btn.addMouseListener(new MouseAdapter() {
             @Override public void mouseEntered(MouseEvent e) { btn.setBackground(new Color(241, 245, 249)); }
@@ -763,89 +768,173 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         }
     }
 
-    private class CustomDatePicker extends JPopupMenu {
+    // ==============================================================================
+    // BẢN THU GỌN: ÉP MỎNG PADDING, MARGIN ĐỂ LỊCH LỌT THỎM BÊN DƯỚI TEXTBOX
+    // ==============================================================================
+    private class CustomDatePicker extends JDialog {
         private int month = LocalDate.now().getMonthValue();
         private int year = LocalDate.now().getYear();
-        private final JLabel lblMonthYear;
+        private final JComboBox<String> cbMonth;
+        private final JComboBox<Integer> cbYear;
         private final JPanel pnlDays;
         private final JTextField targetField;
+        private boolean isUpdating = false;
 
-        public CustomDatePicker(JTextField targetField) {
+        public CustomDatePicker(JDialog owner, JTextField targetField) {
+            super(owner, false); 
             this.targetField = targetField;
-            setLayout(new BorderLayout());
-            setBackground(Color.WHITE);
-            setBorder(BorderFactory.createLineBorder(PRIMARY, 1)); // Viền popup lịch màu Xanh
+            setUndecorated(true);
 
-            JPanel header = new JPanel(new BorderLayout());
+            JPanel rootPanel = new JPanel(new BorderLayout());
+            rootPanel.setBackground(Color.WHITE);
+            rootPanel.setBorder(BorderFactory.createLineBorder(PRIMARY, 2));
+            setContentPane(rootPanel);
+
+            // THU GỌN: Giảm khoảng cách phần Header (chỗ 2 cái nút và combobox)
+            JPanel header = new JPanel(new FlowLayout(FlowLayout.CENTER, 4, 4));
             header.setBackground(Color.WHITE);
-            header.setBorder(new EmptyBorder(8, 8, 8, 8));
 
-            JButton btnPrev = new JButton("<");
+            JButton btnPrev = new JButton(new MenuIcon("CHEVRON_LEFT"));
             styleNavButton(btnPrev);
             btnPrev.addActionListener(e -> changeMonth(-1));
 
-            JButton btnNext = new JButton(">");
+            JButton btnNext = new JButton(new MenuIcon("CHEVRON_RIGHT"));
             styleNavButton(btnNext);
             btnNext.addActionListener(e -> changeMonth(1));
 
-            lblMonthYear = new JLabel("", SwingConstants.CENTER);
-            lblMonthYear.setFont(new Font("Segoe UI", Font.BOLD, 13));
-            lblMonthYear.setForeground(PRIMARY);
+            String[] monthNames = new String[12];
+            for (int i = 0; i < 12; i++) monthNames[i] = "Tháng " + (i + 1);
+            cbMonth = new JComboBox<>(monthNames);
+            styleComboBox(cbMonth);
+            cbMonth.setSelectedIndex(month - 1);
+            cbMonth.addActionListener(e -> {
+                if (!isUpdating) {
+                    month = cbMonth.getSelectedIndex() + 1;
+                    refreshCalendar();
+                }
+            });
 
-            header.add(btnPrev, BorderLayout.WEST);
-            header.add(lblMonthYear, BorderLayout.CENTER);
-            header.add(btnNext, BorderLayout.EAST);
+            Integer[] years = new Integer[16];
+            int currentYear = LocalDate.now().getYear();
+            for (int i = 0; i < 16; i++) years[i] = currentYear + i;
+            cbYear = new JComboBox<>(years);
+            styleComboBox(cbYear);
+            cbYear.setSelectedItem(year);
+            cbYear.addActionListener(e -> {
+                if (!isUpdating) {
+                    year = (Integer) cbYear.getSelectedItem();
+                    refreshCalendar();
+                }
+            });
+
+            header.add(btnPrev);
+            header.add(cbMonth);
+            header.add(cbYear);
+            header.add(btnNext);
 
             JPanel weekHeader = new JPanel(new GridLayout(1, 7));
             weekHeader.setBackground(Color.WHITE);
             String[] days = {"T2", "T3", "T4", "T5", "T6", "T7", "CN"};
             for (String d : days) {
                 JLabel lb = new JLabel(d, SwingConstants.CENTER);
-                lb.setFont(new Font("Segoe UI", Font.BOLD, 12));
+                // THU GỌN: Giảm font size và padding của hàng Thứ (T2->CN)
+                lb.setFont(new Font("Segoe UI", Font.BOLD, 11)); 
                 lb.setForeground(TEXT_SECONDARY);
-                lb.setBorder(new EmptyBorder(4, 0, 4, 0));
+                lb.setBorder(new EmptyBorder(2, 0, 2, 0));
                 weekHeader.add(lb);
             }
 
-            pnlDays = new JPanel(new GridLayout(0, 7, 4, 4));
+            // THU GỌN: Giảm gap giữa các ô vuông (còn 2px) và viền bao quanh lưới ngày (còn 4px)
+            pnlDays = new JPanel(new GridLayout(0, 7, 2, 2));
             pnlDays.setBackground(Color.WHITE);
-            pnlDays.setBorder(new EmptyBorder(8, 8, 8, 8));
+            pnlDays.setBorder(new EmptyBorder(4, 4, 4, 4));
 
             JPanel center = new JPanel(new BorderLayout());
             center.setBackground(Color.WHITE);
             center.add(weekHeader, BorderLayout.NORTH);
             center.add(pnlDays, BorderLayout.CENTER);
 
-            add(header, BorderLayout.NORTH);
-            add(center, BorderLayout.CENTER);
+            rootPanel.add(header, BorderLayout.NORTH);
+            rootPanel.add(center, BorderLayout.CENTER);
 
             refreshCalendar();
+
+            addWindowFocusListener(new WindowAdapter() {
+                @Override
+                public void windowLostFocus(WindowEvent e) {
+                    Window opp = e.getOppositeWindow();
+                    if (opp != null && opp instanceof JWindow) {
+                        return; 
+                    }
+                    setVisible(false); 
+                }
+            });
+        }
+
+        public void showPopup(Component invoker) {
+            pack();
+            Point screenLoc = invoker.getLocationOnScreen();
+            int popupHeight = getHeight();
+            // THU GỌN: Khoảng cách rớt xuống ôm sát input hơn (+2 thay vì +4)
+            int yPos = screenLoc.y + invoker.getHeight() + 2;
+
+            try {
+                Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+                if (yPos + popupHeight > screenSize.height - 40) { 
+                    yPos = screenLoc.y - popupHeight - 2; 
+                }
+            } catch (Exception ex) {}
+
+            setLocation(screenLoc.x, yPos);
+            setVisible(true);
         }
 
         private void styleNavButton(JButton btn) {
             btn.setFocusPainted(false);
             btn.setBorderPainted(false);
             btn.setContentAreaFilled(false);
-            btn.setForeground(TEXT_PRIMARY);
+            btn.setForeground(PRIMARY);
+            // THU GỌN: Font mũi tên nhỏ gọn lại
             btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
             btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         }
 
+        private void styleComboBox(JComboBox<?> cb) {
+            // THU GỌN: Chữ bên trong ComboBox gọn lại
+            cb.setFont(new Font("Segoe UI", Font.BOLD, 12));
+            cb.setForeground(PRIMARY);
+            cb.setBackground(Color.WHITE);
+            cb.setFocusable(false);
+            cb.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        }
+
         private void changeMonth(int delta) {
             month += delta;
-            if (month < 1) { month = 12; year--; } 
-            else if (month > 12) { month = 1; year++; }
+            if (month < 1) { 
+                month = 12; 
+                year--; 
+                if (year < (Integer)cbYear.getItemAt(0)) year = (Integer)cbYear.getItemAt(0);
+            } 
+            else if (month > 12) { 
+                month = 1; 
+                year++; 
+                if (year > (Integer)cbYear.getItemAt(cbYear.getItemCount() - 1)) year = (Integer)cbYear.getItemAt(cbYear.getItemCount() - 1);
+            }
             refreshCalendar();
         }
 
         private void refreshCalendar() {
+            isUpdating = true;
+            cbMonth.setSelectedIndex(month - 1);
+            cbYear.setSelectedItem(year);
+            isUpdating = false;
+
             pnlDays.removeAll();
             YearMonth ym = YearMonth.of(year, month);
             LocalDate firstDay = ym.atDay(1);
             int daysInMonth = ym.lengthOfMonth();
             int startDayOfWeek = firstDay.getDayOfWeek().getValue();
 
-            lblMonthYear.setText(String.format("Tháng %02d / %d", month, year));
             for (int i = 1; i < startDayOfWeek; i++) pnlDays.add(new JLabel(""));
 
             LocalDate today = LocalDate.now();
@@ -853,9 +942,10 @@ public class ManHinhNhapLoHangMoi extends JDialog {
                 LocalDate date = LocalDate.of(year, month, day);
                 JButton btnDay = new JButton(String.valueOf(day));
                 btnDay.setFocusPainted(false);
-                btnDay.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+                // THU GỌN: Thu nhỏ chữ và ép mỏng lề bên trong các nút ngày
+                btnDay.setFont(new Font("Segoe UI", Font.BOLD, 11));
                 btnDay.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-                btnDay.setMargin(new Insets(4, 4, 4, 4));
+                btnDay.setMargin(new Insets(2, 2, 2, 2));
 
                 if (date.isBefore(today)) {
                     btnDay.setEnabled(false);

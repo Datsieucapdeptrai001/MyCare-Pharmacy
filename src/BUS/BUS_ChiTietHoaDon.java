@@ -11,7 +11,15 @@ public class BUS_ChiTietHoaDon {
         daoCTHD = new DAO_ChiTietHoaDon();
     }
 
-    // Tận dụng hàm trả về List<Object[]> có sẵn trong DAO của bạn
+    // Hàm lấy danh sách sản phẩm theo mã hóa đơn để hiển thị lên bảng chi tiết
+    public List<Object[]> layDanhSachSanPhamTheoMaHD(String maHD) {
+        if (maHD == null || maHD.trim().isEmpty()) {
+            return null;
+        }
+        return daoCTHD.layDanhSachSanPhamTheoMaHD(maHD); 
+    }
+
+    // Hàm phục vụ đổi trả (bạn đã có)
     public List<Object[]> layDuLieuDoiTra(String maHD) {
         if (maHD == null || maHD.trim().isEmpty()) {
             return null;

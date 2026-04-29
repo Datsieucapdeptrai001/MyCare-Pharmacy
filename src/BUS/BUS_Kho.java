@@ -1,6 +1,7 @@
 package BUS;
 
 import DAO.DAO_LoHang;
+import DAO.DAO_SanPham;
 import Entity.LoHang;
 import Enumeration.TrangThaiLoHang;
 import java.time.LocalDateTime;
@@ -9,9 +10,11 @@ import java.util.List;
 
 public class BUS_Kho {
     private final DAO_LoHang daoLoHang;
+    private final DAO_SanPham daoSanPham;
 
     public BUS_Kho() {
         this.daoLoHang = new DAO_LoHang();
+        this.daoSanPham = new DAO_SanPham();
     }
 
     public boolean kiemTraTonKho(String maSP, int soLuongCanBan) {
@@ -87,20 +90,56 @@ public class BUS_Kho {
         if (loHang.getNgayHetHan() == null) return false;
         if (loHang.getNgayNhap() == null) loHang.setNgayNhap(LocalDateTime.now());
 
+        String maSP = loHang.getSanPhamId().getId().trim();
+
+        if (daoSanPham.laSanPhamDaAn(maSP)) {
+            return false;
+        }
+
+        if (loHang.getNgayNhap().isAfter(loHang.getNgayHetHan())) {
+            return false;
+        }
+
         LoHang loCu = daoLoHang.getLoHangTheoSoLo(loHang.getSoLoHang().trim());
 
         if (loCu == null) {
             loHang.setTrangThai(suyRaTrangThai(loHang.getSoLuongLoHang(), loHang.getNgayHetHan()));
-            return daoLoHang.themLoHang(loHang);
+            boolean ok = daoLoHang.themLoHang(loHang);
+
+            if (ok) {
+                daoLoHang.ghiLogLoHang(
+                        "THEM_LO",
+                        loHang.getId(),
+                        loHang.getSoLoHang(),
+                        0,
+                        loHang.getSoLuongLoHang(),
+                        "Tạo lô mới"
+                );
+            }
+            return ok;
         }
 
-        if (loCu.getTrangThai() == TrangThaiLoHang.AN) {
-            loHang.setId(loCu.getId());
-            loHang.setTrangThai(suyRaTrangThai(loHang.getSoLuongLoHang(), loHang.getNgayHetHan()));
-            return daoLoHang.khoiPhucVaCapNhatLoHang(loHang);
+        if (loCu.getTrangThai() != TrangThaiLoHang.AN) {
+            return false;
         }
 
-        return false;
+        loHang.setId(loCu.getId());
+        loHang.setTrangThai(suyRaTrangThai(loHang.getSoLuongLoHang(), loHang.getNgayHetHan()));
+
+        boolean ok = daoLoHang.khoiPhucVaCapNhatLoHang(loHang);
+
+        if (ok) {
+            daoLoHang.ghiLogLoHang(
+                    "TAI_SU_DUNG_LO_AN",
+                    loHang.getId(),
+                    loHang.getSoLoHang(),
+                    loCu.getSoLuongLoHang(),
+                    loHang.getSoLuongLoHang(),
+                    "Khôi phục và cập nhật lô ẩn"
+            );
+        }
+
+        return ok;
     }
 
     public boolean anLoHang(String maLoHang) {
@@ -110,7 +149,20 @@ public class BUS_Kho {
         if (lo == null) return false;
         if (lo.getTrangThai() == TrangThaiLoHang.AN) return true;
 
-        return daoLoHang.anLoHang(maLoHang);
+        boolean ok = daoLoHang.anLoHang(maLoHang);
+
+        if (ok) {
+            daoLoHang.ghiLogLoHang(
+                    "AN_LO",
+                    lo.getId(),
+                    lo.getSoLoHang(),
+                    lo.getSoLuongLoHang(),
+                    lo.getSoLuongLoHang(),
+                    "Ẩn lô hàng"
+            );
+        }
+
+        return ok;
     }
 
     public boolean khoiPhucLoHang(String maLoHang) {
@@ -120,13 +172,49 @@ public class BUS_Kho {
         if (lo == null) return false;
         if (lo.getTrangThai() != TrangThaiLoHang.AN) return false;
 
-        return daoLoHang.khoiPhucLoHang(maLoHang);
+        if (lo.getSanPhamId() != null && !isBlank(lo.getSanPhamId().getId())) {
+            if (daoSanPham.laSanPhamDaAn(lo.getSanPhamId().getId().trim())) {
+                return false;
+            }
+        }
+
+        boolean ok = daoLoHang.khoiPhucLoHang(maLoHang);
+
+        if (ok) {
+            daoLoHang.ghiLogLoHang(
+                    "KHOI_PHUC_LO",
+                    lo.getId(),
+                    lo.getSoLoHang(),
+                    lo.getSoLuongLoHang(),
+                    lo.getSoLuongLoHang(),
+                    "Khôi phục lô hàng"
+            );
+        }
+
+        return ok;
     }
 
     public boolean capNhatSoLuongTon(String maLoHang, int soLuongMoi) {
         if (isBlank(maLoHang)) return false;
         if (soLuongMoi < 0) return false;
-        return daoLoHang.capNhatSoLuongVaTrangThaiLo(maLoHang, soLuongMoi);
+
+        LoHang lo = daoLoHang.getLoHangTheoId(maLoHang);
+        if (lo == null) return false;
+
+        boolean ok = daoLoHang.capNhatSoLuongVaTrangThaiLo(maLoHang, soLuongMoi);
+
+        if (ok) {
+            daoLoHang.ghiLogLoHang(
+                    "CAP_NHAT_SL_LO",
+                    lo.getId(),
+                    lo.getSoLoHang(),
+                    lo.getSoLuongLoHang(),
+                    soLuongMoi,
+                    "Cập nhật số lượng lô"
+            );
+        }
+
+        return ok;
     }
 
     public boolean capNhatTrangThaiLo(String maLoHang, TrangThaiLoHang trangThaiMoi) {
@@ -140,7 +228,20 @@ public class BUS_Kho {
         LoHang lo = daoLoHang.getLoHangTheoId(maLoHang);
         if (lo == null || lo.getTrangThai() == TrangThaiLoHang.AN) return false;
 
-        return daoLoHang.capNhatSoLuongVaTrangThaiLo(maLoHang, 0);
+        boolean ok = daoLoHang.capNhatSoLuongVaTrangThaiLo(maLoHang, 0);
+
+        if (ok) {
+            daoLoHang.ghiLogLoHang(
+                    "LO_HET_HANG",
+                    lo.getId(),
+                    lo.getSoLoHang(),
+                    lo.getSoLuongLoHang(),
+                    0,
+                    "Lô chuyển hết hàng"
+            );
+        }
+
+        return ok;
     }
 
     public boolean tonTaiMaLoDangHoatDong(String soLoHang) {

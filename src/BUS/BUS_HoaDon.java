@@ -30,4 +30,5 @@ public class BUS_HoaDon {
     public boolean thanhToan(HoaDon hd, List<ChiTietHoaDon> dsCTHD) {
         return daoHD.luuGiaoDichThanhToan(hd, dsCTHD, daoCTHD, daoLo, daoPB);
     }
+    
 }
