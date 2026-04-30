@@ -3,7 +3,6 @@ package Entity;
 import java.util.Objects;
 import Enumeration.*;
 
-
 public class HinhThucKhuyenMai {
     private String id;
     private LoaiHinhThuc loaiHinhThuc;
@@ -15,29 +14,15 @@ public class HinhThucKhuyenMai {
     private SanPham sanPhamId;
     private KhuyenMai khuyenMaiId;
     
-    // --- 4 TRƯỜNG BỔ SUNG CHO KHUYẾN MÃI MUA X TẶNG Y ---
+    // --- CÁC TRƯỜNG CHO MUA X TẶNG Y VÀ GIẢM TIỀN MẶT ---
     private String spYeuCau;
     private int slYeuCau;
+    private String dvdlYeuCau; // Biến mới
     private String spTang;
     private int slTang;
+    private String dvdlTang;   // Biến mới
 
-    public HinhThucKhuyenMai() {
-        super();
-    }
-
-    public HinhThucKhuyenMai(String id, LoaiHinhThuc loaiHinhThuc, DoiTuongApDung doiTuongApDung, String moTa,
-            double giaTri, double giamToiDa, DonViDoLuong donViDoLuongId, SanPham sanPhamId, KhuyenMai khuyenMaiId) {
-        super();
-        this.id = id;
-        this.loaiHinhThuc = loaiHinhThuc;
-        this.doiTuongApDung = doiTuongApDung;
-        this.moTa = moTa;
-        this.giaTri = giaTri;
-        this.giamToiDa = giamToiDa;
-        this.donViDoLuongId = donViDoLuongId;
-        this.sanPhamId = sanPhamId;
-        this.khuyenMaiId = khuyenMaiId;
-    }
+    public HinhThucKhuyenMai() { super(); }
 
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
@@ -62,40 +47,12 @@ public class HinhThucKhuyenMai {
     public void setSpYeuCau(String spYeuCau) { this.spYeuCau = spYeuCau; }
     public int getSlYeuCau() { return slYeuCau; }
     public void setSlYeuCau(int slYeuCau) { this.slYeuCau = slYeuCau; }
+    public String getDvdlYeuCau() { return dvdlYeuCau; }
+    public void setDvdlYeuCau(String dvdlYeuCau) { this.dvdlYeuCau = dvdlYeuCau; }
     public String getSpTang() { return spTang; }
     public void setSpTang(String spTang) { this.spTang = spTang; }
     public int getSlTang() { return slTang; }
     public void setSlTang(int slTang) { this.slTang = slTang; }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(doiTuongApDung, donViDoLuongId, giaTri, giamToiDa, id, khuyenMaiId, loaiHinhThuc, moTa, sanPhamId, spYeuCau, slYeuCau, spTang, slTang);
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) return true;
-        if (obj == null || getClass() != obj.getClass()) return false;
-        HinhThucKhuyenMai other = (HinhThucKhuyenMai) obj;
-        return doiTuongApDung == other.doiTuongApDung
-                && Objects.equals(donViDoLuongId, other.donViDoLuongId)
-                && Double.compare(other.giaTri, giaTri) == 0
-                && Double.compare(other.giamToiDa, giamToiDa) == 0
-                && Objects.equals(id, other.id)
-                && Objects.equals(khuyenMaiId, other.khuyenMaiId)
-                && loaiHinhThuc == other.loaiHinhThuc
-                && Objects.equals(moTa, other.moTa)
-                && Objects.equals(sanPhamId, other.sanPhamId)
-                && Objects.equals(spYeuCau, other.spYeuCau)
-                && slYeuCau == other.slYeuCau
-                && Objects.equals(spTang, other.spTang)
-                && slTang == other.slTang;
-    }
-
-    @Override
-    public String toString() {
-        return "HinhThucKhuyenMai [id=" + id + ", loaiHinhThuc=" + loaiHinhThuc + ", doiTuongApDung=" + doiTuongApDung
-                + ", moTa=" + moTa + ", giaTri=" + giaTri + ", giamToiDa=" + giamToiDa + ", spYeuCau=" + spYeuCau 
-                + ", slYeuCau=" + slYeuCau + ", spTang=" + spTang + ", slTang=" + slTang + "]";
-    }
+    public String getDvdlTang() { return dvdlTang; }
+    public void setDvdlTang(String dvdlTang) { this.dvdlTang = dvdlTang; }
 }
