@@ -297,7 +297,7 @@ public class TaoHoaDon extends JDialog {
         pnlVoucherTags.removeAll();
 
         
-        pnlVoucherTags.setLayout(new FlowLayout(FlowLayout.LEFT, 10, 10));
+        pnlVoucherTags.setLayout(new GridLayout(0, 3, 10, 10));
         if (dsKhuyenMaiCache == null || dsKhuyenMaiCache.isEmpty()) {
             JLabel lblEmpty = new JLabel("<html><i>(Hiện chưa có chương trình khuyến mãi nào)</i></html>");
             lblEmpty.setForeground(Color.GRAY);
@@ -2273,7 +2273,7 @@ public class TaoHoaDon extends JDialog {
                             int MAX_ITEMS = 12; // Chỉ vẽ tối đa 12 kết quả để đảm bảo độ mượt tuyệt đối
 
                             for (Object[] row : ketQua) {
-                                if (count >= MAX_ITEMS) break; // Ngắt vòng lặp ngay khi đủ 12 món
+                                if (count >= MAX_ITEMS) break; 
 
                                 String id = row[0].toString();
                                 String ten = row[1].toString();
@@ -2283,8 +2283,7 @@ public class TaoHoaDon extends JDialog {
                                 String tonKho = row[4] != null ? row[4].toString() : "0";
                                 String danhMuc = (row.length > 5 && row[5] != null) ? row[5].toString() : "Khác";
 
-                                // Lấy VAT
-                                String thueVat = "0%";
+                                String thueVat = "5%";
                                 if (row.length > 6 && row[6] != null) {
                                     String rawVat = row[6].toString().trim();
                                     try {
@@ -2294,9 +2293,11 @@ public class TaoHoaDon extends JDialog {
                                     } catch (Exception ex) {
                                         thueVat = rawVat + (rawVat.contains("%") ? "" : "%");
                                     }
-                                } else {
-                                    thueVat = "5%"; 
                                 }
+                                
+                                // ĐOẠN FIX: MÓC LẤY LÔ VÀ HSD TỪ ARRAY
+                                String loHang = (row.length > 7 && row[7] != null) ? row[7].toString() : "";
+                                String hsd = (row.length > 8 && row[8] != null) ? row[8].toString() : "";
 
                                 String iconType = "PACKAGE"; 
                                 String dmCheck = danhMuc.toLowerCase();
@@ -2306,9 +2307,10 @@ public class TaoHoaDon extends JDialog {
                                 else if (dmCheck.contains("chức năng") || dmCheck.contains("tpcn")) iconType = "LEAF";         
                                 else if (dmCheck.contains("vật tư") || dmCheck.contains("y tế")) iconType = "MEDICAL_TOOL"; 
 
-                                pnlList.add(createSuggestionItem(suggestionPopup, txtSearchProduct, iconType, ten, donVi, gia, tonKho, danhMuc, thueVat));
+                                // Truyền thêm biến loHang và hsd vào cuối hàm
+                                pnlList.add(createSuggestionItem(suggestionPopup, txtSearchProduct, iconType, ten, donVi, gia, tonKho, danhMuc, thueVat, loHang, hsd));
                                 
-                                count++; // Tăng biến đếm
+                                count++; 
                             }
                             
                             // THÊM: Hiển thị dòng thông báo nếu còn nhiều sản phẩm bị ẩn đi
@@ -3185,8 +3187,8 @@ txtSearchProduct.addKeyListener(new java.awt.event.KeyAdapter() {
         }
     }
     
- // THÊM: Biến "String vat" ở cuối cùng
-    private JPanel createSuggestionItem(JPopupMenu popup, JTextField txtSearch, String iconType, String name, String unit, String price, String stock, String danhMuc, String vat) {
+ // THÊM 2 BIẾN: String loHang, String hsd VÀO CUỐI THAM SỐ
+    private JPanel createSuggestionItem(JPopupMenu popup, JTextField txtSearch, String iconType, String name, String unit, String price, String stock, String danhMuc, String vat, String loHang, String hsd) {
         JPanel pnl = new JPanel(new BorderLayout(10, 0));
         pnl.setBackground(Color.WHITE);
         pnl.setBorder(new EmptyBorder(10, 15, 10, 15));
@@ -3240,20 +3242,29 @@ txtSearchProduct.addKeyListener(new java.awt.event.KeyAdapter() {
         lblBadge.setFont(new Font("Segoe UI", Font.BOLD, 11));
         lblBadge.setBorder(BorderFactory.createEmptyBorder(3, 8, 3, 8)); 
 
-        JLabel lblName = new JLabel(name);
-        JLabel lblIcon = new JLabel(new MenuIcon(iconType));
-        lblIcon.setForeground(Color.decode("#1967D2")); 
+        // =========================================================================
+        // ĐÃ FIX: Dùng thẻ HTML để bọc Tên Thuốc, Đơn Vị Tính và HSD vào chung 1 khối
+        // Việc này ép giao diện hiểu đây là một đoạn văn và tự co giãn chống tràn chữ
+        // =========================================================================
+        String strBatchInfo = "";
+        if ((loHang != null && !loHang.isEmpty()) || (hsd != null && !hsd.isEmpty())) {
+            strBatchInfo += "&nbsp;&nbsp;<span style='color: #D97706; font-size: 11px; font-weight: normal; margin-left: 5px; border-left: 1px solid #E5E7EB; padding-left: 5px;'>";
+            if (loHang != null && !loHang.isEmpty()) strBatchInfo += "Lô: " + loHang;
+            if (hsd != null && !hsd.isEmpty()) strBatchInfo += (strBatchInfo.contains("Lô:") ? " - " : "") + "HSD: " + hsd;
+            strBatchInfo += "</span>";
+        }
+
+        String htmlName = "<html><div style='max-width: 320px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;'>" 
+                        + "<span style='font-weight: bold; font-size: 14px; color: #111827;'>" + name + "</span>"
+                        + "&nbsp;&nbsp;<span style='color: #6B7280; font-size: 12px;'>" + unit + "</span>"
+                        + strBatchInfo
+                        + "</div></html>";
+
+        JLabel lblNameInfo = new JLabel(htmlName);
         
-        lblName.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        lblName.setForeground(Color.decode("#111827"));
-
-        JLabel lblUnit = new JLabel(unit);
-        lblUnit.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        lblUnit.setForeground(Color.decode("#6B7280"));
-
         pnlLeft.add(lblBadge); 
-        pnlLeft.add(lblName);
-        pnlLeft.add(lblUnit);
+        pnlLeft.add(lblNameInfo);
+        // =========================================================================
 
         JPanel pnlRight = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 0));
         pnlRight.setOpaque(false);
