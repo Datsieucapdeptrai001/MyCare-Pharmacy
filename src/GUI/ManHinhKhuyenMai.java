@@ -1421,6 +1421,7 @@ public class ManHinhKhuyenMai extends JPanel {
 
         private void showSuggestions() {
             SwingUtilities.invokeLater(() -> {
+                if (isSelecting) return;
                 popupMenu.setVisible(false); 
                 popupMenu.removeAll();
                 
@@ -1430,7 +1431,6 @@ public class ManHinhKhuyenMai extends JPanel {
                 }
                 
                 String text = rawText.toLowerCase();
-
                 boolean hasItems = false;
                 int count = 0; 
                 
@@ -1441,12 +1441,22 @@ public class ManHinhKhuyenMai extends JPanel {
                         item.setBackground(Color.WHITE);
                         item.setFont(FONT_REGULAR);
                         
-                        item.addActionListener(e -> {
-                            isSelecting = true; 
-                            getTextField().setText(word);
-                            getTextField().setForeground(COLOR_TEXT_MAIN);
-                            popupMenu.setVisible(false);
-                            isSelecting = false; 
+                        // Sử dụng MouseListener chặn sự kiện ngay từ lúc nhấn chuột (tránh mất Focus)
+                        item.addMouseListener(new MouseAdapter() {
+                            @Override
+                            public void mousePressed(MouseEvent e) {
+                                if (SwingUtilities.isLeftMouseButton(e)) {
+                                    isSelecting = true; 
+                                    getTextField().setText(word);
+                                    getTextField().setCaretPosition(word.length());
+                                    getTextField().setForeground(COLOR_TEXT_MAIN);
+                                    popupMenu.setVisible(false);
+                                    // Thêm delay nhỏ để tránh Event Listener của Java kích hoạt lặp
+                                    Timer timer = new Timer(50, evt -> isSelecting = false);
+                                    timer.setRepeats(false);
+                                    timer.start();
+                                }
+                            }
                         });
                         
                         popupMenu.add(item);
@@ -1460,7 +1470,7 @@ public class ManHinhKhuyenMai extends JPanel {
                 if (hasItems) {
                     popupMenu.pack(); 
                     popupMenu.show(getTextField(), 0, getTextField().getHeight());
-                    getTextField().requestFocus(); 
+                    // KHÔNG GỌI requestFocus() ở đây. Gọi requestFocus() liên tục sẽ gây lỗi nhân đôi ký tự (lỗi Unikey/IME tiếng Việt).
                 }
             });
         }
