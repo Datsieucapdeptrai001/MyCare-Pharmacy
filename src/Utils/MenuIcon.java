@@ -375,7 +375,20 @@ public class MenuIcon implements Icon {
                 g2d.drawLine(x + 2,  y + 15, x + 20, y + 15);              // Miệng chuông
                 g2d.drawArc(x + 8, y + 15, 6, 4, 180, 180);                 // Núm lắc
                 break;
-
+            case "QUA_TANG":
+                // 1. Thân hộp quà
+                g2d.drawRect(x + 5, y + 8, 12, 10);
+                // 2. Nắp hộp nhô ra 2 bên
+                g2d.drawRect(x + 3, y + 5, 16, 3);
+                // 3. Dây ruy-băng buộc dọc
+                g2d.drawLine(x + 11, y + 8, x + 11, y + 18);
+                // 4. Dây nơ bên trái
+                g2d.drawOval(x + 6, y + 1, 5, 5);
+                // 5. Dây nơ bên phải
+                g2d.drawOval(x + 11, y + 1, 5, 5);
+                // 6. Nút thắt nơ tròn ở chính giữa
+                g2d.fillOval(x + 9, y + 4, 4, 3);
+                break;
         }
     }
 }
