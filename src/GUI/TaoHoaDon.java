@@ -740,7 +740,7 @@ public class TaoHoaDon extends JDialog {
         pnlLeft.setOpaque(false);
         
         // --- FIX: Biến ô chữ P thành một ĐỒNG XU TRÒN to đẹp, không bao giờ bị dính vách ---
-        JLabel lblIcon = new JLabel("P", SwingConstants.CENTER) {
+        JLabel lblIcon = new JLabel("MyCare", SwingConstants.CENTER) {
             @Override
             protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
@@ -754,9 +754,9 @@ public class TaoHoaDon extends JDialog {
                 g2.dispose();
             }
         };
-        lblIcon.setFont(new Font("Segoe UI", Font.BOLD, 18)); // Chữ P to rõ ràng
+        lblIcon.setFont(new Font("Segoe UI", Font.BOLD, 10)); // Chữ P to rõ ràng
         lblIcon.setForeground(Color.decode("#EE4D2D"));
-        lblIcon.setPreferredSize(new Dimension(38, 38)); // Phóng to đồng xu lên 38x38
+        lblIcon.setPreferredSize(new Dimension(45, 38)); // Phóng to đồng xu lên 38x38
         lblIcon.setBorder(null); // Xóa bỏ cái viền hình vuông bị lỗi cũ
 
         lblDungDiemText = new JLabel("Dùng 0 điểm (-0đ)");
