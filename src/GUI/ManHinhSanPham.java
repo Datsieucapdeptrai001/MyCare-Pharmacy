@@ -1206,23 +1206,53 @@ public class ManHinhSanPham extends JPanel {
     private JLabel createLabelFilter(String t) { JLabel l = new JLabel(t); l.setFont(new Font("Segoe UI", Font.BOLD, 14)); l.setBorder(new EmptyBorder(10, 15, 5, 0)); return l; }
 
     private void applyThinScrollBar(JScrollPane sp) {
+        // [FIX LỖI 1]: Tăng mạnh tốc độ cuộn chuột (UnitIncrement) để hết bị cứng
+        sp.getVerticalScrollBar().setUnitIncrement(20);
+        sp.getHorizontalScrollBar().setUnitIncrement(20);
+
         sp.getVerticalScrollBar().setPreferredSize(new Dimension(8, 0));
         sp.getHorizontalScrollBar().setPreferredSize(new Dimension(0, 8));
+        
         sp.getVerticalScrollBar().setUI(new javax.swing.plaf.basic.BasicScrollBarUI() {
             @Override protected void configureScrollBarColors() { thumbColor = Color.decode("#CBD5E1"); trackColor = Color.decode("#F1F5F9"); }
             @Override protected JButton createDecreaseButton(int o) { return zeroBtn(); }
             @Override protected JButton createIncreaseButton(int o) { return zeroBtn(); }
             private JButton zeroBtn() { JButton b = new JButton(); b.setPreferredSize(new Dimension(0,0)); b.setMinimumSize(new Dimension(0,0)); b.setMaximumSize(new Dimension(0,0)); return b; }
-            @Override protected void paintThumb(Graphics g, JComponent c, Rectangle r) { if (r.isEmpty()) return; Graphics2D g2 = (Graphics2D) g.create(); g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON); g2.setColor(thumbColor); g2.fillRoundRect(r.x+1, r.y+1, r.width-2, r.height-2, 6, 6); g2.dispose(); }
-            @Override protected void paintTrack(Graphics g, JComponent c, Rectangle r) { Graphics2D g2 = (Graphics2D) g.create(); g2.setColor(trackColor); g2.fillRect(r.x, r.y, r.width, r.height); g2.dispose(); }
+            
+            @Override protected void paintThumb(Graphics g, JComponent c, Rectangle r) { 
+                if (r.isEmpty() || r.width <= 0 || r.height <= 0) return; 
+                Graphics2D g2 = (Graphics2D) g.create(); 
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON); 
+                g2.setColor(thumbColor); 
+                // [FIX LỖI 2 - ĐỨNG TOUCHPAD]: Dùng Math.max(0, ...) để chặn số âm gây Crash giao diện
+                g2.fillRoundRect(r.x + 1, r.y + 1, Math.max(0, r.width - 2), Math.max(0, r.height - 2), 6, 6); 
+                g2.dispose(); 
+            }
+            
+            @Override protected void paintTrack(Graphics g, JComponent c, Rectangle r) { 
+                Graphics2D g2 = (Graphics2D) g.create(); g2.setColor(trackColor); g2.fillRect(r.x, r.y, r.width, r.height); g2.dispose(); 
+            }
         });
+        
         sp.getHorizontalScrollBar().setUI(new javax.swing.plaf.basic.BasicScrollBarUI() {
             @Override protected void configureScrollBarColors() { thumbColor = Color.decode("#CBD5E1"); trackColor = Color.decode("#F1F5F9"); }
             @Override protected JButton createDecreaseButton(int o) { return zeroBtn(); }
             @Override protected JButton createIncreaseButton(int o) { return zeroBtn(); }
             private JButton zeroBtn() { JButton b = new JButton(); b.setPreferredSize(new Dimension(0,0)); b.setMinimumSize(new Dimension(0,0)); b.setMaximumSize(new Dimension(0,0)); return b; }
-            @Override protected void paintThumb(Graphics g, JComponent c, Rectangle r) { if (r.isEmpty()) return; Graphics2D g2 = (Graphics2D) g.create(); g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON); g2.setColor(thumbColor); g2.fillRoundRect(r.x+1, r.y+1, r.width-2, r.height-2, 6, 6); g2.dispose(); }
-            @Override protected void paintTrack(Graphics g, JComponent c, Rectangle r) { Graphics2D g2 = (Graphics2D) g.create(); g2.setColor(trackColor); g2.fillRect(r.x, r.y, r.width, r.height); g2.dispose(); }
+            
+            @Override protected void paintThumb(Graphics g, JComponent c, Rectangle r) { 
+                if (r.isEmpty() || r.width <= 0 || r.height <= 0) return; 
+                Graphics2D g2 = (Graphics2D) g.create(); 
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON); 
+                g2.setColor(thumbColor); 
+                // [FIX LỖI 2 - ĐỨNG TOUCHPAD]: Dùng Math.max(0, ...) để chặn số âm gây Crash giao diện
+                g2.fillRoundRect(r.x + 1, r.y + 1, Math.max(0, r.width - 2), Math.max(0, r.height - 2), 6, 6); 
+                g2.dispose(); 
+            }
+            
+            @Override protected void paintTrack(Graphics g, JComponent c, Rectangle r) { 
+                Graphics2D g2 = (Graphics2D) g.create(); g2.setColor(trackColor); g2.fillRect(r.x, r.y, r.width, r.height); g2.dispose(); 
+            }
         });
     }
 
