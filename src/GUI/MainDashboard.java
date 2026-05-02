@@ -37,7 +37,7 @@ public class MainDashboard extends JFrame {
         boolean isAdmin = UserSession.getInstance().isAdmin();
         menuItems = isAdmin ? ALL_MENU_ITEMS : STAFF_MENU_ITEMS;
 
-        setTitle("MYCARE PHARMACY - Dashboard");
+        
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(1300, 750);
         setLocationRelativeTo(null);
@@ -343,7 +343,7 @@ public class MainDashboard extends JFrame {
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
             ConnectDB.getInstance().connect();
-            new ManHinhDangNhap().setVisible(true);
+            new MainDashboard().setVisible(true);
         });
     }
 }
