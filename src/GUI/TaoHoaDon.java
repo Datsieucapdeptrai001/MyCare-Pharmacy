@@ -3320,13 +3320,28 @@ txtSearchProduct.addKeyListener(new java.awt.event.KeyAdapter() {
                     currentQty++;
                     if (daTonTai) {
                         productModel.setValueAt(String.valueOf(currentQty), rowIndex, 2);
-                        long donGia = Long.parseLong(price);
+                        // Sửa để lấy đúng giá đang có trong bảng thay vì price gốc
+                        long donGia = 0;
+                        try { donGia = Long.parseLong(productModel.getValueAt(rowIndex, 3).toString().replaceAll("[^0-9]", "")); } catch(Exception ex){}
                         productModel.setValueAt(String.format("%,d", donGia * currentQty).replace(',', '.') + "đ", rowIndex, 5);
                     } else {
-                        // FIX: Truyền biến 'vat' lấy từ DB vào đây thay vì gán cứng "5%"
+                        // --- VÁ LỖI ĐƠN GIÁ: Lấy giá chính xác của ĐVT trước khi đưa vào bảng ---
+                        long donGiaChuan = Long.parseLong(price);
+                        try (java.sql.Connection con = ConnectDB.getInstance().getConnection()) {
+                            String sqlQuyDoi = "SELECT dv.gia FROM DonViDoLuong dv JOIN SanPham sp ON dv.sanPhamId = sp.id WHERE sp.ten = ? AND dv.ten = ?";
+                            try (java.sql.PreparedStatement pst = con.prepareStatement(sqlQuyDoi)) {
+                                pst.setString(1, name);
+                                pst.setString(2, unit);
+                                try (java.sql.ResultSet rs = pst.executeQuery()) {
+                                    if (rs.next()) donGiaChuan = Math.round(rs.getDouble("gia"));
+                                }
+                            }
+                        } catch (Exception ex) {}
+
+                        String giaFormatted = String.format("%,d", donGiaChuan).replace(',', '.') + "đ";
+
                         productModel.addRow(new Object[]{
-                            name, unit, "1", price, vat, String.format("%,d", Integer.parseInt(price)).replace(',', '.') + "đ", 
-                            danhMuc 
+                            name, unit, "1", giaFormatted, vat, giaFormatted, danhMuc 
                         });
                     }
                     lblCount.setText("[" + currentQty + "]"); 
@@ -3703,7 +3718,6 @@ txtSearchProduct.addKeyListener(new java.awt.event.KeyAdapter() {
         isTableUpdating = true; 
         for (int i = productModel.getRowCount() - 1; i >= 0; i--) {
             String ten = productModel.getValueAt(i, 0).toString();
-            // FIX TẠI ĐÂY: Xóa chính xác dòng bắt đầu bằng "[QUÀ TẶNG]"
             if (ten.startsWith("[QUÀ TẶNG]")) {
                 productModel.removeRow(i);
             }
@@ -3718,13 +3732,13 @@ txtSearchProduct.addKeyListener(new java.awt.event.KeyAdapter() {
             try {
                 String tenSp = productModel.getValueAt(i, 0).toString();
                 Object slObj = productModel.getValueAt(i, 2);
-                // CHẶN BỘ ĐẾM: Bỏ qua không đếm hàng tặng vào tổng số lượng giỏ
                 if (slObj != null && !tenSp.startsWith("[QUÀ TẶNG]")) {
                     tongSoLuongSP_ThucTe += Integer.parseInt(slObj.toString().trim());
                 }
             } catch (Exception e) {}
         }
 
+        // Nếu giỏ hàng trống VÀ không có mã nào đang được áp dụng
         if (tongTienBill == 0 && tongSoLuongSP_ThucTe == 0) {
             this.tienGiamGia = 0;
             this.maKhuyenMaiApDung = "";
@@ -3736,10 +3750,12 @@ txtSearchProduct.addKeyListener(new java.awt.event.KeyAdapter() {
 
         long tongTienGiamDoc = 0;
         java.util.List<Object[]> danhSachQuaTang = new java.util.ArrayList<>();
-        java.util.List<String> danhSachMa = new java.util.ArrayList<>();
+        java.util.List<String> danhSachMaDaDuyet = new java.util.ArrayList<>();
+
+        // Tách các mã đang áp dụng ra để duyệt (nếu có)
+        String[] cacMaDangApDung = this.maKhuyenMaiApDung != null ? this.maKhuyenMaiApDung.split(",") : new String[0];
 
         // [3] KẾT NỐI DB VÀ KIỂM TRA ĐIỀU KIỆN 
-        // LÔI THÊM CỘT: ISNULL(h.dvdlYeuCau, '') để bắt chuẩn ĐVT yêu cầu (Viên/Vỉ/Hộp)
         String sql = "SELECT k.id, h.loaiHinhThuc, h.giaTri AS mucGiam, ISNULL(d.giaTri, 0) AS donToiThieu, " +
                      "ISNULL(h.slYeuCau, 0) AS slYeuCau, ISNULL(h.spYeuCau, '') AS spYeuCau, ISNULL(h.dvdlYeuCau, '') AS dvdlYeuCau, " +
                      "ISNULL(h.slTang, 0) AS slTang, ISNULL(h.spTang, '') AS spTang, ISNULL(h.dvdlTang, '') AS dvdlTang " +
@@ -3755,6 +3771,19 @@ txtSearchProduct.addKeyListener(new java.awt.event.KeyAdapter() {
              
             while (rs.next()) {
                 String maKM = rs.getString("id").trim();
+                
+                // --- CHỐT CHẶN MỚI: Chỉ duyệt các mã mà người dùng ĐÃ BẤM CHỌN hoặc GÕ VÀO ---
+                boolean isMaDuocPhepDuyet = false;
+                for (String m : cacMaDangApDung) {
+                    if (m.trim().equalsIgnoreCase(maKM)) {
+                        isMaDuocPhepDuyet = true;
+                        break;
+                    }
+                }
+                
+                // Nếu mã này đang hợp lệ trong thời gian nhưng người dùng chưa click chọn -> Bỏ qua
+                if (!isMaDuocPhepDuyet) continue;
+
                 String loaiKM = rs.getString("loaiHinhThuc") != null ? rs.getString("loaiHinhThuc").toUpperCase() : "";
                 double giaTriGiam = rs.getDouble("mucGiam");
                 double donToiThieu = rs.getDouble("donToiThieu");
@@ -3770,16 +3799,13 @@ txtSearchProduct.addKeyListener(new java.awt.event.KeyAdapter() {
                 boolean duDieuKien = false;
                 long soLuongTangThucTe = 0;
 
-                // TÍNH SỐ LƯỢNG MÓN HÀNG KHÁCH MUA ĐÚNG YÊU CẦU (Khớp Tên + Khớp ĐVT)
                 int slSanPhamYeuCauThucTe = 0;
                 if (!spYeuCau.isEmpty()) {
                     for (int i = 0; i < productModel.getRowCount(); i++) {
                         String tenSpTrongBang = productModel.getValueAt(i, 0).toString();
                         String dvtTrongBang = productModel.getValueAt(i, 1).toString();
                         
-                        // Bỏ qua hàng tặng, check đúng tên thuốc
                         if (!tenSpTrongBang.startsWith("[QUÀ TẶNG]") && tenSpTrongBang.toLowerCase().contains(spYeuCau.toLowerCase())) {
-                            // CHỐT CHẶN ĐVT: Yêu cầu "Viên" thì khách mua "Vỉ" bị từ chối
                             if (dvdlYeuCau.isEmpty() || dvtTrongBang.equalsIgnoreCase(dvdlYeuCau)) {
                                 slSanPhamYeuCauThucTe += Integer.parseInt(productModel.getValueAt(i, 2).toString());
                             }
@@ -3789,23 +3815,19 @@ txtSearchProduct.addKeyListener(new java.awt.event.KeyAdapter() {
                     slSanPhamYeuCauThucTe = tongSoLuongSP_ThucTe; 
                 }
 
-                // ÁP DỤNG LOGIC
+                // KIỂM TRA CHẶT CHẼ HƠN
                 if (loaiKM.contains("SAN_PHAM_KEM_THEO") || loaiKM.contains("TANG")) {
-                    if (slYeuCau > 0) { 
-                        if (slSanPhamYeuCauThucTe >= slYeuCau) {
-                            duDieuKien = true;
-                            long heSo = slSanPhamYeuCauThucTe / slYeuCau; 
-                            soLuongTangThucTe = (slTang > 0 ? slTang : 1) * heSo;
-                        }
-                    } else if (donToiThieu > 0) { 
-                        if (tongTienBill >= donToiThieu) {
-                            duDieuKien = true;
-                            soLuongTangThucTe = (slTang > 0 ? slTang : 1);
-                        }
+                    if (slYeuCau > 0 && slSanPhamYeuCauThucTe >= slYeuCau) {
+                        duDieuKien = true;
+                        long heSo = slSanPhamYeuCauThucTe / slYeuCau; 
+                        soLuongTangThucTe = (slTang > 0 ? slTang : 1) * heSo;
+                    } else if (donToiThieu > 0 && tongTienBill >= donToiThieu) {
+                        duDieuKien = true;
+                        soLuongTangThucTe = (slTang > 0 ? slTang : 1);
                     }
                     
                     if (duDieuKien && soLuongTangThucTe > 0 && !spTang.isEmpty()) {
-                        danhSachMa.add(maKM);
+                        danhSachMaDaDuyet.add(maKM);
                         danhSachQuaTang.add(new Object[]{
                             "[QUÀ TẶNG] " + spTang, 
                             dvdlTang.isEmpty() ? "Hộp" : dvdlTang, 
@@ -3814,16 +3836,16 @@ txtSearchProduct.addKeyListener(new java.awt.event.KeyAdapter() {
                         });
                     }
                 } else {
-                    if (donToiThieu > 0) { 
-                        if (tongTienBill >= donToiThieu) duDieuKien = true;
-                    } else if (slYeuCau > 0) { 
-                        if (slSanPhamYeuCauThucTe >= slYeuCau) duDieuKien = true;
-                    } else {
-                        duDieuKien = true; 
+                    if (donToiThieu > 0 && tongTienBill >= donToiThieu) {
+                        duDieuKien = true;
+                    } else if (slYeuCau > 0 && slSanPhamYeuCauThucTe >= slYeuCau) {
+                        duDieuKien = true;
+                    } else if (donToiThieu == 0 && slYeuCau == 0) {
+                        duDieuKien = true; // Trường hợp mã free (không đk)
                     }
 
                     if (duDieuKien) {
-                        danhSachMa.add(maKM);
+                        danhSachMaDaDuyet.add(maKM);
                         if (loaiKM.contains("PHAN_TRAM") || loaiKM.contains("%")) {
                             tongTienGiamDoc += (long) (tongTienBill * (giaTriGiam / 100.0));
                         } else {
@@ -3836,7 +3858,7 @@ txtSearchProduct.addKeyListener(new java.awt.event.KeyAdapter() {
             System.err.println("Lỗi quét khuyến mãi DB: " + ex.getMessage());
         } 
 
-        // [4] BẮN MÓN QUÀ LÊN BẢNG TỪ MẢNG TẠM ĐỂ CHỐNG LẶP
+        // [4] BẮN MÓN QUÀ LÊN BẢNG
         isTableUpdating = true; 
         for (Object[] rowQuaTang : danhSachQuaTang) {
             productModel.addRow(rowQuaTang);
@@ -3845,10 +3867,12 @@ txtSearchProduct.addKeyListener(new java.awt.event.KeyAdapter() {
 
         // [5] CẬP NHẬT UI
         this.tienGiamGia = tongTienGiamDoc;
-        this.maKhuyenMaiApDung = String.join(", ", danhSachMa);
+        
+        // Cập nhật lại danh sách mã thực sự đạt điều kiện
+        this.maKhuyenMaiApDung = String.join(", ", danhSachMaDaDuyet);
 
-        if (!danhSachMa.isEmpty()) {
-            txtVoucherInput.setText(this.maKhuyenMaiApDung + " (Đã áp dụng " + danhSachMa.size() + " mã)");
+        if (!danhSachMaDaDuyet.isEmpty()) {
+            txtVoucherInput.setText(this.maKhuyenMaiApDung + " (Đã áp dụng " + danhSachMaDaDuyet.size() + " mã)");
             txtVoucherInput.setBackground(Color.decode("#DCFCE7"));
             txtVoucherInput.setForeground(Color.decode("#059669"));
             txtVoucherInput.setBorder(BorderFactory.createCompoundBorder(
@@ -3856,6 +3880,8 @@ txtSearchProduct.addKeyListener(new java.awt.event.KeyAdapter() {
                 new javax.swing.border.EmptyBorder(0, 10, 0, 10)
             ));
         } else {
+            // ĐOẠN NÀY QUAN TRỌNG: Nếu nhập mã mà bị trượt điều kiện (list trống) thì xóa sạch
+            this.tienGiamGia = 0;
             resetVoucherUI();
         }
         

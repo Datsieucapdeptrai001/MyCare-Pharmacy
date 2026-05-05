@@ -2,9 +2,8 @@ package GUI;
 
 import Utils.*;
 import BUS.BUS_TaiKhoan;
-import DAO.DAO_TaiKhoan;
+import BUS.BUS_CaLamViec;
 import Entity.TaiKhoan;
-import Utils.UserSession;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.event.DocumentEvent;
@@ -42,13 +41,11 @@ public class ManHinhDangNhap extends JFrame {
         setLocationRelativeTo(null);
         setResizable(true);
 
-        // ── Load danh sách user đã lưu ──────────────────────────────────────
         String savedStr = prefs.get("saved_users", "");
         savedUsersList = savedStr.isEmpty()
                 ? new ArrayList<>()
                 : new ArrayList<>(Arrays.asList(savedStr.split(",")));
 
-        // ── Background gradient ─────────────────────────────────────────────
         JPanel pnlBackground = new JPanel(new GridBagLayout()) {
             @Override protected void paintComponent(Graphics g) {
                 super.paintComponent(g);
@@ -67,7 +64,6 @@ public class ManHinhDangNhap extends JFrame {
         };
         setContentPane(pnlBackground);
 
-        // ── Card wrapper ────────────────────────────────────────────────────
         JPanel pnlWrapper = new JPanel(null) {
             @Override protected void paintComponent(Graphics g) {
                 Graphics2D g2d = (Graphics2D) g.create();
@@ -96,7 +92,6 @@ public class ManHinhDangNhap extends JFrame {
         pnlContent.setOpaque(false);
         pnlWrapper.add(pnlContent);
 
-        // ── Logo ────────────────────────────────────────────────────────────
         JPanel pnlLogo = new JPanel() {
             @Override protected void paintComponent(Graphics g) {
                 Graphics2D g2d = (Graphics2D) g.create();
@@ -134,14 +129,12 @@ public class ManHinhDangNhap extends JFrame {
         lblDesc.setBounds(0, 160, 500, 20);
         pnlContent.add(lblDesc);
 
-        // ── Body ────────────────────────────────────────────────────────────
         JLabel lblHeaderCard = new JLabel("ĐĂNG NHẬP VÀO HỆ THỐNG", SwingConstants.CENTER);
         lblHeaderCard.setFont(new Font("Segoe UI", Font.BOLD, 18));
         lblHeaderCard.setForeground(Color.decode("#1F2937"));
         lblHeaderCard.setBounds(0, 225, 500, 30);
         pnlContent.add(lblHeaderCard);
 
-        // Tên đăng nhập
         JLabel lblUser = new JLabel("Tên đăng nhập");
         lblUser.setFont(new Font("Segoe UI", Font.BOLD, 14));
         lblUser.setForeground(COLOR_TEXT_GRAY);
@@ -159,11 +152,11 @@ public class ManHinhDangNhap extends JFrame {
         txtTaiKhoan.setBorder(new EmptyBorder(0, 10, 0, 0));
         txtTaiKhoan.setFont(new Font("Segoe UI", Font.PLAIN, 16));
 
-        // Popup tài khoản đã lưu khi click vào ô trống
         txtTaiKhoan.addMouseListener(new MouseAdapter() {
             @Override public void mouseClicked(MouseEvent e) {
                 if (txtTaiKhoan.getText().isEmpty() && !savedUsersList.isEmpty()) {
                     JPopupMenu popup = new JPopupMenu();
+                    popup.setFocusable(false);
                     popup.setBorder(BorderFactory.createLineBorder(COLOR_BORDER, 1));
                     popup.setBackground(Color.WHITE);
 
@@ -180,19 +173,39 @@ public class ManHinhDangNhap extends JFrame {
                         item.setForeground(COLOR_HEADER_DARK);
                         item.setBackground(Color.WHITE);
                         item.setCursor(new Cursor(Cursor.HAND_CURSOR));
-                        item.addActionListener(ae -> txtTaiKhoan.setText(user));
+                        item.addActionListener(ae -> {
+                            txtTaiKhoan.setText(user);
+                            txtMatKhau.setText("");
+                            txtMatKhau.requestFocus();
+                        });
                         popup.add(item);
                     }
 
+                    popup.addSeparator();
+                    JMenuItem clearItem = new JMenuItem("   [X] Xóa danh sách gợi ý");
+                    clearItem.setFont(new Font("Segoe UI", Font.ITALIC, 12));
+                    clearItem.setForeground(Color.RED);
+                    clearItem.setBackground(Color.WHITE);
+                    clearItem.setCursor(new Cursor(Cursor.HAND_CURSOR));
+                    clearItem.addActionListener(ae -> {
+                        savedUsersList.clear();
+                        prefs.remove("saved_users");
+                        prefs.remove("saved_username");
+                        txtTaiKhoan.setText("");
+                        cbGhiNho.setSelected(false);
+                    });
+                    popup.add(clearItem);
+
                     popup.setPopupSize(txtTaiKhoan.getWidth() + 10, popup.getPreferredSize().height);
                     popup.show(txtTaiKhoan, 0, txtTaiKhoan.getHeight() + 2);
+                    
+                    txtTaiKhoan.requestFocusInWindow(); 
                 }
             }
         });
         pnlInputUser.add(txtTaiKhoan);
         pnlContent.add(pnlInputUser);
 
-        // Mật khẩu
         JLabel lblPass = new JLabel("Mật khẩu");
         lblPass.setFont(new Font("Segoe UI", Font.BOLD, 14));
         lblPass.setForeground(COLOR_TEXT_GRAY);
@@ -229,12 +242,11 @@ public class ManHinhDangNhap extends JFrame {
         pnlInputPass.add(btnEye);
         pnlContent.add(pnlInputPass);
 
-        // Ghi nhớ & Quên mật khẩu
-        cbGhiNho = new JCheckBox("Ghi nhớ đăng nhập");
+        cbGhiNho = new JCheckBox("Ghi nhớ tên đăng nhập");
         cbGhiNho.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         cbGhiNho.setForeground(Color.decode("#374151"));
         cbGhiNho.setBackground(Color.WHITE);
-        cbGhiNho.setBounds(36, 433, 160, 20);
+        cbGhiNho.setBounds(36, 433, 180, 20);
         pnlContent.add(cbGhiNho);
 
         JLabel lblForgot = new JLabel("Quên mật khẩu?", SwingConstants.RIGHT);
@@ -242,14 +254,22 @@ public class ManHinhDangNhap extends JFrame {
         lblForgot.setForeground(COLOR_LINK);
         lblForgot.setBounds(310, 433, 150, 20);
         lblForgot.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        lblForgot.addMouseListener(new MouseAdapter() {
+            @Override public void mouseClicked(MouseEvent e) {
+                ManHinhQuenMatKhauOTP otpDialog = new ManHinhQuenMatKhauOTP(ManHinhDangNhap.this, (email, newPass) -> {
+                    new BUS_TaiKhoan().capNhatMatKhauTheoEmail(email, newPass);
+                    JOptionPane.showMessageDialog(ManHinhDangNhap.this, "Đổi mật khẩu thành công! Hãy đăng nhập lại.");
+                });
+                otpDialog.setVisible(true);
+            }
+        });
         pnlContent.add(lblForgot);
 
-        // Nút đăng nhập
         JButton btnLogin = new JButton("Đăng nhập") {
             @Override protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(COLOR_BTN_LOGIN);
+                g2.setColor(isEnabled() ? COLOR_BTN_LOGIN : Color.GRAY); 
                 g2.fillRoundRect(0, 0, getWidth(), getHeight(), 10, 10);
                 super.paintComponent(g2);
             }
@@ -261,8 +281,7 @@ public class ManHinhDangNhap extends JFrame {
         btnLogin.setCursor(new Cursor(Cursor.HAND_CURSOR));
         pnlContent.add(btnLogin);
 
-        // Footer
-        JLabel lblFooter = new JLabel("© 2024 MYCARE Pharmacy Management System", SwingConstants.CENTER);
+        JLabel lblFooter = new JLabel("© 2026 MYCARE Pharmacy Management System", SwingConstants.CENTER);
         lblFooter.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         lblFooter.setForeground(new Color(255, 255, 255, 150));
         GridBagConstraints gbcFooter = new GridBagConstraints();
@@ -270,21 +289,19 @@ public class ManHinhDangNhap extends JFrame {
         gbcFooter.insets = new Insets(20, 0, 0, 0);
         pnlBackground.add(lblFooter, gbcFooter);
 
-        // ── Tự điền nếu đã ghi nhớ ─────────────────────────────────────────
         String savedUser = prefs.get("saved_username", "");
         if (!savedUser.isEmpty()) {
             txtTaiKhoan.setText(savedUser);
             cbGhiNho.setSelected(true);
+            SwingUtilities.invokeLater(() -> txtMatKhau.requestFocus());
         }
 
-        // ── Eye toggle ──────────────────────────────────────────────────────
         btnEye.addActionListener(e -> {
             boolean visible = txtMatKhau.getEchoChar() == 0;
             txtMatKhau.setEchoChar(visible ? '•' : 0);
             btnEye.setIcon(visible ? new MenuIcon("EYE_HIDE") : new MenuIcon("EYE"));
         });
 
-        // ── Logic đăng nhập (từ code 2) ─────────────────────────────────────
         btnLogin.addActionListener(e -> {
             String u = txtTaiKhoan.getText().trim();
             String p = new String(txtMatKhau.getPassword()).trim();
@@ -294,60 +311,88 @@ public class ManHinhDangNhap extends JFrame {
                 return;
             }
 
-            BUS_TaiKhoan bus = new BUS_TaiKhoan();
-            if (bus.authenticate(u, p)) {
+            btnLogin.setEnabled(false);
+            btnLogin.setText("Đang xác thực...");
+            setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
 
-                // Ghi nhớ tài khoản
-                if (cbGhiNho.isSelected()) {
-                    prefs.put("saved_username", u);
-                    if (!savedUsersList.contains(u)) {
-                        savedUsersList.add(u);
-                        prefs.put("saved_users", String.join(",", savedUsersList));
+            SwingWorker<TaiKhoan, Void> worker = new SwingWorker<TaiKhoan, Void>() {
+                @Override
+                protected TaiKhoan doInBackground() throws Exception {
+                    BUS_TaiKhoan bus = new BUS_TaiKhoan();
+                    if (bus.authenticate(u, p)) {
+                        return bus.getTaiKhoanDayDu(u);
                     }
-                } else {
-                    prefs.remove("saved_username");
+                    return null;
                 }
 
-                // Lưu session
-                DAO_TaiKhoan dao = new DAO_TaiKhoan();
-                TaiKhoan tk = dao.getTaiKhoan(u);
-                UserSession.getInstance().setTaiKhoan(tk);
+                @Override
+                protected void done() {
+                    btnLogin.setEnabled(true);
+                    btnLogin.setText("Đăng nhập");
+                    setCursor(Cursor.getDefaultCursor());
 
-                // STAFF → mở Dialog Mở Ca
-                if (!UserSession.getInstance().isAdmin()) {
-                    DialogMoCa dlg = new DialogMoCa(this);
-                    dlg.setVisible(true);
-                    if (!dlg.isConfirmed()) {
-                        UserSession.getInstance().logout();
-                        return;
+                    try {
+                        TaiKhoan tk = get();
+                        if (tk != null) {
+                            if (cbGhiNho.isSelected()) {
+                                prefs.put("saved_username", u);
+                                if (!savedUsersList.contains(u)) {
+                                    savedUsersList.add(u);
+                                    prefs.put("saved_users", String.join(",", savedUsersList));
+                                }
+                            } else {
+                                prefs.remove("saved_username");
+                                if (savedUsersList.contains(u)) {
+                                    savedUsersList.remove(u);
+                                    prefs.put("saved_users", String.join(",", savedUsersList));
+                                }
+                            }
+
+                            UserSession.getInstance().setTaiKhoan(tk);
+
+                            if (!UserSession.getInstance().isAdmin()) {
+                                DialogMoCa dlg = new DialogMoCa(ManHinhDangNhap.this);
+                                dlg.setVisible(true);
+                                if (!dlg.isConfirmed()) {
+                                    UserSession.getInstance().logout();
+                                    return;
+                                }
+                                UserSession.getInstance().setLoaiCa(dlg.getSelectedCa());
+                                UserSession.getInstance().setTienDauCa(dlg.getTongTienDauCa());
+
+                                Entity.CaLamViec ca = new Entity.CaLamViec();
+                                ca.setId("Ca-" + System.currentTimeMillis());
+                                ca.setNhanVienId(tk.getNhanVienId());
+                                ca.setThoiGianBatDau(java.time.LocalDateTime.now());
+                                ca.setTienDauCa(dlg.getTongTienDauCa());
+                                ca.setTienHeThongGhiNhan(0); 
+                                ca.setTienKetCa(0);
+                                
+                                // GỌI BUS THAY VÌ DAO
+                                new BUS_CaLamViec().themCa(ca); 
+                                UserSession.getInstance().setCaHienTai(ca);
+                            }
+
+                            new MainDashboard().setVisible(true);
+                            dispose();
+
+                        } else {
+                            showCustomErrorDialog("<html>Tài khoản hoặc mật khẩu không chính xác.<br/>Vui lòng kiểm tra lại!</html>");
+                            txtMatKhau.setText("");
+                            txtMatKhau.requestFocus();
+                        }
+                    } catch (Exception ex) {
+                        showCustomErrorDialog("<html>Lỗi kết nối cơ sở dữ liệu.<br/>Vui lòng thử lại sau!</html>");
+                        ex.printStackTrace();
                     }
-                    UserSession.getInstance().setLoaiCa(dlg.getSelectedCa());
-                    UserSession.getInstance().setTienDauCa(dlg.getTongTienDauCa());
-
-                    Entity.CaLamViec ca = new Entity.CaLamViec();
-                    ca.setId("Ca-" + System.currentTimeMillis());
-                    ca.setNhanVienId(tk.getNhanVienId());
-                    ca.setThoiGianBatDau(java.time.LocalDateTime.now());
-                    ca.setTienDauCa(dlg.getTongTienDauCa());
-                    ca.setTienHeThongGhiNhan(0);
-                    ca.setTienKetCa(0);
-                    ca.setLoaiCa(dlg.getSelectedCa()); // ✅ Fix: lưu đúng loại ca
-                    new DAO.DAO_CaLamViec().themCa(ca);
-                    UserSession.getInstance().setCaHienTai(ca);
                 }
-
-                new MainDashboard().setVisible(true);
-                dispose();
-
-            } else {
-                showCustomErrorDialog("<html>Thông tin đăng nhập không chính xác.<br/>Vui lòng kiểm tra lại tài khoản và mật khẩu!</html>");
-            }
+            };
+            worker.execute();
         });
 
         getRootPane().setDefaultButton(btnLogin);
     }
 
-    // ── Custom Error Dialog (từ code 1) ────────────────────────────────────
     private void showCustomErrorDialog(String message) {
         JDialog dialog = new JDialog(this, true);
         dialog.setUndecorated(true);
@@ -364,7 +409,6 @@ public class ManHinhDangNhap extends JFrame {
                 g2.fillRect(0, 20, getWidth(), 25);
                 g2.setColor(COLOR_HEADER_DARK);
                 g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 12, 12);
-                // Icon lỗi
                 int iconX = 25, iconY = 75;
                 g2.setColor(Color.decode("#FEE2E2"));
                 g2.fillOval(iconX, iconY, 45, 45);
@@ -404,13 +448,8 @@ public class ManHinhDangNhap extends JFrame {
         btnOk.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnOk.addActionListener(e -> dialog.dispose());
 
-        pnl.add(title);
-        pnl.add(msg);
-        pnl.add(btnOk);
-
-        dialog.add(pnl);
-        dialog.pack();
-        dialog.setLocationRelativeTo(this);
+        pnl.add(title); pnl.add(msg); pnl.add(btnOk);
+        dialog.add(pnl); dialog.pack(); dialog.setLocationRelativeTo(this);
         dialog.setVisible(true);
     }
 
@@ -428,7 +467,6 @@ public class ManHinhDangNhap extends JFrame {
         return p;
     }
 
-    // ── Inner classes (từ code 1) ───────────────────────────────────────────
     static class AutoSuggestJTextField extends JTextField {
         private String       watermark;
         private List<String> dictionary;
@@ -509,6 +547,6 @@ public class ManHinhDangNhap extends JFrame {
     }
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> new MainDashboard().setVisible(true));
+        SwingUtilities.invokeLater(() -> new ManHinhDangNhap().setVisible(true));
     }
 }

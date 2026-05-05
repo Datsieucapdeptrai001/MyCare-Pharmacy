@@ -42,11 +42,9 @@ public class PasswordUtils {
         if (rawPassword == null || storedHash == null) return false;
 
         String[] parts = storedHash.split(":");
-        if (parts.length != 2) {
-            // Tương thích ngược: nếu DB đang lưu plaintext cũ thì so sánh trực tiếp
-            // (chỉ dùng trong giai đoạn migration, sau đó bỏ dòng này)
-            return rawPassword.equals(storedHash);
-        }
+        
+        // [FIX LỖI 1]: Chặn văng App (Crash) nếu chuỗi trong DB là pass thô (không có dấu :)
+        if (parts.length != 2) return false; 
 
         try {
             byte[] salt         = Base64.getDecoder().decode(parts[0]);

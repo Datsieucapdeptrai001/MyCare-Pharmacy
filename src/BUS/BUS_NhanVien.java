@@ -7,6 +7,7 @@ import Entity.TaiKhoan;
 import Enumeration.ChucVu;
 import Enumeration.TrangThaiLamViec;
 import Enumeration.VaiTro;
+import Utils.PasswordUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -107,7 +108,7 @@ public class BUS_NhanVien {
     }
 
     // =========================================================================
-    // PHẦN 2: CÁC HÀM XỬ LÝ ĐỒNG BỘ NHÂN VIÊN VÀ TÀI KHOẢN (GIỮ NGUYÊN)
+    // PHẦN 2: CÁC HÀM XỬ LÝ ĐỒNG BỘ NHÂN VIÊN VÀ TÀI KHOẢN (ĐÃ FIX MÃ HÓA)
     // =========================================================================
 
     /**
@@ -129,7 +130,10 @@ public class BUS_NhanVien {
             // Bước 2: Tạo đối tượng tài khoản và lưu
             VaiTro vaiTro = (nv.getChucVu() == ChucVu.NGUOI_QUAN_LY) ? VaiTro.ADMIN : VaiTro.STAFF;
             String idTK = "TK" + System.currentTimeMillis() % 10000; // Khởi tạo mã TK ngẫu nhiên
-            TaiKhoan tk = new TaiKhoan(idTK, nv, vaiTro, tenDangNhap, matKhau);
+            
+            // ⚠️ FIX: Tự động băm mật khẩu thô ngay lập tức trước khi set vào Tài Khoản
+            String matKhauDaBam = PasswordUtils.hashPassword(matKhau);
+            TaiKhoan tk = new TaiKhoan(idTK, nv, vaiTro, tenDangNhap, matKhauDaBam);
             
             if (daoTaiKhoan.themTaiKhoan(tk)) {
                 return "SUCCESS";
@@ -157,14 +161,24 @@ public class BUS_NhanVien {
 
         // Cập nhật thông tin nhân viên
         if (daoNhanVien.capNhatNhanVien(nv)) {
+            
+            // ⚠️ FIX: Kiểm tra xem mật khẩu nhập vào là Mật khẩu Cũ (đã băm) hay Mật khẩu Mới (thô)
+            String matKhauLuuDB = matKhau;
+            if (matKhau != null && !matKhau.isEmpty()) {
+                // Thuật toán PBKDF2 của bạn nhả ra chuỗi có dấu ":". Nếu không có dấu ":" -> Phải băm!
+                if (!matKhau.contains(":")) {
+                    matKhauLuuDB = PasswordUtils.hashPassword(matKhau);
+                }
+            }
+
             if (tkHienTai != null) {
-                // Cập nhật tài khoản hiện có
-                daoTaiKhoan.capNhatTaiKhoanTheoMaNV(nv.getNhanVien(), tenDangNhap, matKhau);
+                // Cập nhật tài khoản hiện có với mật khẩu đã qua xử lý băm
+                daoTaiKhoan.capNhatTaiKhoanTheoMaNV(nv.getNhanVien(), tenDangNhap, matKhauLuuDB);
             } else {
-                // Nếu chưa có tài khoản thì tạo mới bổ sung
+                // Nếu chưa có tài khoản thì tạo mới bổ sung (cũng truyền mật khẩu đã băm vào)
                 VaiTro vaiTro = (nv.getChucVu() == ChucVu.NGUOI_QUAN_LY) ? VaiTro.ADMIN : VaiTro.STAFF;
                 String idTK = "TK" + System.currentTimeMillis() % 10000;
-                TaiKhoan tk = new TaiKhoan(idTK, nv, vaiTro, tenDangNhap, matKhau);
+                TaiKhoan tk = new TaiKhoan(idTK, nv, vaiTro, tenDangNhap, matKhauLuuDB);
                 daoTaiKhoan.themTaiKhoan(tk);
             }
             return "SUCCESS";

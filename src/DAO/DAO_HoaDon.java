@@ -32,13 +32,14 @@ public class DAO_HoaDon {
         
         // SỬ DỤNG SUBQUERY: Tính tổng tiền riêng biệt cho từng hóa đơn để chống nhân bản dữ liệu
         String sql = "SELECT hd.id, hd.ngayLapHD, kh.hoVaTen, kh.sdt, hd.phuongThucThanhToan, hd.ghiChu, " +
-                "(SELECT SUM(ct.soLuong * dv.gia * (1 + (ISNULL(sp.thueVAT, 0) / 100))) " + // <-- Tính VAT chuẩn: chia cho 100
+                "(SELECT SUM(ct.soLuong * dv.gia * (1 + (ISNULL(sp.thueVAT, 0) / 100))) " + 
                 " FROM ChiTietHoaDon ct " +
                 " JOIN DonViDoLuong dv ON ct.donViDoLuongId = dv.id AND ct.sanPhamId = dv.sanPhamId " +
-                " JOIN SanPham sp ON ct.sanPhamId = sp.id " + // <-- Join lại bảng SanPham để lấy được cột thueVAT
+                " JOIN SanPham sp ON ct.sanPhamId = sp.id " + 
                 " WHERE ct.hoaDonId = hd.id) as tongTienGoc " +
                 "FROM HoaDon hd " +
                 "LEFT JOIN KhachHang kh ON hd.khachHangId = kh.id " +
+                "WHERE hd.loaiHD = 'BAN_HANG' " + // <--- ĐÃ THÊM DÒNG NÀY ĐỂ LỌC RIÊNG HÓA ĐƠN BÁN HÀNG
                 "ORDER BY hd.ngayLapHD DESC";
                      
         try (Connection con = ConnectDB.getInstance().getConnection();
@@ -57,8 +58,6 @@ public class DAO_HoaDon {
                     String[] parts = ghiChu.split("\\|");
                     for (String p : parts) {
                         p = p.trim();
-                        // CHỈ TRỪ nếu là tiền dùng điểm hoặc mã giảm giá
-                        // Tuyệt đối không trừ phần "CASH:" (vì đó là tiền khách đưa)
                         if (p.startsWith("Dùng điểm: -") || p.contains("KM_GIAM:")) {
                             try {
                                 long tienGiam = Long.parseLong(p.replaceAll("[^0-9]", ""));
@@ -459,5 +458,62 @@ public class DAO_HoaDon {
 
             return pst.executeUpdate() > 0;
         }
+    }
+ // Thêm vào class DAO_HoaDon.java
+    public boolean capNhatTrangThaiVaGhiChu(String maPhieu, String trangThaiMoi, String ghiChuMoi) {
+        // Logic: Cập nhật cột ghiChu để các hàm layDanhSach có thể nhận diện trạng thái
+        String sql = "UPDATE HoaDon SET ghiChu = ? WHERE id = ?";
+        Connection con = ConnectDB.getInstance().getConnection();
+        try (PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setString(1, trangThaiMoi + " | " + ghiChuMoi);
+            pst.setString(2, maPhieu);
+            return pst.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+ // 1. Lấy danh sách Phiếu đổi trả từ SQL
+ // =========================================================================
+    // CÁC HÀM XỬ LÝ RIÊNG CHO MÀN HÌNH ĐỔI / TRẢ HÀNG
+    // =========================================================================
+
+    public List<Object[]> layDanhSachPhieuDoiTra() {
+        List<Object[]> list = new ArrayList<>();
+        // CHỈ LẤY CÁC PHIẾU LÀ ĐỔI HOẶC TRẢ HÀNG
+        String sql = "SELECT hd.id, hd.hoaDonGocId, kh.hoVaTen, hd.loaiHD, hd.ghiChu, hd.ngayLapHD " +
+                     "FROM HoaDon hd " +
+                     "LEFT JOIN KhachHang kh ON hd.khachHangId = kh.id " +
+                     "WHERE hd.loaiHD IN ('TRA_HANG', 'DOI_HANG') " +
+                     "ORDER BY hd.ngayLapHD DESC";
+        
+        try (Connection con = ConnectDB.getInstance().getConnection();
+             PreparedStatement pst = con.prepareStatement(sql);
+             ResultSet rs = pst.executeQuery()) {
+             
+             DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+             
+             while (rs.next()) {
+                 String maPhieu = rs.getString("id");
+                 String hdGoc = rs.getString("hoaDonGocId");
+                 String khach = rs.getString("hoVaTen") != null ? rs.getString("hoVaTen") : "Khách lẻ";
+                 String loaiHD = rs.getString("loaiHD").equals("TRA_HANG") ? "Trả hàng" : "Đổi hàng";
+                 String ghiChuDB = rs.getString("ghiChu"); 
+                 String ngay = rs.getTimestamp("ngayLapHD").toLocalDateTime().format(dtf);
+                 
+                 list.add(new Object[]{maPhieu, hdGoc, khach, loaiHD, ghiChuDB, ngay});
+             }
+        } catch (Exception e) { e.printStackTrace(); }
+        return list;
+    }
+
+    public boolean capNhatTrangThaiPhieuDoiTra(String maPhieu, String trangThaiMoi) {
+        String sql = "UPDATE HoaDon SET ghiChu = REPLACE(ghiChu, 'Chờ xử lý', ?) WHERE id = ?";
+        try (Connection con = ConnectDB.getInstance().getConnection();
+             PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setString(1, trangThaiMoi);
+            pst.setString(2, maPhieu);
+            return pst.executeUpdate() > 0;
+        } catch (Exception e) { e.printStackTrace(); return false; }
     }
 }
