@@ -547,7 +547,7 @@ public class ManHinhDangNhap extends JFrame {
     }
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> new MainDashboard().setVisible(true));
+        SwingUtilities.invokeLater(() -> new ManHinhDangNhap().setVisible(true));
     }
 //    public static void main(String[] args) {
 //        SwingUtilities.invokeLater(() -> new ManHinhDangNhap().setVisible(true));
