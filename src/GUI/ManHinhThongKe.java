@@ -1,6 +1,7 @@
 package GUI;
 
 import Utils.UserSession;
+import Utils.MenuIcon;
 import Utils.ModernDatePicker;
 import Utils.ModernScrollBarUI;
 import BUS.BUS_ThongKe;
@@ -276,7 +277,7 @@ public class ManHinhThongKe extends JPanel {
                     if (kpiLNVal != null) { kpiLNVal.setText(formatM(fLN)); kpiLNSub.setText(String.format("Tỷ lệ: %.1f%%", fLNPct)); }
                     if (kpiTBVal != null) { kpiTBVal.setText(formatK(fTB)); kpiTBSub.setText("Tháng cao nhất: T" + (fPeak+1)); }
                     if (lblYearBadge != null) lblYearBadge.setText(kyStr + " " + fYear);
-                    if (btnNamPicker != null) btnNamPicker.setText("📅 " + fYear + " ▼");
+                    if (btnNamPicker != null) btnNamPicker.setText(" " + fYear + " ▼");
 
                     if (cboNhanVien != null) {
                         String sel = (String) cboNhanVien.getSelectedItem();
@@ -361,7 +362,8 @@ public class ManHinhThongKe extends JPanel {
             BorderFactory.createLineBorder(Color.decode("#1A73E8"), 1, true),
             new EmptyBorder(2, 10, 2, 10)));
 
-        JLabel title = new JLabel("📊 THỐNG KÊ & BÁO CÁO  ");
+        JLabel title = new JLabel("  THỐNG KÊ & BÁO CÁO  ");
+        title.setIcon(new MenuIcon("CHART"));
         title.setFont(new Font("Segoe UI", Font.BOLD, 20));
         title.setForeground(Color.decode("#152A4B"));
 
@@ -393,7 +395,8 @@ public class ManHinhThongKe extends JPanel {
         JPanel p = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 8));
         p.setBackground(Color.WHITE);
 
-        btnDT = makeTabBtn("📈 Doanh thu & SP", true);
+        btnDT = makeTabBtn(" Doanh thu & SP", true);
+        btnDT.setIcon(new MenuIcon("TAB_CHART"));
         btnNV = makeTabBtn("👥 Nhân viên", false);
 
         // Group Toggle
@@ -452,7 +455,8 @@ public class ManHinhThongKe extends JPanel {
         cboKyLoc = cboThang; 
 
         // GẮN SỰ KIỆN CHO NÚT NĂM
-        btnNamPicker = new JButton("📅 " + currentYear + " ▼");
+        btnNamPicker = new JButton(" " + currentYear + " ▼");
+        btnNamPicker.setIcon(new MenuIcon("CALENDAR"));
         btnNamPicker.addActionListener(e -> showYearCalendarPopup(btnNamPicker)); 
         
         // GẮN SỰ KIỆN DƯỢC SĨ
@@ -509,7 +513,7 @@ public class ManHinhThongKe extends JPanel {
             btn.setBorder(BorderFactory.createLineBorder(Color.decode("#DFE3E8"), 1, true));
             btn.addActionListener(e -> {
                 currentYear = yr;
-                btnNamPicker.setText("📅 " + currentYear + " ▼");
+                btnNamPicker.setText(" " + currentYear + " ▼");
                 popup.setVisible(false);
                 onFilterChanged();
             });
@@ -544,10 +548,10 @@ public class ManHinhThongKe extends JPanel {
         JPanel cards = new JPanel(new GridLayout(1, 4, 12, 0));
         cards.setOpaque(false);
         cards.setMaximumSize(new Dimension(Integer.MAX_VALUE, 95));
-        cards.add(statCardDynamic("Tổng doanh thu",    kpiDTVal, kpiDTSub, "📈", "#EEF2FF"));
-        cards.add(statCardDynamic("Số lượng đơn hàng", kpiHDVal, kpiHDSub, "🛒", "#F3E5F5"));
-        cards.add(statCardDynamic("Lợi nhuận",         kpiLNVal, kpiLNSub, "💰", "#E8F5E9"));
-        cards.add(statCardDynamic("Giá trị TB / đơn",  kpiTBVal, kpiTBSub, "🎁", "#FFF3E0"));
+        cards.add(statCardDynamic("Tổng doanh thu",    kpiDTVal, kpiDTSub, "TAB_CHART", "#EEF2FF"));
+        cards.add(statCardDynamic("Số lượng đơn hàng", kpiHDVal, kpiHDSub, "CART",      "#F3E5F5"));
+        cards.add(statCardDynamic("Lợi nhuận",         kpiLNVal, kpiLNSub, "TAB_DOLLAR","#E8F5E9"));
+        cards.add(statCardDynamic("Giá trị TB / đơn",  kpiTBVal, kpiTBSub, "GIFT",      "#FFF3E0"));
         root.add(cards);
         root.add(Box.createVerticalStrut(12));
 
@@ -569,7 +573,7 @@ public class ManHinhThongKe extends JPanel {
         lineCard.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createLineBorder(Color.decode("#DFE3E8"), 1, true),
             new EmptyBorder(14, 14, 14, 14)));
-        JLabel ltitle = new JLabel("📅 Thống kê theo ngày (30 ngày gần nhất)");
+        JLabel ltitle = new JLabel(" Thống kê theo ngày (30 ngày gần nhất)", new MenuIcon("CALENDAR"), SwingConstants.LEFT);
         ltitle.setFont(new Font("Segoe UI", Font.BOLD, 13));
         ltitle.setForeground(Color.decode("#152A4B"));
         miniPeakDate = new JLabel("--"); miniPeakDate.setFont(new Font("Segoe UI",Font.BOLD,16)); miniPeakDate.setForeground(Color.decode("#1A73E8"));
@@ -625,9 +629,9 @@ public class ManHinhThongKe extends JPanel {
         JPanel cards = new JPanel(new GridLayout(1, 3, 12, 0));
         cards.setOpaque(false);
         cards.setMaximumSize(new Dimension(Integer.MAX_VALUE, 120));
-        cards.add(statCardDynamic("Tổng nhân viên", lblTongNV, makeKpiSub("đang hoạt động · " + currentYear), "👥", "#EEF2FF"));
-        cards.add(statCardDynamic("DT trung bình / NV", lblDTTB_NV, makeKpiSub("mỗi nhân viên"), "📈", "#F3E5F5"));
-        cards.add(statCardDynamic("Tổng doanh thu NV", lblTongDT_NV, makeKpiSub("tất cả nhân viên"), "📈", "#E8F5E9"));
+        cards.add(statCardDynamic("Tổng nhân viên",     lblTongNV,    makeKpiSub("đang hoạt động · " + currentYear), "USERS",     "#EEF2FF"));
+        cards.add(statCardDynamic("DT trung bình / NV", lblDTTB_NV,   makeKpiSub("mỗi nhân viên"),                    "TAB_CHART", "#F3E5F5"));
+        cards.add(statCardDynamic("Tổng doanh thu NV",  lblTongDT_NV, makeKpiSub("tất cả nhân viên"),                 "TAB_CHART", "#E8F5E9"));
         root.add(cards);
         root.add(Box.createVerticalStrut(12));
 
@@ -643,7 +647,7 @@ public class ManHinhThongKe extends JPanel {
         nvDailyHeader.setOpaque(false);
         JPanel nvDailyTitles = new JPanel(new GridLayout(2, 1, 0, 2));
         nvDailyTitles.setOpaque(false);
-        JLabel ndTitle = new JLabel("📅 Thống kê dược sĩ theo ngày (10 ngày gần nhất)");
+        JLabel ndTitle = new JLabel(" Thống kê dược sĩ theo ngày (10 ngày gần nhất)", new MenuIcon("CALENDAR"), SwingConstants.LEFT);
         ndTitle.setFont(new Font("Segoe UI", Font.BOLD, 13));
         ndTitle.setForeground(Color.decode("#152A4B"));
         JLabel ndSub = new JLabel("Số hóa đơn xử lý mỗi ngày theo từng dược sĩ");
@@ -668,7 +672,7 @@ public class ManHinhThongKe extends JPanel {
         shiftCard.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createLineBorder(Color.decode("#DFE3E8"), 1, true),
             new EmptyBorder(14, 14, 10, 14)));
-        JLabel shTitle = new JLabel("⏱ HĐ theo ca làm việc");
+        JLabel shTitle = new JLabel(" HĐ theo ca làm việc", new MenuIcon("CLOCK"), SwingConstants.LEFT);
         shTitle.setFont(new Font("Segoe UI", Font.BOLD, 13));
         shTitle.setForeground(Color.decode("#152A4B"));
 
@@ -677,8 +681,8 @@ public class ManHinhThongKe extends JPanel {
 
         JPanel shMini = new JPanel(new GridLayout(1, 2, 8, 0));
         shMini.setOpaque(false);
-        shMini.add(statCardDynamic("Ca sáng (6h–13h)", lblHDSang, makeKpiSub("Hóa đơn"), "☀️", "#FFF8E1"));
-        shMini.add(statCardDynamic("Ca chiều (14h–21h)", lblHDChieu, makeKpiSub("Hóa đơn"), "🌙", "#EEF2FF"));
+        shMini.add(statCardDynamic("Ca sáng (6h–13h)",  lblHDSang,  makeKpiSub("Hóa đơn"), "SHIFT_MORNING",   "#FFF8E1"));
+        shMini.add(statCardDynamic("Ca chiều (14h–21h)", lblHDChieu, makeKpiSub("Hóa đơn"), "SHIFT_AFTERNOON", "#EEF2FF"));
 
         chartNVShift = new NVShiftChart();
         chartNVShift.setPreferredSize(new Dimension(0, 160));
@@ -721,8 +725,10 @@ public class ManHinhThongKe extends JPanel {
         card.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createLineBorder(Color.decode("#FFCDD2"), 2),
             new EmptyBorder(40, 60, 40, 60)));
-        JLabel lblIcon  = new JLabel("🔒", SwingConstants.CENTER);
-        lblIcon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 48));
+        JLabel lblIcon = new JLabel();
+        lblIcon.setHorizontalAlignment(SwingConstants.CENTER);
+        lblIcon.setForeground(Color.decode("#C62828"));
+        lblIcon.setIcon(new MenuIcon("LOCK", 48));
         lblIcon.setAlignmentX(CENTER_ALIGNMENT);
         JLabel lblTitle = new JLabel("Không có quyền truy cập", SwingConstants.CENTER);
         lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 22));
@@ -1235,7 +1241,7 @@ public class ManHinhThongKe extends JPanel {
 
             JPanel header = new JPanel(new BorderLayout());
             header.setOpaque(false);
-            JLabel t1 = new JLabel("⏰ Chi tiết dược sĩ theo ca");
+            JLabel t1 = new JLabel(" Chi tiết dược sĩ theo ca", new MenuIcon("CLOCK"), SwingConstants.LEFT);
             t1.setFont(new Font("Segoe UI", Font.BOLD, 13));
             t1.setForeground(Color.decode("#152A4B"));
             JTextField search = new JTextField("🔍 Tìm nhân viên...");
@@ -1323,7 +1329,7 @@ public class ManHinhThongKe extends JPanel {
 
         JPanel header = new JPanel(new BorderLayout());
         header.setOpaque(false);
-        JLabel t = new JLabel("🏆 Top sản phẩm bán chạy");
+        JLabel t = new JLabel(" Top sản phẩm bán chạy", new MenuIcon("TROPHY"), SwingConstants.LEFT);
         t.setFont(new Font("Segoe UI", Font.BOLD, 13));
         t.setForeground(Color.decode("#152A4B"));
         header.add(t, BorderLayout.WEST);
@@ -1401,7 +1407,7 @@ public class ManHinhThongKe extends JPanel {
 
         JPanel header = new JPanel(new BorderLayout());
         header.setOpaque(false);
-        JLabel t = new JLabel("📋 Báo cáo thuế VAT chi tiết");
+        JLabel t = new JLabel(" Báo cáo thuế VAT chi tiết", new MenuIcon("DOCUMENT"), SwingConstants.LEFT);
         t.setFont(new Font("Segoe UI", Font.BOLD, 13));
         t.setForeground(Color.decode("#152A4B"));
         lblVATTotal = new JLabel("Tổng VAT: --đ");
@@ -1500,7 +1506,7 @@ public class ManHinhThongKe extends JPanel {
         return l;
     }
 
-    private JPanel statCardDynamic(String label, JLabel valLabel, JLabel subLabel, String icon, String iconBg) {
+    private JPanel statCardDynamic(String label, JLabel valLabel, JLabel subLabel, String iconType, String iconBg) {
         JPanel p = new JPanel(new BorderLayout(0, 4));
         p.setBackground(Color.WHITE);
         p.setBorder(BorderFactory.createCompoundBorder(
@@ -1512,8 +1518,11 @@ public class ManHinhThongKe extends JPanel {
         JLabel lbl = new JLabel(label);
         lbl.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         lbl.setForeground(Color.decode("#888888"));
-        JLabel ico = new JLabel(icon, SwingConstants.CENTER);
-        ico.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 16));
+        JLabel ico = new JLabel();
+        ico.setHorizontalAlignment(SwingConstants.CENTER);
+        ico.setIcon(new MenuIcon(iconType));
+        // Lấy màu icon từ valLabel để đồng bộ sắc màu KPI
+        ico.setForeground(valLabel.getForeground());
         ico.setOpaque(true);
         ico.setBackground(Color.decode(iconBg));
         ico.setPreferredSize(new Dimension(36, 36));
@@ -1622,10 +1631,9 @@ public class ManHinhThongKe extends JPanel {
                     String.format("%.1f",NV_DT_S[i])+","+String.format("%.1f",NV_DT_C[i])+","+
                     String.format("%.1f",NV_DT_S[i]+NV_DT_C[i]));
             }
-            JOptionPane.showMessageDialog(this, "✓ Xuất CSV thành công!\n"+file.getAbsolutePath(),
-                "Xuất báo cáo", JOptionPane.INFORMATION_MESSAGE);
+            showCustomDialog("Xuất CSV thành công!\n" + file.getAbsolutePath(), "SUCCESS");
         } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Lỗi xuất file: "+ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+            showCustomDialog("Lỗi xuất file: " + ex.getMessage(), "ERROR");
         }
     }
 
@@ -1661,11 +1669,65 @@ public class ManHinhThongKe extends JPanel {
             for (int i=0;i<NV_NAMES.length;i++) pw.println("<tr><td>"+NV_NAMES[i]+"</td><td>"+NV_ROLES[i]+"</td><td>"+NV_HD_S[i]+"</td><td>"+NV_HD_C[i]+"</td><td>"+String.format("%.1f",NV_DT_S[i])+"M</td><td>"+String.format("%.1f",NV_DT_C[i])+"M</td><td class='green'>"+String.format("%.1f",NV_DT_S[i]+NV_DT_C[i])+"M</td></tr>");
             pw.println("</table></body></html>");
             try { java.awt.Desktop.getDesktop().open(file); } catch (Exception ignored) {}
-            JOptionPane.showMessageDialog(this, "✓ Đã tạo báo cáo HTML!\nMở trình duyệt → Ctrl+P để in/lưu PDF.\n"+file.getAbsolutePath(),
-                "Xuất báo cáo", JOptionPane.INFORMATION_MESSAGE);
+            showCustomDialog("Đã tạo báo cáo HTML!\nMở trình duyệt → Ctrl+P để in/lưu PDF.\n" + file.getAbsolutePath(), "SUCCESS");
         } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Lỗi: "+ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+            showCustomDialog("Lỗi: " + ex.getMessage(), "ERROR");
         }
+    }
+
+    // DIALOG THÔNG BÁO TÙY CHỈNH (thay thế JOptionPane)
+    // type = "SUCCESS" | "ERROR"
+    private void showCustomDialog(String message, String type) {
+        boolean isSuccess = "SUCCESS".equals(type);
+        Color headerColor = isSuccess ? Color.decode("#00A76F") : Color.decode("#D32F2F");
+        String headerTitle = isSuccess ? "Thành công" : "Lỗi";
+        String iconType    = isSuccess ? "CORRECT"   : "CANCEL";
+
+        Window owner = SwingUtilities.getWindowAncestor(this);
+        JDialog dialog = (owner instanceof Frame)
+            ? new JDialog((Frame) owner, headerTitle, true)
+            : new JDialog((Dialog) owner, headerTitle, true);
+        dialog.setLayout(new BorderLayout());
+        dialog.setSize(420, 200);
+        dialog.setLocationRelativeTo(this);
+        dialog.setResizable(false);
+
+        // Header màu
+        JPanel header = new JPanel(new FlowLayout(FlowLayout.LEFT, 14, 10));
+        header.setBackground(headerColor);
+        JLabel icoLbl = new JLabel();
+        icoLbl.setIcon(new MenuIcon(iconType));
+        icoLbl.setForeground(Color.WHITE);
+        JLabel titleLbl = new JLabel(headerTitle);
+        titleLbl.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        titleLbl.setForeground(Color.WHITE);
+        header.add(icoLbl);
+        header.add(titleLbl);
+
+        // Nội dung
+        String html = "<html><body style='font-family:Segoe UI;font-size:12pt;padding:4px'>"
+            + message.replace("\n", "<br>") + "</body></html>";
+        JLabel msgLbl = new JLabel(html);
+        msgLbl.setBorder(new EmptyBorder(14, 18, 6, 18));
+
+        // Footer
+        JPanel footer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 14, 8));
+        footer.setBackground(Color.decode("#F8F9FA"));
+        footer.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, Color.decode("#DFE3E8")));
+        JButton btnClose = new JButton("  Đóng");
+        btnClose.setIcon(new MenuIcon("CANCEL"));
+        btnClose.setBackground(headerColor);
+        btnClose.setForeground(Color.WHITE);
+        btnClose.setFocusPainted(false);
+        btnClose.setBorder(new EmptyBorder(8, 20, 8, 20));
+        btnClose.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btnClose.addActionListener(e -> dialog.dispose());
+        footer.add(btnClose);
+
+        dialog.add(header,  BorderLayout.NORTH);
+        dialog.add(msgLbl,  BorderLayout.CENTER);
+        dialog.add(footer,  BorderLayout.SOUTH);
+        dialog.setVisible(true);
     }
 
     // BẢNG SẢN PHẨM HẾT HẠN

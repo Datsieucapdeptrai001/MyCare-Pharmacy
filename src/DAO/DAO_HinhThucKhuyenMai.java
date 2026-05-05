@@ -16,8 +16,8 @@ import java.sql.SQLException;
 public class DAO_HinhThucKhuyenMai {
 
     public boolean themHinhThuc(HinhThucKhuyenMai htkm) {
-        String sql = "INSERT INTO HinhThucKhuyenMai (id, loaiHinhThuc, doiTuongApDung, moTa, giaTri, giamToiDa, khuyenMaiId, spYeuCau, slYeuCau, spTang, slTang) "
-                   + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO HinhThucKhuyenMai (id, loaiHinhThuc, doiTuongApDung, moTa, giaTri, giamToiDa, khuyenMaiId, spYeuCau, slYeuCau, dvdlYeuCau, spTang, slTang, dvdlTang) "
+                   + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         Connection con = ConnectDB.getInstance().getConnection();
         try (PreparedStatement pst = con.prepareStatement(sql)) {
             pst.setString(1, htkm.getId());
@@ -29,8 +29,10 @@ public class DAO_HinhThucKhuyenMai {
             pst.setString(7, htkm.getKhuyenMaiId() != null ? htkm.getKhuyenMaiId().getId() : null);
             pst.setString(8, htkm.getSpYeuCau());
             pst.setInt(9, htkm.getSlYeuCau());
-            pst.setString(10, htkm.getSpTang());
-            pst.setInt(11, htkm.getSlTang());
+            pst.setString(10, htkm.getDvdlYeuCau());
+            pst.setString(11, htkm.getSpTang());
+            pst.setInt(12, htkm.getSlTang());
+            pst.setString(13, htkm.getDvdlTang());
             return pst.executeUpdate() > 0;
         } catch (SQLException e) {
             e.printStackTrace();
@@ -39,7 +41,7 @@ public class DAO_HinhThucKhuyenMai {
     }
 
     public boolean capNhatHinhThuc(HinhThucKhuyenMai htkm) {
-        String sql = "UPDATE HinhThucKhuyenMai SET loaiHinhThuc=?, doiTuongApDung=?, moTa=?, giaTri=?, giamToiDa=?, spYeuCau=?, slYeuCau=?, spTang=?, slTang=? WHERE khuyenMaiId=?";
+        String sql = "UPDATE HinhThucKhuyenMai SET loaiHinhThuc=?, doiTuongApDung=?, moTa=?, giaTri=?, giamToiDa=?, spYeuCau=?, slYeuCau=?, dvdlYeuCau=?, spTang=?, slTang=?, dvdlTang=? WHERE khuyenMaiId=?";
         Connection con = ConnectDB.getInstance().getConnection();
         try (PreparedStatement pst = con.prepareStatement(sql)) {
             pst.setString(1, htkm.getLoaiHinhThuc() != null ? htkm.getLoaiHinhThuc().name() : null);
@@ -49,9 +51,11 @@ public class DAO_HinhThucKhuyenMai {
             pst.setDouble(5, htkm.getGiamToiDa());
             pst.setString(6, htkm.getSpYeuCau());
             pst.setInt(7, htkm.getSlYeuCau());
-            pst.setString(8, htkm.getSpTang());
-            pst.setInt(9, htkm.getSlTang());
-            pst.setString(10, htkm.getKhuyenMaiId().getId());
+            pst.setString(8, htkm.getDvdlYeuCau());
+            pst.setString(9, htkm.getSpTang());
+            pst.setInt(10, htkm.getSlTang());
+            pst.setString(11, htkm.getDvdlTang());
+            pst.setString(12, htkm.getKhuyenMaiId().getId());
             return pst.executeUpdate() > 0;
         } catch (SQLException e) {
             e.printStackTrace();
@@ -105,8 +109,10 @@ public class DAO_HinhThucKhuyenMai {
                     try {
                         htkm.setSpYeuCau(rs.getString("spYeuCau"));
                         htkm.setSlYeuCau(rs.getInt("slYeuCau"));
+                        htkm.setDvdlYeuCau(rs.getString("dvdlYeuCau"));
                         htkm.setSpTang(rs.getString("spTang"));
                         htkm.setSlTang(rs.getInt("slTang"));
+                        htkm.setDvdlTang(rs.getString("dvdlTang"));
                     } catch(Exception ignored){}
                 }
             }

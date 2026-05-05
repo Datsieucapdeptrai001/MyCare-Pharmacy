@@ -42,10 +42,6 @@ public class BUS_SanPham {
         return daoSanPham.layLoTheoSP(maSP.trim());
     }
 
-    /**
-     * [THÊM MỚI] Lấy danh sách đơn vị quy đổi từ DB thay vì hardcode.
-     * Trả về List<Object[]> với mỗi phần tử {tenDonVi, tyLeQuyDoi}.
-     */
     public List<Object[]> layDonViTheoSP(String maSP) {
         if (isBlank(maSP)) return new ArrayList<>();
         return daoSanPham.layDonViDoLuongTheoSP(maSP.trim());
@@ -57,26 +53,23 @@ public class BUS_SanPham {
 
 
     public boolean themSP(String id, String danhMuc, String dang, String ten, String vietTat,
-			            String nsx, String hoatChat, double vat, String hamLuong,
-			            String moTa, String dvt, double giaBan) {
-    	if (isBlank(id) || isBlank(ten) || vat < 0 || giaBan < 0) return false;
+                        String nsx, String hoatChat, double vat, String hamLuong,
+                        String moTa, String dvt, double giaBan) {
+        if (isBlank(id) || isBlank(ten) || vat < 0 || giaBan < 0) return false;
         return daoSanPham.themSanPhamNhanh(
-        		id.trim(), safe(danhMuc).trim(), safe(dang).trim(),
+                id.trim(), safe(danhMuc).trim(), safe(dang).trim(),
                 ten.trim(), safe(vietTat).trim(), safe(nsx).trim(),
                 safe(hoatChat).trim(), vat, safe(hamLuong).trim(),
                 safe(moTa).trim(), safe(dvt).trim(), giaBan
         );
     }
 
-    /**
-     * [SỬA] Thêm tham số giaBan và maVach.
-     */
     public boolean capNhatSP(String id, String danhMuc, String dang, String ten, String vietTat,
                              String nsx, String hoatChat, double vat, String hamLuong,
                              String moTa, String dvt, double giaBan) {
-    	if (isBlank(id) || isBlank(ten) || vat < 0 || giaBan < 0) return false;
+        if (isBlank(id) || isBlank(ten) || vat < 0 || giaBan < 0) return false;
         return daoSanPham.capNhatSanPhamNhanh(
-        		id.trim(), safe(danhMuc).trim(), safe(dang).trim(),
+                id.trim(), safe(danhMuc).trim(), safe(dang).trim(),
                 ten.trim(), safe(vietTat).trim(), safe(nsx).trim(),
                 safe(hoatChat).trim(), vat, safe(hamLuong).trim(),
                 safe(moTa).trim(), safe(dvt).trim(), giaBan
@@ -116,9 +109,6 @@ public class BUS_SanPham {
         return daoSanPham.khoiPhucSanPham(maSP.trim());
     }
 
-    /**
-     * Lấy thông tin đầy đủ 1 sản phẩm (dùng khi mở form chi tiết).
-     */
     public SanPham getSanPhamDayDu(String maSP) {
         if (isBlank(maSP)) return null;
         return daoSanPham.getSanPhamDayDu(maSP.trim());
@@ -131,7 +121,7 @@ public class BUS_SanPham {
     private String safe(String s) {
         return s == null ? "" : s;
     }
-    // CÁC HÀM OVERLOAD ĐỂ TRUYỀN DỮ LIỆU ĐƠN VỊ QUY ĐỔI XUỐNG DAO
+
     public boolean themSP(String id, String danhMuc, String dang, String ten, String vietTat,
                           String nsx, String hoatChat, double vat, String hamLuong,
                           String moTa, String dvt, double giaBan, List<Object[]> dsDonVi) {
@@ -162,5 +152,12 @@ public class BUS_SanPham {
 
     public List<String> layDanhSachDonViTinh() {
         return daoSanPham.layDanhSachDonViTinh();
+    }
+
+    // ===========================================
+    // HÀM MỚI BỔ SUNG: Gọi sang DAO lấy danh sách tên SP (Dùng cho Giao diện)
+    // ===========================================
+    public List<String> layDanhSachTenSanPham() {
+        return daoSanPham.layDanhSachTenSanPham();
     }
 }

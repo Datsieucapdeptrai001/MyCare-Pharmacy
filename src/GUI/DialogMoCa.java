@@ -64,12 +64,14 @@ public class DialogMoCa extends JDialog {
     private JLabel    lblCaSubInfo;
     private CardLayout stepCard;
     private JPanel    stepPanel;
+    private CardLayout footerCardLayout;
+    private JPanel     footerSwitcher;
 
     // ======================== CONSTRUCTOR ========================
     public DialogMoCa(Frame parent) {
         super(parent, "Mở ca làm việc", true);
         setUndecorated(true);
-        setSize(680, 620);
+        setSize(680, 680);
         setLocationRelativeTo(parent);
         setBackground(new Color(0, 0, 0, 0));
         buildUI();
@@ -101,7 +103,12 @@ public class DialogMoCa extends JDialog {
         stepPanel.add(buildStep2(), "step2");
         root.add(stepPanel, BorderLayout.CENTER);
 
-        root.add(buildFooter(), BorderLayout.SOUTH);
+        footerCardLayout = new CardLayout();
+        footerSwitcher   = new JPanel(footerCardLayout);
+        footerSwitcher.setOpaque(false);
+        footerSwitcher.add(buildStep1Footer(), "step1");
+        footerSwitcher.add(buildStep2Footer(), "step2");
+        root.add(footerSwitcher, BorderLayout.SOUTH);
     }
 
     // ─── HEADER ──────────────────────────────────────────────
@@ -208,7 +215,7 @@ public class DialogMoCa extends JDialog {
         pnl.setBorder(new EmptyBorder(20, 24, 10, 24));
 
         // Section title
-        JLabel secTitle1 = makeSectionTitle("ℹ  BƯỚC 1 — THÔNG TIN CA LÀM VIỆC HIỆN TẠI");
+        JLabel secTitle1 = makeSectionTitle("INFO_CIRCLE", "BƯỚC 1 — THÔNG TIN CA LÀM VIỆC HIỆN TẠI");
         pnl.add(secTitle1);
         pnl.add(Box.createRigidArea(new Dimension(0, 12)));
 
@@ -227,7 +234,7 @@ public class DialogMoCa extends JDialog {
         pnl.add(Box.createRigidArea(new Dimension(0, 20)));
 
         // Section title 2
-        JLabel secTitle2 = makeSectionTitle("💵  BƯỚC 2 — KIỂM ĐẾM TIỀN ĐẦU CA");
+        JLabel secTitle2 = makeSectionTitle("TAB_DOLLAR", "BƯỚC 2 — KIỂM ĐẾM TIỀN ĐẦU CA");
         pnl.add(secTitle2);
         pnl.add(Box.createRigidArea(new Dimension(0, 12)));
 
@@ -281,7 +288,9 @@ public class DialogMoCa extends JDialog {
         hint.setBorder(BorderFactory.createLineBorder(Color.decode("#FFD666")));
         hint.setAlignmentX(LEFT_ALIGNMENT);
         hint.setMaximumSize(new Dimension(Integer.MAX_VALUE, 34));
-        JLabel lblHint = new JLabel("ℹ  Có thể bỏ qua nếu chưa có tiền mặt đầu ca — nhấn \"Tiếp tục\" để xác nhận 0đ");
+        JLabel lblHint = new JLabel("Có thể bỏ qua nếu chưa có tiền mặt đầu ca — nhấn \"Tiếp tục\" để xác nhận 0đ");
+        lblHint.setIcon(new MenuIcon("INFO_CIRCLE"));
+        lblHint.setIconTextGap(6);
         lblHint.setFont(new Font("Segoe UI", Font.PLAIN, 11));
         lblHint.setForeground(Color.decode("#7A5800"));
         hint.add(lblHint);
@@ -317,26 +326,32 @@ public class DialogMoCa extends JDialog {
         JLabel lblTitle = new JLabel("PHIẾU XÁC NHẬN MỞ CA", SwingConstants.CENTER);
         lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 16));
         lblTitle.setForeground(Color.decode("#006250"));
-        lblTitle.setAlignmentX(CENTER_ALIGNMENT);
+        lblTitle.setAlignmentX(LEFT_ALIGNMENT);
+        lblTitle.setMaximumSize(new Dimension(Integer.MAX_VALUE, 28));
         card.add(lblTitle);
 
-        JLabel lblTime = new JLabel(new SimpleDateFormat("⏰ dd/MM/yyyy HH:mm").format(new Date()),
-                SwingConstants.CENTER);
+        JLabel lblTime = new JLabel(new SimpleDateFormat("dd/MM/yyyy HH:mm").format(new Date()),
+                SwingConstants.LEFT);
+        lblTime.setIcon(new MenuIcon("CLOCK"));
+        lblTime.setIconTextGap(6);
         lblTime.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         lblTime.setForeground(Color.decode("#00A76F"));
-        lblTime.setAlignmentX(CENTER_ALIGNMENT);
+        lblTime.setAlignmentX(LEFT_ALIGNMENT);
+        lblTime.setMaximumSize(new Dimension(Integer.MAX_VALUE, 22));
         card.add(Box.createRigidArea(new Dimension(0, 4)));
         card.add(lblTime);
         card.add(Box.createRigidArea(new Dimension(0, 16)));
 
         // Nhân viên
-        JPanel nvRow = buildConfirmRow("👤", UserSession.getInstance().getTenHienThi()
+        JPanel nvRow = buildConfirmRow("USER", UserSession.getInstance().getTenHienThi()
                 + "  •  " + UserSession.getInstance().getChucVuHienThi());
+        nvRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 50));
         card.add(nvRow);
         card.add(Box.createRigidArea(new Dimension(0, 10)));
 
         // Ca làm
         JPanel caRow = buildConfirmCaRow();
+        caRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 58));
         card.add(caRow);
         card.add(Box.createRigidArea(new Dimension(0, 10)));
 
@@ -384,6 +399,7 @@ public class DialogMoCa extends JDialog {
         JPanel totalRow = new JPanel(new BorderLayout());
         totalRow.setOpaque(false);
         totalRow.setAlignmentX(LEFT_ALIGNMENT);
+        totalRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
         JLabel lTotal  = new JLabel("TỔNG TIỀN ĐẦU CA:");
         lTotal.setFont(new Font("Segoe UI", Font.BOLD, 13));
         JLabel lAmount = new JLabel(formatMoney(tongTien), SwingConstants.RIGHT);
@@ -397,15 +413,17 @@ public class DialogMoCa extends JDialog {
         return pnl;
     }
 
-    // ─── FOOTER ──────────────────────────────────────────────
-    private JPanel buildFooter() {
+    // ─── FOOTER STEP 1 ───────────────────────────────────────
+    private JPanel buildStep1Footer() {
         JPanel footer = new JPanel(new BorderLayout());
         footer.setBackground(Color.WHITE);
         footer.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createMatteBorder(1, 0, 0, 0, COLOR_BORDER),
                 new EmptyBorder(12, 20, 12, 20)));
 
-        JButton btnReset = new JButton("↺  Nhập lại");
+        JButton btnReset = new JButton("Nhập lại");
+        btnReset.setIcon(new MenuIcon("REFRESH"));
+        btnReset.setIconTextGap(6);
         btnReset.setFont(new Font("Segoe UI", Font.BOLD, 13));
         btnReset.setForeground(Color.decode("#637381"));
         btnReset.setBackground(Color.WHITE);
@@ -421,7 +439,10 @@ public class DialogMoCa extends JDialog {
             stepCard.show(stepPanel, "step1");
         });
 
-        JButton btnNext = new JButton("Xem lại & Xác nhận  >");
+        JButton btnNext = new JButton("Xem lại & Xác nhận");
+        btnNext.setIcon(new MenuIcon("CHECK_CIRCLE"));
+        btnNext.setIconTextGap(6);
+        btnNext.setHorizontalTextPosition(SwingConstants.LEFT);
         btnNext.setFont(new Font("Segoe UI", Font.BOLD, 13));
         btnNext.setForeground(Color.WHITE);
         btnNext.setBackground(COLOR_CONFIRM);
@@ -430,25 +451,30 @@ public class DialogMoCa extends JDialog {
         btnNext.setOpaque(true);
         btnNext.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnNext.addActionListener(e -> {
-            // Rebuild step2 with fresh data
+            // Rebuild step2 with fresh data rồi chuyển sang
             stepPanel.remove(1);
             stepPanel.add(buildStep2(), "step2", 1);
             stepCard.show(stepPanel, "step2");
-
-            // Swap buttons
-            footer.removeAll();
-            buildConfirmFooter(footer);
-            footer.revalidate();
-            footer.repaint();
+            // Chuyển footer bằng CardLayout — không cần removeAll nữa
+            footerCardLayout.show(footerSwitcher, "step2");
         });
 
         footer.add(btnReset, BorderLayout.WEST);
-        footer.add(btnNext, BorderLayout.EAST);
+        footer.add(btnNext,  BorderLayout.EAST);
         return footer;
     }
 
-    private void buildConfirmFooter(JPanel footer) {
-        JButton btnSua = new JButton("← Sửa lại");
+    // ─── FOOTER STEP 2 ───────────────────────────────────────
+    private JPanel buildStep2Footer() {
+        JPanel footer = new JPanel(new BorderLayout());
+        footer.setBackground(Color.WHITE);
+        footer.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(1, 0, 0, 0, COLOR_BORDER),
+                new EmptyBorder(12, 20, 12, 20)));
+
+        JButton btnSua = new JButton("Sửa lại");
+        btnSua.setIcon(new MenuIcon("EDIT"));
+        btnSua.setIconTextGap(6);
         btnSua.setFont(new Font("Segoe UI", Font.BOLD, 13));
         btnSua.setForeground(Color.decode("#637381"));
         btnSua.setBackground(Color.WHITE);
@@ -459,18 +485,12 @@ public class DialogMoCa extends JDialog {
         btnSua.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnSua.addActionListener(e -> {
             stepCard.show(stepPanel, "step1");
-            footer.removeAll();
-            footer.add(btnSua, BorderLayout.WEST); // will be replaced
-            // Rebuild original footer
-            JPanel orig = buildFooter();
-            for (Component c : orig.getComponents()) {
-                footer.add(c, ((BorderLayout) orig.getLayout()).getConstraints(c));
-            }
-            footer.revalidate();
-            footer.repaint();
+            footerCardLayout.show(footerSwitcher, "step1");
         });
 
-        JButton btnXacNhan = new JButton("✓  Xác nhận vào ca");
+        JButton btnXacNhan = new JButton("Xác nhận vào ca");
+        btnXacNhan.setIcon(new MenuIcon("CORRECT"));
+        btnXacNhan.setIconTextGap(6);
         btnXacNhan.setFont(new Font("Segoe UI", Font.BOLD, 13));
         btnXacNhan.setForeground(Color.WHITE);
         btnXacNhan.setBackground(COLOR_CONFIRM);
@@ -485,15 +505,18 @@ public class DialogMoCa extends JDialog {
 
         footer.add(btnSua,     BorderLayout.WEST);
         footer.add(btnXacNhan, BorderLayout.EAST);
+        return footer;
     }
 
     // ─── HELPERS ─────────────────────────────────────────────
 
-    private JLabel makeSectionTitle(String text) {
+    private JLabel makeSectionTitle(String iconType, String text) {
         JLabel lbl = new JLabel(text);
         lbl.setFont(new Font("Segoe UI", Font.BOLD, 12));
         lbl.setForeground(Color.decode("#454F5B"));
         lbl.setAlignmentX(LEFT_ALIGNMENT);
+        lbl.setIcon(new MenuIcon(iconType));
+        lbl.setIconTextGap(6);
         return lbl;
     }
 
@@ -611,14 +634,16 @@ public class DialogMoCa extends JDialog {
         return box;
     }
 
-    private JPanel buildConfirmRow(String icon, String text) {
+    private JPanel buildConfirmRow(String iconType, String text) {
         JPanel row = new JPanel(new BorderLayout());
         row.setBackground(Color.WHITE);
         row.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(COLOR_BORDER),
                 new EmptyBorder(10, 14, 10, 14)));
         row.setAlignmentX(LEFT_ALIGNMENT);
-        JLabel lbl = new JLabel(icon + "  " + text);
+        JLabel lbl = new JLabel(text);
+        lbl.setIcon(new MenuIcon(iconType));
+        lbl.setIconTextGap(8);
         lbl.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         row.add(lbl);
         return row;

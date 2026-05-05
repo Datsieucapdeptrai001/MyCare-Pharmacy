@@ -150,37 +150,52 @@ public class DAO_SanPham {
 
     public List<Object[]> timKiemSanPhamBan(String text) {
         List<Object[]> ds = new ArrayList<>();
-        String sql = "SELECT sp.id, sp.ten, sp.donViDoCoBan, lh.gia AS giaBan, " +
-                         "SUM(lh.soLuongLoHang) AS soLuongTon, sp.danhMuc " +
-                         "FROM SanPham sp JOIN LoHang lh ON sp.id = lh.sanPhamId " +
-                         "WHERE (sp.ten LIKE ? OR sp.tenVietTat LIKE ? OR sp.hoatChat LIKE ? " +
-                         "       OR sp.id LIKE ? OR sp.maVach LIKE ?) " +
-                         "AND lh.trangThai != 'HET_HAN' " +
-                         "GROUP BY sp.id, sp.ten, sp.donViDoCoBan, lh.gia, sp.danhMuc " +
-                         "HAVING SUM(lh.soLuongLoHang) > 0";
+        
+        // ĐÃ FIX: Tách riêng từng lô hàng (Không dùng GROUP BY) và sắp xếp HSD tăng dần
+        String sql = "SELECT sp.id, sp.ten, sp.donViDoCoBan, sp.giaBan, " +
+                     "lh.soLuongLoHang AS soLuongTon, sp.danhMuc, ISNULL(sp.thueVAT, 0) AS thueVAT, " +
+                     "lh.soLoHang, lh.ngayHetHan " +
+                     "FROM SanPham sp JOIN LoHang lh ON sp.id = lh.sanPhamId " +
+                     "WHERE (sp.ten LIKE ? OR sp.tenVietTat LIKE ? OR sp.hoatChat LIKE ? " +
+                     "       OR sp.id LIKE ?) " +
+                     "AND ISNULL(lh.trangThai, '') != 'HET_HAN' " +
+                     "AND lh.soLuongLoHang > 0 " +
+                     "ORDER BY lh.ngayHetHan ASC";
+                     
         try (Connection con = ConnectDB.getInstance().getConnection();
-                PreparedStatement pst = con.prepareStatement(sql)) {
-                String p = "%" + text + "%";
-                pst.setString(1, p); pst.setString(2, p);
-                pst.setString(3, p); pst.setString(4, p); pst.setString(5, p);
-                try (ResultSet rs = pst.executeQuery()) {
-                    while (rs.next()) {
-                        String danhMucDB = rs.getString("danhMuc");
-                        String loai = "Khác";
-                        if (danhMucDB != null) {
-                            if (danhMucDB.equals("THUOC_KE_DON"))           loai = "Thuốc kê đơn";
-                            else if (danhMucDB.equals("THUOC_KHONG_KE_DON")) loai = "Thuốc không kê đơn";
-                            else if (danhMucDB.equals("THUC_PHAM_CHUC_NANG")) loai = "Thực phẩm chức năng";
-                            else if (danhMucDB.equals("MY_PHAM"))            loai = "Mỹ phẩm";
-                        }
-                        ds.add(new Object[]{
-                            rs.getString("id"), rs.getString("ten"),
-                            rs.getString("donViDoCoBan"), rs.getDouble("giaBan"),
-                            rs.getInt("soLuongTon"), loai
-                        });
+             PreparedStatement pst = con.prepareStatement(sql)) {
+             
+            String p = "%" + text + "%";
+            pst.setString(1, p); pst.setString(2, p);
+            pst.setString(3, p); pst.setString(4, p); 
+            
+            try (ResultSet rs = pst.executeQuery()) {
+                while (rs.next()) {
+                    String danhMucDB = rs.getString("danhMuc");
+                    String loai = "Khác";
+                    if (danhMucDB != null) {
+                        if (danhMucDB.equals("THUOC_KE_DON"))           loai = "Thuốc kê đơn";
+                        else if (danhMucDB.equals("THUOC_KHONG_KE_DON")) loai = "Thuốc không kê đơn";
+                        else if (danhMucDB.equals("THUC_PHAM_CHUC_NANG")) loai = "Thực phẩm chức năng";
+                        else if (danhMucDB.equals("MY_PHAM"))            loai = "Mỹ phẩm";
                     }
+                    
+                    // Lấy Lô và định dạng lại Ngày hết hạn
+                    String loHang = rs.getString("soLoHang");
+                    java.sql.Date dateHSD = rs.getDate("ngayHetHan");
+                    String hsdStr = "";
+                    if (dateHSD != null) {
+                        hsdStr = new java.text.SimpleDateFormat("dd/MM/yyyy").format(dateHSD);
+                    }
+                    
+                    ds.add(new Object[]{
+                        rs.getString("id"), rs.getString("ten"),
+                        rs.getString("donViDoCoBan"), rs.getDouble("giaBan"),
+                        rs.getInt("soLuongTon"), loai, 
+                        rs.getDouble("thueVAT"), loHang, hsdStr
+                    });
                 }
-
+            }
         } catch (Exception e) { e.printStackTrace(); }
         return ds;
     }

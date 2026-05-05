@@ -109,11 +109,13 @@ public class ManHinhChinh extends JPanel {
         right.setBackground(Color.WHITE);
 
         String ten = UserSession.getInstance().getTenHienThi();
-        JLabel lblOn = new JLabel("● Ca đang mở — " + ten);
+        JLabel lblOn = new JLabel("Ca đang mở — " + ten);
+        lblOn.setIcon(new MenuIcon("DOT_FILL")); lblOn.setIconTextGap(6);
         lblOn.setFont(new Font("Segoe UI", Font.BOLD, 11)); lblOn.setForeground(GREEN);
         lblOn.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(GREEN, 1), new EmptyBorder(4, 10, 4, 10)));
 
-        JButton btnKet = new JButton("⏹ Kết ca");
+        JButton btnKet = new JButton("Kết ca");
+        btnKet.setIcon(new MenuIcon("STOP")); btnKet.setIconTextGap(6);
         btnKet.setFont(new Font("Segoe UI", Font.BOLD, 11)); btnKet.setForeground(RED);
         btnKet.setBackground(Color.WHITE); btnKet.setFocusPainted(false);
         btnKet.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(RED, 1), new EmptyBorder(4, 10, 4, 10)));
@@ -277,21 +279,27 @@ public class ManHinhChinh extends JPanel {
         double dt = busThongKe.getDoanhThuHomNay(filterMaNV, filterCa);
         int kh = busThongKe.getTongKhachHang();
 
-        row.add(kpiCard("Tổng sản phẩm", String.valueOf(sp), "Cửa hàng", "#EEF2FF", "#3D52A0", "💊"));
-        row.add(kpiCard("Hóa đơn", String.valueOf(hd), "Đã lọc", "#ECFDF5", "#00A76F", "🧾"));
-        row.add(kpiCard("Doanh thu", compactMoney(dt), "đ VND", "#FFF7ED", "#FF6B00", "💰"));
-        row.add(kpiCard("Tổng khách hàng", String.valueOf(kh), "Cửa hàng", "#FFF0F0", "#FF5630", "👥"));
+        row.add(kpiCard("Tổng sản phẩm", String.valueOf(sp), "Cửa hàng", "#EEF2FF", "#3D52A0", "PILL"));
+        row.add(kpiCard("Hóa đơn", String.valueOf(hd), "Đã lọc", "#ECFDF5", "#00A76F", "DOCUMENT"));
+        row.add(kpiCard("Doanh thu", compactMoney(dt), "đ VND", "#FFF7ED", "#FF6B00", "TAB_DOLLAR"));
+        row.add(kpiCard("Tổng khách hàng", String.valueOf(kh), "Cửa hàng", "#FFF0F0", "#FF5630", "USERS"));
         return row;
     }
 
-    private JPanel kpiCard(String ttl, String val, String sub, String bg, String fg, String icon) {
+    private JPanel kpiCard(String ttl, String val, String sub, String bg, String fg, String iconType) {
         JPanel p = new JPanel(new BorderLayout(6, 6)); 
         p.setBackground(Color.WHITE); 
         p.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(Color.decode("#EEF2F6")), new EmptyBorder(12, 14, 12, 14)));
         
         JPanel top = new JPanel(new BorderLayout()); top.setOpaque(false);
         JLabel lT = new JLabel(ttl); lT.setFont(new Font("Segoe UI", Font.PLAIN, 12)); lT.setForeground(Color.GRAY);
-        JLabel ico = new JLabel(icon, SwingConstants.CENTER); ico.setOpaque(true); ico.setBackground(Color.decode(bg)); ico.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 16)); ico.setPreferredSize(new Dimension(36, 36));
+        JLabel ico = new JLabel("", SwingConstants.CENTER);
+        ico.setIcon(new MenuIcon(iconType) {
+            @Override public int getIconWidth()  { return 20; }
+            @Override public int getIconHeight() { return 20; }
+        });
+        ico.setOpaque(true); ico.setBackground(Color.decode(bg)); ico.setForeground(Color.decode(fg));
+        ico.setPreferredSize(new Dimension(36, 36));
         top.add(lT, BorderLayout.CENTER); top.add(ico, BorderLayout.EAST);
         
         // Cậu tha hồ thấy chữ to rõ không lo bị lẹm nữa nha
@@ -343,7 +351,8 @@ public class ManHinhChinh extends JPanel {
 
         // BẢNG SẢN PHẨM SẮP HẾT
         JPanel stk = wCard(); stk.setLayout(new BorderLayout(0, 8));
-        JLabel lbS = new JLabel("⚠ Sản phẩm sắp hết hàng"); lbS.setFont(new Font("Segoe UI", Font.BOLD, 12)); lbS.setForeground(ORANGE);
+        JLabel lbS = new JLabel("Sản phẩm sắp hết hàng"); lbS.setIcon(new MenuIcon("WARNING")); lbS.setIconTextGap(6);
+        lbS.setFont(new Font("Segoe UI", Font.BOLD, 12)); lbS.setForeground(ORANGE);
         stk.add(lbS, BorderLayout.NORTH);
         JPanel listS = new JPanel(); listS.setLayout(new BoxLayout(listS, BoxLayout.Y_AXIS)); listS.setBackground(Color.WHITE);
 
@@ -372,7 +381,8 @@ public class ManHinhChinh extends JPanel {
         JPanel p = wCard(); p.setLayout(new BorderLayout(0, 8)); p.setMaximumSize(new Dimension(Integer.MAX_VALUE, 270));
         int cnt = busThongKe.getSoLoHangSapHetHanKhoang(90);
         JPanel h2 = new JPanel(new BorderLayout()); h2.setOpaque(false);
-        JLabel lbT = new JLabel("⚠ Lô hàng sắp hết hạn (trong 90 ngày)"); lbT.setFont(new Font("Segoe UI", Font.BOLD, 12)); lbT.setForeground(ORANGE);
+        JLabel lbT = new JLabel("Lô hàng sắp hết hạn (trong 90 ngày)"); lbT.setIcon(new MenuIcon("WARNING")); lbT.setIconTextGap(6);
+        lbT.setFont(new Font("Segoe UI", Font.BOLD, 12)); lbT.setForeground(ORANGE);
         JLabel badge = new JLabel(" " + cnt + " lô ", SwingConstants.CENTER); badge.setOpaque(true); badge.setBackground(ORANGE); badge.setForeground(Color.WHITE); badge.setFont(new Font("Segoe UI", Font.BOLD, 10));
         h2.add(lbT, BorderLayout.WEST); h2.add(badge, BorderLayout.EAST); p.add(h2, BorderLayout.NORTH);
 
@@ -420,7 +430,7 @@ public class ManHinhChinh extends JPanel {
 
         // Card HÔM NAY
         JPanel c1 = wCard(); c1.setLayout(new BoxLayout(c1, BoxLayout.Y_AXIS));
-        addLine(c1, "📊 KẾT QUẢ ĐÃ LỌC", null, BLUE, true);
+        addLine(c1, "CHART", "KẾT QUẢ ĐÃ LỌC", null, BLUE, true);
         addLine(c1, "Số hóa đơn:", String.valueOf(soHD), Color.BLACK, false);
         addLine(c1, "Tiền hàng:", formatMoney((long)tHang), Color.BLACK, false);
         addLine(c1, "Khuyến mãi:", "-0đ", GREEN, false);
@@ -436,9 +446,11 @@ public class ManHinhChinh extends JPanel {
 
         // Card 7 NGÀY QUA
         JPanel c2 = wCard(); c2.setLayout(new BoxLayout(c2, BoxLayout.Y_AXIS));
-        addLine(c2, "📊 7 NGÀY QUA", null, BLUE, true);
+        addLine(c2, "CHART", "7 NGÀY QUA", null, BLUE, true);
         if (!isAdmin) {
-            JLabel lk = new JLabel("<html><center>🔒<br>Chỉ dành cho Quản lý</center></html>", SwingConstants.CENTER); lk.setFont(new Font("Segoe UI", Font.PLAIN, 11)); lk.setForeground(Color.GRAY); lk.setAlignmentX(CENTER_ALIGNMENT);
+            JLabel lk = new JLabel("Chỉ dành cho Quản lý", SwingConstants.CENTER);
+            lk.setIcon(new MenuIcon("LOCK")); lk.setIconTextGap(6);
+            lk.setFont(new Font("Segoe UI", Font.PLAIN, 11)); lk.setForeground(Color.GRAY); lk.setAlignmentX(CENTER_ALIGNMENT);
             c2.add(Box.createVerticalGlue()); c2.add(lk); c2.add(Box.createVerticalGlue());
         } else {
             double dt7 = busThongKe.getDoanhThu7NgayQua();
@@ -450,7 +462,7 @@ public class ManHinhChinh extends JPanel {
 
         // Card ĐỔI TRẢ
         JPanel c3 = wCard(); c3.setLayout(new BoxLayout(c3, BoxLayout.Y_AXIS));
-        addLine(c3, "↩ ĐỔI / TRẢ HÀNG", null, RED, true);
+        addLine(c3, "RETURN", "ĐỔI / TRẢ HÀNG", null, RED, true);
         int tongPhieu = busThongKe.getTongPhieuDoiTra();
         int choXuLy   = busThongKe.getPhieuDoiTraChoXuLy();
         addLine(c3, "Tổng phiếu:", String.valueOf(tongPhieu), Color.BLACK, false);
@@ -470,7 +482,8 @@ public class ManHinhChinh extends JPanel {
         JPanel hdr = new JPanel(new BorderLayout()); 
         hdr.setBackground(Color.decode("#D32F2F")); 
         hdr.setBorder(new EmptyBorder(15, 20, 15, 20));
-        JLabel hT = new JLabel("⏹  BÁO CÁO TỔNG KẾT & KIỂM ĐẾM CUỐI CA"); 
+        JLabel hT = new JLabel("  BÁO CÁO TỔNG KẾT & KIỂM ĐẾM CUỐI CA"); 
+        hT.setIcon(new MenuIcon("STOP")); hT.setIconTextGap(8);
         hT.setFont(new Font("Segoe UI", Font.BOLD, 18)); hT.setForeground(Color.WHITE);
         hdr.add(hT, BorderLayout.WEST); 
         dlg.add(hdr, BorderLayout.NORTH);
@@ -492,7 +505,8 @@ public class ManHinhChinh extends JPanel {
         body.add(pDoanhThu); 
         body.add(box(25));
 
-        JLabel lKD = new JLabel("💵 KIỂM ĐẾM TIỀN MẶT THỰC TẾ TRONG KÉT"); 
+        JLabel lKD = new JLabel(" KIỂM ĐẾM TIỀN MẶT THỰC TẾ TRONG KÉT"); 
+        lKD.setIcon(new MenuIcon("TAB_DOLLAR")); lKD.setIconTextGap(8);
         lKD.setFont(new Font("Segoe UI", Font.BOLD, 14)); lKD.setForeground(Color.DARK_GRAY); 
         lKD.setAlignmentX(CENTER_ALIGNMENT); // Căn giữa
         
@@ -582,77 +596,253 @@ public class ManHinhChinh extends JPanel {
         dlg.add(ft, BorderLayout.SOUTH); dlg.setVisible(true);
     }
 
-    // ── FORM XÁC NHẬN CUỐI CÙNG (ĐẸP & SẠCH SẼ) ──────────────────────
+    // ── FORM XÁC NHẬN CUỐI CÙNG — layout ảnh mẫu ─────────────────────
     private void hienThiPhieuXacNhanCuoi(JDialog parentDlg, CaLamViec ca, String maNV, double dtCa, double tmCa, long tongKC) {
-        JDialog confDlg = new JDialog(parentDlg, "Xác Nhận Xuất Ca", true);
-        confDlg.setSize(450, 520); confDlg.setLocationRelativeTo(parentDlg);
-        
-        JPanel p = new JPanel(); p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
-        p.setBackground(Color.WHITE); p.setBorder(new EmptyBorder(25, 30, 25, 30));
+        JDialog dlg = new JDialog(parentDlg, "Đóng ca làm việc", true);
+        dlg.setSize(520, 620); dlg.setLocationRelativeTo(parentDlg);
+        dlg.setLayout(new BorderLayout());
+        dlg.setResizable(false);
 
-        JLabel title = new JLabel("PHIẾU XÁC NHẬN KẾT CA", SwingConstants.CENTER);
-        title.setFont(new Font("Segoe UI", Font.BOLD, 18)); title.setAlignmentX(CENTER_ALIGNMENT);
-        p.add(title); p.add(box(5));
-        
-        JLabel sub = new JLabel("Vui lòng kiểm tra kỹ số liệu trước khi đăng xuất", SwingConstants.CENTER);
-        sub.setFont(new Font("Segoe UI", Font.ITALIC, 12)); sub.setForeground(Color.GRAY); sub.setAlignmentX(CENTER_ALIGNMENT);
-        p.add(sub); p.add(box(20));
-        
-        long tienDauCa = UserSession.getInstance().getTienDauCa();
-        long tienCanCo = tienDauCa + (long)tmCa; 
-        
-        p.add(sRow("Nhân viên:", UserSession.getInstance().getTenHienThi()));
-        p.add(box(10)); p.add(new JSeparator()); p.add(box(10));
-        
-        p.add(sRow("Tiền nạp đầu ca:", formatMoney(tienDauCa)));
-        p.add(sRow("Doanh thu Tiền mặt:", formatMoney((long)tmCa)));
-        p.add(sRow("Doanh thu Chuyển khoản:", formatMoney((long)(dtCa - tmCa))));
-        p.add(box(10));
-        
-        JPanel pCanCo = new JPanel(new BorderLayout()); pCanCo.setBackground(Color.decode("#FFF0F0")); pCanCo.setBorder(new EmptyBorder(10, 10, 10, 10));
-        JLabel l1 = new JLabel("=> CẦN CÓ TRONG KÉT:"); l1.setFont(new Font("Segoe UI", Font.BOLD, 14)); l1.setForeground(RED);
-        JLabel l2 = new JLabel(formatMoney(tienCanCo)); l2.setFont(new Font("Segoe UI", Font.BOLD, 16)); l2.setForeground(RED);
-        pCanCo.add(l1, BorderLayout.WEST); pCanCo.add(l2, BorderLayout.EAST);
-        pCanCo.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
-        p.add(pCanCo); p.add(box(15));
-        
-        p.add(sRow("TIỀN KIỂM ĐẾM THỰC TẾ:", formatMoney(tongKC)));
-        long lech = tongKC - tienCanCo; 
-        JLabel lL = new JLabel((lech > 0 ? "+ " : lech < 0 ? "- " : "") + formatMoney(Math.abs(lech)));
-        lL.setFont(new Font("Segoe UI", Font.BOLD, 14)); lL.setForeground(lech == 0 ? GREEN : RED); 
-        
-        JPanel pLech = new JPanel(new BorderLayout()); pLech.setOpaque(false); pLech.setMaximumSize(new Dimension(Integer.MAX_VALUE, 25));
-        JLabel lLechTitle = new JLabel("Độ lệch quỹ:"); lLechTitle.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        pLech.add(lLechTitle, BorderLayout.WEST); pLech.add(lL, BorderLayout.EAST);
-        p.add(pLech); p.add(box(25));
+        // ── HEADER ──────────────────────────────────────────────────────
+        JPanel hdr = new JPanel();
+        hdr.setBackground(Color.WHITE);
+        hdr.setBorder(new EmptyBorder(20, 0, 10, 0));
+        JLabel hTitle = new JLabel("ĐÓNG CA LÀM VIỆC", SwingConstants.CENTER);
+        hTitle.setFont(new Font("Segoe UI", Font.BOLD, 20));
+        hTitle.setForeground(Color.decode("#152A4B"));
+        hdr.add(hTitle);
+        dlg.add(hdr, BorderLayout.NORTH);
 
-        JButton bOk = new JButton("XÁC NHẬN & ĐĂNG XUẤT");
-        bOk.setFont(new Font("Segoe UI", Font.BOLD, 14)); bOk.setPreferredSize(new Dimension(100, 45));
-        bOk.setBackground(RED); bOk.setForeground(Color.WHITE); bOk.setFocusPainted(false);
-        bOk.setMaximumSize(new Dimension(Integer.MAX_VALUE, 45));
+        // ── BODY ────────────────────────────────────────────────────────
+        JPanel body = new JPanel();
+        body.setLayout(new BoxLayout(body, BoxLayout.Y_AXIS));
+        body.setBackground(Color.WHITE);
+        body.setBorder(new EmptyBorder(0, 24, 16, 24));
+
+        // Tính toán số liệu
+        long tienDauCa  = UserSession.getInstance().getTienDauCa();
+        long tienHT     = tienDauCa + (long) tmCa;   // Tiền hệ thống (tự tính)
+
+        // Thời gian ca
+        String[] CA_LABELS = { "Ca Sáng", "Ca Chiều", "Ca Tối" };
+        String tenCa = (ca != null && ca.getLoaiCa() >= 0 && ca.getLoaiCa() <= 2)
+                ? CA_LABELS[ca.getLoaiCa()] : "—";
+        String tenNV = UserSession.getInstance().getTenHienThi();
+        String gioBD = "—";
+        String thoiGian = "—";
+        if (ca != null && ca.getThoiGianBatDau() != null) {
+            SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
+            gioBD = sdf.format(Timestamp.valueOf(ca.getThoiGianBatDau()));
+            long minutes = java.time.Duration.between(ca.getThoiGianBatDau(), LocalDateTime.now()).toMinutes();
+            thoiGian = (minutes / 60) + " giờ " + (minutes % 60) + " phút";
+        }
+
+        // ── SECTION: Thông tin ca ──────────────────────────────────────
+        body.add(buildSection("Thông tin ca làm việc"));
+        body.add(buildInfoRow("Ca làm việc:",          tenCa,   true));
+        body.add(buildInfoRow("Nhân viên:",            tenNV,   true));
+        body.add(buildInfoRow("Giờ bắt đầu:",         gioBD,   false));
+        body.add(buildInfoRow("Thời gian làm việc:",   thoiGian,false));
+        body.add(box(10));
+
+        // ── SECTION: Thông tin tiền mặt ───────────────────────────────
+        body.add(buildSection("Thông tin tiền mặt"));
+        body.add(buildMoneyRow("Tiền đầu ca:",
+            formatMoney(tienDauCa), Color.decode("#00A76F"), false));
+
+        // Tiền hệ thống — hiển thị như field disabled (auto)
+        body.add(buildMoneyRow("Tiền hệ thống:",
+            formatMoney(tienHT), Color.decode("#1A73E8"), false));
+
+        // Tiền thực tế — pre-fill từ kiểm đếm, vẫn sửa được
+        JTextField txtThucTe = buildMoneyField(String.valueOf(tongKC));
+        JLabel lblChenh = new JLabel(formatChenhLech(tongKC - tienHT));
+        lblChenh.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        lblChenh.setForeground((tongKC - tienHT) == 0 ? GREEN : RED);
+        lblChenh.setHorizontalAlignment(SwingConstants.RIGHT);
+
+        // Live update chênh lệch khi sửa tiền thực tế
+        txtThucTe.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+            private void update() {
+                try {
+                    long thuc = Long.parseLong(txtThucTe.getText().replaceAll("[^0-9]", ""));
+                    long lech = thuc - tienHT;
+                    lblChenh.setText(formatChenhLech(lech));
+                    lblChenh.setForeground(lech == 0 ? GREEN : RED);
+                } catch (NumberFormatException ignored) {
+                    lblChenh.setText("—");
+                    lblChenh.setForeground(Color.GRAY);
+                }
+            }
+            public void insertUpdate(javax.swing.event.DocumentEvent e) { update(); }
+            public void removeUpdate(javax.swing.event.DocumentEvent e) { update(); }
+            public void changedUpdate(javax.swing.event.DocumentEvent e) { update(); }
+        });
+
+        body.add(buildLabelFieldRow("Tiền thực tế cuối ca:", txtThucTe));
+        body.add(buildLabelValueRow("Chênh lệch:", lblChenh));
+        body.add(box(10));
+
+        // ── SECTION: Ghi chú ──────────────────────────────────────────
+        body.add(buildSection("Ghi chú"));
+        JTextArea txtNote = new JTextArea(4, 10);
+        txtNote.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        txtNote.setLineWrap(true); txtNote.setWrapStyleWord(true);
+        txtNote.setBorder(new EmptyBorder(8, 10, 8, 10));
+        JScrollPane noteScroll = new JScrollPane(txtNote);
+        noteScroll.setBorder(BorderFactory.createLineBorder(Color.decode("#DFE3E8"), 1, true));
+        noteScroll.setMaximumSize(new Dimension(Integer.MAX_VALUE, 100));
+        noteScroll.setAlignmentX(LEFT_ALIGNMENT);
+        body.add(noteScroll);
+
+        JScrollPane bodyScroll = new JScrollPane(body);
+        bodyScroll.setBorder(null);
+        bodyScroll.getVerticalScrollBar().setUnitIncrement(12);
+        dlg.add(bodyScroll, BorderLayout.CENTER);
+
+        // ── FOOTER ──────────────────────────────────────────────────────
+        JPanel ft = new JPanel(new FlowLayout(FlowLayout.RIGHT, 14, 12));
+        ft.setBackground(Color.WHITE);
+        ft.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, Color.decode("#DFE3E8")));
+
+        JButton bHuy = new JButton("Hủy");
+        bHuy.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        bHuy.setPreferredSize(new Dimension(90, 38));
+        bHuy.setFocusPainted(false);
+        bHuy.addActionListener(e -> dlg.dispose());
+
+        JButton bOk = new JButton("Xác nhận");
+        bOk.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        bOk.setPreferredSize(new Dimension(120, 38));
+        bOk.setBackground(BLUE); bOk.setForeground(Color.WHITE); bOk.setFocusPainted(false);
         bOk.addActionListener(e -> {
+            long thucTe;
+            try {
+                thucTe = Long.parseLong(txtThucTe.getText().replaceAll("[^0-9]", ""));
+            } catch (NumberFormatException ex) {
+                thucTe = tongKC;
+            }
             if (ca != null) {
-                ca.setTienKetCa(tongKC); ca.setTienHeThongGhiNhan(dtCa);
+                ca.setTienKetCa(thucTe);
+                ca.setTienHeThongGhiNhan(dtCa);
                 busCaLamViec.ketThucCa(ca);
             }
             UserSession.getInstance().logout();
-            confDlg.dispose(); parentDlg.dispose();
+            dlg.dispose(); parentDlg.dispose();
             Window win = SwingUtilities.getWindowAncestor(this);
             if (win != null) win.dispose();
-            // KHỞI ĐỘNG LẠI MÀN HÌNH ĐĂNG NHẬP
             SwingUtilities.invokeLater(() -> new ManHinhDangNhap().setVisible(true));
         });
-        
-        p.add(bOk);
-        confDlg.add(p); confDlg.setVisible(true);
+
+        ft.add(bHuy); ft.add(bOk);
+        dlg.add(ft, BorderLayout.SOUTH);
+        dlg.setVisible(true);
     }
 
-    private JPanel sRow(String lbl, String val) {
-        JPanel r = new JPanel(new BorderLayout()); r.setOpaque(false); r.setMaximumSize(new Dimension(Integer.MAX_VALUE, 25));
-        JLabel l = new JLabel(lbl); l.setFont(new Font("Segoe UI", Font.PLAIN, 13)); l.setForeground(Color.DARK_GRAY);
-        JLabel v = new JLabel(val); v.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        r.add(l, BorderLayout.WEST); r.add(v, BorderLayout.EAST); return r;
+    // ── HELPERS cho dialog đóng ca ──────────────────────────────────────
+
+    /** Tiêu đề section có gạch chân nhạt */
+    private JPanel buildSection(String title) {
+        JPanel p = new JPanel(new BorderLayout());
+        p.setOpaque(false);
+        p.setMaximumSize(new Dimension(Integer.MAX_VALUE, 34));
+        p.setAlignmentX(LEFT_ALIGNMENT);
+        JLabel lbl = new JLabel(title);
+        lbl.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        lbl.setForeground(Color.GRAY);
+        lbl.setBorder(new EmptyBorder(0, 0, 4, 0));
+        p.add(lbl, BorderLayout.WEST);
+        p.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, Color.decode("#DFE3E8")));
+        return p;
     }
+
+    /** Row text-text (thông tin ca) */
+    private JPanel buildInfoRow(String label, String value, boolean bold) {
+        JPanel row = new JPanel(new BorderLayout());
+        row.setOpaque(false);
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 28));
+        row.setAlignmentX(LEFT_ALIGNMENT);
+        row.setBorder(new EmptyBorder(2, 0, 2, 0));
+        JLabel l = new JLabel(label);
+        l.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        l.setForeground(Color.DARK_GRAY);
+        JLabel v = new JLabel(value);
+        v.setFont(new Font("Segoe UI", bold ? Font.BOLD : Font.PLAIN, 13));
+        row.add(l, BorderLayout.WEST); row.add(v, BorderLayout.EAST);
+        return row;
+    }
+
+    /** Row label + giá trị tiền có màu */
+    private JPanel buildMoneyRow(String label, String value, Color valueColor, boolean editable) {
+        JPanel row = new JPanel(new BorderLayout(8, 0));
+        row.setOpaque(false);
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
+        row.setAlignmentX(LEFT_ALIGNMENT);
+        row.setBorder(new EmptyBorder(3, 0, 3, 0));
+        JLabel l = new JLabel(label);
+        l.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        l.setForeground(Color.DARK_GRAY);
+        // Hiển thị dạng "field" disabled giống ảnh mẫu
+        JPanel fakeField = new JPanel(new BorderLayout());
+        fakeField.setBackground(Color.decode("#F0FAFB"));
+        fakeField.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(Color.decode("#B2EBF2"), 1, true),
+            new EmptyBorder(4, 10, 4, 10)));
+        fakeField.setPreferredSize(new Dimension(200, 30));
+        JLabel v = new JLabel(value);
+        v.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        v.setForeground(valueColor);
+        fakeField.add(v, BorderLayout.EAST);
+        row.add(l, BorderLayout.WEST); row.add(fakeField, BorderLayout.EAST);
+        return row;
+    }
+
+    /** Row label + JTextField (editable) */
+    private JPanel buildLabelFieldRow(String label, JTextField field) {
+        JPanel row = new JPanel(new BorderLayout(8, 0));
+        row.setOpaque(false);
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
+        row.setAlignmentX(LEFT_ALIGNMENT);
+        row.setBorder(new EmptyBorder(3, 0, 3, 0));
+        JLabel l = new JLabel(label);
+        l.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        l.setForeground(Color.DARK_GRAY);
+        field.setPreferredSize(new Dimension(200, 30));
+        row.add(l, BorderLayout.WEST); row.add(field, BorderLayout.EAST);
+        return row;
+    }
+
+    /** Row label + JLabel (chênh lệch — live update) */
+    private JPanel buildLabelValueRow(String label, JLabel valueLabel) {
+        JPanel row = new JPanel(new BorderLayout(8, 0));
+        row.setOpaque(false);
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 32));
+        row.setAlignmentX(LEFT_ALIGNMENT);
+        row.setBorder(new EmptyBorder(3, 0, 3, 0));
+        JLabel l = new JLabel(label);
+        l.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        l.setForeground(Color.DARK_GRAY);
+        row.add(l, BorderLayout.WEST); row.add(valueLabel, BorderLayout.EAST);
+        return row;
+    }
+
+    /** Tạo JTextField số tiền với style */
+    private JTextField buildMoneyField(String initialValue) {
+        JTextField f = new JTextField(initialValue);
+        f.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        f.setHorizontalAlignment(SwingConstants.RIGHT);
+        f.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(Color.decode("#1A73E8"), 1, true),
+            new EmptyBorder(4, 10, 4, 10)));
+        return f;
+    }
+
+    /** Format chênh lệch: "+ 50.000đ" / "- 50.000đ" / "0 đ" */
+    private String formatChenhLech(long lech) {
+        if (lech == 0) return "0 đ";
+        return (lech > 0 ? "+ " : "- ") + formatMoney(Math.abs(lech));
+    }
+
 
     private JPanel buildTongKetInDialog() {
         JPanel p = new JPanel(new BorderLayout()); p.setOpaque(false);
@@ -736,7 +926,8 @@ public class ManHinhChinh extends JPanel {
 
     // ── UI HELPERS ──────────────────────────────────────────
     private JPanel wCard() { JPanel p = new JPanel(); p.setBackground(Color.WHITE); p.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(Color.decode("#EEF2F6")), new EmptyBorder(12, 14, 12, 14))); return p; }
-    private void addLine(JPanel p, String lbl, String val, Color fg, boolean bold) { JPanel row = new JPanel(new BorderLayout()); row.setOpaque(false); row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 26)); JLabel l = new JLabel(lbl); l.setFont(new Font("Segoe UI", bold ? Font.BOLD : Font.PLAIN, 11)); if (val == null) { l.setForeground(fg); row.add(l, BorderLayout.WEST); } else { JLabel v = new JLabel(val, SwingConstants.RIGHT); v.setFont(new Font("Segoe UI", bold ? Font.BOLD : Font.PLAIN, 11)); v.setForeground(fg); row.add(l, BorderLayout.WEST); row.add(v, BorderLayout.EAST); } p.add(row); p.add(box(3)); }
+    private void addLine(JPanel p, String lbl, String val, Color fg, boolean bold) { addLine(p, null, lbl, val, fg, bold); }
+    private void addLine(JPanel p, String iconType, String lbl, String val, Color fg, boolean bold) { JPanel row = new JPanel(new BorderLayout()); row.setOpaque(false); row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 26)); JLabel l = new JLabel(lbl); if (iconType != null) { l.setIcon(new MenuIcon(iconType)); l.setIconTextGap(6); } l.setFont(new Font("Segoe UI", bold ? Font.BOLD : Font.PLAIN, 11)); if (val == null) { l.setForeground(fg); row.add(l, BorderLayout.WEST); } else { JLabel v = new JLabel(val, SwingConstants.RIGHT); v.setFont(new Font("Segoe UI", bold ? Font.BOLD : Font.PLAIN, 11)); v.setForeground(fg); row.add(l, BorderLayout.WEST); row.add(v, BorderLayout.EAST); } p.add(row); p.add(box(3)); }
     private static Component box(int h) { return Box.createRigidArea(new Dimension(0, h)); }
     private String formatMoney(long v) { return new DecimalFormat("###,###,###").format(v) + "đ"; }
     private String compactMoney(double v) { if (v >= 1_000_000_000) return String.format("%.1fTỷ", v / 1_000_000_000); if (v >= 1_000_000) return String.format("%.2fM", v / 1_000_000); if (v >= 1_000) return String.format("%.1fK", v / 1_000); return String.valueOf((long)v); }

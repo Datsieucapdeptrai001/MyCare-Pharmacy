@@ -1,7 +1,10 @@
 package GUI;
 
+import BUS.BUS_DonViDoLuong;
 import BUS.BUS_KhuyenMai;
+import BUS.BUS_SanPham;
 import Entity.DieuKienKhuyenMai;
+import Entity.DonViDoLuong;
 import Entity.HinhThucKhuyenMai;
 import Entity.KhuyenMai;
 import Enumeration.DoiTuongApDung;
@@ -21,30 +24,30 @@ import javax.swing.table.JTableHeader;
 import javax.swing.table.TableRowSorter;
 import java.awt.*;
 import java.awt.event.*;
-import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 public class ManHinhKhuyenMai extends JPanel {
 
-    private final Color COLOR_BG = Color.decode("#F4F6F9");
-    private final Color COLOR_CARD = Color.decode("#FFFFFF");
-    private final Color COLOR_PRIMARY = Color.decode("#1F3A52"); 
+    // COLOR PALETTE THEO CHUẨN MÀN HÌNH THỐNG KÊ
+    private final Color COLOR_BG = Color.decode("#F4F6F8");
+    private final Color COLOR_CARD = Color.WHITE;
+    private final Color COLOR_PRIMARY = Color.decode("#152A4B"); 
     private final Color COLOR_DANGER = Color.decode("#E1304C");  
-    private final Color COLOR_INFO = Color.decode("#007BFF");    
-    private final Color COLOR_SUCCESS = Color.decode("#10B981"); 
-    private final Color COLOR_TEXT_MAIN = Color.decode("#212B36");
-    private final Color COLOR_TEXT_MUTED = Color.decode("#6C757D");
+    private final Color COLOR_INFO = Color.decode("#1A73E8");    
+    private final Color COLOR_SUCCESS = Color.decode("#00A76F"); 
+    private final Color COLOR_WARNING = Color.decode("#FFAB00");
+    private final Color COLOR_TEXT_MAIN = Color.decode("#333333");
+    private final Color COLOR_TEXT_MUTED = Color.decode("#888888");
     private final Color COLOR_BORDER = Color.decode("#DFE3E8");
-    private final Color COLOR_PURPLE = Color.decode("#8A2BE2");  
+    private final Color COLOR_PURPLE = Color.decode("#9C27B0");  
 
     private final Font FONT_H1 = new Font("Segoe UI", Font.BOLD, 18);
     private final Font FONT_BOLD = new Font("Segoe UI", Font.BOLD, 13);
@@ -52,6 +55,8 @@ public class ManHinhKhuyenMai extends JPanel {
     private final Font FONT_SMALL = new Font("Segoe UI", Font.PLAIN, 12);
 
     private BUS_KhuyenMai busKhuyenMai; 
+    private BUS_DonViDoLuong busDonVi; 
+    private BUS_SanPham busSanPham; 
 
     private DefaultTableModel tableModel;
     private TableRowSorter<DefaultTableModel> rowSorter;
@@ -76,6 +81,8 @@ public class ManHinhKhuyenMai extends JPanel {
         System.setProperty("swing.aatext", "true");
 
         busKhuyenMai = new BUS_KhuyenMai(); 
+        busDonVi = new BUS_DonViDoLuong();
+        busSanPham = new BUS_SanPham(); 
         
         this.setBackground(COLOR_BG);
         this.setLayout(new BorderLayout());
@@ -130,26 +137,27 @@ public class ManHinhKhuyenMai extends JPanel {
             }
         });
 
-        RoundedButton btnRefresh = new RoundedButton("Làm mới", COLOR_TEXT_MUTED, Color.WHITE);
+        RoundedButton btnRefresh = new RoundedButton("Làm mới", COLOR_CARD, COLOR_TEXT_MAIN);
         btnRefresh.setIcon(new MenuIcon("REFRESH"));
-        btnRefresh.setPreferredSize(new Dimension(140, 36));
+        btnRefresh.setBorderColor(COLOR_BORDER);
+        btnRefresh.setPreferredSize(new Dimension(130, 36));
         btnRefresh.addActionListener(e -> {
             searchField.getTextField().setText("Tìm khuyến mại..."); 
-            searchField.getTextField().setForeground(Color.decode("#ADB5BD"));
+            searchField.getTextField().setForeground(COLOR_TEXT_MUTED);
             for (RoundedButton b : filterButtons) {
-                b.setColors(COLOR_CARD, COLOR_TEXT_MUTED);
-                b.setBorderColor(COLOR_BORDER);
+                b.setColors(COLOR_BG, COLOR_TEXT_MUTED);
+                b.setBorderColor(COLOR_BG);
             }
             if (!filterButtons.isEmpty()) {
-                filterButtons.get(0).setColors(COLOR_INFO, Color.WHITE);
-                filterButtons.get(0).setBorderColor(COLOR_INFO);
+                filterButtons.get(0).setColors(Color.decode("#E8F0FE"), COLOR_INFO);
+                filterButtons.get(0).setBorderColor(Color.decode("#E8F0FE"));
             }
             if(rowSorter != null) rowSorter.setRowFilter(null);
             loadDataFromDatabase();
             updateKPI();
         });
 
-        RoundedButton btnAdd = new RoundedButton("Thêm mới", COLOR_DANGER, Color.WHITE);
+        RoundedButton btnAdd = new RoundedButton("Thêm mới", COLOR_INFO, Color.WHITE);
         btnAdd.setIcon(new MenuIcon("ADD"));
         btnAdd.setPreferredSize(new Dimension(130, 36));
         btnAdd.addActionListener(e -> {
@@ -172,36 +180,28 @@ public class ManHinhKhuyenMai extends JPanel {
         pnlFilters.setBorder(new EmptyBorder(15, 0, 10, 0));
         pnlFilters.setMaximumSize(new Dimension(Integer.MAX_VALUE, 50));
         
-        JLabel lblIconFilter = new JLabel("Lọc trạng thái: ");
-        lblIconFilter.setIcon(new MenuIcon("CHART"));  
-        lblIconFilter.setFont(FONT_BOLD);
-        lblIconFilter.setForeground(COLOR_TEXT_MUTED);
-        pnlFilters.add(lblIconFilter);
-        
         String[] filters = {"Tất cả", "Đang hoạt động", "Sắp diễn ra", "Đã kết thúc", "Tạm dừng"};
-        String[] filterIcons = {"LIST", "CHECK_CIRCLE", "CLOCK", "CLOSE", "WARNING"};
         
         for (int i = 0; i < filters.length; i++) {
             String filterName = filters[i];
             boolean isActive = filterName.equals("Tất cả");
-            Color bgColor = isActive ? COLOR_INFO : COLOR_CARD;
-            Color fgColor = isActive ? Color.WHITE : COLOR_TEXT_MUTED;
+            Color bgColor = isActive ? Color.decode("#E8F0FE") : COLOR_BG;
+            Color fgColor = isActive ? COLOR_INFO : COLOR_TEXT_MUTED;
             
             RoundedButton btnFilter = new RoundedButton(filterName, bgColor, fgColor);
-            btnFilter.setIcon(new MenuIcon(filterIcons[i]));
-            if (!isActive) btnFilter.setBorderColor(COLOR_BORDER);
+            btnFilter.setBorderColor(bgColor);
             
-            btnFilter.setPreferredSize(new Dimension(130, 34)); 
+            btnFilter.setPreferredSize(new Dimension(155, 34)); 
             filterButtons.add(btnFilter);
             pnlFilters.add(btnFilter);
             
             btnFilter.addActionListener(e -> {
                 for (RoundedButton b : filterButtons) {
-                    b.setColors(COLOR_CARD, COLOR_TEXT_MUTED);
-                    b.setBorderColor(COLOR_BORDER);
+                    b.setColors(COLOR_BG, COLOR_TEXT_MUTED);
+                    b.setBorderColor(COLOR_BG);
                 }
-                btnFilter.setColors(COLOR_INFO, Color.WHITE);
-                btnFilter.setBorderColor(COLOR_INFO);
+                btnFilter.setColors(Color.decode("#E8F0FE"), COLOR_INFO);
+                btnFilter.setBorderColor(Color.decode("#E8F0FE"));
                 
                 if (filterName.equals("Tất cả")) rowSorter.setRowFilter(null);
                 else rowSorter.setRowFilter(RowFilter.regexFilter("^" + filterName + "$", 7));
@@ -248,16 +248,16 @@ public class ManHinhKhuyenMai extends JPanel {
     private JPanel createTopKPISecton() {
         JPanel pnlWrapper = new JPanel(new GridLayout(1, 3, 20, 0));
         pnlWrapper.setOpaque(false);
-        pnlWrapper.setMaximumSize(new Dimension(Integer.MAX_VALUE, 110)); 
-        pnlWrapper.setPreferredSize(new Dimension(0, 110));
+        pnlWrapper.setMaximumSize(new Dimension(Integer.MAX_VALUE, 100)); 
+        pnlWrapper.setPreferredSize(new Dimension(0, 100));
         
-        KPICard cardActive = new KPICard("Đang hoạt động", "0", Color.decode("#10B981"), Color.decode("#F0FDF4"), "CHECK_CIRCLE");
+        KPICard cardActive = new KPICard("Đang hoạt động", "0", COLOR_SUCCESS, Color.decode("#F2FCF5"), "CHECK_CIRCLE");
         lblKpiActive = cardActive.getLblValue(); 
         
-        KPICard cardUpcoming = new KPICard("Sắp diễn ra", "0", Color.decode("#F59E0B"), Color.decode("#FFFBEB"), "CLOCK");
+        KPICard cardUpcoming = new KPICard("Sắp diễn ra", "0", COLOR_WARNING, Color.decode("#FFFDF2"), "CLOCK");
         lblKpiUpcoming = cardUpcoming.getLblValue();
         
-        KPICard cardPaused = new KPICard("Đã kết thúc / Tạm dừng", "0", Color.decode("#E1304C"), Color.decode("#FEF2F2"), "CANCEL");
+        KPICard cardPaused = new KPICard("Đã kết thúc / Tạm dừng", "0", COLOR_TEXT_MUTED, Color.decode("#F8F9FA"), "CANCEL");
         lblKpiPaused = cardPaused.getLblValue();
         
         pnlWrapper.add(cardActive);
@@ -269,10 +269,10 @@ public class ManHinhKhuyenMai extends JPanel {
 
     private JPanel createTichDiemSection() {
         JPanel pnlWrap = new JPanel(new BorderLayout(0, 15)); 
-        pnlWrap.setBackground(Color.WHITE); 
+        pnlWrap.setBackground(Color.decode("#F8FAFC")); 
         UIHelper.setRoundedCorners(pnlWrap, 20);  
         pnlWrap.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(Color.decode("#D8B4FE"), 2), 
+            BorderFactory.createLineBorder(Color.decode("#CBD5E1"), 2), 
             BorderFactory.createEmptyBorder(20, 25, 20, 25) 
         ));
         pnlWrap.setMaximumSize(new Dimension(Integer.MAX_VALUE, 240));
@@ -282,7 +282,7 @@ public class ManHinhKhuyenMai extends JPanel {
         JLabel lblTitle = new JLabel(" CHƯƠNG TRÌNH TÍCH ĐIỂM THƯỞNG");
         lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 15));
         lblTitle.setForeground(COLOR_PURPLE);
-        lblTitle.setIcon(new MenuIcon("TAB_DOLLAR"));  
+        lblTitle.setIcon(new MenuIcon("USER"));  
         
         RoundedButton btnSaveSetup = new RoundedButton("Lưu cài đặt", COLOR_PURPLE, Color.WHITE);
         btnSaveSetup.setIcon(new MenuIcon("SAVE"));
@@ -321,17 +321,17 @@ public class ManHinhKhuyenMai extends JPanel {
         JLabel lblToiThieu = new JLabel("Tối thiểu");
         lblToiThieu.setFont(FONT_BOLD);
 
-        pnlBody.add(createPointConfigCard("Tích điểm khi mua", "CART", Color.decode("#10B981"), txtTienMua, "VNĐ  =", txtDiemThuong, "Điểm", "Khách mua hóa đơn đạt mức này sẽ được cộng điểm."));
-        pnlBody.add(createPointConfigCard("Giá trị quy đổi", "REFRESH", Color.decode("#3B82F6"), lblDiem1, null, txtTienDoi, "VNĐ", "Mỗi điểm tương ứng với số tiền được giảm trừ."));
-        pnlBody.add(createPointConfigCard("Điều kiện áp dụng", "CHECK_CIRCLE", Color.decode("#F59E0B"), lblToiThieu, null, txtDiemToiThieu, "Điểm", "Số điểm tối thiểu khách cần có để sử dụng thanh toán."));
+        pnlBody.add(createPointConfigCard("Tích điểm khi mua", "CART", COLOR_SUCCESS, txtTienMua, "VNĐ  =", txtDiemThuong, "Điểm", "Khách mua hóa đơn đạt mức này sẽ được cộng điểm."));
+        pnlBody.add(createPointConfigCard("Giá trị quy đổi", "REFRESH", COLOR_INFO, lblDiem1, null, txtTienDoi, "VNĐ", "Mỗi điểm tương ứng với số tiền được giảm trừ."));
+        pnlBody.add(createPointConfigCard("Điều kiện áp dụng", "CHECK_CIRCLE", COLOR_WARNING, lblToiThieu, null, txtDiemToiThieu, "Điểm", "Số điểm tối thiểu khách cần có để sử dụng thanh toán."));
 
         JPanel pnlFooter = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 10));
-        pnlFooter.setBackground(Color.decode("#FAF5FF")); 
+        pnlFooter.setBackground(Color.WHITE); 
         UIHelper.setRoundedCorners(pnlFooter, 12);
         
         JLabel lblSummary = new JLabel("<html><b>📌 Lưu ý:</b> Hệ thống sẽ tự động cộng điểm cho khách sau khi thanh toán hóa đơn thành công. Khách có thể dùng điểm để trừ thẳng vào tiền hàng ở lần mua tiếp theo.</html>");
         lblSummary.setFont(FONT_SMALL);
-        lblSummary.setForeground(Color.decode("#6B21A8")); 
+        lblSummary.setForeground(COLOR_PURPLE); 
         pnlFooter.add(lblSummary);
 
         pnlWrap.add(pnlHead, BorderLayout.NORTH);
@@ -346,7 +346,7 @@ public class ManHinhKhuyenMai extends JPanel {
         pnlCard.setBackground(COLOR_BG); 
         UIHelper.setRoundedCorners(pnlCard, 15);  
         pnlCard.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(Color.decode("#E5E7EB"), 1),
+            BorderFactory.createLineBorder(COLOR_BORDER, 1),
             BorderFactory.createEmptyBorder(15, 15, 15, 15) 
         ));
 
@@ -434,7 +434,11 @@ public class ManHinhKhuyenMai extends JPanel {
         pnlTableHeaderWrapper.add(lblListTitle, BorderLayout.WEST);
         pnlTableHeaderWrapper.add(lblListHint, BorderLayout.EAST);
 
-        String[] columns = {"Mã KM", "Tên chương trình", "Loại", "Giá trị / Kèm theo", "Đơn tối thiểu", "Áp dụng", "Thời gian", "Trạng thái", "Chi tiết", "Bật/Tắt"};
+        String[] columns = {
+            "Mã KM", "Tên chương trình", "Loại", "Giá trị / Kèm theo", "Đơn tối thiểu", 
+            "Áp dụng", "Thời gian", "Trạng thái", "Chi tiết", "Bật/Tắt",
+            "mucGiamDB", "donToiThieuDB", "spYeuCau", "slYeuCau", "dvdlYeuCau", "spTang", "slTang", "dvdlTang"
+        };
         tableModel = new DefaultTableModel(columns, 0) {
             @Override public boolean isCellEditable(int row, int column) { return false; }
             @Override public Class<?> getColumnClass(int columnIndex) { return (columnIndex == 9) ? Boolean.class : String.class; }
@@ -447,8 +451,14 @@ public class ManHinhKhuyenMai extends JPanel {
         tblKhuyenMai.setIntercellSpacing(new Dimension(0, 0)); 
         tblKhuyenMai.setGridColor(Color.decode("#F1F3F5")); 
         tblKhuyenMai.setFont(FONT_REGULAR);
-        tblKhuyenMai.setSelectionBackground(Color.decode("#F8F9FA"));
+        tblKhuyenMai.setSelectionBackground(Color.decode("#F0F4FF"));
         tblKhuyenMai.setSelectionForeground(COLOR_TEXT_MAIN);
+
+        for (int i = 10; i <= 17; i++) {
+            tblKhuyenMai.getColumnModel().getColumn(i).setMinWidth(0);
+            tblKhuyenMai.getColumnModel().getColumn(i).setMaxWidth(0);
+            tblKhuyenMai.getColumnModel().getColumn(i).setWidth(0);
+        }
 
         JTableHeader header = tblKhuyenMai.getTableHeader();
         header.setBackground(Color.WHITE);
@@ -506,42 +516,18 @@ public class ManHinhKhuyenMai extends JPanel {
                     String maKM = tableModel.getValueAt(modelRow, 0).toString();
                     
                     if (newState) {
-                        String timeStr = tableModel.getValueAt(modelRow, 6).toString();
-                        try {
-                            if (timeStr.contains(" - ")) {
-                                SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
-                                Date start = sdf.parse(timeStr.split(" - ")[0]);
-                                Date end = sdf.parse(timeStr.split(" - ")[1]);
-                                Date now = new Date();
-                                
-                                if (now.after(end)) {
-                                    showNotification("Khuyến mãi hết hạn", 
-                                        "Chương trình này đã hết hạn.\nVui lòng sửa lại ngày hiệu lực để kích hoạt.", 
-                                        "error");
-                                    return;
-                                }
-                            }
-                        } catch (Exception ex) {
-                            ex.printStackTrace();
+                        if (busKhuyenMai.kiemTraKhuyenMaiHetHan(maKM)) {
+                            showNotification("Khuyến mãi hết hạn", 
+                                "Chương trình này đã hết hạn.\nVui lòng sửa lại ngày hiệu lực để kích hoạt.", 
+                                "error");
+                            return;
                         }
                     }
                     
                     busKhuyenMai.capNhatTrangThai(maKM, newState);
                     tableModel.setValueAt(newState, modelRow, 9);
                     if (newState) {
-                        String timeStr = tableModel.getValueAt(modelRow, 6).toString();
-                        String tStatus = "Đang hoạt động";
-                        try {
-                            if (timeStr.contains(" - ")) {
-                                SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
-                                Date start = sdf.parse(timeStr.split(" - ")[0]);
-                                Date end = sdf.parse(timeStr.split(" - ")[1]);
-                                Date now = new Date();
-                                if (now.before(start)) tStatus = "Sắp diễn ra";
-                                else if (now.after(end)) tStatus = "Đã kết thúc";
-                            }
-                        } catch (Exception ex) {}
-                        tableModel.setValueAt(tStatus, modelRow, 7);
+                        tableModel.setValueAt("Đang hoạt động", modelRow, 7);
                     } else {
                         tableModel.setValueAt("Tạm dừng", modelRow, 7);
                     }
@@ -589,8 +575,8 @@ public class ManHinhKhuyenMai extends JPanel {
 
         lblDetAvatar = new JLabel("%", SwingConstants.CENTER);
         lblDetAvatar.setOpaque(true);
-        lblDetAvatar.setBackground(COLOR_DANGER); 
-        lblDetAvatar.setForeground(Color.WHITE);
+        lblDetAvatar.setBackground(Color.decode("#E8F0FE")); 
+        lblDetAvatar.setForeground(COLOR_INFO);
         lblDetAvatar.setFont(new Font("Segoe UI", Font.BOLD, 22));
         lblDetAvatar.setPreferredSize(new Dimension(50, 50));
         UIHelper.setRoundedCorners(lblDetAvatar, 25);
@@ -600,7 +586,7 @@ public class ManHinhKhuyenMai extends JPanel {
         lblDetName = new JLabel("---");
         lblDetName.setFont(new Font("Segoe UI", Font.BOLD, 15));
         lblDetId = new JLabel("---");
-        lblDetId.setForeground(Color.GRAY);
+        lblDetId.setForeground(COLOR_TEXT_MUTED);
         pnlName.add(lblDetName);
         pnlName.add(lblDetId);
 
@@ -632,7 +618,7 @@ public class ManHinhKhuyenMai extends JPanel {
         pnlStatus.setBorder(new EmptyBorder(10, 0, 0, 0));
         JLabel lblSt = new JLabel("Trạng thái: ");
         lblSt.setPreferredSize(new Dimension(100, 25));
-        lblSt.setForeground(Color.GRAY);
+        lblSt.setForeground(COLOR_TEXT_MUTED);
         lblDetStatus = new JLabel("---");
         lblDetStatus.setFont(new Font("Segoe UI", Font.BOLD, 14));
         pnlStatus.add(lblSt); pnlStatus.add(lblDetStatus);
@@ -681,23 +667,11 @@ public class ManHinhKhuyenMai extends JPanel {
                 boolean newState = !currentState;
                 
                 if (newState) {
-                    String timeStr = tableModel.getValueAt(row, 6).toString();
-                    try {
-                        if (timeStr.contains(" - ")) {
-                            SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
-                            Date start = sdf.parse(timeStr.split(" - ")[0]);
-                            Date end = sdf.parse(timeStr.split(" - ")[1]);
-                            Date now = new Date();
-                            
-                            if (now.after(end)) {
-                                showNotification("Khuyến mãi hết hạn", 
-                                    "Chương trình này đã hết hạn.\nVui lòng sửa lại ngày hiệu lực để kích hoạt.", 
-                                    "error");
-                                return;
-                            }
-                        }
-                    } catch (Exception ex) {
-                        ex.printStackTrace();
+                    if (busKhuyenMai.kiemTraKhuyenMaiHetHan(currentId)) {
+                        showNotification("Khuyến mãi hết hạn", 
+                            "Chương trình này đã hết hạn.\nVui lòng sửa lại ngày hiệu lực để kích hoạt.", 
+                            "error");
+                        return;
                     }
                 }
                 
@@ -705,19 +679,7 @@ public class ManHinhKhuyenMai extends JPanel {
                 tableModel.setValueAt(newState, row, 9);
                 
                 if (newState) {
-                    String timeStr = tableModel.getValueAt(row, 6).toString();
-                    String tStatus = "Đang hoạt động";
-                    try {
-                        if (timeStr.contains(" - ")) {
-                            SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
-                            Date start = sdf.parse(timeStr.split(" - ")[0]);
-                            Date end = sdf.parse(timeStr.split(" - ")[1]);
-                            Date now = new Date();
-                            if (now.before(start)) tStatus = "Sắp diễn ra";
-                            else if (now.after(end)) tStatus = "Đã kết thúc";
-                        }
-                    } catch (Exception ex) {}
-                    tableModel.setValueAt(tStatus, row, 7);
+                    tableModel.setValueAt("Đang hoạt động", row, 7);
                 } else {
                     tableModel.setValueAt("Tạm dừng", row, 7);
                 }
@@ -734,6 +696,7 @@ public class ManHinhKhuyenMai extends JPanel {
 
         pnl.add(pnlDetHeader, BorderLayout.NORTH);
         JScrollPane scrollDet = new JScrollPane(pnlBody);
+        scrollDet.setBorder(null);
         scrollDet.getVerticalScrollBar().setUI(new ModernScrollBarUI());
         scrollDet.getHorizontalScrollBar().setUI(new ModernScrollBarUI());
         pnl.add(scrollDet, BorderLayout.CENTER);
@@ -748,8 +711,7 @@ public class ManHinhKhuyenMai extends JPanel {
         row.setBorder(new EmptyBorder(5, 0, 5, 0));
         JLabel lbl = new JLabel(label);
         lbl.setPreferredSize(new Dimension(100, 25));
-        lbl.setForeground(Color.GRAY);
-        lbl.setIcon(new MenuIcon("GIFT"));  
+        lbl.setForeground(COLOR_TEXT_MUTED);
         JLabel value = new JLabel(val);
         value.setFont(new Font("Segoe UI", Font.BOLD, 13));
         value.setForeground(COLOR_TEXT_MAIN);
@@ -779,26 +741,32 @@ public class ManHinhKhuyenMai extends JPanel {
         lblDetStatus.setText(status);
         
         if(type.equals("Sản phẩm kèm theo")) {
-            lblDetAvatar.setText("🎁");
+            lblDetAvatar.setText("");
             lblDetAvatar.setIcon(new MenuIcon("PACKAGE"));
+        } else if (type.contains("tiền mặt")) {
+            lblDetAvatar.setText("");
+            lblDetAvatar.setIcon(new MenuIcon("TAB_DOLLAR"));
         } else {
-            lblDetAvatar.setText("%");
             lblDetAvatar.setIcon(null);
+            lblDetAvatar.setText("%");
         }
 
         if(status.equalsIgnoreCase("Đã kết thúc") || status.equalsIgnoreCase("Tạm dừng")) {
             lblDetStatus.setForeground(COLOR_TEXT_MUTED);
-            lblDetAvatar.setBackground(COLOR_TEXT_MUTED);
+            lblDetAvatar.setBackground(COLOR_BG);
+            lblDetAvatar.setForeground(COLOR_TEXT_MUTED);
             btnDetailToggle.setText("Kích hoạt lại");
             btnDetailToggle.setIcon(new MenuIcon("REFRESH"));
         } else if(status.equalsIgnoreCase("Sắp diễn ra")) {
-            lblDetStatus.setForeground(Color.decode("#D97706"));
-            lblDetAvatar.setBackground(Color.decode("#D97706"));
+            lblDetStatus.setForeground(COLOR_WARNING);
+            lblDetAvatar.setBackground(Color.decode("#FFF8E1"));
+            lblDetAvatar.setForeground(COLOR_WARNING);
             btnDetailToggle.setText("Tạm dừng");
             btnDetailToggle.setIcon(new MenuIcon("CANCEL"));
         } else {
             lblDetStatus.setForeground(COLOR_SUCCESS);
-            lblDetAvatar.setBackground(COLOR_DANGER);
+            lblDetAvatar.setBackground(Color.decode("#E8F5E9"));
+            lblDetAvatar.setForeground(COLOR_SUCCESS);
             btnDetailToggle.setText("Tạm dừng");
             btnDetailToggle.setIcon(new MenuIcon("CANCEL"));
         }
@@ -812,12 +780,21 @@ public class ManHinhKhuyenMai extends JPanel {
         private final ModernDateField dpStart, dpEnd;
         private final FloatingField fldSoNgay; 
         
+        // PANEL: Giảm %
         private final JPanel pnlGiamGia;
         private final FloatingField fldMucGiam;
         
+        // PANEL: Giảm Tiền Mặt
+        private final JPanel pnlGiamTien;
+        private final SuggestionField fldMaSPGiamTien;
+        private final FloatingField fldSlGiamTien, fldTienGiam;
+        private final RoundedComboBox cbDvdlGiamTien;
+
+        // PANEL: Mua X Tặng Y
         private final JPanel pnlTangPham;
         private final SuggestionField fldMaSPMua, fldMaSPTang;
         private final FloatingField fldSoLuongMua, fldSoLuongTang;
+        private final RoundedComboBox cbDonViMua, cbDonViTang;
         
         private final JPanel pnlDieuKienWrapper;
         private final JPanel pnlDieuKien;
@@ -830,61 +807,19 @@ public class ManHinhKhuyenMai extends JPanel {
             dialog = new JDialog(SwingUtilities.getWindowAncestor(ManHinhKhuyenMai.this), "", Dialog.ModalityType.APPLICATION_MODAL);
             
             dialog.setUndecorated(true);
-            dialog.setBackground(new Color(0, 0, 0, 0));
 
-            // THÊM DROP SHADOW CHO WRAPPER ĐỂ FORM NỔI LÊN KHÔNG BỊ CHÌM DƯỚI NỀN
-            JPanel wrapper = new JPanel(new BorderLayout()) {
-                @Override
-                protected void paintComponent(Graphics g) {
-                    Graphics2D g2 = (Graphics2D) g.create();
-                    g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                    
-                    // Vẽ các lớp bóng mờ (shadow)
-                    g2.setColor(new Color(0, 0, 0, 30));
-                    g2.fillRoundRect(6, 6, getWidth() - 12, getHeight() - 12, 20, 20);
-                    g2.setColor(new Color(0, 0, 0, 15));
-                    g2.fillRoundRect(3, 3, getWidth() - 6, getHeight() - 6, 22, 22);
-                    
-                    g2.dispose();
-                    super.paintComponent(g);
-                }
-            };
-            wrapper.setOpaque(false);
-            wrapper.setBorder(new EmptyBorder(10, 10, 15, 10)); // Khoảng trống cho Shadow
+            JPanel mainPanel = new JPanel(new BorderLayout());
+            mainPanel.setBackground(Color.WHITE);
+            mainPanel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(COLOR_PRIMARY, 2),
+                new EmptyBorder(2, 2, 2, 2)
+            ));
+            UIHelper.setRoundedCorners(mainPanel, 20);
 
-            JPanel mainPanel = new JPanel(new BorderLayout()) {
-                @Override
-                protected void paintComponent(Graphics g) {
-                    super.paintComponent(g);
-                    Graphics2D g2 = (Graphics2D) g.create();
-                    g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                    
-                    g2.setColor(Color.WHITE);
-                    g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 15, 15);
-                    
-                    g2.setColor(COLOR_PRIMARY); 
-                    g2.setStroke(new BasicStroke(2.0f)); 
-                    g2.drawRoundRect(1, 1, getWidth() - 3, getHeight() - 3, 15, 15);
-                    
-                    g2.dispose();
-                }
-            };
-            mainPanel.setOpaque(false);
-
-            JPanel pnlHeader = new JPanel(new BorderLayout()) {
-                @Override
-                protected void paintComponent(Graphics g) {
-                    Graphics2D g2 = (Graphics2D) g.create();
-                    g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                    g2.setColor(COLOR_PRIMARY);
-                    g2.fillRoundRect(1, 1, getWidth() - 2, getHeight() + 15, 15, 15); 
-                    g2.dispose();
-                    super.paintComponent(g);
-                }
-            };
-            pnlHeader.setOpaque(false);
-            pnlHeader.setPreferredSize(new Dimension(0, 50));
-            pnlHeader.setBorder(new EmptyBorder(0, 20, 0, 15));
+            JPanel pnlHeader = new JPanel(new BorderLayout());
+            pnlHeader.setBackground(COLOR_PRIMARY);
+            pnlHeader.setPreferredSize(new Dimension(0, 45));
+            pnlHeader.setBorder(new EmptyBorder(0, 16, 0, 16));
             
             String titleText = isEditMode ? "Chỉnh sửa chương trình" : "Thêm chương trình khuyến mại mới";
             JLabel lblTitle = new JLabel(titleText);
@@ -916,11 +851,12 @@ public class ManHinhKhuyenMai extends JPanel {
             fldName = new FloatingField("<html>Tên chương trình <font color='#E1304C'>*</font></html>", "VD: Khuyến mãi mua 3 tặng 1...", "LIST");
             gbc.gridx = 0; gbc.gridy = 1; gbc.gridwidth = 2; pnlBody.add(fldName, gbc);
 
-            String[] types = {"Giảm theo phần trăm (%)", "Sản phẩm kèm theo"};
+            String[] types = {"Giảm theo phần trăm (%)", "Giảm tiền mặt theo số lượng", "Sản phẩm kèm theo"};
             cbType = new RoundedComboBox(types);
             gbc.gridwidth = 2; gbc.gridx = 0; gbc.gridy = 2; 
             pnlBody.add(labeled("Loại hình thức", cbType, null), gbc); 
             
+            // ================== CẤU HÌNH GIẢM % ==================
             pnlGiamGia = new JPanel(new BorderLayout(0, 10)); 
             pnlGiamGia.setOpaque(false);
             pnlGiamGia.setBorder(new EmptyBorder(15, 5, 5, 5));
@@ -949,16 +885,9 @@ public class ManHinhKhuyenMai extends JPanel {
             pnlQuickPercents.setBorder(new EmptyBorder(5, 5, 5, 5));
             
             String[] quickVals = {"5", "10", "15", "20", "30", "50"};
-            Color[] quickColors = {
-                Color.decode("#007BFF"), Color.decode("#A200FF"), Color.decode("#10B981"), 
-                Color.decode("#F59E0B"), Color.decode("#E1304C"), Color.decode("#6C757D")
-            };
-            
-            // THAY NÚT MẶC ĐỊNH BẰNG ROUNDEDBUTTON CHO ĐỠ THÔ
-            for (int i = 0; i < quickVals.length; i++) {
-                String val = quickVals[i];
-                RoundedButton btnQuick = new RoundedButton(val + "%", Color.WHITE, quickColors[i]);
-                btnQuick.setBorderColor(quickColors[i]);
+            for (String val : quickVals) {
+                RoundedButton btnQuick = new RoundedButton(val + "%", Color.decode("#E8F0FE"), COLOR_INFO);
+                btnQuick.setBorderColor(Color.decode("#E8F0FE"));
                 btnQuick.setPreferredSize(new Dimension(60, 32));
                 btnQuick.addActionListener(e -> fldMucGiam.getTextField().setText(val));
                 pnlQuickPercents.add(btnQuick);
@@ -966,6 +895,49 @@ public class ManHinhKhuyenMai extends JPanel {
             pnlQuickWrapper.add(pnlQuickPercents, BorderLayout.CENTER);
             pnlGiamGia.add(pnlQuickWrapper, BorderLayout.CENTER);
             
+            List<String> khoSanPham = busSanPham.layDanhSachTenSanPham();
+            if (khoSanPham == null || khoSanPham.isEmpty()) {
+                khoSanPham = Arrays.asList("Không có dữ liệu sản phẩm");
+            }
+
+            // ================== CẤU HÌNH GIẢM TIỀN MẶT ==================
+            pnlGiamTien = new JPanel(new BorderLayout(0, 10));
+            pnlGiamTien.setOpaque(false);
+            pnlGiamTien.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(COLOR_BORDER), "Cấu hình Mua số lượng X giảm Tiền"));
+
+            fldMaSPGiamTien = new SuggestionField("Sản phẩm áp dụng", "VD: Panadol", khoSanPham, "PACKAGE");
+            fldSlGiamTien = new FloatingField("Số lượng", "VD: 3", "CART");
+            cbDvdlGiamTien = new RoundedComboBox(new String[]{"Đơn vị"});
+
+            fldMaSPGiamTien.getTextField().getDocument().addDocumentListener(new DocumentListener() {
+                public void insertUpdate(DocumentEvent e) { loadUnits(fldMaSPGiamTien.getTextField().getText(), cbDvdlGiamTien); }
+                public void removeUpdate(DocumentEvent e) { loadUnits(fldMaSPGiamTien.getTextField().getText(), cbDvdlGiamTien); }
+                public void changedUpdate(DocumentEvent e) { loadUnits(fldMaSPGiamTien.getTextField().getText(), cbDvdlGiamTien); }
+            });
+
+            JPanel pGT1 = new JPanel(new GridBagLayout()); pGT1.setOpaque(false);
+            GridBagConstraints g1 = new GridBagConstraints(); g1.fill = GridBagConstraints.HORIZONTAL;
+            g1.gridx=0; g1.weightx=0.5; g1.insets=new Insets(0,0,0,5); pGT1.add(fldMaSPGiamTien, g1);
+            g1.gridx=1; g1.weightx=0.25; g1.insets=new Insets(0,5,0,5); pGT1.add(fldSlGiamTien, g1);
+            g1.gridx=2; g1.weightx=0.25; g1.insets=new Insets(0,5,0,0); pGT1.add(labeled("Đơn vị", cbDvdlGiamTien, null), g1);
+
+            fldTienGiam = new FloatingField("Số tiền giảm trực tiếp (VNĐ)", "VD: 50000", ""); 
+            JPanel pnlQuickCash = new JPanel(new GridLayout(1, 4, 8, 0)); pnlQuickCash.setOpaque(false);
+            for (String val : new String[]{"10000", "20000", "50000", "100000"}) {
+                RoundedButton btn = new RoundedButton(val.substring(0, val.length()-3) + "k", Color.decode("#E8F5E9"), COLOR_SUCCESS);
+                btn.setBorderColor(Color.decode("#E8F5E9"));
+                btn.addActionListener(e -> fldTienGiam.getTextField().setText(val));
+                pnlQuickCash.add(btn);
+            }
+            
+            JPanel pGT2 = new JPanel(new BorderLayout(0, 8)); pGT2.setOpaque(false);
+            pGT2.add(fldTienGiam, BorderLayout.NORTH);
+            pGT2.add(pnlQuickCash, BorderLayout.CENTER);
+
+            pnlGiamTien.add(pGT1, BorderLayout.NORTH);
+            pnlGiamTien.add(pGT2, BorderLayout.CENTER);
+
+            // ================== CẤU HÌNH TẶNG PHẨM ==================
             pnlTangPham = new JPanel(new BorderLayout(0, 10));
             pnlTangPham.setOpaque(false);
             pnlTangPham.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(COLOR_BORDER), "Cấu hình Mua X tặng Y"));
@@ -973,26 +945,36 @@ public class ManHinhKhuyenMai extends JPanel {
             JPanel pnlFields = new JPanel(new GridLayout(2, 1, 0, 10));
             pnlFields.setOpaque(false);
 
-            List<String> khoSanPham = busKhuyenMai.layDanhSachTenSanPham();
-            if (khoSanPham == null || khoSanPham.isEmpty()) {
-                khoSanPham = Arrays.asList("Không có dữ liệu sản phẩm");
-            }
-
             fldMaSPMua = new SuggestionField("Sản phẩm cần mua", "VD: Panadol", khoSanPham, "PACKAGE");
             fldSoLuongMua = new FloatingField("Số lượng", "VD: 3", "CART");
+            cbDonViMua = new RoundedComboBox(new String[]{"Đơn vị"});
 
             fldMaSPTang = new SuggestionField("Sản phẩm được tặng", "VD: Khẩu trang", khoSanPham, "GIFT");
             fldSoLuongTang = new FloatingField("Số lượng tặng", "VD: 1", "GIFT");
+            cbDonViTang = new RoundedComboBox(new String[]{"Đơn vị"});
+
+            fldMaSPMua.getTextField().getDocument().addDocumentListener(new DocumentListener() {
+                public void insertUpdate(DocumentEvent e) { loadUnits(fldMaSPMua.getTextField().getText(), cbDonViMua); }
+                public void removeUpdate(DocumentEvent e) { loadUnits(fldMaSPMua.getTextField().getText(), cbDonViMua); }
+                public void changedUpdate(DocumentEvent e) { loadUnits(fldMaSPMua.getTextField().getText(), cbDonViMua); }
+            });
+            fldMaSPTang.getTextField().getDocument().addDocumentListener(new DocumentListener() {
+                public void insertUpdate(DocumentEvent e) { loadUnits(fldMaSPTang.getTextField().getText(), cbDonViTang); }
+                public void removeUpdate(DocumentEvent e) { loadUnits(fldMaSPTang.getTextField().getText(), cbDonViTang); }
+                public void changedUpdate(DocumentEvent e) { loadUnits(fldMaSPTang.getTextField().getText(), cbDonViTang); }
+            });
 
             JPanel pnlMua = new JPanel(new GridBagLayout()); pnlMua.setOpaque(false);
             GridBagConstraints gM = new GridBagConstraints(); gM.fill = GridBagConstraints.HORIZONTAL;
-            gM.gridx=0; gM.weightx=0.7; gM.insets=new Insets(0,0,0,5); pnlMua.add(fldMaSPMua, gM);
-            gM.gridx=1; gM.weightx=0.3; gM.insets=new Insets(0,5,0,0); pnlMua.add(fldSoLuongMua, gM);
+            gM.gridx=0; gM.weightx=0.5; gM.insets=new Insets(0,0,0,5); pnlMua.add(fldMaSPMua, gM);
+            gM.gridx=1; gM.weightx=0.25; gM.insets=new Insets(0,5,0,5); pnlMua.add(fldSoLuongMua, gM);
+            gM.gridx=2; gM.weightx=0.25; gM.insets=new Insets(0,5,0,0); pnlMua.add(labeled("Đơn vị", cbDonViMua, null), gM);
 
             JPanel pnlTang = new JPanel(new GridBagLayout()); pnlTang.setOpaque(false);
             GridBagConstraints gT = new GridBagConstraints(); gT.fill = GridBagConstraints.HORIZONTAL;
-            gT.gridx=0; gT.weightx=0.7; gT.insets=new Insets(0,0,0,5); pnlTang.add(fldMaSPTang, gT);
-            gT.gridx=1; gT.weightx=0.3; gT.insets=new Insets(0,5,0,0); pnlTang.add(fldSoLuongTang, gT);
+            gT.gridx=0; gT.weightx=0.5; gT.insets=new Insets(0,0,0,5); pnlTang.add(fldMaSPTang, gT);
+            gT.gridx=1; gT.weightx=0.25; gT.insets=new Insets(0,5,0,5); pnlTang.add(fldSoLuongTang, gT);
+            gT.gridx=2; gT.weightx=0.25; gT.insets=new Insets(0,5,0,0); pnlTang.add(labeled("Đơn vị", cbDonViTang, null), gT);
 
             pnlFields.add(pnlMua);
             pnlFields.add(pnlTang);
@@ -1003,6 +985,7 @@ public class ManHinhKhuyenMai extends JPanel {
             JPanel pnlDynamicOptions = new JPanel(cardLayout);
             pnlDynamicOptions.setOpaque(false);
             pnlDynamicOptions.add(pnlGiamGia, "GIAM_GIA");
+            pnlDynamicOptions.add(pnlGiamTien, "GIAM_TIEN");
             pnlDynamicOptions.add(pnlTangPham, "TANG_PHAM");
             
             gbc.gridx = 0; gbc.gridy = 3; gbc.gridwidth = 2;
@@ -1015,9 +998,28 @@ public class ManHinhKhuyenMai extends JPanel {
             pnlDieuKien = new JPanel(new GridLayout(1, 2, 10, 10));
             pnlDieuKien.setOpaque(false);
             
-            fldMinOrder = new FloatingField("Đơn tối thiểu (VNĐ)", "VD: 200000", "TAB_DOLLAR");
+            fldMinOrder = new FloatingField("Đơn tối thiểu (VNĐ)", "VD: 200000", ""); 
             fldMinOrder.getTextField().addKeyListener(new KeyAdapter() { public void keyTyped(KeyEvent e) { if(!Character.isDigit(e.getKeyChar())) e.consume(); }});
             
+            // Xử lý tự động nhân 1000đ cho fldTienGiam và fldMinOrder
+            FocusAdapter autoMoneyFormatter = new FocusAdapter() {
+                @Override
+                public void focusLost(FocusEvent e) {
+                    JTextField txt = (JTextField) e.getSource();
+                    String text = txt.getText().trim();
+                    if (!text.isEmpty()) {
+                        try {
+                            int value = Integer.parseInt(text);
+                            if (value > 0 && value < 1000) {
+                                txt.setText(String.valueOf(value * 1000));
+                            }
+                        } catch (NumberFormatException ex) { }
+                    }
+                }
+            };
+            fldTienGiam.getTextField().addFocusListener(autoMoneyFormatter);
+            fldMinOrder.getTextField().addFocusListener(autoMoneyFormatter);
+
             String[] targets = {"Hóa đơn", "Sản phẩm"};
             cbTarget = new RoundedComboBox(targets);
 
@@ -1026,22 +1028,22 @@ public class ManHinhKhuyenMai extends JPanel {
             
             JPanel pnlNoDieuKien = new JPanel(new BorderLayout());
             pnlNoDieuKien.setOpaque(false);
-            JLabel lblNoCond = new JLabel("<html><i>* Khuyến mãi tặng phẩm áp dụng cho mọi hóa đơn thỏa mãn số lượng mua.</i></html>");
+            JLabel lblNoCond = new JLabel("<html><i>* Khuyến mãi này sẽ tự động áp dụng khi hóa đơn thỏa mãn đủ số lượng mua.</i></html>");
             lblNoCond.setForeground(COLOR_TEXT_MUTED);
             lblNoCond.setBorder(new EmptyBorder(10, 5, 10, 5));
             pnlNoDieuKien.add(lblNoCond, BorderLayout.CENTER);
 
-            pnlDieuKienWrapper.add(pnlDieuKien, "GIAM_GIA");
-            pnlDieuKienWrapper.add(pnlNoDieuKien, "TANG_PHAM");
+            pnlDieuKienWrapper.add(pnlDieuKien, "CO_DIEU_KIEN");
+            pnlDieuKienWrapper.add(pnlNoDieuKien, "KHONG_DIEU_KIEN");
 
             gbc.gridx = 0; gbc.gridy = 4; gbc.gridwidth = 2; 
             pnlBody.add(pnlDieuKienWrapper, gbc);
 
             cbType.addItemListener(e -> {
                 if (e.getStateChange() == ItemEvent.SELECTED) {
-                    boolean isGift = cbType.getSelectedIndex() == 1;
-                    cardLayout.show(pnlDynamicOptions, isGift ? "TANG_PHAM" : "GIAM_GIA");
-                    condLayout.show(pnlDieuKienWrapper, isGift ? "TANG_PHAM" : "GIAM_GIA");
+                    int idx = cbType.getSelectedIndex();
+                    cardLayout.show(pnlDynamicOptions, idx == 0 ? "GIAM_GIA" : idx == 1 ? "GIAM_TIEN" : "TANG_PHAM");
+                    condLayout.show(pnlDieuKienWrapper, idx == 0 ? "CO_DIEU_KIEN" : "KHONG_DIEU_KIEN");
                 }
             });
 
@@ -1100,25 +1102,41 @@ public class ManHinhKhuyenMai extends JPanel {
             dpStart.txtDate.getDocument().addDocumentListener(dateSync);
             dpEnd.txtDate.getDocument().addDocumentListener(dateSync);
 
+            // ================== CHẾ ĐỘ SỬA ==================
             if (isEditMode) {
                 fldMaKM.getTextField().setText(existingData.get("0").toString());
                 fldMaKM.getTextField().setEditable(false); 
                 fldName.getTextField().setText(existingData.get("1").toString());
                 
-                if (existingData.get("2").toString().equals("Sản phẩm kèm theo")) {
+                String typeStr = existingData.get("2").toString();
+                if (typeStr.contains("Sản phẩm kèm theo")) {
+                    cbType.setSelectedIndex(2);
+                    try {
+                        fldMaSPMua.getTextField().setText(existingData.get("12")!=null?existingData.get("12").toString():"");
+                        fldSoLuongMua.getTextField().setText(existingData.get("13")!=null?existingData.get("13").toString():"");
+                        String dvMua = existingData.get("14")!=null?existingData.get("14").toString():"";
+                        if(!dvMua.isEmpty()){ cbDonViMua.addItem(dvMua); cbDonViMua.setSelectedItem(dvMua); }
+
+                        fldMaSPTang.getTextField().setText(existingData.get("15")!=null?existingData.get("15").toString():"");
+                        fldSoLuongTang.getTextField().setText(existingData.get("16")!=null?existingData.get("16").toString():"");
+                        String dvTang = existingData.get("17")!=null?existingData.get("17").toString():"";
+                        if(!dvTang.isEmpty()){ cbDonViTang.addItem(dvTang); cbDonViTang.setSelectedItem(dvTang); }
+                    } catch (Exception ex) {}
+                } else if (typeStr.contains("tiền mặt")) {
                     cbType.setSelectedIndex(1);
-                    String valUI = existingData.get("3").toString();
-                    if(valUI.startsWith("Tặng ")) {
-                        String[] pts = valUI.replace("Tặng ", "").split(" ", 2);
-                        if(pts.length == 2) { fldSoLuongTang.getTextField().setText(pts[0]); fldMaSPTang.getTextField().setText(pts[1]); }
-                    }
+                    fldTienGiam.getTextField().setText(existingData.get("10").toString());
+                    try {
+                        fldMaSPGiamTien.getTextField().setText(existingData.get("12")!=null?existingData.get("12").toString():"");
+                        fldSlGiamTien.getTextField().setText(existingData.get("13")!=null?existingData.get("13").toString():"");
+                        String dvMua = existingData.get("14")!=null?existingData.get("14").toString():"";
+                        if(!dvMua.isEmpty()){ cbDvdlGiamTien.addItem(dvMua); cbDvdlGiamTien.setSelectedItem(dvMua); }
+                    } catch (Exception ex) {}
                 } else {
                     cbType.setSelectedIndex(0);
-                    String sVal = existingData.get("3").toString().split("%")[0].trim();
-                    if(sVal.endsWith(".0")) sVal = sVal.substring(0, sVal.length()-2);
+                    String sVal = existingData.get("10").toString();
                     fldMucGiam.getTextField().setText(sVal);
                 }
-                fldMinOrder.getTextField().setText(existingData.get("4").toString().replaceAll("[^0-9]", ""));
+                fldMinOrder.getTextField().setText(existingData.get("11").toString().replaceAll("[^0-9]", ""));
                 String timeStr = existingData.get("6").toString();
                 if(timeStr.contains(" - ")) { dpStart.txtDate.setText(timeStr.split(" - ")[0]); dpEnd.txtDate.setText(timeStr.split(" - ")[1]); }
             }
@@ -1128,25 +1146,16 @@ public class ManHinhKhuyenMai extends JPanel {
                 dpStart.txtDate.setText(dpStart.getText()); 
             });
 
-            // SỬA CHỖ NÀY: SET OPAQUE(FALSE) ĐỂ FOOTER KHÔNG CHE MẤT GÓC BO TRÒN BÊN DƯỚI
-            JPanel pnlFooter = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 15)) {
-                @Override
-                protected void paintComponent(Graphics g) {
-                    Graphics2D g2 = (Graphics2D) g.create();
-                    g2.setColor(COLOR_BORDER);
-                    g2.drawLine(20, 0, getWidth() - 20, 0); // Vẽ nét viền mỏng ngang trên cùng thay cho setBorder
-                    g2.dispose();
-                    super.paintComponent(g);
-                }
-            };
-            pnlFooter.setOpaque(false); // Quan trọng nhất: Để trong suốt
+            JPanel pnlFooter = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 15));
+            pnlFooter.setBackground(Color.WHITE);
+            pnlFooter.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, COLOR_BORDER));
             
             RoundedButton btnCancel = new RoundedButton("Hủy bỏ", Color.WHITE, COLOR_TEXT_MAIN);
             btnCancel.setIcon(new MenuIcon("CLOSE"));
             btnCancel.setBorderColor(COLOR_BORDER); btnCancel.setPreferredSize(new Dimension(120, 38));
             btnCancel.addActionListener(e -> dialog.dispose());
 
-            RoundedButton btnSave = new RoundedButton(isEditMode ? "Cập nhật" : "Lưu chương trình", COLOR_DANGER, Color.WHITE);
+            RoundedButton btnSave = new RoundedButton(isEditMode ? "Cập nhật" : "Lưu chương trình", COLOR_INFO, Color.WHITE);
             btnSave.setIcon(new MenuIcon("SAVE"));
             btnSave.setPreferredSize(new Dimension(150, 38));
             
@@ -1190,13 +1199,32 @@ public class ManHinhKhuyenMai extends JPanel {
                         dk = new DieuKienKhuyenMai("DK" + id, "GIA_TRI", "HOA_DON", donToiThieu, id);
                     }
 
-                    if (cbType.getSelectedIndex() == 0) { 
+                    int typeIndex = cbType.getSelectedIndex();
+
+                    if (typeIndex == 0) { 
                         String mucGiamStr = fldMucGiam.getTextField().getText().trim();
                         if(mucGiamStr.isEmpty() || mucGiamStr.startsWith("VD:")) mucGiamStr = "0";
                         
                         ht.setLoaiHinhThuc(LoaiHinhThuc.GIAM_THEO_PHAN_TRAM);
                         ht.setDoiTuongApDung(cbTarget.getSelectedIndex() == 0 ? DoiTuongApDung.HOA_DON : DoiTuongApDung.SAN_PHAM);
                         ht.setGiaTri(Double.parseDouble(mucGiamStr));
+                        
+                    } else if (typeIndex == 1) { 
+                        String spMua = fldMaSPGiamTien.getTextField().getText().trim();
+                        if (spMua.isEmpty() || spMua.startsWith("VD:")) {
+                            showNotification("Cảnh báo", "Vui lòng chọn sản phẩm cần mua!", "warning"); return;
+                        }
+                        String slM = fldSlGiamTien.getTextField().getText().trim();
+                        String dvM = cbDvdlGiamTien.getSelectedItem() != null ? cbDvdlGiamTien.getSelectedItem().toString() : "";
+                        String val = fldTienGiam.getTextField().getText().trim();
+                        
+                        ht.setLoaiHinhThuc(LoaiHinhThuc.valueOf("GIAM_TIEN_MAT"));
+                        ht.setDoiTuongApDung(DoiTuongApDung.SAN_PHAM);
+                        ht.setSpYeuCau(spMua);
+                        ht.setSlYeuCau(Integer.parseInt(slM.isEmpty()||slM.startsWith("VD")?"1":slM));
+                        ht.setDvdlYeuCau(dvM.equals("Đơn vị") ? "" : dvM);
+                        ht.setGiaTri(Double.parseDouble(val.isEmpty()||val.startsWith("VD")?"0":val));
+                        dk = null;
                         
                     } else { 
                         String spMua = fldMaSPMua.getTextField().getText().trim();
@@ -1209,14 +1237,18 @@ public class ManHinhKhuyenMai extends JPanel {
 
                         int slMua = 1; try { slMua = Integer.parseInt(fldSoLuongMua.getTextField().getText().trim()); } catch(Exception ignored){}
                         int slTang = 1; try { slTang = Integer.parseInt(fldSoLuongTang.getTextField().getText().trim()); } catch(Exception ignored){}
-                        
+                        String dvMua = cbDonViMua.getSelectedItem() != null ? cbDonViMua.getSelectedItem().toString() : "";
+                        String dvTang = cbDonViTang.getSelectedItem() != null ? cbDonViTang.getSelectedItem().toString() : "";
+
                         ht.setLoaiHinhThuc(LoaiHinhThuc.SAN_PHAM_KEM_THEO);
                         ht.setDoiTuongApDung(DoiTuongApDung.SAN_PHAM);
                         ht.setGiaTri(0);
                         ht.setSpYeuCau(spMua);
                         ht.setSlYeuCau(slMua);
+                        ht.setDvdlYeuCau(dvMua.equals("Đơn vị") ? "" : dvMua);
                         ht.setSpTang(spTang);
                         ht.setSlTang(slTang);
+                        ht.setDvdlTang(dvTang.equals("Đơn vị") ? "" : dvTang);
                         
                         dk = null; 
                     }
@@ -1232,11 +1264,7 @@ public class ManHinhKhuyenMai extends JPanel {
                     
                     if (success) {
                         dialog.dispose();
-                        
                         loadDataFromDatabase(); 
-                        
-                        try {
-                        } catch (Exception ex) {}
                         
                         final String safeId = id;
                         if (isEditMode && pnlDetail.isVisible() && lblDetId.getText().equals(safeId)) {
@@ -1265,14 +1293,37 @@ public class ManHinhKhuyenMai extends JPanel {
             mainPanel.add(pnlBody, BorderLayout.CENTER);
             mainPanel.add(pnlFooter, BorderLayout.SOUTH);
 
-            wrapper.add(mainPanel, BorderLayout.CENTER);
-            dialog.add(wrapper); 
+            dialog.add(mainPanel); 
             
             dialog.pack(); 
-            // CỘNG THÊM KHÔNG GIAN BÙ CHO PHẦN ĐỔ BÓNG SHADOW CỦA WRAPPER
             dialog.setSize(750, dialog.getHeight() + 25);
             dialog.setLocationRelativeTo(null);
         }
+
+        private void loadUnits(String tenSP, JComboBox<String> cb) {
+            SwingUtilities.invokeLater(() -> {
+                cb.removeAllItems();
+                boolean hasData = false;
+                if(tenSP != null && !tenSP.trim().isEmpty()) {
+                    try {
+                        List<DonViDoLuong> list = busDonVi.getDSTheoTenSP(tenSP.trim());
+                        if(list != null && !list.isEmpty()) {
+                            for(DonViDoLuong dv : list) {
+                                cb.addItem(dv.getTen());
+                            }
+                            hasData = true;
+                        }
+                    } catch (Exception ex) {
+                        System.out.println("Lỗi load đơn vị từ BUS: " + ex.getMessage());
+                    }
+                }
+                
+                if(!hasData) {
+                    cb.addItem("Đơn vị");
+                }
+            });
+        }
+
         public void showDialog() { dialog.setVisible(true); }
     }
 
@@ -1370,6 +1421,7 @@ public class ManHinhKhuyenMai extends JPanel {
 
         private void showSuggestions() {
             SwingUtilities.invokeLater(() -> {
+                if (isSelecting) return;
                 popupMenu.setVisible(false); 
                 popupMenu.removeAll();
                 
@@ -1379,7 +1431,6 @@ public class ManHinhKhuyenMai extends JPanel {
                 }
                 
                 String text = rawText.toLowerCase();
-
                 boolean hasItems = false;
                 int count = 0; 
                 
@@ -1390,12 +1441,22 @@ public class ManHinhKhuyenMai extends JPanel {
                         item.setBackground(Color.WHITE);
                         item.setFont(FONT_REGULAR);
                         
-                        item.addActionListener(e -> {
-                            isSelecting = true; 
-                            getTextField().setText(word);
-                            getTextField().setForeground(COLOR_TEXT_MAIN);
-                            popupMenu.setVisible(false);
-                            isSelecting = false; 
+                        // Sử dụng MouseListener chặn sự kiện ngay từ lúc nhấn chuột (tránh mất Focus)
+                        item.addMouseListener(new MouseAdapter() {
+                            @Override
+                            public void mousePressed(MouseEvent e) {
+                                if (SwingUtilities.isLeftMouseButton(e)) {
+                                    isSelecting = true; 
+                                    getTextField().setText(word);
+                                    getTextField().setCaretPosition(word.length());
+                                    getTextField().setForeground(COLOR_TEXT_MAIN);
+                                    popupMenu.setVisible(false);
+                                    // Thêm delay nhỏ để tránh Event Listener của Java kích hoạt lặp
+                                    Timer timer = new Timer(50, evt -> isSelecting = false);
+                                    timer.setRepeats(false);
+                                    timer.start();
+                                }
+                            }
                         });
                         
                         popupMenu.add(item);
@@ -1409,7 +1470,7 @@ public class ManHinhKhuyenMai extends JPanel {
                 if (hasItems) {
                     popupMenu.pack(); 
                     popupMenu.show(getTextField(), 0, getTextField().getHeight());
-                    getTextField().requestFocus(); 
+                    // KHÔNG GỌI requestFocus() ở đây. Gọi requestFocus() liên tục sẽ gây lỗi nhân đôi ký tự (lỗi Unikey/IME tiếng Việt).
                 }
             });
         }
@@ -1480,18 +1541,15 @@ public class ManHinhKhuyenMai extends JPanel {
         public KPICard(String title, String val, Color c, Color bg, String iconName) {
             setLayout(new BorderLayout());
             setBackground(bg); 
-            UIHelper.setRoundedCorners(this, 10);
-            setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(c, 1), 
-                BorderFactory.createEmptyBorder(15, 10, 15, 10)
-            ));
+            UIHelper.setRoundedCorners(this, 8); // Góc bo nhẹ tương đồng Lô Hàng
+            setBorder(BorderFactory.createLineBorder(c, 1)); // Viền mỏng 1px
 
             JPanel pnlTop = new JPanel(new FlowLayout(FlowLayout.CENTER, 8, 0));
             pnlTop.setOpaque(false);
+            pnlTop.setBorder(new EmptyBorder(12, 5, 5, 5));
             
-            JLabel lblIcon = new JLabel();
-            lblIcon.setIcon(new MenuIcon(iconName)); 
-            lblIcon.setForeground(c); 
+            JLabel lblIcon = new JLabel(new MenuIcon(iconName)); 
+            lblIcon.setForeground(c);
             
             JLabel lblTitle = new JLabel(title); 
             lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 14)); 
@@ -1501,9 +1559,9 @@ public class ManHinhKhuyenMai extends JPanel {
             pnlTop.add(lblTitle);
 
             lblValue = new JLabel(val, SwingConstants.CENTER); 
-            lblValue.setFont(new Font("Segoe UI", Font.BOLD, 32)); 
-            lblValue.setForeground(c); 
-            lblValue.setBorder(new EmptyBorder(5, 0, 0, 0));
+            lblValue.setFont(new Font("Segoe UI", Font.BOLD, 28)); 
+            lblValue.setForeground(c); // Đồng bộ màu số với viền
+            lblValue.setBorder(new EmptyBorder(0, 5, 12, 5));
             
             add(pnlTop, BorderLayout.NORTH);
             add(lblValue, BorderLayout.CENTER);
@@ -1520,6 +1578,7 @@ public class ManHinhKhuyenMai extends JPanel {
             
             pnlWrapper.setBorder(new EmptyBorder(2, 10, 2, 6));
             UIHelper.setRoundedCorners(pnlWrapper, 8); 
+            pnlWrapper.setBorder(BorderFactory.createLineBorder(COLOR_BORDER));
 
             txtDate = new JTextField(LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
             txtDate.setBorder(null);
@@ -1558,9 +1617,9 @@ public class ManHinhKhuyenMai extends JPanel {
                     Graphics2D g2 = (Graphics2D) g.create();
                     g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                     Color bg = Color.WHITE, fg = COLOR_TEXT_MAIN;
-                    if (status.equals("Đang hoạt động")) { bg = Color.decode("#D1FAE5"); fg = COLOR_SUCCESS; }
-                    else if (status.equals("Sắp diễn ra")) { bg = Color.decode("#DBEAFE"); fg = Color.decode("#3B82F6"); }
-                    else if (status.equals("Tạm dừng") || status.equals("Đã kết thúc")) { bg = Color.decode("#F3F4F6"); fg = Color.decode("#6B7280"); }
+                    if (status.equals("Đang hoạt động")) { bg = Color.decode("#E8F5E9"); fg = COLOR_SUCCESS; }
+                    else if (status.equals("Sắp diễn ra")) { bg = Color.decode("#FFF8E1"); fg = COLOR_WARNING; }
+                    else if (status.equals("Tạm dừng") || status.equals("Đã kết thúc")) { bg = Color.decode("#F4F6F8"); fg = COLOR_TEXT_MUTED; }
                     
                     int w = 100, h = 24, x = (getWidth() - w)/2, y = (getHeight() - h)/2;
                     g2.setColor(bg); g2.fillRoundRect(x, y, w, h, h, h); 
@@ -1668,73 +1727,33 @@ public class ManHinhKhuyenMai extends JPanel {
         SwingUtilities.invokeLater(() -> {
             JDialog dialog = new JDialog(SwingUtilities.getWindowAncestor(this), "", Dialog.ModalityType.APPLICATION_MODAL);
             dialog.setUndecorated(true);
-            dialog.setBackground(new Color(0, 0, 0, 0)); 
-            dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
 
             Color headerBg, iconBg, borderColor;
             String iconType;
             
             if (type.equals("success")) {
-                headerBg = Color.decode("#10B981");
-                iconBg = Color.decode("#D1FAE5");
-                borderColor = Color.decode("#10B981");
+                headerBg = COLOR_SUCCESS;
+                iconBg = Color.decode("#E8F5E9");
+                borderColor = COLOR_SUCCESS;
                 iconType = "CORRECT"; 
             } else if (type.equals("error")) {
-                headerBg = Color.decode("#E1304C");
-                iconBg = Color.decode("#FEE2E2");
-                borderColor = Color.decode("#E1304C");
+                headerBg = COLOR_DANGER;
+                iconBg = Color.decode("#FFEBEE");
+                borderColor = COLOR_DANGER;
                 iconType = "CANCEL"; 
             } else { // warning
-                headerBg = Color.decode("#F59E0B");
-                iconBg = Color.decode("#FEF3C7");
-                borderColor = Color.decode("#F59E0B");
+                headerBg = COLOR_WARNING;
+                iconBg = Color.decode("#FFF8E1");
+                borderColor = COLOR_WARNING;
                 iconType = "WARNING"; 
             }
 
-            JPanel wrapper = new JPanel(new BorderLayout()) {
-                @Override
-                protected void paintComponent(Graphics g) {
-                    Graphics2D g2 = (Graphics2D) g.create();
-                    g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                    g2.setColor(new Color(0, 0, 0, 30));
-                    g2.fillRoundRect(4, 4, getWidth() - 8, getHeight() - 8, 20, 20);
-                    g2.setColor(new Color(0, 0, 0, 15));
-                    g2.fillRoundRect(2, 2, getWidth() - 4, getHeight() - 4, 22, 22);
-                    g2.dispose();
-                    super.paintComponent(g);
-                }
-            };
-            wrapper.setOpaque(false);
-            wrapper.setBorder(new EmptyBorder(10, 10, 15, 10));
+            JPanel mainPanel = new JPanel(new BorderLayout());
+            mainPanel.setBackground(Color.WHITE);
+            mainPanel.setBorder(BorderFactory.createLineBorder(borderColor, 2));
 
-            JPanel mainPanel = new JPanel(new BorderLayout()) {
-                @Override
-                protected void paintComponent(Graphics g) {
-                    super.paintComponent(g);
-                    Graphics2D g2 = (Graphics2D) g.create();
-                    g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                    g2.setColor(Color.WHITE);
-                    g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 15, 15);
-                    g2.setColor(borderColor);
-                    g2.setStroke(new BasicStroke(2.0f)); 
-                    g2.drawRoundRect(1, 1, getWidth() - 3, getHeight() - 3, 15, 15);
-                    g2.dispose();
-                }
-            };
-            mainPanel.setOpaque(false);
-
-            JPanel pnlHeader = new JPanel(new BorderLayout()) {
-                @Override
-                protected void paintComponent(Graphics g) {
-                    Graphics2D g2 = (Graphics2D) g.create();
-                    g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                    g2.setColor(headerBg);
-                    g2.fillRoundRect(1, 1, getWidth() - 2, getHeight() + 15, 15, 15); 
-                    g2.dispose();
-                    super.paintComponent(g);
-                }
-            };
-            pnlHeader.setOpaque(false);
+            JPanel pnlHeader = new JPanel(new BorderLayout());
+            pnlHeader.setBackground(headerBg);
             pnlHeader.setPreferredSize(new Dimension(0, 50));
             pnlHeader.setBorder(new EmptyBorder(0, 20, 0, 15));
 
@@ -1787,17 +1806,9 @@ public class ManHinhKhuyenMai extends JPanel {
             pnlBody.add(pnlIconBox, BorderLayout.WEST);
             pnlBody.add(lblMessage, BorderLayout.CENTER);
 
-            JPanel pnlFooter = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10)) {
-                @Override
-                protected void paintComponent(Graphics g) {
-                    Graphics2D g2 = (Graphics2D) g.create();
-                    g2.setColor(COLOR_BORDER);
-                    g2.drawLine(20, 0, getWidth() - 20, 0); 
-                    g2.dispose();
-                    super.paintComponent(g);
-                }
-            };
-            pnlFooter.setOpaque(false);
+            JPanel pnlFooter = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
+            pnlFooter.setBackground(Color.WHITE);
+            pnlFooter.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, COLOR_BORDER));
 
             RoundedButton btnOk = new RoundedButton("OK", headerBg, Color.WHITE);
             btnOk.setIcon(new MenuIcon("CHECK_CIRCLE"));  
@@ -1810,8 +1821,7 @@ public class ManHinhKhuyenMai extends JPanel {
             mainPanel.add(pnlBody, BorderLayout.CENTER);
             mainPanel.add(pnlFooter, BorderLayout.SOUTH);
 
-            wrapper.add(mainPanel, BorderLayout.CENTER);
-            dialog.add(wrapper);
+            dialog.add(mainPanel);
             
             dialog.pack();
             int safeHeight = Math.max(dialog.getHeight() + 25, 220);
@@ -1826,53 +1836,13 @@ public class ManHinhKhuyenMai extends JPanel {
         SwingUtilities.invokeLater(() -> {
             JDialog dialog = new JDialog(SwingUtilities.getWindowAncestor(this), "", Dialog.ModalityType.APPLICATION_MODAL);
             dialog.setUndecorated(true);
-            dialog.setBackground(new Color(0, 0, 0, 0));
-            dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
 
-            JPanel wrapper = new JPanel(new BorderLayout()) {
-                @Override
-                protected void paintComponent(Graphics g) {
-                    Graphics2D g2 = (Graphics2D) g.create();
-                    g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                    g2.setColor(new Color(0, 0, 0, 30));
-                    g2.fillRoundRect(4, 4, getWidth() - 8, getHeight() - 8, 20, 20);
-                    g2.setColor(new Color(0, 0, 0, 15));
-                    g2.fillRoundRect(2, 2, getWidth() - 4, getHeight() - 4, 22, 22);
-                    g2.dispose();
-                    super.paintComponent(g);
-                }
-            };
-            wrapper.setOpaque(false);
-            wrapper.setBorder(new EmptyBorder(10, 10, 15, 10));
+            JPanel mainPanel = new JPanel(new BorderLayout());
+            mainPanel.setBackground(Color.WHITE);
+            mainPanel.setBorder(BorderFactory.createLineBorder(COLOR_WARNING, 2));
 
-            JPanel mainPanel = new JPanel(new BorderLayout()) {
-                @Override
-                protected void paintComponent(Graphics g) {
-                    super.paintComponent(g);
-                    Graphics2D g2 = (Graphics2D) g.create();
-                    g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                    g2.setColor(Color.WHITE);
-                    g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 15, 15);
-                    g2.setColor(Color.decode("#F59E0B"));
-                    g2.setStroke(new BasicStroke(2.0f)); 
-                    g2.drawRoundRect(1, 1, getWidth() - 3, getHeight() - 3, 15, 15);
-                    g2.dispose();
-                }
-            };
-            mainPanel.setOpaque(false);
-
-            JPanel pnlHeader = new JPanel(new BorderLayout()) {
-                @Override
-                protected void paintComponent(Graphics g) {
-                    Graphics2D g2 = (Graphics2D) g.create();
-                    g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                    g2.setColor(Color.decode("#F59E0B"));
-                    g2.fillRoundRect(1, 1, getWidth() - 2, getHeight() + 15, 15, 15);
-                    g2.dispose();
-                    super.paintComponent(g);
-                }
-            };
-            pnlHeader.setOpaque(false);
+            JPanel pnlHeader = new JPanel(new BorderLayout());
+            pnlHeader.setBackground(COLOR_WARNING);
             pnlHeader.setPreferredSize(new Dimension(0, 50));
             pnlHeader.setBorder(new EmptyBorder(0, 20, 0, 15));
 
@@ -1900,7 +1870,7 @@ public class ManHinhKhuyenMai extends JPanel {
                 protected void paintComponent(Graphics g) {
                     Graphics2D g2 = (Graphics2D) g.create();
                     g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                    g2.setColor(Color.decode("#FEF3C7"));
+                    g2.setColor(Color.decode("#FFF8E1"));
                     g2.fillRoundRect(0, 0, getWidth(), getHeight(), 18, 18);
                     g2.dispose();
                 }
@@ -1910,7 +1880,7 @@ public class ManHinhKhuyenMai extends JPanel {
             
             JLabel lblIcon = new JLabel();
             lblIcon.setIcon(new MenuIcon("HELP"));
-            lblIcon.setForeground(Color.decode("#F59E0B")); 
+            lblIcon.setForeground(COLOR_WARNING); 
             lblIcon.setHorizontalAlignment(SwingConstants.CENTER);
             pnlIconBox.add(lblIcon, BorderLayout.CENTER);
 
@@ -1925,17 +1895,9 @@ public class ManHinhKhuyenMai extends JPanel {
             pnlBody.add(pnlIconBox, BorderLayout.WEST);
             pnlBody.add(lblMessage, BorderLayout.CENTER);
 
-            JPanel pnlFooter = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10)) {
-                @Override
-                protected void paintComponent(Graphics g) {
-                    Graphics2D g2 = (Graphics2D) g.create();
-                    g2.setColor(COLOR_BORDER);
-                    g2.drawLine(20, 0, getWidth() - 20, 0); 
-                    g2.dispose();
-                    super.paintComponent(g);
-                }
-            };
-            pnlFooter.setOpaque(false);
+            JPanel pnlFooter = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
+            pnlFooter.setBackground(Color.WHITE);
+            pnlFooter.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, COLOR_BORDER));
 
             RoundedButton btnCancel = new RoundedButton("Không", Color.WHITE, COLOR_TEXT_MAIN);
             btnCancel.setIcon(new MenuIcon("CLOSE"));  
@@ -1943,7 +1905,7 @@ public class ManHinhKhuyenMai extends JPanel {
             btnCancel.setPreferredSize(new Dimension(100, 38));
             btnCancel.addActionListener(e -> dialog.dispose());
 
-            RoundedButton btnYes = new RoundedButton("Có", Color.decode("#F59E0B"), Color.WHITE);
+            RoundedButton btnYes = new RoundedButton("Có", COLOR_WARNING, Color.WHITE);
             btnYes.setIcon(new MenuIcon("CHECK_CIRCLE"));  
             btnYes.setPreferredSize(new Dimension(100, 38));
             btnYes.addActionListener(e -> {
@@ -1958,8 +1920,7 @@ public class ManHinhKhuyenMai extends JPanel {
             mainPanel.add(pnlBody, BorderLayout.CENTER);
             mainPanel.add(pnlFooter, BorderLayout.SOUTH);
 
-            wrapper.add(mainPanel, BorderLayout.CENTER);
-            dialog.add(wrapper);
+            dialog.add(mainPanel);
             
             dialog.pack();
             int safeHeight = Math.max(dialog.getHeight() + 25, 220);

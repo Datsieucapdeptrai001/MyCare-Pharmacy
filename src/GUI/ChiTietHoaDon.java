@@ -41,181 +41,153 @@ public class ChiTietHoaDon extends JDialog {
     private boolean isDaHuy = false; // Biến kiểm tra trạng thái hủy
     private Color bgRed = Color.decode("#FEF2F2"); // Màu nền đỏ nhạt
     private Color textRed = Color.decode("#DC2626"); // Màu chữ/viền đỏ đậm
-    public ChiTietHoaDon(Frame parent, String maHD, String ngay, String khachHang, String sdt, String phuongThuc, String tongTienCu, String tenNhanVien, List<Object[]> dsSanPham) {
+    public ChiTietHoaDon(Frame parent, String maHD, String ngay, String khachHang, String sdt, String phuongThuc, String tongTienCu, String tenNhanVien, List<Object[]> dsSanPhamGoc) {
         super(parent, "Chi tiết hóa đơn", true);
-        this.dsSanPham = dsSanPham;
+        this.dsSanPham = new java.util.ArrayList<>(dsSanPhamGoc);
         this.tenNhanVien = tenNhanVien;
 
-        try { tongThanhToanThucTe = Long.parseLong(tongTienCu.replaceAll("[^0-9]", "")); } catch (Exception e) {}
+        // Bỏ việc phụ thuộc vào tongTienCu (targetGross) vì nó không đáng tin cậy.
+        // Dùng biến maKMs để lưu mã khuyến mãi và lấy trực tiếp % giảm giá từ CSDL.
+        String maKMs = "";
+        this.tienKhachDuaThucTe = 0;
+        this.tienGiamTuDiemThucTe = 0;
+        this.tienGiamGiaThucTe = 0;
 
-        // Tính tiền ban đầu dựa trên danh sách sản phẩm
-        for (Object[] sp : dsSanPham) {
-            try {
-                long donGia = Long.parseLong(sp[4].toString().replaceAll("[^0-9]", ""));
-                int sl = Integer.parseInt(sp[3].toString());
-                long thanhTienCuaSP = Long.parseLong(sp[6].toString().replaceAll("[^0-9]", ""));
-                
-                long tienChuaVat = donGia * sl;
-                tamTinhThucTe += tienChuaVat;
-                vatThucTe += (thanhTienCuaSP - tienChuaVat);
-            } catch (Exception e) {}
-        }
-        
-        // ========================================================
-        // 1. LẤY ĐIỂM TÍCH LŨY (GỌI QUA TẦNG BUS_KhachHang)
-        // ========================================================
-        if (sdt != null && !sdt.isEmpty()) {
-            try {
-                BUS.BUS_KhachHang busKH = new BUS.BUS_KhachHang();
-                Entity.KhachHang kh = busKH.getKhachHangTheoSDT(sdt);
-                if (kh != null) diemHienTai = kh.getDiemTichLuy();
-            } catch (Exception e) { System.out.println("Lỗi lấy KH: " + e.getMessage()); }
-        }
-
-        tienKhachDuaThucTe = tongThanhToanThucTe;
-        boolean hasKhuyenMai = false; 
-        
-        // ========================================================
-        // 2. BÓC TÁCH GHI CHÚ & LẤY TÊN NHÂN VIÊN (GỌI QUA BUS_HoaDon)
-        // ========================================================
         try {
+            BUS.BUS_KhachHang busKH = new BUS.BUS_KhachHang();
+            Entity.KhachHang kh = busKH.getKhachHangTheoSDT(sdt);
+            if (kh != null) this.diemHienTai = kh.getDiemTichLuy();
+
             BUS.BUS_HoaDon busHD = new BUS.BUS_HoaDon();
             Entity.HoaDon hd = busHD.layHoaDonTheoMa(maHD);
             
             if (hd != null) {
-                // FIX: Lấy tên chuẩn xác từ Database chống lỗi đổi ca
-            	if (hd.getNhanVienId() != null && hd.getNhanVienId().getHoVaTen() != null) {
+                if (hd.getNhanVienId() != null && hd.getNhanVienId().getHoVaTen() != null) {
                     this.tenNhanVien = hd.getNhanVienId().getHoVaTen();
                 }
-
                 String ghiChu = hd.getGhiChu() != null ? hd.getGhiChu() : "";
-                
-                if (ghiChu.startsWith("Đã hủy") || ghiChu.contains("Đã hủy")) {
+                if (ghiChu.contains("Đã hủy")) {
                     this.isDaHuy = true;
-                    this.primaryGreen = textRed; 
-                    this.bgLight = bgRed;
+                    this.primaryGreen = Color.decode("#EF4444");
+                    this.bgLight = Color.decode("#FEE2E2");
                 }
-                
-                if (!ghiChu.isEmpty()) {
-                    if (ghiChu.contains("KM:")) {
-                        hasKhuyenMai = true;
-                    }
-                    
-                    String[] parts = ghiChu.split("\\|");
-                    for (String p : parts) {
-                        p = p.trim();
-                        if (phuongThuc.equals("Tiền mặt") && p.startsWith("CASH:")) {
-                            String moneyStr = p.substring(5).replaceAll("[^0-9]", "");
-                            if (!moneyStr.isEmpty()) {
-                                try { tienKhachDuaThucTe = Long.parseLong(moneyStr); } catch (Exception ex) {}
+
+                String[] parts = ghiChu.split("\\|");
+                for (String p : parts) {
+                    p = p.trim();
+                    if (p.startsWith("CASH:")) {
+                        this.tienKhachDuaThucTe = Long.parseLong(p.substring(5).replaceAll("[^0-9]", ""));
+                    } else if (p.startsWith("Dùng điểm: -")) {
+                        this.tienGiamTuDiemThucTe = Long.parseLong(p.substring(12).replaceAll("[^0-9]", ""));
+                    } else if (p.startsWith("BS:")) {
+                        bacSi = p.substring(3).trim();
+                    } else if (p.startsWith("CS:")) {
+                        coSo = p.substring(3).trim();
+                    } else if (p.startsWith("CD:")) {
+                        chuanDoan = p.substring(3).trim();
+                    } else if (p.startsWith("KM:")) {
+                        maKMs = p.substring(3).trim(); // BẮT MÃ KHUYẾN MÃI TỪ GHI CHÚ
+                    } else if (p.startsWith("TANG:")) {
+                        try {
+                            String[] giftData = p.substring(5).split(";");
+                            if (giftData.length >= 3) {
+                                Object[] giftRow = new Object[7];
+                                giftRow[0] = "GIFT"; 
+                                giftRow[1] = "[QUÀ TẶNG] " + giftData[0]; 
+                                giftRow[2] = giftData[2];                 
+                                giftRow[3] = giftData[1];                 
+                                giftRow[4] = "0đ";                        
+                                giftRow[5] = "0%";                        
+                                giftRow[6] = "0đ";                        
+                                this.dsSanPham.add(giftRow);
                             }
-                        } else if (p.startsWith("Dùng điểm: -")) {
-                            String diemStr = p.substring(12).replaceAll("[^0-9]", "");
-                            if (!diemStr.isEmpty()) {
-                                try { tienGiamTuDiemThucTe = Long.parseLong(diemStr); } catch (Exception ex) {}
+                        } catch (Exception ex) {
+                            System.out.println("Lỗi giải mã quà tặng: " + ex.getMessage());
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        // =====================================================================
+        // TÍNH TIỀN HÀNG (TẠM TÍNH & VAT)
+        // =====================================================================
+        this.tamTinhThucTe = 0;
+        this.vatThucTe = 0;
+        
+        for (Object[] sp : dsSanPham) {
+            long donGia = Long.parseLong(sp[4].toString().replaceAll("[^0-9]", ""));
+            int sl = Integer.parseInt(sp[3].toString());
+            double vatPercent = 0.0;
+            try { vatPercent = Double.parseDouble(sp[5].toString().replace("%", "").trim()); } catch(Exception ex) {}
+            
+            long tienChuaVat = donGia * sl; 
+            long tienVat = Math.round(tienChuaVat * (vatPercent / 100.0));
+            
+            sp[4] = String.format("%,d", donGia).replace(',', '.') + "đ";
+            sp[6] = String.format("%,d", tienChuaVat).replace(',', '.') + "đ"; 
+            
+            this.tamTinhThucTe += tienChuaVat;
+            this.vatThucTe += tienVat;
+        }
+
+        // =====================================================================
+        // TÍNH LẠI KHUYẾN MÃI TỪ DATABASE (ĐẢM BẢO CHÍNH XÁC 100%)
+        // =====================================================================
+        long tongTienTruocGiam = this.tamTinhThucTe + this.vatThucTe;
+        this.tienGiamGiaThucTe = 0;
+
+        if (!maKMs.isEmpty()) {
+            String[] codes = maKMs.split(",");
+            try (java.sql.Connection con = ConnectDB.ConnectDB.getInstance().getConnection()) {
+                for (String code : codes) {
+                    code = code.trim();
+                    String sqlCheck = "SELECT h.loaiHinhThuc, h.giaTri AS mucGiam FROM KhuyenMai k " +
+                                      "JOIN HinhThucKhuyenMai h ON k.id = h.khuyenMaiId " +
+                                      "WHERE k.id = ?";
+                    try (java.sql.PreparedStatement pst = con.prepareStatement(sqlCheck)) {
+                        pst.setString(1, code);
+                        try (java.sql.ResultSet rsCheck = pst.executeQuery()) {
+                            if (rsCheck.next()) {
+                                String loaiKM = rsCheck.getString("loaiHinhThuc");
+                                double giaTri = rsCheck.getDouble("mucGiam");
+                                
+                                // Nếu là giảm % hoặc tiền mặt
+                                if (loaiKM != null && !loaiKM.contains("TANG") && !loaiKM.contains("SAN_PHAM_KEM_THEO")) {
+                                    if (loaiKM.contains("PHAN_TRAM") || loaiKM.contains("%")) {
+                                        this.tienGiamGiaThucTe += (long) (tongTienTruocGiam * (giaTri / 100.0));
+                                    } else {
+                                        this.tienGiamGiaThucTe += (long) giaTri;
+                                    }
+                                }
                             }
-                        } else if (p.startsWith("BS:")) bacSi = p.substring(3).trim();
-                        else if (p.startsWith("CS:")) coSo = p.substring(3).trim();
-                        else if (p.startsWith("CD:")) chuanDoan = p.substring(3).trim();
+                        }
                     }
                 }
-            }
-        } catch (Exception e) { System.out.println("Lỗi gọi HD: " + e.getMessage()); }
-
-        long targetGross = tongThanhToanThucTe + tienGiamTuDiemThucTe; 
-        long currentGross = tamTinhThucTe + vatThucTe; 
-        
-        if (!hasKhuyenMai && currentGross != targetGross && currentGross > 0) {
-            tamTinhThucTe = 0;
-            vatThucTe = 0;
-            
-            for (Object[] sp : dsSanPham) {
-                long donGiaHienTai = Long.parseLong(sp[4].toString().replaceAll("[^0-9]", ""));
-                int sl = Integer.parseInt(sp[3].toString());
-                double vatPercent = 5.0; 
-                try {
-                    vatPercent = Double.parseDouble(sp[5].toString().replace("%", "").trim());
-                } catch(Exception ex) {}
-
-                long currentSPGross = Math.round(donGiaHienTai * sl * (1 + vatPercent / 100.0));
-                double tiLeSP = (double) currentSPGross / currentGross;
-                long targetSPGross = Math.round(targetGross * tiLeSP); 
-
-                long donGiaCu = donGiaHienTai;
-                double vatCuPercent = vatPercent;
-
-                // THUẬT TOÁN TÌM GIÁ TRÒN ĐẸP: 
-                // Thử các mốc VAT chuẩn để tìm lại giá gốc nguyên thủy (thường là số chẵn hàng trăm)
-                double minError = Double.MAX_VALUE;
-                double[] standardVats = {5.0, 8.0, 10.0, 0.0};
-                
-                for (double v : standardVats) {
-                    double theoreticalPrice = targetSPGross / (sl * (1.0 + v / 100.0));
-                    // Tìm số tiền làm tròn đến hàng trăm gần nhất (vd: 3402.77 -> 3400.0)
-                    double roundedPrice100 = Math.round(theoreticalPrice / 100.0) * 100.0;
-                    
-                    // Đo độ sai lệch. Sai lệch càng thấp (gần 0) tức là giá đó càng chuẩn xác
-                    double error = Math.abs(theoreticalPrice - roundedPrice100);
-                    
-                    if (error < minError) {
-                        minError = error;
-                        donGiaCu = (long) roundedPrice100;
-                        vatCuPercent = v;
-                    }
-                }
-                
-                // Nếu giá gốc thực sự lẻ (minError > 10đ), fallback tính giá chính xác theo VAT hiện tại
-                if (minError > 10.0) { 
-                    donGiaCu = Math.round(targetSPGross / (sl * (1.0 + vatPercent / 100.0)));
-                    vatCuPercent = vatPercent;
-                }
-
-                // Cập nhật lại phép toán dựa trên Giá Cũ và VAT Cũ đã tìm được
-                long tienChuaVatCu = donGiaCu * sl;
-                long vatCu = Math.round(tienChuaVatCu * (vatCuPercent / 100.0));
-                long thanhTienCu = tienChuaVatCu + vatCu;
-                
-                sp[4] = String.format("%,d", donGiaCu).replace(',', '.') + "đ";
-                sp[5] = (int) vatCuPercent + "%"; 
-                sp[6] = String.format("%,d", thanhTienCu).replace(',', '.') + "đ";
-                
-                tamTinhThucTe += tienChuaVatCu;
-                vatThucTe += vatCu;
-            }
-            
-            // Bù trừ vài đồng lẻ do phép chia lấy tròn
-            long lech = targetGross - (tamTinhThucTe + vatThucTe);
-            vatThucTe += lech; 
-            
-            if (dsSanPham.size() > 0) {
-                Object[] lastSp = dsSanPham.get(dsSanPham.size() - 1);
-                long oldThanhTien = Long.parseLong(lastSp[6].toString().replaceAll("[^0-9]", ""));
-                lastSp[6] = String.format("%,d", oldThanhTien + lech).replace(',', '.') + "đ";
+            } catch (Exception ex) {
+                System.out.println("Lỗi tính lại KM: " + ex.getMessage());
             }
         }
-        
-        // =========================================================================
-        // 4. CHỐT SỔ TIỀN THANH TOÁN
-        // =========================================================================
-        if (hasKhuyenMai) {
-            tienGiamGiaThucTe = (tamTinhThucTe + vatThucTe) - tongThanhToanThucTe - tienGiamTuDiemThucTe;
-            if (tienGiamGiaThucTe < 0) tienGiamGiaThucTe = 0;
-        } else {
-            tienGiamGiaThucTe = 0; 
-            tongThanhToanThucTe = tamTinhThucTe + vatThucTe - tienGiamTuDiemThucTe; 
-        }
-        
-        if (tienKhachDuaThucTe < tongThanhToanThucTe) {
-             tienKhachDuaThucTe = tongThanhToanThucTe;
-        }
-        
-        tienThoiThucTe = tienKhachDuaThucTe - tongThanhToanThucTe;
-        if (tienThoiThucTe < 0) tienThoiThucTe = 0;
-        
-        String tongTienDungStr = String.format("%,d", tongThanhToanThucTe).replace(',', '.') + "đ";
 
-        // --- KHỞI TẠO UI ---
-        setSize(900, 750); 
+        // Chốt Tổng thanh toán thực tế
+        this.tongThanhToanThucTe = tongTienTruocGiam - this.tienGiamGiaThucTe - this.tienGiamTuDiemThucTe;
+        if (this.tongThanhToanThucTe < 0) this.tongThanhToanThucTe = 0;
+
+        // Xử lý tiền thừa
+        if (this.tienKhachDuaThucTe == 0) {
+            this.tienKhachDuaThucTe = this.tongThanhToanThucTe;
+        }
+        this.tienThoiThucTe = this.tienKhachDuaThucTe - this.tongThanhToanThucTe;
+        if (this.tienThoiThucTe < 0) this.tienThoiThucTe = 0;
+
+        // --- GIAO DIỆN ---
+        String tongTienDungStr = String.format("%,d", this.tongThanhToanThucTe).replace(',', '.') + "đ";
+
+        Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+        int dialogHeight = Math.min(750, screenSize.height - 80); // Trừ đi 80px taskbar của Windows
+        setSize(900, dialogHeight); 
         setLocationRelativeTo(parent);
         setUndecorated(true); 
         setLayout(new BorderLayout());
@@ -240,9 +212,14 @@ public class ChiTietHoaDon extends JDialog {
 
         JScrollPane scrollPane = new JScrollPane(pnlBody);
         scrollPane.setBorder(null);
-        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_NEVER);
+        
+        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
         scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         scrollPane.getVerticalScrollBar().setUnitIncrement(16);
+        
+        scrollPane.getVerticalScrollBar().setUI(new Utils.ModernScrollBarUI());
+        scrollPane.getVerticalScrollBar().setPreferredSize(new Dimension(8, 0));
+
         add(scrollPane, BorderLayout.CENTER);
     }
 
@@ -323,30 +300,41 @@ public class ChiTietHoaDon extends JDialog {
                     
                     for (Object[] sp : dsSanPham) {
                         String tenSP = sp[1].toString().replaceAll("<[^>]*>", "").trim();
+                        
+                        // ĐOẠN FIX: Thay vì xóa trắng, ta viết tắt chữ Quà Tặng
+                        if (tenSP.contains("[QUÀ TẶNG]")) {
+                            tenSP = tenSP.replace("[QUÀ TẶNG]", "(TẶNG)").trim();
+                        }
+                        
                         if (tenSP.length() > 21) {
                             tenSP = tenSP.substring(0, 18) + "..."; 
                         }
-                        writer.printf("%-4s | %-21s | %-4s | %-10s\n", sp[3].toString(), tenSP, sp[2].toString(), sp[6].toString());
+                        
+                        // FIX 1: Đổi %-10s thành %10s để số tiền được CĂN PHẢI cực đẹp
+                        writer.printf("%-4s | %-21s | %-4s | %10s\n", sp[3].toString(), tenSP, sp[2].toString(), sp[6].toString());
                     }
                     
                     writer.println("------------------------------------------------");
                     
-                    // FIX LỖI KHOẢNG TRỐNG: Chỉnh lại format cho gọn gàng, sát số tiền hơn
-                    writer.printf("%-25s %20s\n", "Tạm tính:", String.format("%,d", tamTinhThucTe).replace(',', '.') + "đ");
-                    writer.printf("%-25s %20s\n", "VAT (5%):", "+" + String.format("%,d", vatThucTe).replace(',', '.') + "đ");
+                    // FIX 2: Đổi %20s thành %22s để tổng độ dài đúng = 48 ký tự, bo sát mép lề phải
+                    writer.printf("%-25s %22s\n", "Tạm tính:", String.format("%,d", tamTinhThucTe).replace(',', '.') + "đ");
+                    
+                    // Bỏ chữ 5% cứng nhắc đi vì VAT có thể là 8% hoặc 10% tùy món
+                    writer.printf("%-25s %22s\n", "VAT:", "+" + String.format("%,d", vatThucTe).replace(',', '.') + "đ");
+                    
                     if(tienGiamGiaThucTe > 0) {
-                        writer.printf("%-25s %20s\n", "Giảm khuyến mãi:", "-" + String.format("%,d", tienGiamGiaThucTe).replace(',', '.') + "đ");
+                        writer.printf("%-25s %22s\n", "Giảm khuyến mãi:", "-" + String.format("%,d", tienGiamGiaThucTe).replace(',', '.') + "đ");
                     }
                     if(tienGiamTuDiemThucTe > 0) {
-                        writer.printf("%-25s %20s\n", String.format("Dùng %d điểm:", tienGiamTuDiemThucTe/100), "-" + String.format("%,d", tienGiamTuDiemThucTe).replace(',', '.') + "đ");
+                        writer.printf("%-25s %22s\n", String.format("Dùng %d điểm:", tienGiamTuDiemThucTe/100), "-" + String.format("%,d", tienGiamTuDiemThucTe).replace(',', '.') + "đ");
                     }
                     writer.println("------------------------------------------------");
-                    writer.printf("%-25s %20s\n", "TỔNG THANH TOÁN:", tongTien);
+                    writer.printf("%-25s %22s\n", "TỔNG THANH TOÁN:", tongTien);
                     
                     // KHÔNG IN TIỀN KHÁCH ĐƯA NẾU LÀ HÓA ĐƠN HỦY
                     if (!isDaHuy && phuongThuc.equals("Tiền mặt")) {
-                        writer.printf("%-25s %20s\n", "TIỀN KHÁCH ĐƯA:", String.format("%,d", tienKhachDuaThucTe).replace(',', '.') + "đ");
-                        writer.printf("%-25s %20s\n", "TIỀN THỐI LẠI:", String.format("%,d", tienThoiThucTe).replace(',', '.') + "đ");
+                        writer.printf("%-25s %22s\n", "TIỀN KHÁCH ĐƯA:", String.format("%,d", tienKhachDuaThucTe).replace(',', '.') + "đ");
+                        writer.printf("%-25s %22s\n", "TIỀN THỐI LẠI:", String.format("%,d", tienThoiThucTe).replace(',', '.') + "đ");
                     }
                     writer.println("================================================");
                     JOptionPane.showMessageDialog(this, "Đã xuất file hóa đơn thành công!");
@@ -455,29 +443,99 @@ public class ChiTietHoaDon extends JDialog {
     }
 
     private JPanel createProductTablePanel() {
-        JPanel pnl = new JPanel(new BorderLayout(0, 5)); pnl.setBackground(Color.WHITE);
-        JLabel lblTitle = new JLabel("DANH SÁCH SẢN PHẨM"); lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 11)); lblTitle.setForeground(textGray);
+        JPanel pnl = new JPanel(new BorderLayout(0, 5)); 
+        pnl.setBackground(Color.WHITE);
+        JLabel lblTitle = new JLabel("DANH SÁCH SẢN PHẨM"); 
+        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 11)); 
+        lblTitle.setForeground(textGray);
         pnl.add(lblTitle, BorderLayout.NORTH);
 
+        // 1. Định nghĩa các cột hiển thị
         String[] cols = {"STT", "Tên sản phẩm", "ĐVT", "SL", "Đơn giá", "VAT", "Thành tiền"};
         Object[][] data = new Object[dsSanPham.size()][7];
-        for (int i = 0; i < dsSanPham.size(); i++) { data[i] = dsSanPham.get(i); }
+        
+        // 2. Đổ dữ liệu từ danh sách vào mảng (Vá lỗi lệch cột)
+        for (int i = 0; i < dsSanPham.size(); i++) { 
+            Object[] rowData = dsSanPham.get(i);
+            data[i][0] = i + 1;             // STT
+            data[i][1] = rowData[1];         // Tên sản phẩm (Có thể chứa tag [QUÀ TẶNG])
+            data[i][2] = rowData[2];         // ĐVT
+            data[i][3] = rowData[3];         // SL
+            data[i][4] = rowData[4];         // Đơn giá
+            data[i][5] = rowData[5];         // VAT
+            data[i][6] = rowData[6];         // Thành tiền
+        }
 
-        DefaultTableModel model = new DefaultTableModel(data, cols) { public boolean isCellEditable(int r, int c) { return false; } };
+        DefaultTableModel model = new DefaultTableModel(data, cols) { 
+            @Override public boolean isCellEditable(int r, int c) { return false; } 
+        };
+        
         JTable table = new JTable(model);
-        table.setRowHeight(45); table.setShowGrid(false); table.setIntercellSpacing(new Dimension(0, 0)); table.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        JTableHeader header = table.getTableHeader(); header.setBackground(Color.decode("#E0F2FE")); header.setFont(new Font("Segoe UI", Font.BOLD, 12)); header.setBorder(null);
+        table.setRowHeight(40); 
+        table.setShowGrid(false); 
+        table.setIntercellSpacing(new Dimension(0, 0)); 
+        table.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        
+        // 3. Làm đẹp Header
+        JTableHeader header = table.getTableHeader(); 
+        header.setBackground(Color.decode("#F1F5F9")); 
+        header.setForeground(textDark);
+        header.setFont(new Font("Segoe UI", Font.BOLD, 12)); 
+        header.setPreferredSize(new Dimension(0, 35));
+        header.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, borderGray));
 
-        DefaultTableCellRenderer center = new DefaultTableCellRenderer(); center.setHorizontalAlignment(JLabel.CENTER);
-        DefaultTableCellRenderer right = new DefaultTableCellRenderer(); right.setHorizontalAlignment(JLabel.RIGHT);
-        table.getColumnModel().getColumn(0).setCellRenderer(center); table.getColumnModel().getColumn(2).setCellRenderer(center);
-        table.getColumnModel().getColumn(3).setCellRenderer(center); table.getColumnModel().getColumn(4).setCellRenderer(right);
-        table.getColumnModel().getColumn(5).setCellRenderer(center); table.getColumnModel().getColumn(6).setCellRenderer(right);
-        table.getColumnModel().getColumn(0).setPreferredWidth(30); table.getColumnModel().getColumn(1).setPreferredWidth(220);
+        // 4. 🔥 QUAN TRỌNG: Hiển thị Icon cho hàng Quà Tặng
+        table.getColumnModel().getColumn(1).setCellRenderer(new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable t, Object value, boolean isS, boolean hasF, int r, int c) {
+                JLabel lbl = (JLabel) super.getTableCellRendererComponent(t, value, isS, hasF, r, c);
+                String text = (value != null) ? value.toString() : "";
+                
+                // Nếu tên sản phẩm chứa chữ [QUÀ TẶNG]
+                if (text.contains("[QUÀ TẶNG]") || text.contains("QUÀ TẶNG")) {
+                    // Xóa chữ để hiện tên SP cho gọn
+                    lbl.setText(text.replace("[QUÀ TẶNG]", "").trim());
+                    // Dùng icon QUA_TANG sếp đã thêm vào MenuIcon
+                    lbl.setIcon(new MenuIcon("QUA_TANG", 16)); 
+                    lbl.setForeground(Color.decode("#DC2626")); // Chữ màu đỏ đậm
+                    lbl.setFont(new Font("Segoe UI", Font.BOLD, 13));
+                } else {
+                    lbl.setIcon(null);
+                    lbl.setForeground(textDark);
+                    lbl.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+                }
+                lbl.setBorder(BorderFactory.createEmptyBorder(0, 10, 0, 0));
+                return lbl;
+            }
+        });
 
-        JScrollPane sp = new JScrollPane(table); sp.getViewport().setBackground(Color.WHITE); sp.setBorder(null); sp.setPreferredSize(new Dimension(650, 120)); 
-        sp.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_NEVER); sp.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-        pnl.add(sp, BorderLayout.CENTER); return pnl;
+        // 5. Căn lề các cột còn lại
+        DefaultTableCellRenderer center = new DefaultTableCellRenderer(); 
+        center.setHorizontalAlignment(JLabel.CENTER);
+        DefaultTableCellRenderer right = new DefaultTableCellRenderer(); 
+        right.setHorizontalAlignment(JLabel.RIGHT);
+        
+        table.getColumnModel().getColumn(0).setCellRenderer(center);
+        table.getColumnModel().getColumn(2).setCellRenderer(center);
+        table.getColumnModel().getColumn(3).setCellRenderer(center);
+        table.getColumnModel().getColumn(4).setCellRenderer(right);
+        table.getColumnModel().getColumn(5).setCellRenderer(center);
+        table.getColumnModel().getColumn(6).setCellRenderer(right);
+
+        // Chỉnh độ rộng cột
+        table.getColumnModel().getColumn(0).setPreferredWidth(40);
+        table.getColumnModel().getColumn(1).setPreferredWidth(300);
+
+        JScrollPane sp = new JScrollPane(table); 
+        sp.getViewport().setBackground(Color.WHITE); 
+        sp.setBorder(BorderFactory.createLineBorder(borderGray));
+        
+        // Tự động chỉnh chiều cao bảng theo số lượng SP (tối đa 5 dòng)
+        int tableHeight = Math.min(table.getRowCount() * 40, 200) + 40; 
+        sp.setPreferredSize(new Dimension(850, tableHeight)); 
+
+        pnl.add(sp, BorderLayout.CENTER); 
+        return pnl;
     }
 
     private JPanel createSummaryPanel(String phuongThuc) {
