@@ -351,28 +351,46 @@ public class ManHinhDangNhap extends JFrame {
                             UserSession.getInstance().setTaiKhoan(tk);
 
                             if (!UserSession.getInstance().isAdmin()) {
-                                DialogMoCa dlg = new DialogMoCa(ManHinhDangNhap.this);
-                                dlg.setVisible(true);
-                                if (!dlg.isConfirmed()) {
-                                    UserSession.getInstance().logout();
-                                    return;
-                                }
-                                UserSession.getInstance().setLoaiCa(dlg.getSelectedCa());
-                                UserSession.getInstance().setTienDauCa(dlg.getTongTienDauCa());
-
-                                Entity.CaLamViec ca = new Entity.CaLamViec();
-                                ca.setId("Ca-" + System.currentTimeMillis());
-                                ca.setNhanVienId(tk.getNhanVienId());
-                                ca.setThoiGianBatDau(java.time.LocalDateTime.now());
-                                ca.setTienDauCa(dlg.getTongTienDauCa());
-                                ca.setTienHeThongGhiNhan(0); 
-                                ca.setTienKetCa(0);
+                            	String maNV = tk.getNhanVienId().getNhanVien();
                                 
-                                // GỌI BUS THAY VÌ DAO
-                                new BUS_CaLamViec().themCa(ca); 
-                                UserSession.getInstance().setCaHienTai(ca);
-                            }
+                                BUS_CaLamViec busCa = new BUS_CaLamViec();
+                                // Kiểm tra xem dưới DB có ca nào của NV này chưa kết thúc không
+                                Entity.CaLamViec caDangMo = busCa.getCaHienTai(maNV);
 
+                                if (caDangMo != null) {
+                                    JOptionPane.showMessageDialog(ManHinhDangNhap.this, 
+                                        "Phát hiện ca làm việc chưa kết thúc.\nHệ thống sẽ tiếp tục ca làm việc trước đó của bạn!", 
+                                        "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+                                    
+                                    UserSession.getInstance().setCaHienTai(caDangMo);
+                                    UserSession.getInstance().setTienDauCa((long) caDangMo.getTienDauCa());
+                                    UserSession.getInstance().setLoaiCa(caDangMo.getLoaiCa());
+                                    
+                                } else {
+                                    DialogMoCa dlg = new DialogMoCa(ManHinhDangNhap.this);
+                                    dlg.setVisible(true);
+                                    
+                                    if (!dlg.isConfirmed()) {
+                                        UserSession.getInstance().logout();
+                                        return;
+                                    }
+                                    
+                                    UserSession.getInstance().setLoaiCa(dlg.getSelectedCa());
+                                    UserSession.getInstance().setTienDauCa(dlg.getTongTienDauCa());
+
+                                    Entity.CaLamViec ca = new Entity.CaLamViec();
+                                    ca.setId("Ca-" + System.currentTimeMillis());
+                                    ca.setNhanVienId(tk.getNhanVienId());
+                                    ca.setThoiGianBatDau(java.time.LocalDateTime.now());
+                                    ca.setTienDauCa(dlg.getTongTienDauCa());
+                                    ca.setTienHeThongGhiNhan(0); 
+                                    ca.setTienKetCa(0);
+                                    
+                                    busCa.themCa(ca); 
+                                    UserSession.getInstance().setCaHienTai(ca);
+                                }
+                            }
+                            // --- KẾT THÚC LOGIC PHỤC HỒI CA ---
                             new MainDashboard().setVisible(true);
                             dispose();
 
@@ -549,7 +567,4 @@ public class ManHinhDangNhap extends JFrame {
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> new ManHinhDangNhap().setVisible(true));
     }
-//    public static void main(String[] args) {
-//        SwingUtilities.invokeLater(() -> new ManHinhDangNhap().setVisible(true));
-//    }
 }
