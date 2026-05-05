@@ -106,16 +106,6 @@ public class BUS_Kho {
             loHang.setTrangThai(suyRaTrangThai(loHang.getSoLuongLoHang(), loHang.getNgayHetHan()));
             boolean ok = daoLoHang.themLoHang(loHang);
 
-            if (ok) {
-                daoLoHang.ghiLogLoHang(
-                        "THEM_LO",
-                        loHang.getId(),
-                        loHang.getSoLoHang(),
-                        0,
-                        loHang.getSoLuongLoHang(),
-                        "Tạo lô mới"
-                );
-            }
             return ok;
         }
 
@@ -128,17 +118,6 @@ public class BUS_Kho {
 
         boolean ok = daoLoHang.khoiPhucVaCapNhatLoHang(loHang);
 
-        if (ok) {
-            daoLoHang.ghiLogLoHang(
-                    "TAI_SU_DUNG_LO_AN",
-                    loHang.getId(),
-                    loHang.getSoLoHang(),
-                    loCu.getSoLuongLoHang(),
-                    loHang.getSoLuongLoHang(),
-                    "Khôi phục và cập nhật lô ẩn"
-            );
-        }
-
         return ok;
     }
 
@@ -150,17 +129,6 @@ public class BUS_Kho {
         if (lo.getTrangThai() == TrangThaiLoHang.AN) return true;
 
         boolean ok = daoLoHang.anLoHang(maLoHang);
-
-        if (ok) {
-            daoLoHang.ghiLogLoHang(
-                    "AN_LO",
-                    lo.getId(),
-                    lo.getSoLoHang(),
-                    lo.getSoLuongLoHang(),
-                    lo.getSoLuongLoHang(),
-                    "Ẩn lô hàng"
-            );
-        }
 
         return ok;
     }
@@ -180,17 +148,6 @@ public class BUS_Kho {
 
         boolean ok = daoLoHang.khoiPhucLoHang(maLoHang);
 
-        if (ok) {
-            daoLoHang.ghiLogLoHang(
-                    "KHOI_PHUC_LO",
-                    lo.getId(),
-                    lo.getSoLoHang(),
-                    lo.getSoLuongLoHang(),
-                    lo.getSoLuongLoHang(),
-                    "Khôi phục lô hàng"
-            );
-        }
-
         return ok;
     }
 
@@ -202,17 +159,6 @@ public class BUS_Kho {
         if (lo == null) return false;
 
         boolean ok = daoLoHang.capNhatSoLuongVaTrangThaiLo(maLoHang, soLuongMoi);
-
-        if (ok) {
-            daoLoHang.ghiLogLoHang(
-                    "CAP_NHAT_SL_LO",
-                    lo.getId(),
-                    lo.getSoLoHang(),
-                    lo.getSoLuongLoHang(),
-                    soLuongMoi,
-                    "Cập nhật số lượng lô"
-            );
-        }
 
         return ok;
     }
@@ -230,16 +176,7 @@ public class BUS_Kho {
 
         boolean ok = daoLoHang.capNhatSoLuongVaTrangThaiLo(maLoHang, 0);
 
-        if (ok) {
-            daoLoHang.ghiLogLoHang(
-                    "LO_HET_HANG",
-                    lo.getId(),
-                    lo.getSoLoHang(),
-                    lo.getSoLuongLoHang(),
-                    0,
-                    "Lô chuyển hết hàng"
-            );
-        }
+       
 
         return ok;
     }
