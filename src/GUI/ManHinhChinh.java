@@ -122,11 +122,30 @@ public class ManHinhChinh extends JPanel {
         btnKet.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnKet.addActionListener(e -> openKetCaDialog());
 
+        // --- CODE MỚI: Thêm nút Nạp tiền quỹ ---
+        JButton btnNapTien = new JButton("Nạp quỹ");
+        btnNapTien.setIcon(new MenuIcon("ADD")); // Nhớ chuẩn bị icon "ADD" hoặc thay bằng icon cậu có
+        btnNapTien.setIconTextGap(6);
+        btnNapTien.setFont(new Font("Segoe UI", Font.BOLD, 11)); 
+        btnNapTien.setForeground(BLUE);
+        btnNapTien.setBackground(Color.WHITE); 
+        btnNapTien.setFocusPainted(false);
+        btnNapTien.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(BLUE, 1), new EmptyBorder(4, 10, 4, 10)));
+        btnNapTien.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnNapTien.addActionListener(e -> showNapTienDialog());
+
         if (UserSession.getInstance().isAdmin()) {
-            lblOn.setVisible(false); btnKet.setVisible(false);
+            lblOn.setVisible(false); 
+            btnNapTien.setVisible(false); // Quản lý không tự nạp cho ca của quản lý
+            btnKet.setVisible(false);
         }
-        right.add(lblOn); right.add(btnKet);
-        hdr.add(tabs, BorderLayout.WEST); hdr.add(right, BorderLayout.EAST);
+        
+        right.add(lblOn); 
+        right.add(btnNapTien); // Add nút nạp tiền vào UI
+        right.add(btnKet);
+        
+        hdr.add(tabs, BorderLayout.WEST); 
+        hdr.add(right, BorderLayout.EAST);
         return hdr;
     }
 
@@ -488,6 +507,115 @@ public class ManHinhChinh extends JPanel {
 
         Window pw = SwingUtilities.getWindowAncestor(this);
         hienThiPhieuXacNhanCuoi((Frame) pw, ca, maNV, dtCa, tmCa);
+    }
+    // ── FORM QUẢN LÝ NẠP THÊM TIỀN ───────────────────────────────────────
+    private void showNapTienDialog() {
+        Window pw = SwingUtilities.getWindowAncestor(this);
+        JDialog dlg = new JDialog((Frame) pw, "Quản lý nạp thêm quỹ", true);
+        dlg.setSize(400, 320);
+        dlg.setLocationRelativeTo(pw);
+        dlg.setLayout(new BorderLayout());
+        dlg.setResizable(false);
+        dlg.getContentPane().setBackground(Color.WHITE);
+
+        // Header
+        JLabel lblTitle = new JLabel("XÁC THỰC QUẢN LÝ NẠP QUỸ", SwingConstants.CENTER);
+        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        lblTitle.setForeground(BLUE);
+        lblTitle.setBorder(new EmptyBorder(15, 0, 15, 0));
+        dlg.add(lblTitle, BorderLayout.NORTH);
+
+        // Body
+        JPanel body = new JPanel(new GridLayout(6, 1, 0, 5));
+        body.setBackground(Color.WHITE);
+        body.setBorder(new EmptyBorder(0, 30, 10, 30));
+
+        body.add(new JLabel("Tài khoản Quản lý:"));
+        JTextField txtUser = new JTextField();
+        txtUser.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        body.add(txtUser);
+
+        body.add(new JLabel("Mật khẩu:"));
+        JPasswordField txtPass = new JPasswordField();
+        txtPass.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        body.add(txtPass);
+
+        body.add(new JLabel("Số tiền nạp thêm (VND):"));
+        JTextField txtTien = new JTextField();
+        txtTien.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        txtTien.setForeground(GREEN);
+        body.add(txtTien);
+
+        dlg.add(body, BorderLayout.CENTER);
+
+        // Footer
+        JPanel ft = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
+        ft.setBackground(Color.WHITE);
+        ft.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, Color.decode("#DFE3E8")));
+
+        JButton btnHuy = new JButton("Hủy");
+        btnHuy.setBackground(Color.WHITE);
+        btnHuy.setFocusPainted(false);
+        btnHuy.addActionListener(e -> dlg.dispose());
+
+        JButton btnXacNhan = new JButton("Xác nhận nạp");
+        btnXacNhan.setBackground(BLUE);
+        btnXacNhan.setForeground(Color.WHITE);
+        btnXacNhan.setFocusPainted(false);
+
+        btnXacNhan.addActionListener(e -> {
+            String u = txtUser.getText().trim();
+            String p = new String(txtPass.getPassword()).trim();
+            String tStr = txtTien.getText().replaceAll("[^0-9]", "");
+
+            if (u.isEmpty() || p.isEmpty() || tStr.isEmpty()) {
+                JOptionPane.showMessageDialog(dlg, "Vui lòng nhập đầy đủ thông tin!", "Lỗi", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            BUS.BUS_TaiKhoan busTk = new BUS.BUS_TaiKhoan();
+            
+            // 1. Dùng hàm authenticate của BUS_TaiKhoan để check pass băm
+            if (busTk.authenticate(u, p)) {
+                Entity.TaiKhoan tkAdmin = busTk.getTaiKhoanDayDu(u);
+                
+                // 2. Check xem có đúng là Quản lý không (VaiTro.ADMIN)
+                if (tkAdmin != null && tkAdmin.getVaiTro() == Enumeration.VaiTro.ADMIN) {
+                    long tienNap = Long.parseLong(tStr);
+                    long tienDauCaHienTai = UserSession.getInstance().getTienDauCa();
+                    long tienDauCaMoi = tienDauCaHienTai + tienNap;
+
+                    CaLamViec caHienTai = UserSession.getInstance().getCaHienTai();
+                    DAO.DAO_CaLamViec daoCa = new DAO.DAO_CaLamViec();
+                    
+                    // 3. Cập nhật xuống Database
+                    if (daoCa.capNhatTienDauCa(caHienTai.getId(), tienDauCaMoi)) {
+                        
+                        // Cập nhật Session & Object local
+                        UserSession.getInstance().setTienDauCa(tienDauCaMoi);
+                        caHienTai.setTienDauCa((double) tienDauCaMoi); 
+                        
+                        JOptionPane.showMessageDialog(dlg, "Nạp thành công " + formatMoney(tienNap) + " vào quỹ!\nTổng tiền quỹ hiện tại: " + formatMoney(tienDauCaMoi));
+                        dlg.dispose();
+                        
+                        // Chạy lại hàm load giao diện để cái Banner đầu ca nó đổi số tiền
+                        loadCardPanels(); 
+                    } else {
+                        JOptionPane.showMessageDialog(dlg, "Lỗi cập nhật Database!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+                    }
+                } else {
+                    JOptionPane.showMessageDialog(dlg, "Tài khoản này không có quyền Quản lý!", "Từ chối", JOptionPane.ERROR_MESSAGE);
+                }
+            } else {
+                JOptionPane.showMessageDialog(dlg, "Sai tài khoản hoặc mật khẩu Quản lý!", "Từ chối", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+
+        ft.add(btnHuy);
+        ft.add(btnXacNhan);
+        dlg.add(ft, BorderLayout.SOUTH);
+
+        dlg.setVisible(true);
     }
 
     // ── FORM XÁC NHẬN CUỐI CÙNG (GỌN GÀNG, TỰ ĐỘNG TÍNH) ───────────

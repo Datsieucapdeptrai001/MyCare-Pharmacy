@@ -103,4 +103,16 @@ public class DAO_CaLamViec {
         
         return ca;
     }
+    public boolean capNhatTienDauCa(String idCa, double tienDauCaMoi) {
+        String sql = "UPDATE CaLamViec SET tienDauCa = ? WHERE id = ?";
+        Connection con = ConnectDB.getInstance().getConnection();
+        try (PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setDouble(1, tienDauCaMoi);
+            ps.setString(2, idCa);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) { 
+            e.printStackTrace(); 
+            return false; 
+        }
+    }
 }
