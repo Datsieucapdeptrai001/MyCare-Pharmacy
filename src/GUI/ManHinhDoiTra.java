@@ -19,7 +19,9 @@ public class ManHinhDoiTra extends JPanel {
     private String filterStatus = "Tất cả";
     private JTextField txtSearch;
     private BUS_HoaDon busHD = new BUS_HoaDon();
-    
+    private JPanel pnlDetail;
+    private JLabel lblDetailTitle, lblDetailDate, lblDetailEmp, lblDetailTotal;
+    private JPanel pnlDetailProducts;
     public ManHinhDoiTra() {
         initUI();
         loadDataToTable();
