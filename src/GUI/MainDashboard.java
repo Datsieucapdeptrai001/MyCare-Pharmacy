@@ -340,12 +340,6 @@ public class MainDashboard extends JFrame {
         return null;
     }
 
-//    public static void main(String[] args) {
-//        SwingUtilities.invokeLater(() -> {
-//            ConnectDB.getInstance().connect();
-//            new MainDashboard().setVisible(true);
-//        });
-//    }
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
             ConnectDB.getInstance().connect();

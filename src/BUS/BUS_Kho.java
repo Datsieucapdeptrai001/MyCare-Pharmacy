@@ -57,7 +57,7 @@ public class BUS_Kho {
         if (maSP == null || maSP.trim().isEmpty() || soLuongCanXuat <= 0)
             throw new IllegalArgumentException("Mã sản phẩm hoặc số lượng cần xuất không hợp lệ.");
 
-        return daoLoHang.xuatKhoFEFO(maSP, soLuongCanXuat); // DAO lo hết
+        return daoLoHang.xuatKhoFEFO(maSP, soLuongCanXuat);
     }
 
     public boolean kiemKeKho() {
