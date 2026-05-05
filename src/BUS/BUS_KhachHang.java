@@ -59,7 +59,9 @@ public class BUS_KhachHang {
 
         return false;
     }
-
+    public KhachHang timKhachHangTheoMa(String id) {
+        return daoKhachHang.timKhachHangTheoMa(id);
+    }
     public List<KhachHang> traCuuKhachHang(String tuKhoa) {
         List<KhachHang> dsToanBo = daoKhachHang.getDSKhachHang();
         List<KhachHang> dsKetQua = new ArrayList<>();
