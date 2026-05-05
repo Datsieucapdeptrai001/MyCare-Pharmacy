@@ -600,15 +600,12 @@ class DialogThemNhanVien extends JDialog {
                 txtTenDangNhap.setText(tenDangNhap);
                 txtTenDangNhap.setForeground(Color.BLACK);
             }
-            if (matKhau != null && !matKhau.trim().isEmpty()) {
-                txtMatKhau.setText(matKhau);
-                txtMatKhau.setForeground(Color.BLACK);
+            
             }
             
             cboChucVu.setSelectedItem(chucVu);
             cboTrangThai.setSelectedItem(trangThai);
         }
-    }
 
     private void initUI(Frame parent) {
         setSize(580, 560);
@@ -692,7 +689,7 @@ class DialogThemNhanVien extends JDialog {
         pnlBody.add(txtTenDangNhap, gbc);
         
         gbc.gridx = 1;
-        txtMatKhau = createTextField("Nhập mật khẩu");
+        txtMatKhau = createTextField(editRow != -1 ? "(Để trống nếu không đổi)" : "Nhập mật khẩu");
         pnlBody.add(txtMatKhau, gbc);
 
         // Dòng 5: Trạng thái
@@ -751,11 +748,19 @@ class DialogThemNhanVien extends JDialog {
             if(email.equals("email@mycare.vn")) email = "";
             if(cchn.equals("CCHN-xxxx")) cchn = "";
             if(tenDangNhap.equals("Tên đăng nhập (viết liền)")) tenDangNhap = "";
-            if(matKhau.equals("Nhập mật khẩu")) matKhau = "";
+            if(matKhau.equals("Nhập mật khẩu") || matKhau.equals("(Để trống nếu không đổi)")) matKhau = "";
 
-            if (tenDangNhap.isEmpty() || matKhau.isEmpty() || hoten.isEmpty() || sdt.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "Vui lòng nhập đầy đủ các trường bắt buộc (Họ tên, SĐT, Tên đăng nhập, Mật khẩu)!", "Lỗi", JOptionPane.WARNING_MESSAGE);
-                return;
+            if (editRow == -1) { 
+                if (tenDangNhap.isEmpty() || matKhau.isEmpty() || hoten.isEmpty() || sdt.isEmpty()) {
+                    JOptionPane.showMessageDialog(this, "Vui lòng nhập đầy đủ các trường bắt buộc (Họ tên, SĐT, Tên đăng nhập, Mật khẩu)!", "Lỗi", JOptionPane.WARNING_MESSAGE);
+                    return;
+                }
+            } 
+            else { 
+                if (tenDangNhap.isEmpty() || hoten.isEmpty() || sdt.isEmpty()) {
+                    JOptionPane.showMessageDialog(this, "Vui lòng nhập đầy đủ Họ tên, SĐT và Tên đăng nhập!", "Lỗi", JOptionPane.WARNING_MESSAGE);
+                    return;
+                }
             }
 
             // Gán Enumeration

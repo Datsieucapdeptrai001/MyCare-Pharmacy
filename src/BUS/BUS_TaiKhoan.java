@@ -36,16 +36,22 @@ public class BUS_TaiKhoan {
         return false;
     }
     
-    // 3. TỰ ĐỘNG BĂM KHI SỬA TÀI KHOẢN TỪ FORM QUẢN LÝ
+ // 3. TỰ ĐỘNG BĂM KHI SỬA TÀI KHOẢN TỪ FORM QUẢN LÝ
     public boolean capNhatTaiKhoanTheoMaNV(String maNV, String tenDangNhap, String matKhauNhapVao) {
         String matKhauLuuDB = matKhauNhapVao;
-        if (matKhauNhapVao != null && !matKhauNhapVao.isEmpty()) {
-            // [FIX LỖI 2]: Chuỗi PBKDF2 của hệ thống dài khoảng 69 ký tự. 
-            // Nếu pass nhập vào < 60 ký tự -> Chắc chắn là pass thô -> Mang đi băm!
-            if (matKhauNhapVao.length() < 60) {
-                matKhauLuuDB = PasswordUtils.hashPassword(matKhauNhapVao);
+        
+        // Quản lý để trống ô mật khẩu -> Giữ nguyên pass cũ
+        if (matKhauNhapVao == null || matKhauNhapVao.isEmpty()) {
+            TaiKhoan tkCu = daoTaiKhoan.layTaiKhoanTheoMaNV(maNV);
+            if (tkCu != null) {
+                matKhauLuuDB = tkCu.getMatKhau();
             }
+        } 
+        // Quản lý gõ pass mới (Độ dài < 60 ký tự) -> Mang đi băm!
+        else if (matKhauNhapVao.length() < 60) {
+            matKhauLuuDB = PasswordUtils.hashPassword(matKhauNhapVao);
         }
+        
         return daoTaiKhoan.capNhatTaiKhoanTheoMaNV(maNV, tenDangNhap, matKhauLuuDB);
     }
 
