@@ -383,25 +383,6 @@ public class DAO_LoHang {
         }
     }
 
-    public boolean ghiLogLoHang(String hanhDong, String loHangId, String soLoHang, int soLuongCu, int soLuongMoi, String ghiChu) {
-        String sql = "INSERT INTO LogLoHang(hanhDong, loHangId, soLoHang, soLuongCu, soLuongMoi, ghiChu) " +
-                     "VALUES (?, ?, ?, ?, ?, ?)";
-
-        Connection con = ConnectDB.getInstance().getConnection();
-
-        try (PreparedStatement pst = con.prepareStatement(sql)) {
-            pst.setString(1, hanhDong);
-            pst.setString(2, loHangId);
-            pst.setString(3, soLoHang);
-            pst.setInt(4, soLuongCu);
-            pst.setInt(5, soLuongMoi);
-            pst.setString(6, ghiChu);
-            return pst.executeUpdate() > 0;
-        } catch (Exception e) {
-            e.printStackTrace();
-            return false;
-        }
-    }
 
     private LoHang mapLoHang(ResultSet rs) throws SQLException {
         LoHang lh = new LoHang();

@@ -168,7 +168,7 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         try {
             dsTatCaSanPham = busSanPham.getDsThuoc();
         } catch (Exception e) {
-            e.printStackTrace();
+            // Ignored
         }
 
         JPanel comboSanPhamWrapper = createProductSelectorField();
@@ -467,8 +467,13 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 0));
         actions.setOpaque(false);
 
-        JButton btnCancel = createSecondaryButton("✖  Hủy");
-        JButton btnSubmit = createPrimaryButton("✔  Lưu lô hàng");
+        JButton btnCancel = createSecondaryButton("Hủy");
+        btnCancel.setIcon(new MenuIcon("CANCEL"));
+        btnCancel.setIconTextGap(8); 
+
+        JButton btnSubmit = createPrimaryButton("Lưu lô hàng");
+        btnSubmit.setIcon(new MenuIcon("SAVE"));
+        btnSubmit.setIconTextGap(8); 
 
         btnCancel.addActionListener(e -> dispose());
         btnSubmit.addActionListener(e -> handleSubmit());
@@ -661,12 +666,13 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         boolean laTaiSuDung = busKho.tonTaiMaLoDaAn(maLo);
         boolean success = busKho.themLoHang(loHang);
 
+        // ĐÃ SỬA: Thay JOptionPane bằng hàm hiển thị thông báo xịn xò
         if (success) {
-            JOptionPane.showMessageDialog(this, laTaiSuDung ? "Đã tái sử dụng lô hàng đã ẩn!" : "Thêm lô hàng thành công!");
+            showModernAlert(laTaiSuDung ? "Đã tái sử dụng lô hàng đã ẩn!" : "Thêm lô hàng thành công!", true);
             if (reloadListener != null) reloadListener.onReload();
             dispose();
         } else {
-            JOptionPane.showMessageDialog(this, "Lưu lô hàng thất bại!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+            showModernAlert("Lưu lô hàng thất bại!", false);
         }
     }
 
@@ -685,7 +691,9 @@ public class ManHinhNhapLoHangMoi extends JDialog {
                 }
             }
             return String.format("LH-%04d", max + 1);
-        } catch (Exception e) { e.printStackTrace(); }
+        } catch (Exception e) { 
+            // Ignored 
+        }
         return "LH-0001";
     }
 
@@ -769,8 +777,72 @@ public class ManHinhNhapLoHangMoi extends JDialog {
     }
 
     // ==============================================================================
-    // BẢN THU GỌN: ÉP MỎNG PADDING, MARGIN ĐỂ LỊCH LỌT THỎM BÊN DƯỚI TEXTBOX
+    // HÀM TẠO POPUP THÔNG BÁO XỊN XÒ THAY THẾ JOPTIONPANE
     // ==============================================================================
+    private void showModernAlert(String message, boolean isSuccess) {
+        JDialog dialog = new JDialog(this, "Thông báo", Dialog.ModalityType.APPLICATION_MODAL);
+        dialog.setUndecorated(true);
+        dialog.setSize(380, 160);
+        dialog.setLocationRelativeTo(this);
+        dialog.setShape(new RoundRectangle2D.Double(0, 0, dialog.getWidth(), dialog.getHeight(), 16, 16));
+
+        Color themeColor = isSuccess ? SUCCESS : DANGER;
+
+        JPanel root = new JPanel(new BorderLayout());
+        root.setBackground(Color.WHITE);
+        root.setBorder(BorderFactory.createLineBorder(themeColor, 2)); // Viền ngoài màu theo trạng thái
+
+        // Phần nội dung (Icon + Chữ)
+        JPanel pnlContent = new JPanel(new FlowLayout(FlowLayout.CENTER, 16, 35));
+        pnlContent.setBackground(Color.WHITE);
+
+        JLabel lblIcon = new JLabel(new MenuIcon(isSuccess ? "CHECK_CIRCLE" : "WARNING"));
+        lblIcon.setForeground(themeColor);
+
+        JLabel lblMessage = new JLabel(message);
+        lblMessage.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        lblMessage.setForeground(TEXT_PRIMARY);
+
+        pnlContent.add(lblIcon);
+        pnlContent.add(lblMessage);
+
+        // Phần nút bấm
+        JPanel pnlBottom = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 16));
+        pnlBottom.setBackground(Color.WHITE);
+
+        JButton btnOk = new JButton("OK");
+        btnOk.setFocusPainted(false);
+        btnOk.setForeground(Color.WHITE);
+        btnOk.setBackground(themeColor);
+        btnOk.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btnOk.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btnOk.setBorder(new EmptyBorder(8, 40, 8, 40)); 
+        btnOk.setOpaque(true);
+        
+        btnOk.addMouseListener(new MouseAdapter() {
+            @Override public void mouseEntered(MouseEvent e) { 
+                btnOk.setBackground(isSuccess ? SUCCESS_HOVER : DANGER.darker()); 
+            }
+            @Override public void mouseExited(MouseEvent e) { 
+                btnOk.setBackground(themeColor); 
+            }
+        });
+        
+        btnOk.addActionListener(e -> dialog.dispose());
+        
+        // Bấm Enter/Esc là đóng thông báo luôn cho lẹ
+        dialog.getRootPane().setDefaultButton(btnOk);
+        dialog.getRootPane().registerKeyboardAction(e -> dialog.dispose(), KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), JComponent.WHEN_IN_FOCUSED_WINDOW);
+
+        pnlBottom.add(btnOk);
+
+        root.add(pnlContent, BorderLayout.CENTER);
+        root.add(pnlBottom, BorderLayout.SOUTH);
+
+        dialog.setContentPane(root);
+        dialog.setVisible(true);
+    }
+
     private class CustomDatePicker extends JDialog {
         private int month = LocalDate.now().getMonthValue();
         private int year = LocalDate.now().getYear();
@@ -790,7 +862,6 @@ public class ManHinhNhapLoHangMoi extends JDialog {
             rootPanel.setBorder(BorderFactory.createLineBorder(PRIMARY, 2));
             setContentPane(rootPanel);
 
-            // THU GỌN: Giảm khoảng cách phần Header (chỗ 2 cái nút và combobox)
             JPanel header = new JPanel(new FlowLayout(FlowLayout.CENTER, 4, 4));
             header.setBackground(Color.WHITE);
 
@@ -837,14 +908,12 @@ public class ManHinhNhapLoHangMoi extends JDialog {
             String[] days = {"T2", "T3", "T4", "T5", "T6", "T7", "CN"};
             for (String d : days) {
                 JLabel lb = new JLabel(d, SwingConstants.CENTER);
-                // THU GỌN: Giảm font size và padding của hàng Thứ (T2->CN)
                 lb.setFont(new Font("Segoe UI", Font.BOLD, 11)); 
                 lb.setForeground(TEXT_SECONDARY);
                 lb.setBorder(new EmptyBorder(2, 0, 2, 0));
                 weekHeader.add(lb);
             }
 
-            // THU GỌN: Giảm gap giữa các ô vuông (còn 2px) và viền bao quanh lưới ngày (còn 4px)
             pnlDays = new JPanel(new GridLayout(0, 7, 2, 2));
             pnlDays.setBackground(Color.WHITE);
             pnlDays.setBorder(new EmptyBorder(4, 4, 4, 4));
@@ -875,7 +944,6 @@ public class ManHinhNhapLoHangMoi extends JDialog {
             pack();
             Point screenLoc = invoker.getLocationOnScreen();
             int popupHeight = getHeight();
-            // THU GỌN: Khoảng cách rớt xuống ôm sát input hơn (+2 thay vì +4)
             int yPos = screenLoc.y + invoker.getHeight() + 2;
 
             try {
@@ -894,13 +962,11 @@ public class ManHinhNhapLoHangMoi extends JDialog {
             btn.setBorderPainted(false);
             btn.setContentAreaFilled(false);
             btn.setForeground(PRIMARY);
-            // THU GỌN: Font mũi tên nhỏ gọn lại
             btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
             btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         }
 
         private void styleComboBox(JComboBox<?> cb) {
-            // THU GỌN: Chữ bên trong ComboBox gọn lại
             cb.setFont(new Font("Segoe UI", Font.BOLD, 12));
             cb.setForeground(PRIMARY);
             cb.setBackground(Color.WHITE);
@@ -942,7 +1008,6 @@ public class ManHinhNhapLoHangMoi extends JDialog {
                 LocalDate date = LocalDate.of(year, month, day);
                 JButton btnDay = new JButton(String.valueOf(day));
                 btnDay.setFocusPainted(false);
-                // THU GỌN: Thu nhỏ chữ và ép mỏng lề bên trong các nút ngày
                 btnDay.setFont(new Font("Segoe UI", Font.BOLD, 11));
                 btnDay.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
                 btnDay.setMargin(new Insets(2, 2, 2, 2));
