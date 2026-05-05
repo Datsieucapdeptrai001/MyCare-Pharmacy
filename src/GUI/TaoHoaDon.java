@@ -12,17 +12,16 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import DAO.DAO_SanPham;
-import DAO.DAO_ChiTietHoaDon;
-import DAO.DAO_HoaDon;
 import Entity.HoaDon;
 import Entity.ChiTietHoaDon;
 import Entity.SanPham;
 import Entity.DonViDoLuong;
 import Entity.NhanVien;
 import Entity.KhachHang;
-import DAO.DAO_KhachHang;
-
+import BUS.BUS_SanPham;
+import BUS.BUS_ChiTietHoaDon;
+import BUS.BUS_HoaDon;
+import BUS.BUS_KhachHang;
 public class TaoHoaDon extends JDialog {
     // --- BIẾN QUẢN LÝ UI KHÁCH HÀNG ---
     private JPanel pnlInputFields, pnlLinkedCustomer;
@@ -3557,8 +3556,8 @@ txtSearchProduct.addKeyListener(new java.awt.event.KeyAdapter() {
             productModel.setRowCount(0); 
             
             try {
-                DAO_ChiTietHoaDon daoCT = new DAO_ChiTietHoaDon();
-                java.util.List<Object[]> dsMonHang = daoCT.layDuLieuChoTaoHoaDon(maHoaDon);
+            	BUS.BUS_ChiTietHoaDon busCT = new BUS.BUS_ChiTietHoaDon();
+            	java.util.List<Object[]> dsMonHang = busCT.layDuLieuDoiTra(maHoaDon);
                 
                 int colCount = Math.max(productModel.getColumnCount(), 11); 
                 
@@ -3592,13 +3591,13 @@ txtSearchProduct.addKeyListener(new java.awt.event.KeyAdapter() {
                     productModel.addRow(fullRow);
                 }
                 
-                DAO_HoaDon daoHD = new DAO_HoaDon();
-                HoaDon hdGoc = daoHD.layHoaDonTheoMa(maHoaDon);
+                BUS.BUS_HoaDon busHD = new BUS.BUS_HoaDon();
+                HoaDon hdGoc = busHD.layHoaDonTheoMa(maHoaDon);
                 
                 if (hdGoc != null) {
                     if (hdGoc.getKhachHangId() != null && hdGoc.getKhachHangId().getId() != null) {
-                        DAO_KhachHang daoKH = new DAO_KhachHang();
-                        KhachHang kh = daoKH.timKhachHangTheoMa(hdGoc.getKhachHangId().getId());
+                    	BUS.BUS_KhachHang busKH = new BUS.BUS_KhachHang();
+                    	KhachHang kh = busKH.timKhachHangTheoMa(hdGoc.getKhachHangId().getId());
                         
                         if (kh != null) {
                             this.isCustomerLinked = true;

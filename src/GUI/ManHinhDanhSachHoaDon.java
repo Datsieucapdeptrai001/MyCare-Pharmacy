@@ -10,7 +10,7 @@ import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.List;
-import DAO.DAO_HoaDon;
+import BUS.BUS_HoaDon;
 import Utils.MenuIcon;
 import Utils.ModernScrollBarUI;
 import Utils.UserSession;
@@ -20,11 +20,15 @@ public class ManHinhDanhSachHoaDon extends JPanel {
     private DefaultTableModel model;
     private JPanel pnlCards;
     private JTextField txtSearch;
-    private DAO_HoaDon dao_HoaDon;
+    private BUS_HoaDon bus_HoaDon;
     private TableRowSorter<DefaultTableModel> rowSorter; 
 
     public ManHinhDanhSachHoaDon() {
-        dao_HoaDon = new DAO_HoaDon();
+        // XÓA DÒNG NÀY: dao_HoaDon = new DAO_HoaDon();
+        
+        // THAY BẰNG DÒNG NÀY:
+        bus_HoaDon = new BUS_HoaDon(); 
+        
         initUI();
         loadData();
     }
@@ -173,10 +177,12 @@ public class ManHinhDanhSachHoaDon extends JPanel {
         List<Object[]> ds;
         
         if (isAdmin) {
-            ds = dao_HoaDon.layDanhSachHoaDonChoBang();
+            // SỬA dao_HoaDon THÀNH bus_HoaDon
+            ds = bus_HoaDon.layDanhSachHoaDonChoBang();
         } else {
             String maNV = UserSession.getInstance().getMaNhanVien(); 
-            ds = dao_HoaDon.layDanhSachHoaDonCuaNhanVien(maNV);
+            // SỬA dao_HoaDon THÀNH bus_HoaDon
+            ds = bus_HoaDon.layDanhSachHoaDonCuaNhanVien(maNV);
         }
         
         int countSuccess = 0, countPending = 0, countCancel = 0, countReturn = 0;
