@@ -376,23 +376,22 @@ public class DAO_ThongKe {
 
     public List<Object[]> getHoaDonGanDayTrongCa(String maNV) {
         List<Object[]> list = new ArrayList<>();
-        // Nếu maNV có giá trị thì lọc theo NV đó, nếu rỗng thì lấy TẤT CẢ
         String cond = (maNV != null && !maNV.isEmpty()) ? " AND hd.nhanVienId='" + maNV + "'" : "";
         
-        String sql = "SELECT hd.id, ISNULL(kh.hoVaTen, N'Khách lẻ') AS kh, ISNULL(SUM(ct.soLuong * dvl.gia), 0) AS tong " +
+        String sql = "SELECT hd.id, ISNULL(kh.hoVaTen, N'Khách lẻ') AS kh, ISNULL(SUM(ct.soLuong * dvl.gia), 0) AS tong, hd.phuongThucThanhToan AS pttt " +
                      "FROM HoaDon hd " +
                      "LEFT JOIN KhachHang kh ON hd.khachHangId = kh.id " +
                      "LEFT JOIN ChiTietHoaDon ct ON hd.id = ct.hoaDonId " +
                      "LEFT JOIN DonViDoLuong dvl ON ct.donViDoLuongId = dvl.id AND ct.sanPhamId = dvl.sanPhamId " +
                      "WHERE hd.loaiHD = 'BAN_HANG' AND CONVERT(DATE, hd.ngayLapHD) = CONVERT(DATE, GETDATE()) " + cond +
-                     " GROUP BY hd.id, kh.hoVaTen, hd.ngayLapHD ORDER BY hd.ngayLapHD DESC";
+                     " GROUP BY hd.id, kh.hoVaTen, hd.phuongThucThanhToan, hd.ngayLapHD ORDER BY hd.ngayLapHD DESC";
                      
         try (Statement st = getConn().createStatement(); ResultSet rs = st.executeQuery(sql)) {
-            while (rs.next()) list.add(new Object[]{rs.getString("id"), rs.getString("kh"), rs.getDouble("tong")});
+            while (rs.next()) list.add(new Object[]{rs.getString("id"), rs.getString("kh"), rs.getDouble("tong"), rs.getString("pttt")});
         } catch (Exception e) { e.printStackTrace(); }
         return list;
     }
-
+    
     public List<Object[]> getTop4SanPhamSapHetHang() {
         List<Object[]> list = new ArrayList<>();
         String sql = "SELECT TOP 4 sp.ten, ISNULL(SUM(lh.soLuongLoHang),0) ton FROM SanPham sp LEFT JOIN LoHang lh ON sp.id=lh.sanPhamId GROUP BY sp.ten ORDER BY ton ASC";
@@ -549,14 +548,14 @@ public class DAO_ThongKe {
         List<Object[]> list = new ArrayList<>();
         String cond = (maNV != null && !maNV.isEmpty()) ? " AND hd.nhanVienId='" + maNV + "'" : "";
         cond += getCaCondition(ca);
-        String sql = "SELECT hd.id, ISNULL(kh.hoVaTen, N'Khách lẻ') AS kh, ISNULL(SUM(ct.soLuong * dvl.gia), 0) AS tong " +
+        String sql = "SELECT hd.id, ISNULL(kh.hoVaTen, N'Khách lẻ') AS kh, ISNULL(SUM(ct.soLuong * dvl.gia), 0) AS tong, hd.phuongThucThanhToan AS pttt " +
                      "FROM HoaDon hd LEFT JOIN KhachHang kh ON hd.khachHangId = kh.id " +
                      "LEFT JOIN ChiTietHoaDon ct ON hd.id = ct.hoaDonId " +
                      "LEFT JOIN DonViDoLuong dvl ON ct.donViDoLuongId = dvl.id AND ct.sanPhamId = dvl.sanPhamId " +
                      "WHERE hd.loaiHD = 'BAN_HANG' AND CONVERT(DATE, hd.ngayLapHD) = CONVERT(DATE, GETDATE()) " + cond +
-                     " GROUP BY hd.id, kh.hoVaTen, hd.ngayLapHD ORDER BY hd.ngayLapHD DESC";
+                     " GROUP BY hd.id, kh.hoVaTen, hd.phuongThucThanhToan, hd.ngayLapHD ORDER BY hd.ngayLapHD DESC";
         try (Statement st = getConn().createStatement(); ResultSet rs = st.executeQuery(sql)) {
-            while (rs.next()) list.add(new Object[]{rs.getString("id"), rs.getString("kh"), rs.getDouble("tong")});
+            while (rs.next()) list.add(new Object[]{rs.getString("id"), rs.getString("kh"), rs.getDouble("tong"), rs.getString("pttt")});
         } catch (Exception e) { e.printStackTrace(); }
         return list;
     }

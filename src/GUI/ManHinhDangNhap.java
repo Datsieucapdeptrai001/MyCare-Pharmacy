@@ -385,12 +385,13 @@ public class ManHinhDangNhap extends JFrame {
                                     ca.setTienDauCa(dlg.getTongTienDauCa());
                                     ca.setTienHeThongGhiNhan(0); 
                                     ca.setTienKetCa(0);
+                                    ca.setLoaiCa(dlg.getSelectedCa());
                                     
                                     busCa.themCa(ca); 
                                     UserSession.getInstance().setCaHienTai(ca);
                                 }
                             }
-                            // --- KẾT THÚC LOGIC PHỤC HỒI CA ---
+                            // KẾT THÚC LOGIC PHỤC HỒI CA
                             new MainDashboard().setVisible(true);
                             dispose();
 

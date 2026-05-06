@@ -349,12 +349,24 @@ public class ManHinhChinh extends JPanel {
         JLabel lbI = new JLabel("Hóa đơn đã lọc theo Ca/NV"); lbI.setFont(new Font("Segoe UI", Font.BOLD, 12));
         inv.add(lbI, BorderLayout.NORTH);
 
-        DefaultTableModel mInv = new DefaultTableModel(new String[]{"Mã HĐ", "Khách hàng", "Tiền", "TT"}, 0) { public boolean isCellEditable(int r, int c) { return false; } };
+        DefaultTableModel mInv = new DefaultTableModel(new String[]{"Mã HĐ", "Khách hàng", "Tiền", "Thanh toán"}, 0) { public boolean isCellEditable(int r, int c) { return false; } };
         JTable tInv = new JTable(mInv); tInv.setFont(new Font("Segoe UI", Font.PLAIN, 11)); tInv.setRowHeight(26); tInv.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 11));
 
         List<Object[]> hdList = busThongKe.getHoaDonGanDayTrongCa(filterMaNV, filterCa);
         if (hdList != null && !hdList.isEmpty()) {
-            for (Object[] o : hdList) mInv.addRow(new Object[]{o[0], o[1], formatMoney((long)((double)o[2])), "✓"});
+            for (Object[] o : hdList) {
+                // Giả sử o[3] đang chứa giá trị "TIEN_MAT" hoặc "CHUYEN_KHOAN_NGAN_HANG" từ Database
+                String ptThanhToan = (String) o[3]; 
+                String hienThiTT = "Khác";
+                
+                if ("TIEN_MAT".equalsIgnoreCase(ptThanhToan)) {
+                    hienThiTT = "Tiền mặt";
+                } else if ("CHUYEN_KHOAN_NGAN_HANG".equalsIgnoreCase(ptThanhToan) || "CHUYEN_KHOAN".equalsIgnoreCase(ptThanhToan)) {
+                    hienThiTT = "Chuyển khoản";
+                }
+                
+                mInv.addRow(new Object[]{o[0], o[1], formatMoney((long)((double)o[2])), hienThiTT});
+            }
         } else {
             mInv.addRow(new Object[]{"—", "Không có hóa đơn", "—", "—"});
         }

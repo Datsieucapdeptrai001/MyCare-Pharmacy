@@ -299,74 +299,77 @@ public class DialogMoCa extends JDialog {
         return pnl;
     }
 
-    // ─── STEP 2: Xem lại & Xác nhận ─────────────────────────
     private JPanel buildStep2() {
         JPanel pnl = new JPanel(new BorderLayout());
         pnl.setBackground(COLOR_BG);
-        pnl.setBorder(new EmptyBorder(24, 24, 16, 24));
+        pnl.setBorder(new EmptyBorder(10, 24, 10, 24)); 
 
-        JPanel card = new JPanel() {
+        JPanel card = new JPanel(new BorderLayout()) {
             @Override protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                // teal tint border
+                // Khôi phục màu nền xanh ngọc nhạt nguyên bản
                 g2.setColor(Color.decode("#E6F7F2"));
-                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 14, 14);
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 16, 16);
                 g2.setColor(Color.decode("#B2DFDB"));
-                g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 14, 14);
+                g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 16, 16);
                 g2.dispose();
             }
         };
-        card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
         card.setOpaque(false);
-        card.setBorder(new EmptyBorder(20, 24, 20, 24));
-        card.setAlignmentX(LEFT_ALIGNMENT);
+        card.setBorder(new EmptyBorder(12, 20, 12, 20)); 
 
-        // Title + time
+        JPanel contentWrap = new JPanel();
+        contentWrap.setLayout(new BoxLayout(contentWrap, BoxLayout.Y_AXIS));
+        contentWrap.setOpaque(false);
+
         JLabel lblTitle = new JLabel("PHIẾU XÁC NHẬN MỞ CA", SwingConstants.CENTER);
-        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 16));
-        lblTitle.setForeground(Color.decode("#006250"));
-        lblTitle.setAlignmentX(LEFT_ALIGNMENT);
-        lblTitle.setMaximumSize(new Dimension(Integer.MAX_VALUE, 28));
-        card.add(lblTitle);
+        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 17));
+        lblTitle.setForeground(Color.decode("#006250")); // Màu chữ đậm hơn cho nổi
+        lblTitle.setAlignmentX(CENTER_ALIGNMENT);
+        contentWrap.add(lblTitle);
+        contentWrap.add(Box.createRigidArea(new Dimension(0, 4)));
 
-        JLabel lblTime = new JLabel(new SimpleDateFormat("dd/MM/yyyy HH:mm").format(new Date()),
-                SwingConstants.LEFT);
-        lblTime.setIcon(new MenuIcon("CLOCK"));
-        lblTime.setIconTextGap(6);
+        JLabel lblTime = new JLabel(new SimpleDateFormat("dd/MM/yyyy HH:mm").format(new Date()));
         lblTime.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         lblTime.setForeground(Color.decode("#00A76F"));
-        lblTime.setAlignmentX(LEFT_ALIGNMENT);
-        lblTime.setMaximumSize(new Dimension(Integer.MAX_VALUE, 22));
-        card.add(Box.createRigidArea(new Dimension(0, 4)));
-        card.add(lblTime);
-        card.add(Box.createRigidArea(new Dimension(0, 16)));
+        lblTime.setAlignmentX(CENTER_ALIGNMENT);
+        contentWrap.add(lblTime);
+        contentWrap.add(Box.createRigidArea(new Dimension(0, 8))); 
+        contentWrap.add(createDashedLine());
+        contentWrap.add(Box.createRigidArea(new Dimension(0, 8))); 
 
-        // Nhân viên
-        JPanel nvRow = buildConfirmRow("USER", UserSession.getInstance().getTenHienThi()
-                + "  •  " + UserSession.getInstance().getChucVuHienThi());
-        nvRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 50));
-        card.add(nvRow);
-        card.add(Box.createRigidArea(new Dimension(0, 10)));
+        JPanel nvRow = buildConfirmRow("USER", UserSession.getInstance().getTenHienThi() + "  •  " + UserSession.getInstance().getChucVuHienThi());
+        nvRow.setMaximumSize(new Dimension(450, 40)); 
+        nvRow.setAlignmentX(CENTER_ALIGNMENT);
+        contentWrap.add(nvRow);
+        contentWrap.add(Box.createRigidArea(new Dimension(0, 8))); 
 
-        // Ca làm
         JPanel caRow = buildConfirmCaRow();
-        caRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 58));
-        card.add(caRow);
-        card.add(Box.createRigidArea(new Dimension(0, 10)));
+        caRow.setMaximumSize(new Dimension(450, 40)); 
+        caRow.setAlignmentX(CENTER_ALIGNMENT);
+        contentWrap.add(caRow);
+        contentWrap.add(Box.createRigidArea(new Dimension(0, 8))); 
+        
+        contentWrap.add(createDashedLine());
+        contentWrap.add(Box.createRigidArea(new Dimension(0, 8))); 
 
-        // Chi tiết mệnh giá
+        JPanel chiTietHeader = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        chiTietHeader.setOpaque(false);
+        chiTietHeader.setMaximumSize(new Dimension(450, 20)); 
+        chiTietHeader.setAlignmentX(CENTER_ALIGNMENT);
+        
         JLabel lblChiTiet = new JLabel("CHI TIẾT MỆNH GIÁ:");
-        lblChiTiet.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        lblChiTiet.setFont(new Font("Segoe UI", Font.BOLD, 12));
         lblChiTiet.setForeground(Color.GRAY);
-        lblChiTiet.setAlignmentX(LEFT_ALIGNMENT);
-        card.add(lblChiTiet);
-        card.add(Box.createRigidArea(new Dimension(0, 6)));
+        chiTietHeader.add(lblChiTiet);
+        contentWrap.add(chiTietHeader);
+        contentWrap.add(Box.createRigidArea(new Dimension(0, 4))); 
 
         JPanel chiTietPanel = new JPanel();
         chiTietPanel.setLayout(new BoxLayout(chiTietPanel, BoxLayout.Y_AXIS));
-        chiTietPanel.setOpaque(false);
-        chiTietPanel.setAlignmentX(LEFT_ALIGNMENT);
+        chiTietPanel.setOpaque(false); // Sét trong suốt để hiện màu nền xanh ngọc của thẻ
+        chiTietPanel.setAlignmentX(CENTER_ALIGNMENT);
 
         long tongTien = 0;
         for (int i = 0; i < 9; i++) {
@@ -374,41 +377,56 @@ public class DialogMoCa extends JDialog {
                 long subtotal = soLuong[i] * MENH_GIA[i];
                 tongTien += subtotal;
                 JPanel row = new JPanel(new BorderLayout());
-                row.setOpaque(false);
-                row.setAlignmentX(LEFT_ALIGNMENT);
+                row.setOpaque(false); // Sét trong suốt
+                row.setMaximumSize(new Dimension(450, 22)); 
+                
                 JLabel lLeft = new JLabel(MENH_GIA_STR[i] + "  ×  " + soLuong[i] + " tờ");
-                lLeft.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+                lLeft.setFont(new Font("Segoe UI", Font.PLAIN, 13)); 
+                lLeft.setForeground(Color.decode("#212B36"));
+                
                 JLabel lRight = new JLabel(formatMoney(subtotal), SwingConstants.RIGHT);
-                lRight.setFont(new Font("Segoe UI", Font.BOLD, 13));
+                lRight.setFont(new Font("Segoe UI", Font.BOLD, 13)); 
+                lRight.setForeground(Color.decode("#212B36"));
+                
                 row.add(lLeft, BorderLayout.WEST);
                 row.add(lRight, BorderLayout.EAST);
                 chiTietPanel.add(row);
-                chiTietPanel.add(Box.createRigidArea(new Dimension(0, 3)));
+                chiTietPanel.add(Box.createRigidArea(new Dimension(0, 4))); 
             }
         }
+        
         if (tongTien == 0) {
             JLabel empty = new JLabel("(Không có tiền mặt đầu ca)");
             empty.setForeground(Color.GRAY);
-            empty.setFont(new Font("Segoe UI", Font.ITALIC, 12));
+            empty.setFont(new Font("Segoe UI", Font.ITALIC, 13));
+            empty.setAlignmentX(CENTER_ALIGNMENT);
             chiTietPanel.add(empty);
         }
-        card.add(chiTietPanel);
 
-        // Total
-        card.add(Box.createRigidArea(new Dimension(0, 12)));
+        contentWrap.add(chiTietPanel);
+
+        contentWrap.add(Box.createRigidArea(new Dimension(0, 6))); 
+        contentWrap.add(createDashedLine());
+        contentWrap.add(Box.createRigidArea(new Dimension(0, 8))); 
+
         JPanel totalRow = new JPanel(new BorderLayout());
         totalRow.setOpaque(false);
-        totalRow.setAlignmentX(LEFT_ALIGNMENT);
-        totalRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
+        totalRow.setAlignmentX(CENTER_ALIGNMENT);
+        totalRow.setMaximumSize(new Dimension(450, 35)); 
+        
         JLabel lTotal  = new JLabel("TỔNG TIỀN ĐẦU CA:");
-        lTotal.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        lTotal.setFont(new Font("Segoe UI", Font.BOLD, 13)); 
+        lTotal.setForeground(Color.decode("#212B36"));
+        
         JLabel lAmount = new JLabel(formatMoney(tongTien), SwingConstants.RIGHT);
-        lAmount.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        lAmount.setFont(new Font("Segoe UI", Font.BOLD, 22)); 
         lAmount.setForeground(Color.decode("#006250"));
+        
         totalRow.add(lTotal, BorderLayout.WEST);
         totalRow.add(lAmount, BorderLayout.EAST);
-        card.add(totalRow);
+        contentWrap.add(totalRow);
 
+        card.add(contentWrap, BorderLayout.NORTH);
         pnl.add(card, BorderLayout.CENTER);
         return pnl;
     }
@@ -713,5 +731,20 @@ public class DialogMoCa extends JDialog {
         long t = 0;
         for (int i = 0; i < 9; i++) t += soLuong[i] * MENH_GIA[i];
         return t;
+    }
+ // Tao duong ke dut (dashed line) giong bien lai
+    private JComponent createDashedLine() {
+        JPanel line = new JPanel() {
+            @Override protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setColor(COLOR_BORDER);
+                g2.setStroke(new BasicStroke(1, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL, 0, new float[]{5}, 0));
+                g2.drawLine(0, getHeight() / 2, getWidth(), getHeight() / 2);
+                g2.dispose();
+            }
+        };
+        line.setOpaque(false);
+        line.setMaximumSize(new Dimension(Integer.MAX_VALUE, 10));
+        return line;
     }
 }
