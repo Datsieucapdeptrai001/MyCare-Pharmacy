@@ -44,12 +44,12 @@ public class DAO_ChiTietHoaDon {
         List<Object[]> list = new ArrayList<>();
         Connection con = ConnectDB.getInstance().getConnection();
         
-        // SỬA LỖI 3: Dùng LEFT JOIN để an toàn tuyệt đối, kể cả khi donViDoLuong bị Null
+        // ĐÃ FIX: JOIN trực tiếp từ ct.donViDoLuongId sang dv.id
         String sql = "SELECT sp.ten AS TenSP, dv.ten AS DVT, ct.soLuong AS SL, " +
                      "dv.gia AS DonGia, sp.thueVAT AS VAT " +
                      "FROM ChiTietHoaDon ct " +
                      "JOIN SanPham sp ON ct.sanPhamId = sp.id " +
-                     "LEFT JOIN DonViDoLuong dv ON sp.id = dv.sanPhamId " + 
+                     "LEFT JOIN DonViDoLuong dv ON ct.donViDoLuongId = dv.id " + 
                      "WHERE ct.hoaDonId = ?";
                      
         try (PreparedStatement pstm = con.prepareStatement(sql)) {
@@ -127,14 +127,13 @@ public class DAO_ChiTietHoaDon {
         List<Object[]> list = new ArrayList<>();
         Connection con = ConnectDB.getInstance().getConnection(); 
         
-        // SỬA LỖI 4: Dùng LEFT JOIN và Tách riêng Sản phẩm "TRA_LAI" không để lọt sản phẩm "DOI_LAY" vào bảng trả
+        // ĐÃ FIX: JOIN trực tiếp từ ct.donViDoLuongId sang dv.id
         String sql = "SELECT sp.ten AS TenSP, dv.ten AS DVT, ct.soLuong AS SL, dv.gia AS DonGia " +
                      "FROM ChiTietHoaDon ct " +
                      "JOIN SanPham sp ON ct.sanPhamId = sp.id " +
-                     "LEFT JOIN DonViDoLuong dv ON sp.id = dv.sanPhamId " +
+                     "LEFT JOIN DonViDoLuong dv ON ct.donViDoLuongId = dv.id " +
                      "WHERE ct.hoaDonId = ?";
 
-        // Nếu là phiếu DTH, chỉ bóc các SP khách trả lại (TRA_LAI) lên bảng chính
         if (maHD != null && maHD.startsWith("DTH")) {
             sql += " AND ct.ghiChu = 'TRA_LAI'";
         }

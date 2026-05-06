@@ -30,6 +30,7 @@ public class ManHinhBanHang extends JPanel {
     
 
     public ManHinhBanHang() {
+    	busHoaDon = new BUS_HoaDon();
         initUI();
         loadData();
     }
@@ -157,6 +158,9 @@ public class ManHinhBanHang extends JPanel {
             Window p = SwingUtilities.getWindowAncestor(this);
             TaoHoaDon dialogTaoHoaDon = new TaoHoaDon((Frame) p, model); 
             dialogTaoHoaDon.setVisible(true);
+            
+            // THÊM DÒNG NÀY: Làm mới bảng ngay sau khi đóng form Tạo Hóa Đơn
+            loadData(); 
         });
 
         pnlActions.add(pnlSearchWrapper);
@@ -279,6 +283,7 @@ public class ManHinhBanHang extends JPanel {
                     if (status.equals("Đang xử lý")) {
                         TaoHoaDon dialogSua = new TaoHoaDon((Frame) p, model, modelRow, maHoaDon, khach, sdt); 
                         dialogSua.setVisible(true);
+                        loadData();
                     } else {
                         // 2. THAY ĐỔI: Sử dụng BUS thay vì trực tiếp gọi DAO
                         BUS.BUS_ChiTietHoaDon busCTHD = new BUS.BUS_ChiTietHoaDon();
@@ -357,14 +362,14 @@ public class ManHinhBanHang extends JPanel {
         });
     }
 
-    private void loadData() {
+    public void loadData() {
         model.setRowCount(0);
-        BUS_HoaDon bus = new BUS_HoaDon(); 
-        List<Object[]> dsHoaDon = bus.layDanhSachHoaDonChoBang();
-        
-        if (dsHoaDon != null) {
-            for (Object[] row : dsHoaDon) {
-                model.insertRow(0, row);
+        List<Object[]> ds = busHoaDon.layDanhSachHoaDonChoBang();
+        for (Object[] row : ds) {
+            String trangThai = row[6].toString();
+            // CHỈ HIỂN THỊ: Hoàn thành, Đang xử lý, Đã hủy (Loại bỏ Đổi trả)
+            if (!trangThai.equals("Đổi trả")) { 
+                model.addRow(row);
             }
         }
     }

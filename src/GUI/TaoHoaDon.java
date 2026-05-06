@@ -1024,10 +1024,11 @@ public class TaoHoaDon extends JDialog {
         
         // FIX: Đóng Connection và Statement đúng chuẩn
         String sqlLoad = "SELECT k.id, h.loaiHinhThuc, h.giaTri AS mucGiam, ISNULL(d.giaTri, 0) AS donToiThieu " +
-                         "FROM KhuyenMai k " +
-                         "JOIN HinhThucKhuyenMai h ON k.id = h.khuyenMaiId " +
-                         "LEFT JOIN DieuKienKhuyenMai d ON k.id = d.khuyenMaiId " +
-                         "WHERE k.ngayBatDau <= GETDATE() AND k.ngayKetThuc >= GETDATE()";
+                "FROM KhuyenMai k " +
+                "JOIN HinhThucKhuyenMai h ON k.id = h.khuyenMaiId " +
+                "LEFT JOIN DieuKienKhuyenMai d ON k.id = d.khuyenMaiId " +
+                "WHERE k.trangThai = 1 " + // <--- SỬA THÀNH SỐ 1 Ở ĐÂY
+                "AND k.ngayBatDau <= GETDATE() AND k.ngayKetThuc >= GETDATE()";
                          
         try (java.sql.Connection con = ConnectDB.getInstance().getConnection();
              java.sql.Statement st = con.createStatement();
@@ -1083,10 +1084,11 @@ public class TaoHoaDon extends JDialog {
 
          long tongTienDK = tamTinh + vat; 
          String sqlCheck = "SELECT h.loaiHinhThuc, h.giaTri AS mucGiam, ISNULL(d.giaTri, 0) AS donToiThieu " +
-                           "FROM KhuyenMai k " +
-                           "JOIN HinhThucKhuyenMai h ON k.id = h.khuyenMaiId " +
-                           "LEFT JOIN DieuKienKhuyenMai d ON k.id = d.khuyenMaiId " +
-                           "WHERE k.id = ? AND k.ngayBatDau <= GETDATE() AND k.ngayKetThuc >= GETDATE()";
+                 "FROM KhuyenMai k " +
+                 "JOIN HinhThucKhuyenMai h ON k.id = h.khuyenMaiId " +
+                 "LEFT JOIN DieuKienKhuyenMai d ON k.id = d.khuyenMaiId " +
+                 "WHERE k.id = ? AND k.trangThai = 1 " + // <--- SỬA THÀNH SỐ 1 Ở ĐÂY
+                 "AND k.ngayBatDau <= GETDATE() AND k.ngayKetThuc >= GETDATE()";
          
          try (java.sql.Connection con = ConnectDB.getInstance().getConnection();
               java.sql.PreparedStatement pst = con.prepareStatement(sqlCheck)) {
@@ -2109,9 +2111,10 @@ public class TaoHoaDon extends JDialog {
         tbl.getColumnModel().getColumn(2).setCellRenderer(new SpinnerCellRenderer());
         class SpinnerCellEditor extends javax.swing.AbstractCellEditor implements javax.swing.table.TableCellEditor {
             private JSpinner spinner;
+            private boolean isSettingValue = false; // THÊM CỜ NÀY ĐỂ KHÓA SỰ KIỆN
 
             public SpinnerCellEditor() {
-                // FIX 1: Tăng giới hạn tối đa lên 999.999 để bạn gõ số lượng lớn (như 10010) không bị lỗi
+                // Mở rộng giới hạn lên 999999
                 spinner = new JSpinner(new SpinnerNumberModel(1, 1, 999999, 1));
                 JSpinner.DefaultEditor editor = (JSpinner.DefaultEditor) spinner.getEditor();
                 editor.getTextField().setHorizontalAlignment(JTextField.CENTER);
@@ -2125,7 +2128,6 @@ public class TaoHoaDon extends JDialog {
                     public void keyTyped(java.awt.event.KeyEvent e) {
                         if (!Character.isDigit(e.getKeyChar())) e.consume(); 
                     }
-                    // FIX 2: Đã xóa sự kiện keyReleased ở đây để chống lỗi nhảy con trỏ chuột khi gõ
                 });
 
                 editor.getTextField().addFocusListener(new java.awt.event.FocusAdapter() {
@@ -2134,8 +2136,9 @@ public class TaoHoaDon extends JDialog {
                     }
                 });
                 
-                // Khi bấm mũi tên Tăng/Giảm thì vẫn cho phép tiền nhảy ngay lập tức
+                // SỬA LẠI SỰ KIỆN NÀY: Chặn ChangeListener nếu hệ thống đang tự set giá trị
                 spinner.addChangeListener(e -> {
+                    if (isSettingValue) return; // CHẶN HIỆN TƯỢNG BÓNG MA
                     int row = tbl.getEditingRow();
                     if (row >= 0) {
                         productModel.setValueAt(spinner.getValue().toString(), row, 2);
@@ -2145,7 +2148,14 @@ public class TaoHoaDon extends JDialog {
 
             @Override
             public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row, int column) {
-                try { spinner.setValue(Integer.parseInt(value.toString())); } catch (Exception e) { spinner.setValue(1); }
+                isSettingValue = true; // KHÓA SỰ KIỆN TRƯỚC KHI SET VALUE
+                try { 
+                    spinner.setValue(Integer.parseInt(value.toString())); 
+                } catch (Exception e) { 
+                    spinner.setValue(1); 
+                }
+                isSettingValue = false; // MỞ KHÓA SAU KHI SET XONG
+                
                 ((JSpinner.DefaultEditor) spinner.getEditor()).getTextField().setBackground(Color.WHITE);
                 return spinner;
             }
@@ -2153,12 +2163,10 @@ public class TaoHoaDon extends JDialog {
             @Override
             public Object getCellEditorValue() { return spinner.getValue().toString(); }
 
-            // --- FIX 3: BỔ SUNG HÀM NÀY ---
-            // Đảm bảo khi bạn gõ phím xong (Bấm Enter hoặc Click ra chỗ khác), số đang gõ dở sẽ được lưu lại
             @Override
             public boolean stopCellEditing() {
                 try {
-                    spinner.commitEdit(); // Ép JSpinner ghi nhận số vừa gõ
+                    spinner.commitEdit();
                 } catch (java.text.ParseException e) {
                     // Bỏ qua lỗi parse
                 }
@@ -3780,11 +3788,8 @@ txtSearchProduct.addKeyListener(new java.awt.event.KeyAdapter() {
         };
         worker.execute();
     }
- // ========================================================================
-    // MODULE: TỰ ĐỘNG ÁP DỤNG ĐA KHUYẾN MÃI & THÊM QUÀ TẶNG (BẢN FINAL CHUẨN)
-    // ========================================================================
     private void tuDongApDungKhuyenMai() {
-        // [1] DỌN DẸP QUÀ TẶNG CŨ TRÊN GIAO DIỆN CHỐNG LẶP
+        // [1] DỌN DẸP QUÀ TẶNG CŨ TRÊN GIAO DIỆN
         isTableUpdating = true; 
         for (int i = productModel.getRowCount() - 1; i >= 0; i--) {
             String ten = productModel.getValueAt(i, 0).toString();
@@ -3821,19 +3826,20 @@ txtSearchProduct.addKeyListener(new java.awt.event.KeyAdapter() {
         long tongTienGiamDoc = 0;
         java.util.List<Object[]> danhSachQuaTang = new java.util.ArrayList<>();
         java.util.List<String> danhSachMaDaDuyet = new java.util.ArrayList<>();
-
-        // Tách các mã đang áp dụng ra để duyệt (nếu có)
+        
+        // Khóa chặn lặp mã (1 Voucher chỉ được quét 1 lần)
+        java.util.Set<String> processedPromoIds = new java.util.HashSet<>();
         String[] cacMaDangApDung = this.maKhuyenMaiApDung != null ? this.maKhuyenMaiApDung.split(",") : new String[0];
 
-        // [3] KẾT NỐI DB VÀ KIỂM TRA ĐIỀU KIỆN 
         String sql = "SELECT k.id, h.loaiHinhThuc, h.giaTri AS mucGiam, ISNULL(d.giaTri, 0) AS donToiThieu, " +
-                     "ISNULL(h.slYeuCau, 0) AS slYeuCau, ISNULL(h.spYeuCau, '') AS spYeuCau, ISNULL(h.dvdlYeuCau, '') AS dvdlYeuCau, " +
-                     "ISNULL(h.slTang, 0) AS slTang, ISNULL(h.spTang, '') AS spTang, ISNULL(h.dvdlTang, '') AS dvdlTang " +
-                     "FROM KhuyenMai k " +
-                     "JOIN HinhThucKhuyenMai h ON k.id = h.khuyenMaiId " +
-                     "LEFT JOIN DieuKienKhuyenMai d ON k.id = d.khuyenMaiId " +
-                     "WHERE CAST(k.ngayBatDau AS DATE) <= CAST(GETDATE() AS DATE) " +
-                     "AND (k.ngayKetThuc IS NULL OR CAST(k.ngayKetThuc AS DATE) >= CAST(GETDATE() AS DATE))";
+                "ISNULL(h.slYeuCau, 0) AS slYeuCau, ISNULL(h.spYeuCau, '') AS spYeuCau, ISNULL(h.dvdlYeuCau, '') AS dvdlYeuCau, " +
+                "ISNULL(h.slTang, 0) AS slTang, ISNULL(h.spTang, '') AS spTang, ISNULL(h.dvdlTang, '') AS dvdlTang " +
+                "FROM KhuyenMai k " +
+                "JOIN HinhThucKhuyenMai h ON k.id = h.khuyenMaiId " +
+                "LEFT JOIN DieuKienKhuyenMai d ON k.id = d.khuyenMaiId " +
+                "WHERE k.trangThai = 1 " + // <--- SỬA THÀNH SỐ 1 Ở ĐÂY
+                "AND CAST(k.ngayBatDau AS DATE) <= CAST(GETDATE() AS DATE) " +
+                "AND (k.ngayKetThuc IS NULL OR CAST(k.ngayKetThuc AS DATE) >= CAST(GETDATE() AS DATE))";
 
         try (java.sql.Connection con = ConnectDB.getInstance().getConnection();
              java.sql.PreparedStatement pst = con.prepareStatement(sql);
@@ -3842,7 +3848,9 @@ txtSearchProduct.addKeyListener(new java.awt.event.KeyAdapter() {
             while (rs.next()) {
                 String maKM = rs.getString("id").trim();
                 
-                // --- CHỐT CHẶN MỚI: Chỉ duyệt các mã mà người dùng ĐÃ BẤM CHỌN hoặc GÕ VÀO ---
+                // Tránh lỗi lặp vô tận từ SQL Join
+                if (processedPromoIds.contains(maKM)) continue;
+
                 boolean isMaDuocPhepDuyet = false;
                 for (String m : cacMaDangApDung) {
                     if (m.trim().equalsIgnoreCase(maKM)) {
@@ -3851,7 +3859,6 @@ txtSearchProduct.addKeyListener(new java.awt.event.KeyAdapter() {
                     }
                 }
                 
-                // Nếu mã này đang hợp lệ trong thời gian nhưng người dùng chưa click chọn -> Bỏ qua
                 if (!isMaDuocPhepDuyet) continue;
 
                 String loaiKM = rs.getString("loaiHinhThuc") != null ? rs.getString("loaiHinhThuc").toUpperCase() : "";
@@ -3860,62 +3867,79 @@ txtSearchProduct.addKeyListener(new java.awt.event.KeyAdapter() {
                 
                 int slYeuCau = rs.getInt("slYeuCau");
                 String spYeuCau = rs.getString("spYeuCau").trim();
-                String dvdlYeuCau = rs.getString("dvdlYeuCau").trim(); 
+                String dvdlYeuCau = rs.getString("dvdlYeuCau") == null ? "" : rs.getString("dvdlYeuCau").trim(); 
                 
                 int slTang = rs.getInt("slTang");
                 String spTang = rs.getString("spTang").trim();
-                String dvdlTang = rs.getString("dvdlTang").trim();
+                String dvdlTang = rs.getString("dvdlTang") == null ? "" : rs.getString("dvdlTang").trim();
 
                 boolean duDieuKien = false;
                 long soLuongTangThucTe = 0;
+                String unitToGive = dvdlTang;
 
-                int slSanPhamYeuCauThucTe = 0;
                 if (!spYeuCau.isEmpty()) {
+                    int slSanPhamYeuCauThucTe = 0;
+                    String matchedUnit = "Hộp";
+                    
                     for (int i = 0; i < productModel.getRowCount(); i++) {
                         String tenSpTrongBang = productModel.getValueAt(i, 0).toString();
                         String dvtTrongBang = productModel.getValueAt(i, 1).toString();
                         
                         if (!tenSpTrongBang.startsWith("[QUÀ TẶNG]") && tenSpTrongBang.toLowerCase().contains(spYeuCau.toLowerCase())) {
+                            // Nếu DB không yêu cầu ĐVT cụ thể (Rỗng), HOẶC ĐVT khớp -> Được tính
                             if (dvdlYeuCau.isEmpty() || dvtTrongBang.equalsIgnoreCase(dvdlYeuCau)) {
                                 slSanPhamYeuCauThucTe += Integer.parseInt(productModel.getValueAt(i, 2).toString());
+                                matchedUnit = dvtTrongBang; 
                             }
                         }
                     }
-                } else {
-                    slSanPhamYeuCauThucTe = tongSoLuongSP_ThucTe; 
-                }
-
-                // KIỂM TRA CHẶT CHẼ HƠN
-                if (loaiKM.contains("SAN_PHAM_KEM_THEO") || loaiKM.contains("TANG")) {
+                    
                     if (slYeuCau > 0 && slSanPhamYeuCauThucTe >= slYeuCau) {
                         duDieuKien = true;
-                        long heSo = slSanPhamYeuCauThucTe / slYeuCau; 
-                        soLuongTangThucTe = (slTang > 0 ? slTang : 1) * heSo;
-                    } else if (donToiThieu > 0 && tongTienBill >= donToiThieu) {
-                        duDieuKien = true;
-                        soLuongTangThucTe = (slTang > 0 ? slTang : 1);
-                    }
-                    
-                    if (duDieuKien && soLuongTangThucTe > 0 && !spTang.isEmpty()) {
-                        danhSachMaDaDuyet.add(maKM);
-                        danhSachQuaTang.add(new Object[]{
-                            "[QUÀ TẶNG] " + spTang, 
-                            dvdlTang.isEmpty() ? "Hộp" : dvdlTang, 
-                            String.valueOf(soLuongTangThucTe), 
-                            "0đ", "0%", "0đ", "Hàng tặng"
-                        });
+                        
+                        // FIX TẬN GỐC TẠI ĐÂY: KHÔNG NHÂN HỆ SỐ NỮA (Chỉ lấy đúng Số lượng tặng, mua 8 tặng 1)
+                        soLuongTangThucTe = (slTang > 0 ? slTang : 1); 
+                        
+                        // FIX ĐVT: Nếu DB không set ĐVT tặng, thì khách mua ĐVT nào, tặng đúng ĐVT đó (Viên -> Viên)
+                        if (unitToGive.isEmpty()) unitToGive = matchedUnit; 
                     }
                 } else {
                     if (donToiThieu > 0 && tongTienBill >= donToiThieu) {
                         duDieuKien = true;
-                    } else if (slYeuCau > 0 && slSanPhamYeuCauThucTe >= slYeuCau) {
-                        duDieuKien = true;
-                    } else if (donToiThieu == 0 && slYeuCau == 0) {
-                        duDieuKien = true; // Trường hợp mã free (không đk)
+                        soLuongTangThucTe = (slTang > 0 ? slTang : 1);
+                        if (unitToGive.isEmpty()) unitToGive = "Hộp";
+                    } else if (slYeuCau == 0 && donToiThieu == 0) {
+                        duDieuKien = true; // Mã Free
+                        soLuongTangThucTe = (slTang > 0 ? slTang : 1);
+                        if (unitToGive.isEmpty()) unitToGive = "Hộp";
                     }
+                }
 
-                    if (duDieuKien) {
-                        danhSachMaDaDuyet.add(maKM);
+                if (duDieuKien) {
+                    processedPromoIds.add(maKM);
+                    danhSachMaDaDuyet.add(maKM);
+
+                    if (loaiKM.contains("SAN_PHAM_KEM_THEO") || loaiKM.contains("TANG")) {
+                        if (soLuongTangThucTe > 0 && !spTang.isEmpty()) {
+                            // Gộp quà nếu trùng Tên + ĐVT
+                            boolean daGop = false;
+                            for (Object[] q : danhSachQuaTang) {
+                                if (q[0].toString().equals("[QUÀ TẶNG] " + spTang) && q[1].toString().equals(unitToGive)) {
+                                    long oldSL = Long.parseLong(q[2].toString());
+                                    q[2] = String.valueOf(oldSL + soLuongTangThucTe);
+                                    daGop = true; break;
+                                }
+                            }
+                            if (!daGop) {
+                                danhSachQuaTang.add(new Object[]{
+                                    "[QUÀ TẶNG] " + spTang, 
+                                    unitToGive, 
+                                    String.valueOf(soLuongTangThucTe), 
+                                    "0đ", "0%", "0đ", "Hàng tặng"
+                                });
+                            }
+                        }
+                    } else {
                         if (loaiKM.contains("PHAN_TRAM") || loaiKM.contains("%")) {
                             tongTienGiamDoc += (long) (tongTienBill * (giaTriGiam / 100.0));
                         } else {
@@ -3937,8 +3961,6 @@ txtSearchProduct.addKeyListener(new java.awt.event.KeyAdapter() {
 
         // [5] CẬP NHẬT UI
         this.tienGiamGia = tongTienGiamDoc;
-        
-        // Cập nhật lại danh sách mã thực sự đạt điều kiện
         this.maKhuyenMaiApDung = String.join(", ", danhSachMaDaDuyet);
 
         if (!danhSachMaDaDuyet.isEmpty()) {
@@ -3950,7 +3972,6 @@ txtSearchProduct.addKeyListener(new java.awt.event.KeyAdapter() {
                 new javax.swing.border.EmptyBorder(0, 10, 0, 10)
             ));
         } else {
-            // ĐOẠN NÀY QUAN TRỌNG: Nếu nhập mã mà bị trượt điều kiện (list trống) thì xóa sạch
             this.tienGiamGia = 0;
             resetVoucherUI();
         }

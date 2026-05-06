@@ -24,13 +24,20 @@ public class ManHinhDanhSachHoaDon extends JPanel {
     private TableRowSorter<DefaultTableModel> rowSorter; 
 
     public ManHinhDanhSachHoaDon() {
-        // XÓA DÒNG NÀY: dao_HoaDon = new DAO_HoaDon();
-        
-        // THAY BẰNG DÒNG NÀY:
         bus_HoaDon = new BUS_HoaDon(); 
         
         initUI();
         loadData();
+        
+        // --- THÊM ĐOẠN NÀY ĐỂ TỰ ĐỘNG REFRESH KHI CHUYỂN TAB ---
+        this.addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override
+            public void componentShown(java.awt.event.ComponentEvent e) {
+                // Mỗi khi màn hình này được hiển thị (CardLayout show ra), tự động load lại DB
+                refreshData(); 
+            }
+        });
+        // --------------------------------------------------------
     }
 
     private void initUI() {
@@ -190,11 +197,22 @@ public class ManHinhDanhSachHoaDon extends JPanel {
         for (Object[] row : ds) {
             model.addRow(row);
             if(row.length > 6 && row[6] != null) {
-                String status = row[6].toString();
-                if (status.equals("Hoàn thành")) countSuccess++;
-                else if (status.equals("Đang xử lý")) countPending++;
-                else if (status.equals("Đã hủy")) countCancel++;
-                else if (status.equals("Đổi trả")) countReturn++;
+                // Thêm .trim() để cắt khoảng trắng dư thừa ở 2 đầu
+                String status = row[6].toString().trim(); 
+                
+                // Dùng equalsIgnoreCase để không phân biệt chữ hoa chữ thường
+                if (status.equalsIgnoreCase("Hoàn thành")) {
+                    countSuccess++;
+                } 
+                else if (status.equalsIgnoreCase("Đang xử lý") || status.equalsIgnoreCase("Chờ xử lý")) {
+                    countPending++;
+                } 
+                else if (status.equalsIgnoreCase("Đã hủy")) {
+                    countCancel++;
+                } 
+                else if (status.equalsIgnoreCase("Đổi trả") || status.equalsIgnoreCase("Trả hàng")) {
+                    countReturn++;
+                }
             }
         }
 

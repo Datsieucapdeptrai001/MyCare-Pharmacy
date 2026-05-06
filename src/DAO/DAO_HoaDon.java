@@ -30,8 +30,8 @@ public class DAO_HoaDon {
     public List<Object[]> layDanhSachHoaDonChoBang() {
         List<Object[]> ds = new ArrayList<>();
         
-        // SỬ DỤNG SUBQUERY: Tính tổng tiền riêng biệt cho từng hóa đơn để chống nhân bản dữ liệu
-        String sql = "SELECT hd.id, hd.ngayLapHD, kh.hoVaTen, kh.sdt, hd.phuongThucThanhToan, hd.ghiChu, " +
+        // SỬA: Thêm hd.loaiHD và BỎ điều kiện "WHERE hd.loaiHD = 'BAN_HANG'"
+        String sql = "SELECT hd.id, hd.loaiHD, hd.ngayLapHD, kh.hoVaTen, kh.sdt, hd.phuongThucThanhToan, hd.ghiChu, " +
                 "(SELECT SUM(ct.soLuong * dv.gia * (1 + (ISNULL(sp.thueVAT, 0) / 100))) " + 
                 " FROM ChiTietHoaDon ct " +
                 " JOIN DonViDoLuong dv ON ct.donViDoLuongId = dv.id AND ct.sanPhamId = dv.sanPhamId " +
@@ -39,8 +39,7 @@ public class DAO_HoaDon {
                 " WHERE ct.hoaDonId = hd.id) as tongTienGoc " +
                 "FROM HoaDon hd " +
                 "LEFT JOIN KhachHang kh ON hd.khachHangId = kh.id " +
-                "WHERE hd.loaiHD = 'BAN_HANG' " + // <--- ĐÃ THÊM DÒNG NÀY ĐỂ LỌC RIÊNG HÓA ĐƠN BÁN HÀNG
-                "ORDER BY hd.ngayLapHD DESC";
+                "ORDER BY hd.ngayLapHD DESC"; // Bỏ WHERE đi để lấy mọi loại hóa đơn
                      
         try (Connection con = ConnectDB.getInstance().getConnection();
              PreparedStatement pst = con.prepareStatement(sql);
@@ -52,8 +51,9 @@ public class DAO_HoaDon {
             while (rs.next()) {
                 double totalAmount = rs.getDouble("tongTienGoc");
                 String ghiChu = rs.getString("ghiChu");
+                String loaiHD = rs.getString("loaiHD"); // Đọc loại HD từ SQL lên
                 
-                // XỬ LÝ KHẤU TRỪ TIỀN GIẢM GIÁ TỪ GHI CHÚ
+                // XỬ LÝ KHẤU TRỪ TIỀN GIẢM GIÁ
                 if (ghiChu != null && !ghiChu.isEmpty()) {
                     String[] parts = ghiChu.split("\\|");
                     for (String p : parts) {
@@ -67,7 +67,6 @@ public class DAO_HoaDon {
                     }
                 }
                 
-                // Đảm bảo tiền không bị âm
                 if (totalAmount < 0) totalAmount = 0;
 
                 String id = rs.getString("id");
@@ -79,8 +78,11 @@ public class DAO_HoaDon {
                 String pt = rs.getString("phuongThucThanhToan");
                 String hienThiPT = "CHUYEN_KHOAN_NGAN_HANG".equals(pt) ? "Chuyển khoản" : "Tiền mặt";
 
+                // LOGIC MỚI: XÁC ĐỊNH ĐÚNG TRẠNG THÁI HIỂN THỊ
                 String trangThai = "Hoàn thành";
-                if (ghiChu != null) {
+                if (loaiHD != null && (loaiHD.equals("TRA_HANG") || loaiHD.equals("DOI_HANG"))) {
+                    trangThai = "Đổi trả";
+                } else if (ghiChu != null) {
                     if (ghiChu.contains("Lưu nháp") || ghiChu.contains("Đang xử lý")) trangThai = "Đang xử lý";
                     else if (ghiChu.contains("Đã hủy")) trangThai = "Đã hủy";
                 }
@@ -98,20 +100,20 @@ public class DAO_HoaDon {
     public List<Object[]> layDanhSachHoaDonCuaNhanVien(String maNV) {
         List<Object[]> ds = new ArrayList<>();
         
-        // CÂU SQL: Copy y hệt của Admin nhưng thêm điều kiện lọc theo Mã NV
-        String sql = "SELECT hd.id, hd.ngayLapHD, kh.hoVaTen, kh.sdt, hd.phuongThucThanhToan, hd.ghiChu, " +
+        // SỬA: Thêm hd.loaiHD vào SELECT và GROUP BY. Xóa phần hd.loaiHD = 'BAN_HANG'
+        String sql = "SELECT hd.id, hd.loaiHD, hd.ngayLapHD, kh.hoVaTen, kh.sdt, hd.phuongThucThanhToan, hd.ghiChu, " +
                      "SUM(ct.soLuong * dv.gia) as tongTien " +
                      "FROM HoaDon hd " +
                      "LEFT JOIN KhachHang kh ON hd.khachHangId = kh.id " +
                      "LEFT JOIN ChiTietHoaDon ct ON hd.id = ct.hoaDonId " +
                      "LEFT JOIN DonViDoLuong dv ON ct.donViDoLuongId = dv.id AND ct.sanPhamId = dv.sanPhamId " +
-                     "WHERE hd.loaiHD = 'BAN_HANG' AND hd.nhanVienId = ? " + // <--- LỌC CHUẨN Ở ĐÂY
-                     "GROUP BY hd.id, hd.ngayLapHD, kh.hoVaTen, kh.sdt, hd.phuongThucThanhToan, hd.ghiChu " +
+                     "WHERE hd.nhanVienId = ? " + // Chỉ lọc theo nhân viên
+                     "GROUP BY hd.id, hd.loaiHD, hd.ngayLapHD, kh.hoVaTen, kh.sdt, hd.phuongThucThanhToan, hd.ghiChu " +
                      "ORDER BY hd.ngayLapHD DESC";
 
         Connection con = ConnectDB.getInstance().getConnection();
         try (PreparedStatement pst = con.prepareStatement(sql)) {
-            pst.setString(1, maNV); // Truyền mã nhân viên vào
+            pst.setString(1, maNV); 
             
             try (ResultSet rs = pst.executeQuery()) {
                 DecimalFormat df = new DecimalFormat("#,###đ");
@@ -119,6 +121,7 @@ public class DAO_HoaDon {
 
                 while (rs.next()) {
                     String maHD = rs.getString("id");
+                    String loaiHD = rs.getString("loaiHD");
                     String ngay = rs.getTimestamp("ngayLapHD") != null ? rs.getTimestamp("ngayLapHD").toLocalDateTime().format(dtf) : "";
                     String tenKH = rs.getString("hoVaTen") != null ? rs.getString("hoVaTen") : "Khách lẻ";
                     String sdt = rs.getString("sdt") != null ? rs.getString("sdt") : "";
@@ -127,16 +130,17 @@ public class DAO_HoaDon {
                     String pt = (pttt != null && pttt.equals("TIEN_MAT")) ? "Tiền mặt" : "Chuyển khoản";
                     
                     String tongTien = df.format(rs.getDouble("tongTien"));
-                    
-                    // ĐỒNG BỘ LOGIC TRẠNG THÁI VỚI ADMIN
                     String ghiChu = rs.getString("ghiChu");
+                    
+                    // LOGIC MỚI: ĐỒNG BỘ TRẠNG THÁI VỚI ADMIN
                     String trangThai = "Hoàn thành";
-                    if (ghiChu != null) {
-                        if (ghiChu.equals("Lưu nháp")) trangThai = "Đang xử lý";
+                    if (loaiHD != null && (loaiHD.equals("TRA_HANG") || loaiHD.equals("DOI_HANG"))) {
+                        trangThai = "Đổi trả";
+                    } else if (ghiChu != null) {
+                        if (ghiChu.contains("Lưu nháp") || ghiChu.contains("Đang xử lý")) trangThai = "Đang xử lý";
                         else if (ghiChu.contains("Đã hủy")) trangThai = "Đã hủy";
                     }
                     
-                    // Trả về đúng 7 cột mà ManHinhDanhSachHoaDon đang chờ đợi
                     ds.add(new Object[]{maHD, ngay, tenKH, sdt, pt, tongTien, trangThai});
                 }
             }

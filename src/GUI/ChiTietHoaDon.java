@@ -367,15 +367,17 @@ public class ChiTietHoaDon extends JDialog {
         lblTitle.setForeground(textGray);
         pnl.add(lblTitle, BorderLayout.NORTH);
 
-        String[] cols = {"Sản phẩm", "Số lượng", "Đơn giá", "Thành tiền"};
-        Object[][] data = new Object[dsSanPham.size()][4];
+        // BỔ SUNG: Tách riêng cột ĐVT và SL thành 5 cột
+        String[] cols = {"Sản phẩm", "ĐVT", "SL", "Đơn giá", "Thành tiền"};
+        Object[][] data = new Object[dsSanPham.size()][5];
         
         for (int i = 0; i < dsSanPham.size(); i++) { 
             Object[] sp = dsSanPham.get(i);
-            data[i][0] = sp[1];                           
-            data[i][1] = sp[3] + " " + sp[2];             
-            data[i][2] = sp[4];                           
-            data[i][3] = sp[6];                           
+            data[i][0] = sp[1]; // Tên sản phẩm                          
+            data[i][1] = sp[2]; // Đơn vị tính (Hộp, Viên...)
+            data[i][2] = sp[3]; // Số lượng
+            data[i][3] = sp[4]; // Đơn giá                          
+            data[i][4] = sp[6]; // Thành tiền                          
         }
 
         DefaultTableModel model = new DefaultTableModel(data, cols) { 
@@ -387,7 +389,7 @@ public class ChiTietHoaDon extends JDialog {
         table.setShowGrid(false); 
         table.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         
-        // 1. BẬT LẠI AUTO RESIZE ĐỂ BẢNG TỰ LẤP ĐẦY KHOẢNG TRỐNG
+        // Bật tự động giãn cột
         table.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
         
         JTableHeader header = table.getTableHeader(); 
@@ -415,7 +417,6 @@ public class ChiTietHoaDon extends JDialog {
                     lbl.setFont(new Font("Segoe UI", Font.PLAIN, 12));
                 }
                 
-                // Không cần cắt chữ gắt nữa vì cột Sản phẩm giờ được tự do giãn
                 lbl.setText(text);
                 lbl.setBorder(BorderFactory.createEmptyBorder(0, 5, 0, 0));
                 return lbl;
@@ -425,27 +426,28 @@ public class ChiTietHoaDon extends JDialog {
         DefaultTableCellRenderer center = new DefaultTableCellRenderer(); center.setHorizontalAlignment(JLabel.CENTER);
         DefaultTableCellRenderer right = new DefaultTableCellRenderer(); right.setHorizontalAlignment(JLabel.RIGHT);
         
+        // Căn giữa ĐVT và SL
         table.getColumnModel().getColumn(1).setCellRenderer(center); 
-        table.getColumnModel().getColumn(2).setCellRenderer(right);  
+        table.getColumnModel().getColumn(2).setCellRenderer(center); 
         table.getColumnModel().getColumn(3).setCellRenderer(right);  
+        table.getColumnModel().getColumn(4).setCellRenderer(right);  
 
-        // 2. KHÓA CỨNG 3 CỘT CUỐI, THẢ RÔNG CỘT SẢN PHẨM
-        table.getColumnModel().getColumn(1).setMinWidth(75);
-        table.getColumnModel().getColumn(1).setMaxWidth(75);
-        table.getColumnModel().getColumn(1).setPreferredWidth(75);
+        // KHÓA CỨNG ĐỘ RỘNG 4 CỘT CUỐI ĐỂ BẢNG ĐẸP HƠN
+        table.getColumnModel().getColumn(1).setMinWidth(55); // Cột ĐVT
+        table.getColumnModel().getColumn(1).setMaxWidth(65);
         
-        table.getColumnModel().getColumn(2).setMinWidth(85);
-        table.getColumnModel().getColumn(2).setMaxWidth(85);
-        table.getColumnModel().getColumn(2).setPreferredWidth(85);
+        table.getColumnModel().getColumn(2).setMinWidth(40); // Cột SL
+        table.getColumnModel().getColumn(2).setMaxWidth(50);
         
-        table.getColumnModel().getColumn(3).setMinWidth(100); 
-        table.getColumnModel().getColumn(3).setMaxWidth(100);
-        table.getColumnModel().getColumn(3).setPreferredWidth(100);
+        table.getColumnModel().getColumn(3).setMinWidth(85); // Cột Đơn giá
+        table.getColumnModel().getColumn(3).setMaxWidth(95);
+        
+        table.getColumnModel().getColumn(4).setMinWidth(95); // Cột Thành tiền
+        table.getColumnModel().getColumn(4).setMaxWidth(105);
 
-        // Cột 0 (Sản phẩm) không set MaxWidth để nó tự động giãn và lấp đầy phần diện tích còn lại
-        table.getColumnModel().getColumn(0).setMinWidth(200);
+        // Cột 0 (Sản phẩm) tự do giãn để lấp đầy phần diện tích còn trống
+        table.getColumnModel().getColumn(0).setMinWidth(150);
 
-        // 3. XÓA VIỆC FIX CỨNG CHIỀU RỘNG BẢNG ĐỂ JSCROLLPANE TỰ ĐỘNG CÂN CHỈNH
         JScrollPane sp = new JScrollPane(table); 
         sp.getViewport().setBackground(Color.WHITE); 
         sp.setBorder(BorderFactory.createLineBorder(borderGray));
@@ -455,7 +457,6 @@ public class ChiTietHoaDon extends JDialog {
         
         int actualTableHeight = (table.getRowCount() * 35) + 35;
         
-        // Chỉ fix cứng chiều cao, để chiều rộng (MaxWidth) được tự do giãn theo Panel cha
         sp.setPreferredSize(new Dimension(0, actualTableHeight));
         sp.setMinimumSize(new Dimension(0, actualTableHeight));
         sp.setMaximumSize(new Dimension(Integer.MAX_VALUE, actualTableHeight));
@@ -465,7 +466,6 @@ public class ChiTietHoaDon extends JDialog {
         pnl.add(sp, BorderLayout.CENTER); 
         return pnl;
     }
-
     private JPanel createSummaryPanel(String phuongThuc) {
         JPanel pnl = new JPanel(new GridLayout(1, 2, 10, 0)); pnl.setBackground(Color.WHITE);
 

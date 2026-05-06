@@ -9,7 +9,7 @@ import java.awt.event.*;
 import java.util.ArrayList;
 import java.util.List;
 import BUS.*;
-
+import Utils.UserSession;
 public class ManHinhDoiTra extends JPanel {
     
     private JTable table;
@@ -19,7 +19,7 @@ public class ManHinhDoiTra extends JPanel {
     private String filterStatus = "Tất cả";
     private JTextField txtSearch;
     private BUS_HoaDon busHD = new BUS_HoaDon();
-    
+    private BUS_ChiTietHoaDon busCTHD = new BUS_ChiTietHoaDon();
  // --- CÁC BIẾN CHO KHUNG CHI TIẾT SỔ XUỐNG ---
     private JPanel pnlDetail, pnlRightWrapper; // Bổ sung pnlRightWrapper
     private JLabel lblDetailTitle, lblDetailDate, lblDetailEmp;
@@ -30,6 +30,15 @@ public class ManHinhDoiTra extends JPanel {
     public ManHinhDoiTra() {
         initUI();
         loadDataToTable();
+        
+        // --- THÊM ĐOẠN NÀY ĐỂ TỰ ĐỘNG LÀM MỚI BẢNG ĐỔI TRẢ KHI MỞ TAB ---
+        this.addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override
+            public void componentShown(java.awt.event.ComponentEvent e) {
+                loadDataToTable(); 
+            }
+        });
+        // ---------------------------------------------------------------
     }
 
     private void initUI() {
@@ -356,14 +365,36 @@ public class ManHinhDoiTra extends JPanel {
     }
 
     private void loadDataToTable() {
-        model.setRowCount(0); 
-        expandedMaPhieu = ""; 
-        if(pnlDetail != null) pnlDetail.setVisible(false);
+        model.setRowCount(0);
+        BUS_TraHang busTra = new BUS_TraHang();
+        List<Object[]> ds = busTra.layDanhSachPhieu();
         
-        BUS_TraHang busTraHang = new BUS_TraHang();
-        List<Object[]> dsPhieu = busTraHang.layDanhSachPhieu();
-        for (Object[] row : dsPhieu) {
-            model.addRow(row); 
+        if (ds != null) {
+            for (Object[] row : ds) {
+                // 1. ÉP CỘT TIỀN HOÀN (CỘT SỐ 5) VỀ SỐ DƯƠNG
+                try {
+                    if (row[5] != null && !row[5].toString().isEmpty() && !row[5].toString().equals("---")) {
+                        long tien = Long.parseLong(row[5].toString().replaceAll("[^0-9-]", ""));
+                        row[5] = String.format("%,dđ", Math.abs(tien)).replace(',', '.');
+                    }
+                } catch(Exception e) {}
+                
+                // 2. ÉP CỘT CHÊNH LỆCH (CỘT SỐ 6) ĐỂ HIỂN THỊ CHỮ BÙ/HOÀN
+                try {
+                    if (row[6] != null && !row[6].toString().isEmpty() && !row[6].toString().equals("---")) {
+                        long tien = Long.parseLong(row[6].toString().replaceAll("[^0-9-]", ""));
+                        if (tien < 0) {
+                            row[6] = "Hoàn: " + String.format("%,dđ", Math.abs(tien)).replace(',', '.');
+                        } else if (tien > 0) {
+                            row[6] = "Bù: " + String.format("%,dđ", Math.abs(tien)).replace(',', '.');
+                        } else {
+                            row[6] = "0đ";
+                        }
+                    }
+                } catch(Exception e) {}
+
+                model.addRow(row);
+            }
         }
     }
 
@@ -604,156 +635,193 @@ public class ManHinhDoiTra extends JPanel {
         lblDetailTitle.setText("Chi tiết phiếu " + maPhieu);
         lblDetailDate.setText("Ngày tạo: " + ngayTao);
         
+        String tenNV = "Hệ thống";
+        try {
+            if (Utils.UserSession.getInstance() != null) {
+                tenNV = Utils.UserSession.getInstance().getTenHienThi();
+            }
+        } catch (Exception e) {}
+        lblDetailEmp.setText("Nhân viên: " + tenNV);
+        
         pnlDetailProducts.removeAll();
         pnlRightWrapper.removeAll(); 
         
         int dynamicHeight = 160; 
-        long totalHoan = 0;      
 
-        // Lấy thông tin phụ từ bảng Model
-        int targetRow = -1;
-        for (int i = 0; i < model.getRowCount(); i++) {
-            if (model.getValueAt(i, 0).toString().equals(maPhieu)) {
-                targetRow = i; break;
-            }
-        }
+        BUS_TraHang busTra = new BUS_TraHang();
+        List<Object[]> dsSP = busTra.layChiTietPhieu(maPhieu); 
         
-        String loaiPhieu = targetRow != -1 ? model.getValueAt(targetRow, 3).toString() : "Trả hàng";
-        String loi = targetRow != -1 ? model.getValueAt(targetRow, 4).toString() : "Không có";
-        String chenhLech = targetRow != -1 ? model.getValueAt(targetRow, 6).toString() : "0đ";
-        String tienHoanBang = targetRow != -1 ? model.getValueAt(targetRow, 5).toString() : "0đ";
-        
-        // BÓC TÁCH TRỰC TIẾP TỪ GHI CHÚ DATABASE ĐỂ TRÁNH LỖI SAI ĐƠN GIÁ VÀ TRÙNG LẶP SẢN PHẨM
-        String phuongThuc = "Tiền mặt";
-        String ghiChuDB = "";
-        try {
-            Entity.HoaDon hd = busHD.getHoaDonTheoMa(maPhieu);
-            if (hd != null) {
-                if (hd.getGhiChu() != null) ghiChuDB = hd.getGhiChu();
-                if (hd.getPhuongThucThanhToan() != null && hd.getPhuongThucThanhToan().toString().contains("CHUYEN_KHOAN")) {
-                    phuongThuc = "Chuyển khoản";
-                }
-            }
-        } catch (Exception e) {}
-
-        List<Object[]> dsSP = new ArrayList<>();
-        List<Object[]> dsDoi = new ArrayList<>();
-        
-        if (!ghiChuDB.isEmpty()) {
-            String[] parts = ghiChuDB.split("\\|");
-            for (String p : parts) {
-                p = p.trim();
-                if (p.startsWith("TRA:")) {
-                    String traStr = p.replace("TRA:", "").trim();
-                    if (!traStr.equals("Không có") && !traStr.isEmpty()) {
-                        String[] items = traStr.split(";");
-                        for (String item : items) {
-                            String[] vals = item.trim().split("_");
-                            if (vals.length >= 3) dsSP.add(new Object[]{vals[0], vals[1], "", vals[2]});
-                            else if (vals.length == 2) dsSP.add(new Object[]{vals[0], vals[1], "", "0"});
-                        }
-                    }
-                } else if (p.startsWith("DOI:")) {
-                    String doiStr = p.replace("DOI:", "").trim();
-                    if (!doiStr.equals("Không có") && !doiStr.isEmpty()) {
-                        String[] items = doiStr.split(";");
-                        for (String item : items) {
-                            String[] vals = item.trim().split("_");
-                            if (vals.length >= 3) dsDoi.add(new Object[]{vals[0], vals[1], "", vals[2]});
-                            else if (vals.length == 2) dsDoi.add(new Object[]{vals[0], vals[1], "", "0"});
-                        }
-                    }
-                }
-            }
-        }
-
-        try {
-            if (!dsSP.isEmpty()) {
-                for (Object[] sp : dsSP) {
-                    String tenSP = sp[0] != null ? sp[0].toString() : "Sản phẩm lỗi";
-                    String soLuong = sp[1] != null ? sp[1].toString() : "0";
-                    String donVi = sp[2] != null ? sp[2].toString() : "";
-                    
-                    long gia = 0;
-                    try { gia = Long.parseLong(sp[3].toString()); } catch(Exception e){}
-                    
-                    int sl = 0;
-                    try { sl = Integer.parseInt(soLuong); } catch(Exception e){}
-                    
-                    totalHoan += (gia * sl);
-                    String donGiaStr = String.format("%,d", gia).replace(',', '.') + "đ";
-                    
-                    JPanel row = new JPanel(new BorderLayout()); 
-                    row.setBackground(Color.WHITE);
-                    row.setBorder(new EmptyBorder(8, 0, 8, 0));
-                    
-                    JLabel lblName = new JLabel(tenSP);
-                    lblName.setFont(new Font("Segoe UI", Font.BOLD, 13));
-                    lblName.setForeground(Color.decode("#212B36"));
-                    
-                    JLabel lblPrice = new JLabel(soLuong + " " + donVi + " × " + donGiaStr);
-                    lblPrice.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-                    lblPrice.setForeground(Color.decode("#4B5563"));
-
-                    row.add(lblName, BorderLayout.WEST);
-                    row.add(lblPrice, BorderLayout.EAST);
-                    
-                    pnlDetailProducts.add(row);
-                    dynamicHeight += 35; 
-                }
-            } else {
-                JLabel lblEmpty = new JLabel("Chưa có thông tin chi tiết...");
-                lblEmpty.setFont(new Font("Segoe UI", Font.ITALIC, 13));
-                lblEmpty.setForeground(Color.GRAY);
-                pnlDetailProducts.add(lblEmpty);
-                dynamicHeight += 40;
-            }
-
-            if (loaiPhieu.equalsIgnoreCase("Trả hàng")) {
-                // SỬ DỤNG TIỀN HOÀN TỪ BẢNG THAY VÌ CỘNG DỒN
-                JPanel pnlTotalBox = createRightBox("TIỀN HOÀN", tienHoanBang, "#DC2626", "#FEF2F2");
-                pnlRightWrapper.add(pnlTotalBox);
-            } else {
-                StringBuilder sbDoi = new StringBuilder();
-                if (!dsDoi.isEmpty()) {
-                    for (Object[] spDoi : dsDoi) {
-                        sbDoi.append(spDoi[0].toString()).append("<br>");
-                    }
-                } else {
-                    sbDoi.append("Không có<br>");
-                }
+        if (dsSP != null && !dsSP.isEmpty()) {
+            for (Object[] sp : dsSP) {
+                String tenSP = sp[0] != null ? sp[0].toString() : "Sản phẩm";
+                String soLuong = sp[1] != null ? sp[1].toString() : "1";
+                String donVi = sp[2] != null && !sp[2].toString().isEmpty() ? sp[2].toString() : "Hộp"; 
                 
-                String mauChenhLech = chenhLech.contains("-") ? "#DC2626" : "#D97706"; 
-                String textChenhLech = chenhLech.contains("-") ? "Thối lại khách: " : "Khách bù: ";
-                sbDoi.append("<span style='color: ").append(mauChenhLech).append("; font-size: 13px; font-weight: normal;'>")
-                     .append(textChenhLech).append(chenhLech.replace("-", "")).append("</span>");
+                long gia = 0;
+                // BẮT BUỘC ÉP VỀ SỐ DƯƠNG (TRÁNH LỖI GHI CHÚ ÂM TỪ DB)
+                try { gia = Math.abs(Long.parseLong(sp[3].toString())); } catch(Exception e){}
+                String giaBan = String.format("%,d", gia).replace(',', '.') + "đ";
                 
-                JPanel pnlDoi = createRightBox("SẢN PHẨM ĐỔI", "<html><div style='line-height: 1.4;'>" + sbDoi.toString() + "</div></html>", "#059669", "#F0FDF4");
-                pnlRightWrapper.add(pnlDoi);
+                JPanel row = new JPanel(new BorderLayout()); 
+                row.setBackground(Color.WHITE);
+                row.setBorder(new EmptyBorder(8, 0, 8, 0));
+                
+                JLabel lblName = new JLabel(tenSP);
+                lblName.setFont(new Font("Segoe UI", Font.BOLD, 13));
+                lblName.setForeground(Color.decode("#212B36"));
+                
+                JLabel lblPrice = new JLabel(soLuong + " " + donVi + " × " + giaBan);
+                lblPrice.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+                lblPrice.setForeground(Color.decode("#4B5563"));
+
+                row.add(lblName, BorderLayout.WEST);
+                row.add(lblPrice, BorderLayout.EAST);
+                
+                pnlDetailProducts.add(row);
+                dynamicHeight += 35; 
             }
-
-            pnlRightWrapper.add(Box.createRigidArea(new Dimension(0, 10)));
-            JPanel pnlGhiChu = createRightBox("GHI CHÚ", loi, "#D97706", "#FFFBEB");
-            pnlRightWrapper.add(pnlGhiChu);
-
-            pnlRightWrapper.add(Box.createRigidArea(new Dimension(0, 10)));
-            JPanel pnlPT = createRightBox("PHƯƠNG THỨC THANH TOÁN", phuongThuc, "#1D4ED8", "#EFF6FF");
-            pnlRightWrapper.add(pnlPT);
-
-            pnlRightWrapper.add(Box.createVerticalGlue()); 
-
-        } catch (Exception ex) {
-            ex.printStackTrace();
+        } else {
+            JLabel lblEmpty = new JLabel("Chưa có thông tin chi tiết...");
+            lblEmpty.setFont(new Font("Segoe UI", Font.ITALIC, 13));
+            lblEmpty.setForeground(Color.GRAY);
+            pnlDetailProducts.add(lblEmpty);
+            dynamicHeight += 40;
         }
-        
+
+        hienThiThongTinPhuBênPhai(maPhieu, busTra);
+
         this.revalidate();
         this.repaint();
         return Math.max(dynamicHeight, 220); 
     }
 
-    // ========================================================
-    // CÁC HÀM TIỆN ÍCH LỌC VÀ THÔNG BÁO (GIỮ NGUYÊN)
-    // ========================================================
+    private void hienThiThongTinPhuBênPhai(String maPhieu, BUS_TraHang busTra) {
+        int targetRow = -1;
+        for (int i = 0; i < model.getRowCount(); i++) {
+            if (model.getValueAt(i, 0).toString().equals(maPhieu)) {
+                targetRow = i;
+                break;
+            }
+        }
+
+        if (targetRow == -1) return;
+
+        String loaiPhieu = model.getValueAt(targetRow, 3).toString(); 
+        String ghiChuLoi = model.getValueAt(targetRow, 4).toString(); 
+
+        String phuongThuc = "Tiền mặt";
+        try {
+            Entity.HoaDon hd = busHD.getHoaDonTheoMa(maPhieu);
+            if (hd != null && hd.getPhuongThucThanhToan() != null) {
+                String pt = hd.getPhuongThucThanhToan().toString();
+                phuongThuc = pt.contains("CHUYEN_KHOAN") ? "Chuyển khoản" : "Tiền mặt";
+            }
+        } catch (Exception e) {}
+
+        pnlRightWrapper.removeAll();
+
+        // TỰ TÍNH LẠI CHÊNH LỆCH ĐỂ CHUẨN 100%
+        long tongTienTra = 0;
+        List<Object[]> dsTra = busTra.layChiTietPhieu(maPhieu);
+        if (dsTra != null) {
+            for (Object[] sp : dsTra) {
+                try { tongTienTra += Math.abs(Long.parseLong(sp[3].toString())) * Integer.parseInt(sp[1].toString()); } catch (Exception e){}
+            }
+        }
+        
+        long tongTienDoi = 0;
+        List<Object[]> dsDoi = busTra.layDanhSachSanPhamDoi(maPhieu);
+        if (dsDoi != null) {
+            for (Object[] sp : dsDoi) {
+                try { tongTienDoi += Math.abs(Long.parseLong(sp[3].toString())) * Integer.parseInt(sp[1].toString()); } catch (Exception e){}
+            }
+        }
+        
+        long chenhLechThucTe = tongTienDoi - tongTienTra;
+        boolean isKhachBu = (chenhLechThucTe >= 0);
+
+        if (loaiPhieu.equalsIgnoreCase("Trả hàng")) {
+            pnlRightWrapper.add(createRightBox("TỔNG TIỀN HOÀN", String.format("%,dđ", tongTienTra).replace(',', '.'), "#DC2626", "#FEF2F2"));
+        } else {
+            StringBuilder sbDoi = new StringBuilder();
+            if (dsDoi != null && !dsDoi.isEmpty()) {
+                for (Object[] spDoi : dsDoi) {
+                    sbDoi.append("- ").append(spDoi[0].toString()).append("<br>");
+                }
+            } else {
+                sbDoi.append("Không có<br>");
+            }
+            
+            String mauChenhLech = isKhachBu ? "#D97706" : "#DC2626"; 
+            String textChenhLech = isKhachBu ? "Khách bù: " : "Thối lại khách: ";
+            
+            sbDoi.append("<span style='color: ").append(mauChenhLech).append("; font-size: 13px; font-weight: normal;'>")
+                 .append(textChenhLech).append(String.format("%,dđ", Math.abs(chenhLechThucTe)).replace(',', '.')).append("</span>");
+            
+            JPanel pnlDoi = createRightBox("SẢN PHẨM ĐỔI LẤY", "<html><div style='line-height: 1.4;'>" + sbDoi.toString() + "</div></html>", "#059669", "#F0FDF4");
+            pnlRightWrapper.add(pnlDoi);
+        }
+
+        pnlRightWrapper.add(Box.createRigidArea(new Dimension(0, 10)));
+        pnlRightWrapper.add(createRightBox("LÝ DO / LỖI", ghiChuLoi, "#4B5563", "#F3F4F6"));
+
+        pnlRightWrapper.add(Box.createRigidArea(new Dimension(0, 10)));
+        pnlRightWrapper.add(createRightBox("PHƯƠNG THỨC", phuongThuc, "#1D4ED8", "#EFF6FF"));
+
+        pnlRightWrapper.revalidate();
+        pnlRightWrapper.repaint();
+    }
+
+ // --- HÀM BỔ TRỢ HIỂN THỊ CỘT PHẢI ---
+    private void hienThiThongTinPhuBênPhai(String maPhieu) {
+        // 1. Tìm dòng dữ liệu tương ứng trong Model để lấy thông tin đã load lên bảng
+        int targetRow = -1;
+        for (int i = 0; i < model.getRowCount(); i++) {
+            if (model.getValueAt(i, 0).toString().equals(maPhieu)) {
+                targetRow = i;
+                break;
+            }
+        }
+
+        if (targetRow == -1) return;
+
+        // 2. Lấy các thông tin từ bảng
+        String loaiPhieu = model.getValueAt(targetRow, 3).toString(); // Cột Loại
+        String ghiChuLoi = model.getValueAt(targetRow, 4).toString(); // Cột Lỗi/Ghi chú
+        String tienHoan = model.getValueAt(targetRow, 5).toString();  // Cột Tiền hoàn
+        String chenhLech = model.getValueAt(targetRow, 6).toString(); // Cột Chênh lệch
+
+        // 3. Truy vấn thêm từ Database để lấy Phương thức thanh toán
+        String phuongThuc = "Tiền mặt";
+        try {
+            Entity.HoaDon hd = busHD.getHoaDonTheoMa(maPhieu);
+            if (hd != null && hd.getPhuongThucThanhToan() != null) {
+                String pt = hd.getPhuongThucThanhToan().toString();
+                phuongThuc = pt.contains("CHUYEN_KHOAN") ? "Chuyển khoản" : "Tiền mặt";
+            }
+        } catch (Exception e) {}
+
+        // 4. Render các Box lên pnlRightWrapper
+        pnlRightWrapper.removeAll();
+
+        // Hiển thị Tiền hoàn hoặc Chênh lệch tùy loại phiếu
+        if (loaiPhieu.equalsIgnoreCase("Trả hàng")) {
+            pnlRightWrapper.add(createRightBox("TỔNG TIỀN HOÀN", tienHoan, "#DC2626", "#FEF2F2"));
+        } else {
+            String color = chenhLech.contains("-") ? "#DC2626" : "#D97706";
+            String title = chenhLech.contains("-") ? "TIỀN THỐI LẠI" : "KHÁCH BÙ THÊM";
+            pnlRightWrapper.add(createRightBox(title, chenhLech.replace("-", ""), color, "#FFFBEB"));
+        }
+
+        pnlRightWrapper.add(Box.createRigidArea(new Dimension(0, 10)));
+        pnlRightWrapper.add(createRightBox("LÝ DO / LỖI", ghiChuLoi, "#4B5563", "#F3F4F6"));
+
+        pnlRightWrapper.add(Box.createRigidArea(new Dimension(0, 10)));
+        pnlRightWrapper.add(createRightBox("PHƯƠNG THỨC HOÀN TIỀN", phuongThuc, "#1D4ED8", "#EFF6FF"));
+
+        pnlRightWrapper.revalidate();
+        pnlRightWrapper.repaint();
+    }
     private void xuLyStatus(JButton b) {
         for (JButton btn : statusBtns) setBtnNormal(btn);
         setBtnActive(b);

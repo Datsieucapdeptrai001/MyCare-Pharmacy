@@ -233,61 +233,108 @@ public class ChiTietPhieuDoiTra extends JDialog {
         JPanel pnl = new JPanel(new BorderLayout(0, 5)); 
         pnl.setBackground(Color.WHITE);
 
-        JLabel lblTitle = new JLabel("SẢN PHẨM TRẢ LẠI:");
+        JLabel lblTitle = new JLabel(loaiPhieu.equalsIgnoreCase("Trả hàng") ? "SẢN PHẨM TRẢ LẠI:" : "CHI TIẾT SẢN PHẨM ĐỔI / TRẢ:");
         lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 12));
         pnl.add(lblTitle, BorderLayout.NORTH);
 
-        String[] cols = {"Sản phẩm", "SL", "Đơn giá", "Thành tiền"};
+        String[] cols = {"Sản phẩm", "ĐVT", "SL", "Đơn giá", "Thành tiền"};
         DefaultTableModel model = new DefaultTableModel(cols, 0) { 
             @Override public boolean isCellEditable(int r, int c) { return false; } 
         };
 
-        // BÓC TÁCH TRỰC TIẾP TỪ GHI CHÚ DATABASE (CHỐNG LỖI IN DƯ VÀ ĐƠN GIÁ 0Đ)
-        List<Object[]> dsSP = new java.util.ArrayList<>();
-        try {
-            BUS.BUS_HoaDon busHD = new BUS.BUS_HoaDon();
-            Entity.HoaDon hd = busHD.getHoaDonTheoMa(maPhieu);
-            if (hd != null && hd.getGhiChu() != null) {
-                String[] parts = hd.getGhiChu().split("\\|");
-                for (String p : parts) {
-                    if (p.trim().startsWith("TRA:")) {
-                        String traStr = p.trim().replace("TRA:", "").trim();
-                        if (!traStr.equals("Không có") && !traStr.isEmpty()) {
-                            String[] items = traStr.split(";");
-                            for (String item : items) {
-                                String[] vals = item.trim().split("_");
-                                if (vals.length >= 3) dsSP.add(new Object[]{vals[0], vals[1], "Hộp", vals[2]});
-                                else if (vals.length == 2) dsSP.add(new Object[]{vals[0], vals[1], "Hộp", "0"});
-                            }
-                        }
+        long tongTienTra = 0;
+        long tongTienDoi = 0;
+
+        List<Object[]> dsTra = busTraHang.layChiTietPhieu(maPhieu); 
+        List<Object[]> dsDoi = null;
+        if (loaiPhieu.equalsIgnoreCase("Đổi hàng")) {
+            dsDoi = busTraHang.layDanhSachSanPhamDoi(maPhieu); 
+        }
+
+        // Khởi tạo DAO để dự phòng lấy giá trực tiếp từ Database nếu chuỗi ghi chú bị lỗi
+        DAO.DAO_HoaDon daoHD = new DAO.DAO_HoaDon();
+
+        // 1. ĐỔ DỮ LIỆU SẢN PHẨM KHÁCH TRẢ LẠI
+        if (dsTra != null) {
+            for (Object[] sp : dsTra) {
+                String ten = sp[0] != null ? sp[0].toString() : "Sản phẩm";
+                
+                int sl = 1; 
+                try { 
+                    if (sp[1] != null) sl = Integer.parseInt(sp[1].toString().replaceAll("[^0-9]", "")); 
+                } catch(Exception e){}
+                
+                String dvt = "Hộp";
+                long gia = 0;
+                
+                // LỚP BẢO VỆ 1: Lọc sạch chuỗi, chỉ lấy số
+                try { 
+                    if (sp[3] != null) {
+                        String giaStr = sp[3].toString().replaceAll("[^0-9]", "");
+                        if (!giaStr.isEmpty()) gia = Long.parseLong(giaStr);
                     }
-                }
-            }
-        } catch (Exception e){}
-
-        long tongTienThucTe = 0;
-
-        if (!dsSP.isEmpty()) {
-            for (Object[] sp : dsSP) {
-                String ten = sp[0] != null ? sp[0].toString() : "";
+                } catch(Exception e){}
                 
-                int sl = 0;
-                try { sl = Integer.parseInt(sp[1].toString()); } catch(Exception e) {}
-                
-                String dvt = sp[2] != null ? sp[2].toString() : "";
-                
-                double gia = 0;
-                if(sp[3] != null) {
-                    try { gia = Double.parseDouble(sp[3].toString()); } catch(Exception e){}
+                // LỚP BẢO VỆ 2: Truy vấn thẳng vào Hóa Đơn Gốc nếu giá = 0
+                if (gia == 0) {
+                    try {
+                        Object[] info = daoHD.layThongTinGiaTuHDGoc(hoaDonGoc, ten);
+                        if (info != null) {
+                            if (info[0] != null) dvt = info[0].toString();
+                            if (info[1] != null) gia = Long.parseLong(info[1].toString().replaceAll("[^0-9]", ""));
+                        }
+                    } catch(Exception ex){}
                 }
 
-                long thanhTien = (long) (sl * gia);
-                tongTienThucTe += thanhTien;
-
+                long thanhTien = gia * sl;
+                tongTienTra += thanhTien;
+                
                 model.addRow(new Object[]{
-                    ten + (dvt.isEmpty() ? "" : " (" + dvt + ")"), 
-                    sl, 
-                    String.format("%,.0fđ", gia).replace(',', '.'),
+                    "[TRẢ] " + ten, dvt, sl, 
+                    String.format("%,dđ", gia).replace(',', '.'), 
+                    String.format("%,dđ", thanhTien).replace(',', '.')
+                });
+            }
+        }
+
+        // 2. ĐỔ DỮ LIỆU SẢN PHẨM KHÁCH ĐỔI LẤY MỚI
+        if (dsDoi != null) {
+            for (Object[] sp : dsDoi) {
+                String ten = sp[0] != null ? sp[0].toString() : "Sản phẩm";
+                
+                int sl = 1; 
+                try { 
+                    if (sp[1] != null) sl = Integer.parseInt(sp[1].toString().replaceAll("[^0-9]", "")); 
+                } catch(Exception e){}
+                
+                String dvt = "Hộp";
+                long gia = 0;
+                
+                // LỚP BẢO VỆ 1: Lọc sạch chuỗi, chỉ lấy số
+                try { 
+                    if (sp[3] != null) {
+                        String giaStr = sp[3].toString().replaceAll("[^0-9]", "");
+                        if (!giaStr.isEmpty()) gia = Long.parseLong(giaStr);
+                    }
+                } catch(Exception e){}
+                
+                // LỚP BẢO VỆ 2: Truy vấn thẳng vào Phiếu Đổi hiện tại
+                if (gia == 0) {
+                    try {
+                        Object[] info = daoHD.layThongTinGiaTuHDGoc(maPhieu, ten);
+                        if (info != null) {
+                            if (info[0] != null) dvt = info[0].toString();
+                            if (info[1] != null) gia = Long.parseLong(info[1].toString().replaceAll("[^0-9]", ""));
+                        }
+                    } catch(Exception ex){}
+                }
+
+                long thanhTien = gia * sl;
+                tongTienDoi += thanhTien;
+                
+                model.addRow(new Object[]{
+                    "[ĐỔI LẤY] " + ten, dvt, sl, 
+                    String.format("%,dđ", gia).replace(',', '.'), 
                     String.format("%,dđ", thanhTien).replace(',', '.')
                 });
             }
@@ -296,30 +343,58 @@ public class ChiTietPhieuDoiTra extends JDialog {
         JTable table = new JTable(model);
         table.setRowHeight(30);
         table.setShowGrid(false);
-        table.setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN);
-        
-        DefaultTableCellRenderer right = new DefaultTableCellRenderer(); 
-        right.setHorizontalAlignment(JLabel.RIGHT);
-        table.getColumnModel().getColumn(2).setCellRenderer(right);
-        table.getColumnModel().getColumn(3).setCellRenderer(right);
+        table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF); 
+
+        table.getColumnModel().getColumn(0).setPreferredWidth(280); 
+        table.getColumnModel().getColumn(1).setPreferredWidth(60);  
+        table.getColumnModel().getColumn(2).setPreferredWidth(50);  
+        table.getColumnModel().getColumn(3).setPreferredWidth(100); 
+        table.getColumnModel().getColumn(4).setPreferredWidth(110); 
+
+        DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
+        centerRenderer.setHorizontalAlignment(JLabel.CENTER);
+        table.getColumnModel().getColumn(1).setCellRenderer(centerRenderer);
+        table.getColumnModel().getColumn(2).setCellRenderer(centerRenderer);
+
+        DefaultTableCellRenderer rightRenderer = new DefaultTableCellRenderer(); 
+        rightRenderer.setHorizontalAlignment(JLabel.RIGHT);
+        table.getColumnModel().getColumn(3).setCellRenderer(rightRenderer);
+        table.getColumnModel().getColumn(4).setCellRenderer(rightRenderer);
 
         JScrollPane spTable = new JScrollPane(table);
         spTable.setPreferredSize(new Dimension(0, (table.getRowCount() * 30) + 25));
         spTable.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, borderGray));
+        spTable.getViewport().setBackground(Color.WHITE);
 
+        // 3. KHU VỰC SUMMARY TỔNG TIỀN VÀ CHÊNH LỆCH
         JPanel pnlSummary = new JPanel(new GridLayout(2, 1, 0, 5));
         pnlSummary.setBackground(Color.WHITE);
-        pnlSummary.add(createTotalRow("Tổng tiền SP trả:", String.format("%,dđ", tongTienThucTe).replace(',', '.'), Color.GRAY, 12));
         
-        String labelHoan = loaiPhieu.equalsIgnoreCase("Trả hàng") ? "Số tiền hoàn lại:" : "Chênh lệch / Bù trừ:";
-        String valHoan = loaiPhieu.equalsIgnoreCase("Trả hàng") ? tienHoanThucTe : chenhLechThucTe;
-        pnlSummary.add(createTotalRow(labelHoan, valHoan, primaryRed, 16));
+        if (loaiPhieu.equalsIgnoreCase("Trả hàng")) {
+            pnlSummary.add(createTotalRow("Tổng tiền SP trả:", String.format("%,dđ", tongTienTra).replace(',', '.'), Color.GRAY, 12));
+            pnlSummary.add(createTotalRow("Số tiền hoàn lại:", String.format("%,dđ", tongTienTra).replace(',', '.'), primaryRed, 16));
+        } else {
+            pnlSummary.add(createTotalRow("Giá trị SP Mới / Trả:", 
+                String.format("%,dđ", tongTienDoi).replace(',', '.') + " / " + String.format("%,dđ", tongTienTra).replace(',', '.'), 
+                Color.GRAY, 12));
+                
+            // Tính toán hoàn toàn dựa trên dữ liệu dương đã được làm sạch
+            long chenhLech = tongTienDoi - tongTienTra;
+            boolean isKhachBu = (chenhLech >= 0); 
+            
+            String textChenhLech = isKhachBu ? "Khách bù thêm:" : "Thối lại khách:";
+            String valueChenhLech = String.format("%,dđ", Math.abs(chenhLech)).replace(',', '.'); 
+            Color colorChenhLech = isKhachBu ? Color.decode("#D97706") : primaryRed;
+
+            pnlSummary.add(createTotalRow(textChenhLech, valueChenhLech, colorChenhLech, 16)); 
+        }
 
         pnl.add(spTable, BorderLayout.CENTER);
         pnl.add(pnlSummary, BorderLayout.SOUTH);
         return pnl;
     }
-
+    
+    
     private JPanel createTotalRow(String label, String value, Color color, int fontSize) {
         JPanel p = new JPanel(new BorderLayout());
         p.setBackground(Color.WHITE);

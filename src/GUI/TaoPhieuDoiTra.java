@@ -16,25 +16,24 @@ public class TaoPhieuDoiTra extends JDialog {
     private DefaultTableModel spMoiModel, mainModel, chiTietModel; 
     private JTable tableSPMoi, table;
     private boolean isUpdatingTable = false, isUpdatingCart = false;
-    private JScrollPane spTableTraHang, scrollSPMoi; // Khai báo scrollSPMoi ra toàn cục
+    private JScrollPane spTableTraHang, scrollSPMoi; 
     private JPanel pnlTableTraHang;
     
-    // UI Elements 
     private JPanel pnlHeader, pnlNewProduct, pnlFoundData;
     private JLabel lblError;
     private JTextField txtSearch, txtSearchNew, txtGhiChu; 
     private JButton btnTraHang, btnDoiHang, btnTaoPhieu;
     private JComboBox<String> cboLyDo; 
     
-    // --- BIẾN BỔ SUNG CHO PHƯƠNG THỨC THANH TOÁN ---
     private String phuongThucDoiTra = "Tiền mặt";
     private JPanel pnlPaymentMethods, pnlCashDetails, pnlTransferDetails;
     private JTextField txtTienKhachDua;
     private JPanel pnlPaymentSection;
     private JLabel lblTienThuaTraKhach, lblQRCode, lblQRAmount;
     private long soTienThucTeCanXuLy = 0; 
+    private boolean isCKXacNhan = false; 
+    private JButton btnXacNhanCK; 
     
-    // UI Elements - Cột Data
     private JLabel lblKhachHang, lblMaHoaDonInfo, lblThoiGianThanhToan;
     private JLabel lblGiaTriSPTra, lblThoiGianMua, lblBadgeHoanTien, lblSoTienHoan, lblTextSoTienHoan;
     private long tongTienMat = 0;
@@ -42,7 +41,6 @@ public class TaoPhieuDoiTra extends JDialog {
     private java.util.List<JLabel> listCountLabels = new java.util.ArrayList<>();
     private JLabel lblTotalValue, lblTienThuaValue, lblExactValue;
     
-    // BUS Logic
     private BUS_HoaDon busHD = new BUS_HoaDon();
     private BUS_TraHang busTraHang = new BUS_TraHang();
     private BUS_DoiHang busDoiHang = new BUS_DoiHang();
@@ -71,8 +69,6 @@ public class TaoPhieuDoiTra extends JDialog {
         });
 
         initUI();
-        
-        // --- THU GỌN FORM LÚC BAN ĐẦU CHƯA TÌM KIẾM ---
         setSize(850, 330); 
         setLocationRelativeTo(parent);
     }
@@ -177,17 +173,18 @@ public class TaoPhieuDoiTra extends JDialog {
                 "Lỗi bảo quản từ phía khách hàng (Từ chối)"
             });
         
-        String[] cols = {"Chọn", "Sản phẩm", "Số lượng", "Đơn giá", "MaxSL"};
+        // THÊM CỘT ĐVT VÀO BẢNG SẢN PHẨM TRẢ
+        String[] cols = {"Chọn", "Sản phẩm", "ĐVT", "Số lượng", "Đơn giá", "MaxSL"};
         chiTietModel = new DefaultTableModel(cols, 0) {
             @Override
             public Class<?> getColumnClass(int columnIndex) {
                 if (columnIndex == 0) return Boolean.class; 
-                if (columnIndex == 2 || columnIndex == 4) return Integer.class; 
+                if (columnIndex == 3 || columnIndex == 5) return Integer.class; 
                 return String.class;
             }
             @Override
             public boolean isCellEditable(int row, int column) { 
-                return column == 0 || column == 2; 
+                return column == 0 || column == 3; 
             }
         };
 
@@ -197,15 +194,15 @@ public class TaoPhieuDoiTra extends JDialog {
                 int row = e.getFirstRow();
                 int col = e.getColumn();
                 
-                if (row >= 0 && col == 2) { 
+                if (row >= 0 && col == 3) { 
                     try {
-                        int slMax = (int) chiTietModel.getValueAt(row, 4);
-                        int slThaoTac = (int) chiTietModel.getValueAt(row, 2);
+                        int slMax = (int) chiTietModel.getValueAt(row, 5);
+                        int slThaoTac = (int) chiTietModel.getValueAt(row, 3);
                         if (slThaoTac < 1) slThaoTac = 1;
                         if (slThaoTac > slMax) slThaoTac = slMax; 
                         
                         isUpdatingTable = true;
-                        chiTietModel.setValueAt(slThaoTac, row, 2);
+                        chiTietModel.setValueAt(slThaoTac, row, 3);
                         chiTietModel.setValueAt(true, row, 0); 
                     } catch (Exception ex) { 
                         ex.printStackTrace();
@@ -220,28 +217,62 @@ public class TaoPhieuDoiTra extends JDialog {
             }
         });
 
-        spMoiModel = new DefaultTableModel(new String[]{"Sản phẩm mới", "SL", "Đơn giá", "Thành tiền"}, 0) {
+        spMoiModel = new DefaultTableModel(new String[]{"Sản phẩm mới", "ĐVT", "SL", "Đơn giá", "Thành tiền"}, 0) {
             @Override
-            public boolean isCellEditable(int row, int column) { return column == 1; } 
+            public boolean isCellEditable(int row, int column) { return column == 1 || column == 2; } 
         };
         
         spMoiModel.addTableModelListener(e -> {
             if (isUpdatingCart) return;
-            if (e.getType() == javax.swing.event.TableModelEvent.UPDATE && e.getColumn() == 1) {
+            if (e.getType() == javax.swing.event.TableModelEvent.UPDATE) {
                 int row = e.getFirstRow();
-                try {
-                    int sl = Integer.parseInt(spMoiModel.getValueAt(row, 1).toString());
-                    if (sl < 1) sl = 1;
-                    double donGia = Double.parseDouble(spMoiModel.getValueAt(row, 2).toString().replaceAll("[^0-9]", ""));
-                    
-                    isUpdatingCart = true;
-                    spMoiModel.setValueAt(sl, row, 1);
-                    spMoiModel.setValueAt(String.format("%,.0fđ", sl * donGia), row, 3);
-                } catch(Exception ex) { 
-                    ex.printStackTrace();
-                } finally {
-                    isUpdatingCart = false;
-                    SwingUtilities.invokeLater(() -> tinhTongTienSPMoi());
+                int col = e.getColumn();
+
+                if (col == 1) {
+                    SwingUtilities.invokeLater(() -> {
+                        isUpdatingCart = true;
+                        try {
+                            String tenSP = spMoiModel.getValueAt(row, 0).toString();
+                            String donViMoi = spMoiModel.getValueAt(row, 1).toString();
+                            double giaBanMoi = 0;
+                            
+                            try (java.sql.Connection con = ConnectDB.ConnectDB.getInstance().getConnection()) {
+                                String sql = "SELECT dv.gia FROM DonViDoLuong dv JOIN SanPham sp ON dv.sanPhamId = sp.id WHERE sp.ten = ? AND dv.ten = ?";
+                                try (java.sql.PreparedStatement pst = con.prepareStatement(sql)) {
+                                    pst.setString(1, tenSP);
+                                    pst.setString(2, donViMoi);
+                                    try (java.sql.ResultSet rs = pst.executeQuery()) {
+                                        if (rs.next()) giaBanMoi = rs.getDouble("gia");
+                                    }
+                                }
+                            } catch (Exception ex) {}
+
+                            if (giaBanMoi > 0) {
+                                spMoiModel.setValueAt(String.format("%,.0fđ", giaBanMoi), row, 3);
+                                int sl = Integer.parseInt(spMoiModel.getValueAt(row, 2).toString());
+                                spMoiModel.setValueAt(String.format("%,.0fđ", sl * giaBanMoi), row, 4);
+                            }
+                        } catch (Exception ex) {}
+                        finally {
+                            isUpdatingCart = false;
+                            tinhTongTienSPMoi();
+                        }
+                    });
+                } 
+                else if (col == 2) {
+                    try {
+                        int sl = Integer.parseInt(spMoiModel.getValueAt(row, 2).toString());
+                        if (sl < 1) sl = 1;
+                        double donGia = Double.parseDouble(spMoiModel.getValueAt(row, 3).toString().replaceAll("[^0-9]", ""));
+                        
+                        isUpdatingCart = true;
+                        spMoiModel.setValueAt(sl, row, 2);
+                        spMoiModel.setValueAt(String.format("%,.0fđ", sl * donGia), row, 4);
+                    } catch(Exception ex) { 
+                    } finally {
+                        isUpdatingCart = false;
+                        SwingUtilities.invokeLater(() -> tinhTongTienSPMoi());
+                    }
                 }
             }
         });
@@ -366,7 +397,6 @@ public class TaoPhieuDoiTra extends JDialog {
         pnlLeft.setLayout(new BoxLayout(pnlLeft, BoxLayout.Y_AXIS));
         pnlLeft.setBackground(Color.WHITE);
 
-        // 1. Box Hóa đơn
         JPanel pnlInvoice = new JPanel(new BorderLayout());
         pnlInvoice.setBackground(Color.WHITE);
         pnlInvoice.setBorder(BorderFactory.createCompoundBorder(
@@ -420,7 +450,6 @@ public class TaoPhieuDoiTra extends JDialog {
 
         pnlInvoice.add(pnlInvTop, BorderLayout.NORTH); pnlInvoice.add(pnlInvMid, BorderLayout.CENTER); pnlInvoice.add(pnlInvBot, BorderLayout.SOUTH);
 
-        // 2. Bảng sản phẩm
         pnlTableTraHang = new JPanel(new BorderLayout(0, 5));
         pnlTableTraHang.setBackground(Color.WHITE);
         pnlTableTraHang.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -437,7 +466,6 @@ public class TaoPhieuDoiTra extends JDialog {
         table.getTableHeader().setPreferredSize(new Dimension(0, 35));
         table.getTableHeader().setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, borderGray));
         
-        // CẬP NHẬT: ÉP CHỐT SỔ KHI TICK VÀO BẢNG CHÍNH
         table.putClientProperty("terminateEditOnFocusLost", Boolean.TRUE);
         table.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
@@ -453,17 +481,18 @@ public class TaoPhieuDoiTra extends JDialog {
             }
         });
 
-        table.getColumnModel().removeColumn(table.getColumnModel().getColumn(4));
+        table.getColumnModel().removeColumn(table.getColumnModel().getColumn(5));
         table.getColumnModel().getColumn(0).setPreferredWidth(40);
-        table.getColumnModel().getColumn(1).setPreferredWidth(230);
-        table.getColumnModel().getColumn(2).setPreferredWidth(90);
-        table.getColumnModel().getColumn(2).setCellRenderer(new SpinnerRenderer());
-        table.getColumnModel().getColumn(2).setCellEditor(new SpinnerEditor());
+        table.getColumnModel().getColumn(1).setPreferredWidth(200);
+        table.getColumnModel().getColumn(2).setPreferredWidth(60); 
+        table.getColumnModel().getColumn(3).setPreferredWidth(80); 
+        table.getColumnModel().getColumn(3).setCellRenderer(new SpinnerRenderer());
+        table.getColumnModel().getColumn(3).setCellEditor(new SpinnerEditor());
         
         DefaultTableCellRenderer rightRenderer = new DefaultTableCellRenderer();
         rightRenderer.setHorizontalAlignment(JLabel.RIGHT);
         rightRenderer.setForeground(Color.GRAY);
-        table.getColumnModel().getColumn(3).setCellRenderer(rightRenderer); 
+        table.getColumnModel().getColumn(4).setCellRenderer(rightRenderer); 
 
         spTableTraHang = new JScrollPane(table);
         spTableTraHang.getViewport().setBackground(Color.WHITE);
@@ -473,7 +502,6 @@ public class TaoPhieuDoiTra extends JDialog {
         pnlNewProduct = createNewProductPanel();
         pnlNewProduct.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        // 3. Lý do & Ghi chú
         JPanel pnlReasonNote = new JPanel(new GridLayout(1, 2, 15, 0)); 
         pnlReasonNote.setBackground(Color.WHITE);
         pnlReasonNote.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -529,7 +557,6 @@ public class TaoPhieuDoiTra extends JDialog {
         scrollLeft.getVerticalScrollBar().setPreferredSize(new Dimension(8, 0));
         scrollLeft.getVerticalScrollBar().setUnitIncrement(16);
 
-        // --- CỘT PHẢI ---
         JPanel pnlRightWrap = new JPanel(new BorderLayout());
         pnlRightWrap.setBackground(Color.WHITE);
         pnlRightWrap.setPreferredSize(new Dimension(280, 0)); 
@@ -588,7 +615,7 @@ public class TaoPhieuDoiTra extends JDialog {
     private JPanel createNewProductPanel() {
         JPanel pnlWrapper = new JPanel(new BorderLayout());
         pnlWrapper.setBackground(Color.WHITE);
-        pnlWrapper.setBorder(new EmptyBorder(0, 0, 15, 0)); // Tạo khoảng trắng cho chuẩn UI
+        pnlWrapper.setBorder(new EmptyBorder(0, 0, 15, 0));
 
         JPanel pnlMain = new JPanel();
         pnlMain.setLayout(new BoxLayout(pnlMain, BoxLayout.Y_AXIS));
@@ -600,7 +627,7 @@ public class TaoPhieuDoiTra extends JDialog {
 
         JLabel lblTitle = new JLabel("Sản phẩm mới");
         lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        lblTitle.setForeground(textDark);
+        lblTitle.setForeground(Color.decode("#212B36"));
         lblTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         JLabel lblSub = new JLabel("Đổi cùng loại miễn phí. Đổi khác loại sẽ tính chênh lệch.");
@@ -651,22 +678,67 @@ public class TaoPhieuDoiTra extends JDialog {
             public void changedUpdate(javax.swing.event.DocumentEvent e) { timKiemLive(); }
         });
 
-        tableSPMoi = new JTable(spMoiModel);
+        tableSPMoi = new JTable(spMoiModel) {
+            @Override
+            public javax.swing.table.TableCellEditor getCellEditor(int row, int column) {
+                if (column == 1) { 
+                    String dvtHienTai = getValueAt(row, 1) != null ? getValueAt(row, 1).toString().trim() : "";
+                    String tenSP = getValueAt(row, 0) != null ? getValueAt(row, 0).toString().trim() : "";
+                    
+                    JComboBox<String> cbDVT = new JComboBox<>();
+                    cbDVT.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+                    cbDVT.setBackground(Color.WHITE);
+                    
+                    try (java.sql.Connection con = ConnectDB.ConnectDB.getInstance().getConnection()) {
+                        String sql = "SELECT dv.ten FROM DonViDoLuong dv JOIN SanPham sp ON dv.sanPhamId = sp.id WHERE sp.ten = ?";
+                        try (java.sql.PreparedStatement pst = con.prepareStatement(sql)) {
+                            pst.setString(1, tenSP);
+                            try (java.sql.ResultSet rs = pst.executeQuery()) {
+                                boolean hasData = false;
+                                while (rs.next()) {
+                                    cbDVT.addItem(rs.getString("ten"));
+                                    hasData = true;
+                                }
+                                if (!hasData && !dvtHienTai.isEmpty()) cbDVT.addItem(dvtHienTai);
+                            }
+                        }
+                    } catch (Exception ex) {
+                        if (!dvtHienTai.isEmpty()) cbDVT.addItem(dvtHienTai);
+                    }
+                    cbDVT.setSelectedItem(dvtHienTai);
+                    return new DefaultCellEditor(cbDVT);
+                }
+                return super.getCellEditor(row, column);
+            }
+        };
+        
         tableSPMoi.setRowHeight(35);
         tableSPMoi.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         tableSPMoi.setShowGrid(false);
         tableSPMoi.putClientProperty("terminateEditOnFocusLost", Boolean.TRUE);
-        tableSPMoi.setTableHeader(null); 
+        
+        DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
+        centerRenderer.setHorizontalAlignment(JLabel.CENTER);
+        tableSPMoi.getColumnModel().getColumn(1).setCellRenderer(centerRenderer); 
+        tableSPMoi.getColumnModel().getColumn(2).setCellRenderer(centerRenderer); 
+        
+        DefaultTableCellRenderer rightRenderer = new DefaultTableCellRenderer();
+        rightRenderer.setHorizontalAlignment(JLabel.RIGHT);
+        tableSPMoi.getColumnModel().getColumn(3).setCellRenderer(rightRenderer); 
+        tableSPMoi.getColumnModel().getColumn(4).setCellRenderer(rightRenderer); 
+
+        tableSPMoi.getColumnModel().getColumn(0).setPreferredWidth(180);
+        tableSPMoi.getColumnModel().getColumn(1).setPreferredWidth(60); 
+        tableSPMoi.getColumnModel().getColumn(2).setPreferredWidth(40); 
+        tableSPMoi.getColumnModel().getColumn(3).setPreferredWidth(80); 
+        tableSPMoi.getColumnModel().getColumn(4).setPreferredWidth(80); 
         
         scrollSPMoi = new JScrollPane(tableSPMoi);
         scrollSPMoi.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, Color.decode("#E2E8F0")));
         scrollSPMoi.setAlignmentX(Component.LEFT_ALIGNMENT);
         
-        // --- CẬP NHẬT: ẨN LUÔN BẢNG KHI MỚI VÀO ---
         scrollSPMoi.setPreferredSize(new Dimension(0, 0)); 
         scrollSPMoi.setVisible(false);
-        
-        tableSPMoi.getColumnModel().getColumn(3).setPreferredWidth(80);
 
         pnlMain.add(lblTitle);
         pnlMain.add(Box.createVerticalStrut(5));
@@ -680,6 +752,7 @@ public class TaoPhieuDoiTra extends JDialog {
         return pnlWrapper;
     }
 
+    // THUẬT TOÁN LOẠI BỎ TRÙNG LẶP SẢN PHẨM KHẮC PHỤC LỖI BACKEND
     private void xuLyTimKiemHD() {
         String maHD = txtSearch.getText().trim();
         if (maHD.isEmpty() || maHD.equals("Nhập mã hóa đơn (VD: HD-2024-0001)...")) {
@@ -707,12 +780,46 @@ public class TaoPhieuDoiTra extends JDialog {
         List<Object[]> dsChiTiet = busCTHD.layDuLieuDoiTra(hd.getId()); 
 
         if (dsChiTiet != null && !dsChiTiet.isEmpty()) {
-            for (Object[] rowData : dsChiTiet) {
-                int slMua = Integer.parseInt(rowData[2].toString()); 
-                String donGia = rowData[3].toString(); 
-                if(!donGia.contains("đ")) donGia = String.format("%,.0fđ", Double.parseDouble(donGia));
+            java.util.Set<String> addedProducts = new java.util.HashSet<>();
+            BUS_SanPham busSP = new BUS_SanPham();
+            BUS_DonViDoLuong busDVT = new BUS_DonViDoLuong();
 
-                chiTietModel.addRow(new Object[]{false, rowData[0].toString(), slMua, donGia, slMua});
+            for (Object[] rowData : dsChiTiet) {
+                String tenSP = rowData[0].toString();
+                int slMua = Integer.parseInt(rowData[2].toString());
+                String donGiaStr = rowData[3].toString();
+                long donGiaNum = 0;
+                
+                try {
+                    String clean = donGiaStr.replaceAll("[^0-9]", "");
+                    donGiaNum = Long.parseLong(clean);
+                } catch(Exception e){}
+
+                // Kỹ thuật gộp chung Tên và Giá để khử trùng lặp 100%
+                String uniqueKey = tenSP + "_" + donGiaNum;
+                if (!addedProducts.contains(uniqueKey)) {
+                    
+                    // Tìm ĐVT thực sự khớp với Giá bán trong Kho
+                    String correctDvt = "Hộp";
+                    try {
+                        List<SanPham> listSP = busSP.traCuuSanPham(tenSP);
+                        if(listSP != null && !listSP.isEmpty()) {
+                            List<DonViDoLuong> listDVT = busDVT.getDSTheoMaSP(listSP.get(0).getId());
+                            if(listDVT != null) {
+                                for(DonViDoLuong d : listDVT) {
+                                    if(d.getGia() == donGiaNum) {
+                                        correctDvt = d.getTen();
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    } catch(Exception e){}
+
+                    String donGiaFmt = String.format("%,dđ", donGiaNum).replace(',', '.');
+                    chiTietModel.addRow(new Object[]{false, tenSP, correctDvt, slMua, donGiaFmt, slMua});
+                    addedProducts.add(uniqueKey);
+                }
             }
         }
 
@@ -741,11 +848,13 @@ public class TaoPhieuDoiTra extends JDialog {
         SwingUtilities.invokeLater(() -> {
             if (pnlTableTraHang != null && spTableTraHang != null && table != null) {
                 int rowCount = chiTietModel.getRowCount();
-                int headerHeight = table.getTableHeader().getPreferredSize().height;
-                int dynamicHeight = (rowCount * table.getRowHeight()) + headerHeight;
+                int headerHeight = table.getTableHeader() != null ? table.getTableHeader().getPreferredSize().height : 0;
+                
+                int dynamicHeight = (rowCount * table.getRowHeight()) + headerHeight + 8;
                 
                 spTableTraHang.setPreferredSize(new Dimension(0, dynamicHeight));
-                pnlTableTraHang.setMaximumSize(new Dimension(Integer.MAX_VALUE, dynamicHeight + 35)); 
+                spTableTraHang.setMaximumSize(new Dimension(Integer.MAX_VALUE, dynamicHeight)); 
+                pnlTableTraHang.setMaximumSize(new Dimension(Integer.MAX_VALUE, dynamicHeight + 40)); 
                 
                 pnlFoundData.revalidate();
                 pnlFoundData.repaint();
@@ -753,8 +862,34 @@ public class TaoPhieuDoiTra extends JDialog {
         });
     }
 
+    private void checkDieuKienThanhToan() {
+        if (btnTaoPhieu == null) return;
+        boolean isTraHang = btnTraHang.getBackground().equals(Color.WHITE);
+        
+        if (isTraHang) {
+            btnTaoPhieu.setEnabled(true);
+            return;
+        }
+
+        if (lblTextSoTienHoan.getText().contains("Khách bù")) {
+            if ("Tiền mặt".equals(phuongThucDoiTra)) {
+                btnTaoPhieu.setEnabled(tongTienMat >= soTienThucTeCanXuLy);
+            } else if ("Chuyển khoản".equals(phuongThucDoiTra)) {
+                btnTaoPhieu.setEnabled(isCKXacNhan);
+            }
+        } else {
+            btnTaoPhieu.setEnabled(true);
+        }
+    }
+
     private void capNhatDieuKienDoiTra() {
         if (lblSoTienHoan == null || cboLyDo == null || ngayHoaDonGoc == null) return;
+
+        isCKXacNhan = false;
+        if (btnXacNhanCK != null) {
+            btnXacNhanCK.setText("Đã nhận tiền chuyển khoản");
+            btnXacNhanCK.setBackground(Color.decode("#22C55E"));
+        }
 
         long soGioDaMua = java.time.Duration.between(ngayHoaDonGoc, LocalDateTime.now()).toHours();
         String lyDo = cboLyDo.getSelectedItem().toString();
@@ -769,8 +904,8 @@ public class TaoPhieuDoiTra extends JDialog {
             if (val != null) isSelected = (boolean) val;
             
             if (isSelected) {
-                int sl = (int) chiTietModel.getValueAt(i, 2); 
-                String donGiaStr = chiTietModel.getValueAt(i, 3).toString();
+                int sl = (int) chiTietModel.getValueAt(i, 3); 
+                String donGiaStr = chiTietModel.getValueAt(i, 4).toString();
                 double donGia = Double.parseDouble(donGiaStr.replaceAll("[^0-9]", ""));
                 giaTriGoc += sl * donGia;
                 countSelected++;
@@ -820,7 +955,6 @@ public class TaoPhieuDoiTra extends JDialog {
             return;
         }
 
-        if(btnTaoPhieu != null) btnTaoPhieu.setEnabled(true);
         double v_qd = busTraHang.xacDinhMucHoanTien(giaTriGoc, phanTramHoan); 
 
         if (isTraHang) {
@@ -833,6 +967,7 @@ public class TaoPhieuDoiTra extends JDialog {
             lblSoTienHoan.setText(String.format("%,.0fđ", v_qd)); 
             lblSoTienHoan.setForeground(primaryRed);
             
+            btnTaoPhieu.setEnabled(true);
         } else {
             lblBadgeHoanTien.setText("Đang tính chênh lệch..."); 
             lblBadgeHoanTien.setForeground(primaryBlue); 
@@ -845,21 +980,16 @@ public class TaoPhieuDoiTra extends JDialog {
                 
                 if (btnTaoPhieu != null) btnTaoPhieu.setEnabled(false);
             } else {
-                double chenhLech = busDoiHang.tinhTienChenhLech(v_qd, giaMoi);
-                
+                double chenhLech = giaMoi - v_qd; 
                 this.soTienThucTeCanXuLy = (long) Math.abs(chenhLech);
                 
                 if (chenhLech > 0) {
                     lblTextSoTienHoan.setText("Khách bù thêm"); 
                     lblSoTienHoan.setForeground(primaryBlue);
-                    
-                    if ("Chuyển khoản".equals(phuongThucDoiTra)) {
-                        updateQRCode();
-                    }
+                    if ("Chuyển khoản".equals(phuongThucDoiTra)) updateQRCode();
                 } else {
                     lblTextSoTienHoan.setText("Thối lại khách"); 
                     lblSoTienHoan.setForeground(primaryRed);
-                    
                     if (lblQRCode != null) {
                         lblQRCode.setIcon(null);
                         lblQRCode.setText("Hoàn tiền qua STK khách");
@@ -870,9 +1000,11 @@ public class TaoPhieuDoiTra extends JDialog {
                 lblBadgeHoanTien.setText(thongBaoHoanTien); 
             }
         }
+        
         if (lblExactValue != null) {
             lblExactValue.setText(String.format("%,dđ", soTienThucTeCanXuLy));
         }
+        
         capNhatTongTienMat(); 
     }
 
@@ -902,25 +1034,32 @@ public class TaoPhieuDoiTra extends JDialog {
         capNhatDieuKienDoiTra();
     }
 
-    // --- CẬP NHẬT: CO GIÃN ĐỘNG BẢNG SP MỚI MƯỢT MÀ HƠN ---
     private void tinhTongTienSPMoi() {
         giaMoi = 0; tenMoi = "";
+        
+        int colThanhTien = spMoiModel.getColumnCount() - 1;
+        
         for (int i = 0; i < spMoiModel.getRowCount(); i++) {
-            giaMoi += Double.parseDouble(spMoiModel.getValueAt(i, 3).toString().replaceAll("[^0-9]", ""));
+            giaMoi += Double.parseDouble(spMoiModel.getValueAt(i, colThanhTien).toString().replaceAll("[^0-9]", ""));
             tenMoi += spMoiModel.getValueAt(i, 0).toString() + ", ";
         }
         if(tenMoi.endsWith(", ")) tenMoi = tenMoi.substring(0, tenMoi.length() - 2);
         
         SwingUtilities.invokeLater(() -> {
-            if (scrollSPMoi != null) {
+            if (scrollSPMoi != null && tableSPMoi != null) {
                 if (spMoiModel.getRowCount() > 0) {
                     scrollSPMoi.setVisible(true);
-                    int h = Math.min(spMoiModel.getRowCount() * 35, 140);
-                    scrollSPMoi.setPreferredSize(new Dimension(0, h));
-                    scrollSPMoi.setMaximumSize(new Dimension(Integer.MAX_VALUE, h));
+                    
+                    int headerHeight = tableSPMoi.getTableHeader() != null ? tableSPMoi.getTableHeader().getPreferredSize().height : 0;
+                    int rowHeight = tableSPMoi.getRowHeight();
+                    int totalHeight = (spMoiModel.getRowCount() * rowHeight) + headerHeight + 8; 
+                    
+                    scrollSPMoi.setPreferredSize(new Dimension(0, totalHeight));
+                    scrollSPMoi.setMaximumSize(new Dimension(Integer.MAX_VALUE, totalHeight));
                 } else {
                     scrollSPMoi.setVisible(false);
                 }
+                
                 if (pnlNewProduct != null) {
                     pnlNewProduct.revalidate();
                     pnlNewProduct.repaint();
@@ -980,7 +1119,9 @@ public class TaoPhieuDoiTra extends JDialog {
 
                     BUS_DonViDoLuong busDVDL = new BUS_DonViDoLuong(); List<DonViDoLuong> dsDVT = busDVDL.getDSTheoMaSP(sp.getId());
                     double gia = 0; String dvt = "Hộp"; if (dsDVT != null && !dsDVT.isEmpty()) { gia = dsDVT.get(0).getGia(); dvt = dsDVT.get(0).getTen(); }
+                    
                     final double finalGia = gia; 
+                    final String finalDvt = dvt; 
 
                     JLabel lblGia = new JLabel(String.format("%,.0fđ / %s", gia, dvt)); lblGia.setFont(new Font("Segoe UI", Font.BOLD, 13)); lblGia.setForeground(Color.decode("#1967D2")); 
                     pnlItem.add(pnlInfo, BorderLayout.CENTER); pnlItem.add(lblGia, BorderLayout.EAST);
@@ -994,13 +1135,18 @@ public class TaoPhieuDoiTra extends JDialog {
                                 txtSearchNew.setText(""); 
                                 boolean exists = false;
                                 for(int i=0; i < spMoiModel.getRowCount(); i++) {
-                                    if(spMoiModel.getValueAt(i, 0).equals(sp.getTen())) {
-                                        int oldSL = Integer.parseInt(spMoiModel.getValueAt(i, 1).toString());
-                                        spMoiModel.setValueAt(oldSL + 1, i, 1); exists = true; break;
+                                    if(spMoiModel.getValueAt(i, 0).equals(sp.getTen()) && spMoiModel.getValueAt(i, 1).equals(finalDvt)) {
+                                        int oldSL = Integer.parseInt(spMoiModel.getValueAt(i, 2).toString());
+                                        spMoiModel.setValueAt(oldSL + 1, i, 2); 
+                                        spMoiModel.setValueAt(String.format("%,.0fđ", (oldSL + 1) * finalGia), i, 4);
+                                        exists = true; 
+                                        break;
                                     }
                                 }
                                 if(!exists) {
-                                    isUpdatingCart = true; spMoiModel.addRow(new Object[]{ sp.getTen(), 1, String.format("%,.0fđ", finalGia), String.format("%,.0fđ", finalGia) }); isUpdatingCart = false;
+                                    isUpdatingCart = true; 
+                                    spMoiModel.addRow(new Object[]{ sp.getTen(), finalDvt, 1, String.format("%,.0fđ", finalGia), String.format("%,.0fđ", finalGia) }); 
+                                    isUpdatingCart = false;
                                 }
                                 tinhTongTienSPMoi(); 
                             });
@@ -1047,7 +1193,6 @@ public class TaoPhieuDoiTra extends JDialog {
             String khach = lblKhachHang.getText().trim(); 
             String ghiChu = txtGhiChu.getText().trim();
 
-            // 1. LẤY DANH SÁCH SP TRẢ (GHIM KÈM ĐƠN GIÁ ĐỂ CHỐNG LỖI HIỂN THỊ)
             StringBuilder spTraSb = new StringBuilder();
             boolean hasSelected = false;
             if (table.isEditing()) table.getCellEditor().stopCellEditing();
@@ -1058,11 +1203,11 @@ public class TaoPhieuDoiTra extends JDialog {
                 
                 if (isSelected) { 
                     String tenSp = chiTietModel.getValueAt(i, 1).toString();
-                    String soLuong = chiTietModel.getValueAt(i, 2).toString();
-                    String giaChuan = chiTietModel.getValueAt(i, 3).toString().replaceAll("[^0-9]", ""); // Lấy đúng giá lúc tick
+                    String dvt = chiTietModel.getValueAt(i, 2).toString();
+                    String soLuong = chiTietModel.getValueAt(i, 3).toString();
+                    String giaChuan = chiTietModel.getValueAt(i, 4).toString().replaceAll("[^0-9]", ""); 
                     
-                    // Format: TênSP_SL_Giá (Giúp hiển thị chính xác 100%)
-                    spTraSb.append(tenSp).append("_").append(soLuong).append("_").append(giaChuan).append("; ");
+                    spTraSb.append(tenSp).append("_").append(dvt).append("_").append(soLuong).append("_").append(giaChuan).append("; ");
                     hasSelected = true;
                 }
             }
@@ -1072,7 +1217,6 @@ public class TaoPhieuDoiTra extends JDialog {
             }
             String strSPTra = "TRA: " + spTraSb.toString().replaceAll("; $", "");
 
-            // 2. LẤY DANH SÁCH SP ĐỔI
             String strSPDoi = "DOI: Không có";
             if (loai.equals("Đổi hàng") && spMoiModel.getRowCount() > 0) {
                 StringBuilder spDoiSb = new StringBuilder();
@@ -1080,10 +1224,11 @@ public class TaoPhieuDoiTra extends JDialog {
                 
                 for(int i = 0; i < spMoiModel.getRowCount(); i++) {
                     String tenSp = spMoiModel.getValueAt(i, 0).toString();
-                    String sl = spMoiModel.getValueAt(i, 1).toString();
-                    String giaChuan = spMoiModel.getValueAt(i, 2).toString().replaceAll("[^0-9]", "");
+                    String dvt = spMoiModel.getValueAt(i, 1).toString();
+                    String sl = spMoiModel.getValueAt(i, 2).toString();
+                    String giaChuan = spMoiModel.getValueAt(i, 3).toString().replaceAll("[^0-9]", "");
                     
-                    spDoiSb.append(tenSp).append("_").append(sl).append("_").append(giaChuan).append("; ");
+                    spDoiSb.append(tenSp).append("_").append(dvt).append("_").append(sl).append("_").append(giaChuan).append("; ");
                 }
                 strSPDoi = "DOI: " + spDoiSb.toString().replaceAll("; $", "");
             }
@@ -1108,7 +1253,6 @@ public class TaoPhieuDoiTra extends JDialog {
             hdGoc.setId(maHDGoc);
             hdDoiTra.setHoaDonGocId(hdGoc);
             
-            // ĐẨY XUỐNG TẦNG BUS BẰNG HÀM MỚI
             if (busHD.taoPhieuDoiTra(hdDoiTra)) {
                 mainModel.addRow(new Object[]{
                     maPhieu, maHDGoc, khach, loai, lyDoFull, colHoanTien, colChenhLech, "Chờ xử lý", ngayTao, formatGhiChu
@@ -1158,7 +1302,7 @@ public class TaoPhieuDoiTra extends JDialog {
         public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row, int column) {
             pnl.setBackground(table.getSelectionBackground());
             
-            int max = (int) table.getModel().getValueAt(row, 4);
+            int max = (int) table.getModel().getValueAt(row, 5);
             int currentVal = value != null ? (int) value : 1;
             
             spinner.setModel(new SpinnerNumberModel(currentVal, 1, max, 1));
@@ -1170,6 +1314,7 @@ public class TaoPhieuDoiTra extends JDialog {
             return spinner.getValue();
         }
     }
+    
     private JPanel createPaymentSection() {
         JPanel pnl = new JPanel(new BorderLayout(0, 10)); 
         pnl.setBackground(Color.WHITE);
@@ -1226,7 +1371,28 @@ public class TaoPhieuDoiTra extends JDialog {
 
         pnlTransferDetails.add(lblQRTriGia, BorderLayout.NORTH);
         pnlTransferDetails.add(lblQRCode, BorderLayout.CENTER);
-        pnlTransferDetails.add(lblQRAmount, BorderLayout.SOUTH);
+        
+        JPanel pnlTransferBot = new JPanel(new BorderLayout());
+        pnlTransferBot.setOpaque(false);
+        pnlTransferBot.add(lblQRAmount, BorderLayout.NORTH);
+        
+        btnXacNhanCK = new JButton("Đã nhận tiền chuyển khoản");
+        btnXacNhanCK.setBackground(Color.decode("#22C55E"));
+        btnXacNhanCK.setForeground(Color.WHITE);
+        btnXacNhanCK.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btnXacNhanCK.setFocusPainted(false);
+        btnXacNhanCK.setBorder(new EmptyBorder(8,0,8,0));
+        btnXacNhanCK.addActionListener(e -> {
+            if (lblTextSoTienHoan.getText().contains("Khách bù")) {
+                isCKXacNhan = true;
+                btnXacNhanCK.setText("✓ Đã xác nhận tiền");
+                btnXacNhanCK.setBackground(Color.decode("#16A34A"));
+                checkDieuKienThanhToan();
+            }
+        });
+        
+        pnlTransferBot.add(btnXacNhanCK, BorderLayout.SOUTH);
+        pnlTransferDetails.add(pnlTransferBot, BorderLayout.SOUTH);
         
         pnlCards.add(pnlTienMatWrapper, "CASH");
         pnlCards.add(pnlTransferDetails, "BANK");
@@ -1238,6 +1404,7 @@ public class TaoPhieuDoiTra extends JDialog {
             stylePaymentBtn(btnTienMat, true);
             stylePaymentBtn(btnChuyenKhoan, false);
             cl.show(pnlCards, "CASH"); 
+            checkDieuKienThanhToan();
         });
 
         btnChuyenKhoan.addActionListener(e -> {
@@ -1252,6 +1419,7 @@ public class TaoPhieuDoiTra extends JDialog {
                 lblQRCode.setIcon(null); 
                 lblQRCode.setText("Hoàn tiền qua STK khách"); 
             }
+            checkDieuKienThanhToan();
         });
 
         pnl.add(pnlHeader, BorderLayout.NORTH);
@@ -1275,7 +1443,6 @@ public class TaoPhieuDoiTra extends JDialog {
         btn.setFocusPainted(false);
     }
 
-    // --- CẬP NHẬT: MÃ HÓA URL ĐỂ MÃ QR TẠO THÀNH CÔNG DÙ CÓ KHOẢNG TRẮNG ---
     private void updateQRCode() {
         if (lblQRCode == null || soTienThucTeCanXuLy <= 0) return;
         
@@ -1452,16 +1619,20 @@ public class TaoPhieuDoiTra extends JDialog {
     private void capNhatTongTienMat() {
         if (lblTotalValue != null) {
             lblTotalValue.setText(String.format("%,d", tongTienMat).replace(',', '.') + "đ");
-            long tienThua = tongTienMat - soTienThucTeCanXuLy;
             
             if (lblTextSoTienHoan != null && lblTextSoTienHoan.getText().contains("Khách bù")) {
+                // Ép dương soTienThucTeCanXuLy để tính toán an toàn
+                long tienThua = tongTienMat - Math.abs(soTienThucTeCanXuLy);
                 if (tienThua >= 0) {
                     lblTienThuaValue.setText(String.format("%,d", tienThua).replace(',', '.') + "đ");
                 } else {
                     lblTienThuaValue.setText("Còn thiếu...");
                 }
             } else {
-                lblTienThuaValue.setText(String.format("%,d", soTienThucTeCanXuLy).replace(',', '.') + "đ");
+                // Nếu là "Thối lại khách" -> Khách không cần trả tiền -> Không tính tiền thừa
+                if (lblTienThuaValue != null) {
+                    lblTienThuaValue.setText("---");
+                }
             }
         }
     }
