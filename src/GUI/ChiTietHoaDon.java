@@ -158,7 +158,7 @@ public class ChiTietHoaDon extends JDialog {
         // ==========================================
         // UI SETUP - ĐÃ ÉP NHỎ XUỐNG 580px x 650px
         // ==========================================
-        setSize(580, 650); 
+        setSize(800, 750);
         setLocationRelativeTo(parent);
         setUndecorated(true); 
         setLayout(new BorderLayout());
@@ -185,7 +185,12 @@ public class ChiTietHoaDon extends JDialog {
         scrollPane.setBorder(null);
         scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER); // Tắt cuộn ngang
         scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
-        scrollPane.getVerticalScrollBar().setPreferredSize(new Dimension(0, 0)); // Ẩn hình dáng thanh cuộn dọc
+        
+        // BẬT LẠI THANH CUỘN & Áp dụng giao diện ModernScrollBarUI tinh tế
+        scrollPane.getVerticalScrollBar().setUI(new Utils.ModernScrollBarUI()); 
+        scrollPane.getVerticalScrollBar().setPreferredSize(new Dimension(8, 0)); 
+        // Lăn chuột mượt hơn
+        scrollPane.getVerticalScrollBar().setUnitIncrement(16); 
 
         add(scrollPane, BorderLayout.CENTER);
     }
@@ -263,51 +268,95 @@ public class ChiTietHoaDon extends JDialog {
     }
 
     private JPanel createCustomerAndInvoicePanel(String khachHang, String sdt, String phuongThuc) { 
-        // Thay vì GridLayout(1, 3) ép ngang, ta dùng BoxLayout để các box nằm gọn trên 580px
-        JPanel pnl = new JPanel(); 
-        pnl.setLayout(new BoxLayout(pnl, BoxLayout.Y_AXIS));
+        // 1. Sử dụng BorderLayout tổng để kiểm soát chặt chẽ vị trí
+        JPanel pnl = new JPanel(new BorderLayout(0, 10)); 
         pnl.setBackground(Color.WHITE);
         
+        // 2. Panel Top chứa Khách hàng & Hóa đơn
         JPanel pnlTop = new JPanel(new GridLayout(1, 2, 10, 0)); 
         pnlTop.setBackground(Color.WHITE);
 
+        // KHÁCH HÀNG
         JPanel pnlKhachHang = createInfoBox("THÔNG TIN KHÁCH HÀNG");
-        // Giới hạn width bằng HTML div
-        pnlKhachHang.add(new JLabel("<html><div style='width:200px;'><b>" + khachHang + "</b></div></html>"));
-        pnlKhachHang.add(new JLabel("SĐT: " + (sdt == null || sdt.isEmpty() ? "Không cung cấp" : sdt)));
+        JLabel lblKH = new JLabel("<html><div style='width:250px;'><b>" + khachHang + "</b></div></html>");
+        lblKH.setAlignmentX(Component.LEFT_ALIGNMENT); // Căn trái
+        pnlKhachHang.add(lblKH);
+        
+        JLabel lblSDT = new JLabel("SĐT: " + (sdt == null || sdt.isEmpty() ? "Không cung cấp" : sdt));
+        lblSDT.setAlignmentX(Component.LEFT_ALIGNMENT);
+        pnlKhachHang.add(lblSDT);
+        
         if (sdt != null && !sdt.isEmpty()) {
             JLabel lblDiem = new JLabel("Điểm tích lũy: " + String.format("%,d", diemHienTai) + " điểm");
             lblDiem.setForeground(Color.decode("#E1304C"));
             lblDiem.setFont(new Font("Segoe UI", Font.BOLD, 12));
+            lblDiem.setAlignmentX(Component.LEFT_ALIGNMENT);
             pnlKhachHang.add(lblDiem);
         }
 
+        // HÓA ĐƠN
         JPanel pnlHoaDon = createInfoBox("THÔNG TIN HÓA ĐƠN");
-        // Giới hạn width bằng HTML div
-        pnlHoaDon.add(new JLabel("<html><div style='width:200px;'>Nhân viên: <b>" + this.tenNhanVien + "</b></div></html>"));
-        pnlHoaDon.add(new JLabel("<html><div style='width:200px;'>Phương thức: <font color='#009643'><b>" + phuongThuc + "</b></font></div></html>")); 
+        JLabel lblNV = new JLabel("<html><div style='width:250px;'>Nhân viên: <b>" + this.tenNhanVien + "</b></div></html>");
+        lblNV.setAlignmentX(Component.LEFT_ALIGNMENT);
+        pnlHoaDon.add(lblNV);
         
-        pnlTop.add(pnlKhachHang); pnlTop.add(pnlHoaDon); 
-        pnl.add(pnlTop);
+        JLabel lblPT = new JLabel("<html><div style='width:250px;'>Phương thức: <font color='#009643'><b>" + phuongThuc + "</b></font></div></html>"); 
+        lblPT.setAlignmentX(Component.LEFT_ALIGNMENT);
+        pnlHoaDon.add(lblPT); 
         
+        pnlTop.add(pnlKhachHang); 
+        pnlTop.add(pnlHoaDon); 
+        
+        // Chốt cụm Top lên hướng Bắc
+        pnl.add(pnlTop, BorderLayout.NORTH);
+        
+        // 3. Panel Kê đơn (Nếu có)
         if (bacSi != null && !bacSi.isEmpty()) {
-            pnl.add(Box.createRigidArea(new Dimension(0, 10)));
             JPanel pnlKeDon = createInfoBox("THÔNG TIN KÊ ĐƠN");
-            // Giới hạn width bằng HTML div
-            pnlKeDon.add(new JLabel("<html><div style='width:450px;'>Bác sĩ: <b>" + bacSi + "</b></div></html>"));
-            pnlKeDon.add(new JLabel("<html><div style='width:450px;'>Cơ sở: <b>" + coSo + "</b></div></html>"));
-            if (chuanDoan != null && !chuanDoan.isEmpty()) pnlKeDon.add(new JLabel("<html><div style='width:450px;'>C.Đoán: <b>" + chuanDoan + "</b></div></html>"));
-            pnl.add(pnlKeDon);
+            
+            JLabel lblBS = new JLabel("<html><div style='width:500px;'>Bác sĩ: <b>" + bacSi + "</b></div></html>");
+            lblBS.setAlignmentX(Component.LEFT_ALIGNMENT);
+            pnlKeDon.add(lblBS);
+            
+            JLabel lblCS = new JLabel("<html><div style='width:500px;'>Cơ sở: <b>" + coSo + "</b></div></html>");
+            lblCS.setAlignmentX(Component.LEFT_ALIGNMENT);
+            pnlKeDon.add(lblCS);
+            
+            if (chuanDoan != null && !chuanDoan.isEmpty()) {
+                JLabel lblCD = new JLabel("<html><div style='width:500px;'>C.Đoán: <b>" + chuanDoan + "</b></div></html>");
+                lblCD.setAlignmentX(Component.LEFT_ALIGNMENT);
+                pnlKeDon.add(lblCD);
+            }
+            
+            // Đẩy bảng Kê Đơn xuống Center
+            pnl.add(pnlKeDon, BorderLayout.CENTER);
         }
 
         return pnl;
     }
 
     private JPanel createInfoBox(String title) {
-        JPanel box = new JPanel(); box.setLayout(new BoxLayout(box, BoxLayout.Y_AXIS));
-        box.setBackground(bgLight); box.setBorder(BorderFactory.createCompoundBorder(new LineBorder(bgLight, 1, true), new EmptyBorder(10, 10, 10, 10)));
-        JLabel lblTitle = new JLabel(title); lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 11)); lblTitle.setForeground(Color.decode("#4F46E5")); 
-        lblTitle.setBorder(new EmptyBorder(0, 0, 8, 0)); box.add(lblTitle); return box;
+        JPanel box = new JPanel(); 
+        box.setLayout(new BoxLayout(box, BoxLayout.Y_AXIS));
+        box.setBackground(bgLight); 
+        box.setBorder(BorderFactory.createCompoundBorder(
+            new LineBorder(bgLight, 1, true), 
+            new EmptyBorder(10, 10, 10, 10)
+        ));
+        
+        // Quan trọng: Ép box mở rộng tối đa theo chiều ngang
+        box.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
+        
+        JLabel lblTitle = new JLabel(title); 
+        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 11)); 
+        lblTitle.setForeground(Color.decode("#4F46E5")); 
+        lblTitle.setBorder(new EmptyBorder(0, 0, 8, 0)); 
+        
+        // Khóa lề trái cho tiêu đề
+        lblTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
+        box.add(lblTitle); 
+        
+        return box;
     }
 
     private JPanel createProductTablePanel() {
@@ -318,16 +367,15 @@ public class ChiTietHoaDon extends JDialog {
         lblTitle.setForeground(textGray);
         pnl.add(lblTitle, BorderLayout.NORTH);
 
-        // GỘP 7 CỘT THÀNH 4 CỘT ĐỂ KHÔNG BỊ SCROLL NGANG
-        String[] cols = {"SL", "Sản phẩm", "Đơn giá", "Thành tiền"};
+        String[] cols = {"Sản phẩm", "Số lượng", "Đơn giá", "Thành tiền"};
         Object[][] data = new Object[dsSanPham.size()][4];
         
         for (int i = 0; i < dsSanPham.size(); i++) { 
             Object[] sp = dsSanPham.get(i);
-            data[i][0] = sp[3];         // SL
-            data[i][1] = sp[1];         // Tên sản phẩm
-            data[i][2] = sp[4];         // Đơn giá
-            data[i][3] = sp[6];         // Thành tiền
+            data[i][0] = sp[1];                           
+            data[i][1] = sp[3] + " " + sp[2];             
+            data[i][2] = sp[4];                           
+            data[i][3] = sp[6];                           
         }
 
         DefaultTableModel model = new DefaultTableModel(data, cols) { 
@@ -339,6 +387,9 @@ public class ChiTietHoaDon extends JDialog {
         table.setShowGrid(false); 
         table.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         
+        // 1. BẬT LẠI AUTO RESIZE ĐỂ BẢNG TỰ LẤP ĐẦY KHOẢNG TRỐNG
+        table.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
+        
         JTableHeader header = table.getTableHeader(); 
         header.setBackground(Color.decode("#F1F5F9")); 
         header.setForeground(textDark);
@@ -347,19 +398,16 @@ public class ChiTietHoaDon extends JDialog {
         header.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, borderGray));
 
         // Render Icon Quà Tặng
-     // ... (Giữ nguyên đoạn đầu)
-        // 4. 🔥 QUAN TRỌNG: Hiển thị Icon cho hàng Quà Tặng VÀ CẮT TÊN SP NẾU QUÁ DÀI
-        table.getColumnModel().getColumn(1).setCellRenderer(new DefaultTableCellRenderer() {
+        table.getColumnModel().getColumn(0).setCellRenderer(new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable t, Object value, boolean isS, boolean hasF, int r, int c) {
                 JLabel lbl = (JLabel) super.getTableCellRendererComponent(t, value, isS, hasF, r, c);
                 String text = (value != null) ? value.toString() : "";
                 
-                // Nếu tên sản phẩm chứa chữ [QUÀ TẶNG]
                 if (text.contains("[QUÀ TẶNG]") || text.contains("QUÀ TẶNG")) {
                     text = text.replace("[QUÀ TẶNG]", "").trim();
                     lbl.setIcon(new MenuIcon("QUA_TANG", 14)); 
-                    lbl.setForeground(Color.decode("#DC2626")); // Chữ màu đỏ đậm
+                    lbl.setForeground(Color.decode("#DC2626")); 
                     lbl.setFont(new Font("Segoe UI", Font.BOLD, 12));
                 } else {
                     lbl.setIcon(null);
@@ -367,12 +415,8 @@ public class ChiTietHoaDon extends JDialog {
                     lbl.setFont(new Font("Segoe UI", Font.PLAIN, 12));
                 }
                 
-                // CẮT TÊN SP NẾU QUÁ DÀI TRÁNH VỠ BẢNG
-                if (text.length() > 32) {
-                    text = text.substring(0, 30) + "...";
-                }
+                // Không cần cắt chữ gắt nữa vì cột Sản phẩm giờ được tự do giãn
                 lbl.setText(text);
-                
                 lbl.setBorder(BorderFactory.createEmptyBorder(0, 5, 0, 0));
                 return lbl;
             }
@@ -381,21 +425,42 @@ public class ChiTietHoaDon extends JDialog {
         DefaultTableCellRenderer center = new DefaultTableCellRenderer(); center.setHorizontalAlignment(JLabel.CENTER);
         DefaultTableCellRenderer right = new DefaultTableCellRenderer(); right.setHorizontalAlignment(JLabel.RIGHT);
         
-        table.getColumnModel().getColumn(0).setCellRenderer(center);
-        table.getColumnModel().getColumn(2).setCellRenderer(right);
-        table.getColumnModel().getColumn(3).setCellRenderer(right);
+        table.getColumnModel().getColumn(1).setCellRenderer(center); 
+        table.getColumnModel().getColumn(2).setCellRenderer(right);  
+        table.getColumnModel().getColumn(3).setCellRenderer(right);  
 
-        table.getColumnModel().getColumn(0).setPreferredWidth(40);
-        table.getColumnModel().getColumn(1).setPreferredWidth(260); // Đã ép nhỏ
-        table.getColumnModel().getColumn(2).setPreferredWidth(90);
+        // 2. KHÓA CỨNG 3 CỘT CUỐI, THẢ RÔNG CỘT SẢN PHẨM
+        table.getColumnModel().getColumn(1).setMinWidth(75);
+        table.getColumnModel().getColumn(1).setMaxWidth(75);
+        table.getColumnModel().getColumn(1).setPreferredWidth(75);
+        
+        table.getColumnModel().getColumn(2).setMinWidth(85);
+        table.getColumnModel().getColumn(2).setMaxWidth(85);
+        table.getColumnModel().getColumn(2).setPreferredWidth(85);
+        
+        table.getColumnModel().getColumn(3).setMinWidth(100); 
+        table.getColumnModel().getColumn(3).setMaxWidth(100);
         table.getColumnModel().getColumn(3).setPreferredWidth(100);
 
+        // Cột 0 (Sản phẩm) không set MaxWidth để nó tự động giãn và lấp đầy phần diện tích còn lại
+        table.getColumnModel().getColumn(0).setMinWidth(200);
+
+        // 3. XÓA VIỆC FIX CỨNG CHIỀU RỘNG BẢNG ĐỂ JSCROLLPANE TỰ ĐỘNG CÂN CHỈNH
         JScrollPane sp = new JScrollPane(table); 
         sp.getViewport().setBackground(Color.WHITE); 
         sp.setBorder(BorderFactory.createLineBorder(borderGray));
         
-        int tableHeight = Math.min(table.getRowCount() * 35, 180) + 35; 
-        sp.setPreferredSize(new Dimension(530, tableHeight)); 
+        sp.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        sp.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER);
+        
+        int actualTableHeight = (table.getRowCount() * 35) + 35;
+        
+        // Chỉ fix cứng chiều cao, để chiều rộng (MaxWidth) được tự do giãn theo Panel cha
+        sp.setPreferredSize(new Dimension(0, actualTableHeight));
+        sp.setMinimumSize(new Dimension(0, actualTableHeight));
+        sp.setMaximumSize(new Dimension(Integer.MAX_VALUE, actualTableHeight));
+        
+        pnl.setMaximumSize(new Dimension(Integer.MAX_VALUE, actualTableHeight + 35));
 
         pnl.add(sp, BorderLayout.CENTER); 
         return pnl;

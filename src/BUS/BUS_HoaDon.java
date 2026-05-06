@@ -65,4 +65,8 @@ public class BUS_HoaDon {
         
         return true; // Thành công toàn bộ
     }
+    public boolean taoPhieuDoiTra(HoaDon hdDoiTra) {
+        
+        return daoHD.themHoaDon(hdDoiTra);
+    }
 }

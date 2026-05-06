@@ -1,7 +1,6 @@
 package BUS;
 
 import DAO.DAO_HoaDon;
-import DAO.DAO_ChiTietHoaDon;
 import Entity.HoaDon;
 import Enumeration.LoaiHoaDon;
 
@@ -11,11 +10,9 @@ import java.util.List;
 
 public class BUS_TraHang {
     private DAO_HoaDon daoHoaDon;
-    private DAO_ChiTietHoaDon daoCTHD; 
 
     public BUS_TraHang() {
         this.daoHoaDon = new DAO_HoaDon();
-        this.daoCTHD = new DAO_ChiTietHoaDon(); 
     }
 
     public boolean kiemTraDieuKien(String maHoaDonGoc) {
@@ -65,19 +62,57 @@ public class BUS_TraHang {
         return daoHoaDon.capNhatTrangThaiPhieuDoiTra(maPhieu, trangThaiMoi);
     }
 
-    public List<Object[]> layChiTietPhieu(String maPhieu) {
-        List<Object[]> rawData = daoCTHD.layDuLieuChoTaoHoaDon(maPhieu); 
+ // LOGIC BUS: BÓC TÁCH SẢN PHẨM TRỰC TIẾP TỪ GHI CHÚ HÓA ĐƠN
+    private List<Object[]> parseGhiChuLaySanPham(String maPhieu, boolean isTraLai) {
         List<Object[]> result = new ArrayList<>();
+        HoaDon hd = daoHoaDon.layHoaDonTheoMa(maPhieu);
+        if (hd == null || hd.getGhiChu() == null) return result;
 
-        if (rawData != null) {
-            for (Object[] row : rawData) {
-                Object tenSP = row[0];
-                Object soLuong = row[2]; // Số lượng nằm ở cột 2
-                Object donVi = row[1];   // ĐVT nằm ở cột 1
-                Object donGia = row[3];
-                result.add(new Object[]{tenSP, soLuong, donVi, donGia});
+        String[] parts = hd.getGhiChu().split("\\|");
+        String targetPart = (isTraLai && parts.length > 4) ? parts[4].trim() : 
+                            (!isTraLai && parts.length > 5) ? parts[5].trim() : "";
+
+        targetPart = targetPart.replace("TRA: ", "").replace("DOI: ", "");
+        if (targetPart.isEmpty() || targetPart.equals("Không có")) return result;
+
+        String[] items = targetPart.split("; ");
+        for (String item : items) {
+            if (item.contains("_")) {
+                String[] vals = item.split("_");
+                String ten = vals[0];
+                String sl = vals[1];
+                long donGia = 0;
+                
+                // MỚI: Bóc tách Đơn Giá thẳng từ chuỗi, chuẩn xác 100%
+                if (vals.length >= 3) {
+                    try { donGia = Long.parseLong(vals[2]); } catch (Exception e) {}
+                }
+                
+                result.add(new Object[]{ ten, sl, "", donGia });
             }
         }
         return result;
+    }
+
+    public List<Object[]> layDanhSachSanPhamDoi(String maPhieu) {
+        return parseGhiChuLaySanPham(maPhieu, false); // false = Lấy SP Đổi
+    }
+
+    // ĐÃ THÊM HÀM NÀY ĐỂ KHẮC PHỤC LỖI GỌI HÀM BÊN GUI
+ // Đã thêm hàm này vào BUS_TraHang.java
+    public List<Object[]> layChiTietPhieu(String maPhieu) {
+        // true = Lấy danh sách Sản Phẩm Trả lại
+        return parseGhiChuLaySanPham(maPhieu, true); 
+    }
+
+    public String laySoDienThoaiKhachHang(String maHDGoc) {
+        HoaDon hd = daoHoaDon.layHoaDonTheoMa(maHDGoc);
+        if (hd != null && hd.getKhachHangId() != null) {
+            String sdt = hd.getKhachHangId().getId();
+            if (sdt != null && !sdt.trim().isEmpty()) {
+                return sdt;
+            }
+        }
+        return "Không cung cấp";
     }
 }

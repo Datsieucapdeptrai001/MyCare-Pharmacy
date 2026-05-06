@@ -20,14 +20,13 @@ public class ManHinhDoiTra extends JPanel {
     private JTextField txtSearch;
     private BUS_HoaDon busHD = new BUS_HoaDon();
     
-    // --- CÁC BIẾN CHO KHUNG CHI TIẾT SỔ XUỐNG ---
-    private JPanel pnlDetail;
-    private JLabel lblDetailTitle, lblDetailDate, lblDetailEmp, lblDetailTotal;
+ // --- CÁC BIẾN CHO KHUNG CHI TIẾT SỔ XUỐNG ---
+    private JPanel pnlDetail, pnlRightWrapper; // Bổ sung pnlRightWrapper
+    private JLabel lblDetailTitle, lblDetailDate, lblDetailEmp;
     private JPanel pnlDetailProducts;
     private String expandedMaPhieu = ""; 
     private final int ROW_HEIGHT_NORMAL = 55;
-    private int currentDetailHeight = 220; // Chiều cao tự động co giãn
-
+    private int currentDetailHeight = 220;
     public ManHinhDoiTra() {
         initUI();
         loadDataToTable();
@@ -239,8 +238,23 @@ public class ManHinhDoiTra extends JPanel {
                             if (showCustomConfirmDialog("TIẾP NHẬN", "Xác nhận TIẾP NHẬN phiếu " + loai + "?")) {
                                 BUS_TraHang busTra = new BUS_TraHang();
                                 if (busTra.xacNhanGiaoDichDoiTra(maPhieu, "Hoàn thành")) {
+                                    
+                                    // 1. Đóng panel chi tiết nếu nó đang mở ở ĐÚNG dòng này
+                                    if (maPhieu.equals(expandedMaPhieu)) {
+                                        expandedMaPhieu = "";
+                                        pnlDetail.setVisible(false);
+                                    }
+                                    
+                                    // 2. Cập nhật Model trước tiên
                                     model.setValueAt("Hoàn thành", modelRow, 7);
-                                    table.repaint();
+                                    
+                                    // 3. Đưa việc vẽ lại giao diện vào cuối hàng đợi (Sau khi Sorter và JTable đã xử lý xong)
+                                    SwingUtilities.invokeLater(() -> {
+                                        updateRowHeights();
+                                        table.revalidate();
+                                        table.repaint();
+                                    });
+                                    
                                     showCustomNotification("THÀNH CÔNG", "Xử lý thành công!", "SUCCESS");
                                 }
                             }
@@ -248,8 +262,23 @@ public class ManHinhDoiTra extends JPanel {
                             if (showCustomConfirmDialog("TỪ CHỐI", "Xác nhận TỪ CHỐI phiếu này?")) {
                                 BUS_TraHang busTra = new BUS_TraHang();
                                 if (busTra.xacNhanGiaoDichDoiTra(maPhieu, "Từ chối")) {
+                                    
+                                    // 1. Đóng panel chi tiết nếu nó đang mở
+                                    if (maPhieu.equals(expandedMaPhieu)) {
+                                        expandedMaPhieu = "";
+                                        pnlDetail.setVisible(false);
+                                    }
+                                    
+                                    // 2. Cập nhật Model
                                     model.setValueAt("Từ chối", modelRow, 7);
-                                    table.repaint();
+                                    
+                                    // 3. Cập nhật lại giao diện an toàn
+                                    SwingUtilities.invokeLater(() -> {
+                                        updateRowHeights();
+                                        table.revalidate();
+                                        table.repaint();
+                                    });
+                                    
                                     showCustomNotification("ĐÃ TỪ CHỐI", "Phiếu đã bị hủy.", "WARNING");
                                 }
                             }
@@ -269,7 +298,6 @@ public class ManHinhDoiTra extends JPanel {
                             Object objNgay = model.getValueAt(modelRow, 8);
                             String ngayTao = objNgay != null ? objNgay.toString() : "---";
                             
-                            // Gọi hàm lấy dữ liệu và tính toán luôn chiều cao động
                             currentDetailHeight = showDetailPanel(maPhieu, ngayTao);
                             
                             pnlDetail.setVisible(true);
@@ -295,6 +323,15 @@ public class ManHinhDoiTra extends JPanel {
         JScrollPane sp = new JScrollPane(table);
         sp.setBorder(BorderFactory.createLineBorder(Color.decode("#DFE3E8")));
         sp.getViewport().setBackground(Color.WHITE); 
+        
+        // 1. Gắn UI tùy chỉnh cho thanh cuộn dọc
+        sp.getVerticalScrollBar().setUI(new Utils.ModernScrollBarUI());
+        sp.getVerticalScrollBar().setPreferredSize(new Dimension(10, 0)); // Chỉnh độ rộng thanh cuộn (10px)
+        
+        // 2. Gắn UI tùy chỉnh cho thanh cuộn ngang (nếu bảng có cuộn ngang)
+        sp.getHorizontalScrollBar().setUI(new Utils.ModernScrollBarUI());
+        sp.getHorizontalScrollBar().setPreferredSize(new Dimension(0, 10)); // Chỉnh độ cao thanh cuộn (10px)
+
         this.add(sp, BorderLayout.CENTER);
     }
     
@@ -430,9 +467,6 @@ public class ManHinhDoiTra extends JPanel {
         }
     }
 
-    // ========================================================
-    // TẠO UI KHUNG CHI TIẾT 
-    // ========================================================
     private JPanel createDetailPanel() {
         JPanel pnl = new JPanel(new BorderLayout(20, 20));
         pnl.setBackground(Color.WHITE);
@@ -458,9 +492,6 @@ public class ManHinhDoiTra extends JPanel {
         pnlLeftTitle.add(lblDetailTitle);
         pnlLeftTitle.add(lblDetailDate);
 
-        // =========================================================
-        // BẮT ĐẦU PHẦN BỔ SUNG: NÚT IN VÀ LOGIC XỬ LÝ
-        // =========================================================
         lblDetailEmp = new JLabel("Nhân viên: Hệ thống"); 
         lblDetailEmp.setFont(new Font("Segoe UI", Font.BOLD, 13));
         lblDetailEmp.setForeground(Color.GRAY);
@@ -476,16 +507,12 @@ public class ManHinhDoiTra extends JPanel {
         btnInPhieu.setFocusPainted(false);
         btnInPhieu.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
-        // Bắt sự kiện Click để lấy dữ liệu từ dòng đang chọn truyền sang file in
-     // Bắt sự kiện Click để lấy dữ liệu từ dòng đang chọn truyền sang file in
         btnInPhieu.addActionListener(e -> {
             if (expandedMaPhieu != null && !expandedMaPhieu.isEmpty()) {
-                
                 int targetRow = -1;
                 for (int i = 0; i < model.getRowCount(); i++) {
                     if (model.getValueAt(i, 0).toString().equals(expandedMaPhieu)) {
-                        targetRow = i;
-                        break;
+                        targetRow = i; break;
                     }
                 }
                 
@@ -494,18 +521,13 @@ public class ManHinhDoiTra extends JPanel {
                     String hdGoc = model.getValueAt(targetRow, 1).toString();
                     String khachHang = model.getValueAt(targetRow, 2).toString();
                     String lyDo = model.getValueAt(targetRow, 4).toString();
-                    
-                    // LẤY THÊM 2 CỘT TIỀN TỪ TRÊN BẢNG TRUYỀN SANG
                     String tienHoan = model.getValueAt(targetRow, 5).toString();
                     String chenhLech = model.getValueAt(targetRow, 6).toString();
-                    
                     String trangThai = model.getValueAt(targetRow, 7).toString();
                     String ngayTao = model.getValueAt(targetRow, 8).toString();
                     String nhanVien = lblDetailEmp.getText().replace("Nhân viên: ", "").trim();
 
                     Window parentWindow = SwingUtilities.getWindowAncestor(pnl);
-                    
-                    // GỌI CONSTRUCTOR MỚI VỚI ĐỦ 11 THAM SỐ
                     ChiTietPhieuDoiTra dialog = new ChiTietPhieuDoiTra(
                         (Frame) parentWindow, expandedMaPhieu, loaiPhieu, 
                         trangThai, ngayTao, hdGoc, khachHang, lyDo, nhanVien, 
@@ -516,7 +538,6 @@ public class ManHinhDoiTra extends JPanel {
             }
         });
 
-        // Gom Label Nhân viên và Nút bấm vào chung bên phải
         JPanel pnlRightHeader = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 0));
         pnlRightHeader.setBackground(Color.WHITE);
         pnlRightHeader.add(lblDetailEmp);
@@ -524,9 +545,6 @@ public class ManHinhDoiTra extends JPanel {
 
         pnlHeader.add(pnlLeftTitle, BorderLayout.WEST);
         pnlHeader.add(pnlRightHeader, BorderLayout.EAST);
-        // =========================================================
-        // KẾT THÚC PHẦN BỔ SUNG
-        // =========================================================
 
         // BODY
         JPanel pnlBody = new JPanel(new BorderLayout(30, 0));
@@ -544,27 +562,11 @@ public class ManHinhDoiTra extends JPanel {
         pnlDetailProducts.setBackground(Color.WHITE);
         pnlSP.add(pnlDetailProducts, BorderLayout.CENTER);
 
-        // BOX TIỀN HOÀN 
-        JPanel pnlTotalBox = new JPanel(new BorderLayout(0, 5));
-        pnlTotalBox.setBackground(Color.decode("#FEF2F2")); 
-        pnlTotalBox.setBorder(new EmptyBorder(15, 20, 15, 20));
-        pnlTotalBox.setPreferredSize(new Dimension(280, 80));
-        
-        JLabel lblText = new JLabel("TIỀN HOÀN");
-        lblText.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        lblText.setForeground(Color.GRAY);
-        
-        lblDetailTotal = new JLabel("0đ");
-        lblDetailTotal.setFont(new Font("Segoe UI", Font.BOLD, 24));
-        lblDetailTotal.setForeground(Color.decode("#DC2626")); 
-        
-        pnlTotalBox.add(lblText, BorderLayout.NORTH);
-        pnlTotalBox.add(lblDetailTotal, BorderLayout.CENTER);
-        
-        // Neo khung tiền hoàn lên sát lề trên
-        JPanel pnlRightWrapper = new JPanel(new BorderLayout());
+        // --- CỘT PHẢI ĐỘNG CẬP NHẬT GIAO DIỆN ---
+        pnlRightWrapper = new JPanel();
+        pnlRightWrapper.setLayout(new BoxLayout(pnlRightWrapper, BoxLayout.Y_AXIS));
         pnlRightWrapper.setBackground(Color.WHITE);
-        pnlRightWrapper.add(pnlTotalBox, BorderLayout.NORTH);
+        pnlRightWrapper.setPreferredSize(new Dimension(320, 0));
 
         pnlBody.add(pnlSP, BorderLayout.CENTER);
         pnlBody.add(pnlRightWrapper, BorderLayout.EAST);
@@ -574,42 +576,111 @@ public class ManHinhDoiTra extends JPanel {
         
         return pnl;
     }
-
+ // ========================================================
+    // HÀM TIỆN ÍCH TẠO CÁC KHỐI THÔNG TIN BÊN PHẢI (UI MỚI)
     // ========================================================
-    // ĐỔ DỮ LIỆU ĐỘNG & TÍNH TOÁN CHIỀU CAO
-    // ========================================================
+    private JPanel createRightBox(String title, String content, String colorText, String colorBg) {
+        JPanel pnl = new JPanel(new BorderLayout(0, 5));
+        pnl.setBackground(Color.decode(colorBg));
+        pnl.setBorder(new EmptyBorder(12, 15, 12, 15));
+        pnl.setAlignmentX(Component.LEFT_ALIGNMENT);
+        
+        // Khóa chiều cao tối đa để Box không bị giãn dài khi màn hình to
+        pnl.setMaximumSize(new Dimension(Integer.MAX_VALUE, 100)); 
+        
+        JLabel lblTitle = new JLabel(title);
+        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        lblTitle.setForeground(Color.decode("#6B7280"));
+        
+        JLabel lblContent = new JLabel(content);
+        lblContent.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        lblContent.setForeground(Color.decode(colorText));
+        
+        pnl.add(lblTitle, BorderLayout.NORTH);
+        pnl.add(lblContent, BorderLayout.CENTER);
+        return pnl;
+    }
     private int showDetailPanel(String maPhieu, String ngayTao) {
         lblDetailTitle.setText("Chi tiết phiếu " + maPhieu);
         lblDetailDate.setText("Ngày tạo: " + ngayTao);
         
         pnlDetailProducts.removeAll();
+        pnlRightWrapper.removeAll(); 
         
-        int dynamicHeight = 160; // Chiều cao mặc định của khung bao ngoài
-        long totalHoan = 0;      // Biến cộng dồn tổng tiền thực tế
+        int dynamicHeight = 160; 
+        long totalHoan = 0;      
+
+        // Lấy thông tin phụ từ bảng Model
+        int targetRow = -1;
+        for (int i = 0; i < model.getRowCount(); i++) {
+            if (model.getValueAt(i, 0).toString().equals(maPhieu)) {
+                targetRow = i; break;
+            }
+        }
+        
+        String loaiPhieu = targetRow != -1 ? model.getValueAt(targetRow, 3).toString() : "Trả hàng";
+        String loi = targetRow != -1 ? model.getValueAt(targetRow, 4).toString() : "Không có";
+        String chenhLech = targetRow != -1 ? model.getValueAt(targetRow, 6).toString() : "0đ";
+        String tienHoanBang = targetRow != -1 ? model.getValueAt(targetRow, 5).toString() : "0đ";
+        
+        // BÓC TÁCH TRỰC TIẾP TỪ GHI CHÚ DATABASE ĐỂ TRÁNH LỖI SAI ĐƠN GIÁ VÀ TRÙNG LẶP SẢN PHẨM
+        String phuongThuc = "Tiền mặt";
+        String ghiChuDB = "";
+        try {
+            Entity.HoaDon hd = busHD.getHoaDonTheoMa(maPhieu);
+            if (hd != null) {
+                if (hd.getGhiChu() != null) ghiChuDB = hd.getGhiChu();
+                if (hd.getPhuongThucThanhToan() != null && hd.getPhuongThucThanhToan().toString().contains("CHUYEN_KHOAN")) {
+                    phuongThuc = "Chuyển khoản";
+                }
+            }
+        } catch (Exception e) {}
+
+        List<Object[]> dsSP = new ArrayList<>();
+        List<Object[]> dsDoi = new ArrayList<>();
+        
+        if (!ghiChuDB.isEmpty()) {
+            String[] parts = ghiChuDB.split("\\|");
+            for (String p : parts) {
+                p = p.trim();
+                if (p.startsWith("TRA:")) {
+                    String traStr = p.replace("TRA:", "").trim();
+                    if (!traStr.equals("Không có") && !traStr.isEmpty()) {
+                        String[] items = traStr.split(";");
+                        for (String item : items) {
+                            String[] vals = item.trim().split("_");
+                            if (vals.length >= 3) dsSP.add(new Object[]{vals[0], vals[1], "", vals[2]});
+                            else if (vals.length == 2) dsSP.add(new Object[]{vals[0], vals[1], "", "0"});
+                        }
+                    }
+                } else if (p.startsWith("DOI:")) {
+                    String doiStr = p.replace("DOI:", "").trim();
+                    if (!doiStr.equals("Không có") && !doiStr.isEmpty()) {
+                        String[] items = doiStr.split(";");
+                        for (String item : items) {
+                            String[] vals = item.trim().split("_");
+                            if (vals.length >= 3) dsDoi.add(new Object[]{vals[0], vals[1], "", vals[2]});
+                            else if (vals.length == 2) dsDoi.add(new Object[]{vals[0], vals[1], "", "0"});
+                        }
+                    }
+                }
+            }
+        }
 
         try {
-            BUS_TraHang busTra = new BUS_TraHang();
-            List<Object[]> dsSP = busTra.layChiTietPhieu(maPhieu); 
-            
-            if (dsSP != null && !dsSP.isEmpty()) {
+            if (!dsSP.isEmpty()) {
                 for (Object[] sp : dsSP) {
                     String tenSP = sp[0] != null ? sp[0].toString() : "Sản phẩm lỗi";
                     String soLuong = sp[1] != null ? sp[1].toString() : "0";
                     String donVi = sp[2] != null ? sp[2].toString() : "";
                     
                     long gia = 0;
-                    if(sp[3] != null) {
-                        try { gia = Long.parseLong(sp[3].toString().replaceAll("[^0-9]", "")); } 
-                        catch(Exception e){}
-                    }
+                    try { gia = Long.parseLong(sp[3].toString()); } catch(Exception e){}
                     
                     int sl = 0;
-                    try { sl = Integer.parseInt(soLuong); } 
-                    catch(Exception e){}
+                    try { sl = Integer.parseInt(soLuong); } catch(Exception e){}
                     
-                    // Cộng dồn: Tiền hoàn = Đơn giá * Số lượng
                     totalHoan += (gia * sl);
-
                     String donGiaStr = String.format("%,d", gia).replace(',', '.') + "đ";
                     
                     JPanel row = new JPanel(new BorderLayout()); 
@@ -628,7 +699,7 @@ public class ManHinhDoiTra extends JPanel {
                     row.add(lblPrice, BorderLayout.EAST);
                     
                     pnlDetailProducts.add(row);
-                    dynamicHeight += 35; // Nới rộng thêm 35px cho mỗi dòng sản phẩm
+                    dynamicHeight += 35; 
                 }
             } else {
                 JLabel lblEmpty = new JLabel("Chưa có thông tin chi tiết...");
@@ -637,17 +708,46 @@ public class ManHinhDoiTra extends JPanel {
                 pnlDetailProducts.add(lblEmpty);
                 dynamicHeight += 40;
             }
+
+            if (loaiPhieu.equalsIgnoreCase("Trả hàng")) {
+                // SỬ DỤNG TIỀN HOÀN TỪ BẢNG THAY VÌ CỘNG DỒN
+                JPanel pnlTotalBox = createRightBox("TIỀN HOÀN", tienHoanBang, "#DC2626", "#FEF2F2");
+                pnlRightWrapper.add(pnlTotalBox);
+            } else {
+                StringBuilder sbDoi = new StringBuilder();
+                if (!dsDoi.isEmpty()) {
+                    for (Object[] spDoi : dsDoi) {
+                        sbDoi.append(spDoi[0].toString()).append("<br>");
+                    }
+                } else {
+                    sbDoi.append("Không có<br>");
+                }
+                
+                String mauChenhLech = chenhLech.contains("-") ? "#DC2626" : "#D97706"; 
+                String textChenhLech = chenhLech.contains("-") ? "Thối lại khách: " : "Khách bù: ";
+                sbDoi.append("<span style='color: ").append(mauChenhLech).append("; font-size: 13px; font-weight: normal;'>")
+                     .append(textChenhLech).append(chenhLech.replace("-", "")).append("</span>");
+                
+                JPanel pnlDoi = createRightBox("SẢN PHẨM ĐỔI", "<html><div style='line-height: 1.4;'>" + sbDoi.toString() + "</div></html>", "#059669", "#F0FDF4");
+                pnlRightWrapper.add(pnlDoi);
+            }
+
+            pnlRightWrapper.add(Box.createRigidArea(new Dimension(0, 10)));
+            JPanel pnlGhiChu = createRightBox("GHI CHÚ", loi, "#D97706", "#FFFBEB");
+            pnlRightWrapper.add(pnlGhiChu);
+
+            pnlRightWrapper.add(Box.createRigidArea(new Dimension(0, 10)));
+            JPanel pnlPT = createRightBox("PHƯƠNG THỨC THANH TOÁN", phuongThuc, "#1D4ED8", "#EFF6FF");
+            pnlRightWrapper.add(pnlPT);
+
+            pnlRightWrapper.add(Box.createVerticalGlue()); 
+
         } catch (Exception ex) {
             ex.printStackTrace();
         }
         
-        // Gắn số tiền vừa tính toán thực tế vào thẳng Ô ĐỎ
-        lblDetailTotal.setText(String.format("%,d", totalHoan).replace(',', '.') + "đ");
-
         this.revalidate();
         this.repaint();
-        
-        // Đảm bảo chiều cao khung không bao giờ bị méo (Tối thiểu 220px)
         return Math.max(dynamicHeight, 220); 
     }
 
