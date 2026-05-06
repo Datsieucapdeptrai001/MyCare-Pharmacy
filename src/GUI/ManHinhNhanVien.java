@@ -553,12 +553,17 @@ public class ManHinhNhanVien extends JPanel {
 
     public void setReadOnly(boolean readOnly) {
         if (!readOnly) return;
+        
         if (btnAdd != null) btnAdd.setVisible(false);
         if (btnEdit != null) btnEdit.setVisible(false);
         disableButtonsByText(this, "Thêm mới", "Nhập Excel", "Thêm", "Xóa", "Sửa", "Lưu");
+        
         if (table != null) {
-            javax.swing.table.TableColumn colThaoTac = table.getColumnModel().getColumn(7);
-            table.removeColumn(colThaoTac);
+            try {
+                javax.swing.table.TableColumn colThaoTac = table.getColumn("Thao tác"); 
+                table.removeColumn(colThaoTac);
+            } catch (IllegalArgumentException e) {
+            }
         }
     }
 
