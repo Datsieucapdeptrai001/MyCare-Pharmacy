@@ -44,7 +44,7 @@ public class ChiTietPhieuDoiTra extends JDialog {
 
     private void initUI() {
         // 1. Tăng nhẹ kích thước để không gian thoáng hơn
-        setSize(600, 650); 
+        setSize(800, 750); 
         setLocationRelativeTo(getParent());
         setUndecorated(true);
         setLayout(new BorderLayout());
@@ -100,16 +100,23 @@ public class ChiTietPhieuDoiTra extends JDialog {
 
     private List<Object[]> layDanhSachSanPhamDoi(String maPhieu) {
         List<Object[]> list = new ArrayList<>();
-        String sql = "SELECT sp.tenSanPham, ct.soLuong FROM ChiTietHoaDon ct " +
+        // SỬA LỖI: Thay vì sp.tenSanPham, ta dùng sp.ten cho khớp với Database
+        String sql = "SELECT sp.ten, ct.soLuong FROM ChiTietHoaDon ct " +
                      "JOIN SanPham sp ON ct.sanPhamId = sp.id " +
                      "WHERE ct.hoaDonId = ? AND ct.ghiChu = 'DOI_LAY'"; 
+                     
         try (Connection con = ConnectDB.getInstance().getConnection();
              PreparedStatement pst = con.prepareStatement(sql)) {
             pst.setString(1, maPhieu);
             try (ResultSet rs = pst.executeQuery()) {
-                while (rs.next()) list.add(new Object[]{rs.getString("tenSanPham"), rs.getInt("soLuong")});
+                while (rs.next()) {
+                    // Trích xuất đúng cột ten
+                    list.add(new Object[]{rs.getString("ten"), rs.getInt("soLuong")});
+                }
             }
-        } catch (Exception e) {}
+        } catch (Exception e) { 
+            e.printStackTrace(); 
+        }
         return list;
     }
 

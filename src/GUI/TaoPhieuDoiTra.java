@@ -908,7 +908,7 @@ public class TaoPhieuDoiTra extends JDialog {
 
         int rowSelected = table.getSelectedRow(); 
         if (rowSelected == -1) {
-            JOptionPane.showMessageDialog(this, "Vui lòng click chọn 1 sản phẩm trong bảng cần đổi/trả!", "Cảnh báo", JOptionPane.WARNING_MESSAGE); return;
+            JOptionPane.showMessageDialog(this, "Vui lòng click chọn ít nhất 1 sản phẩm trong bảng cần đổi/trả!", "Cảnh báo", JOptionPane.WARNING_MESSAGE); return;
         }
 
         String loai = btnTraHang.getBackground().equals(Color.WHITE) ? "Trả hàng" : "Đổi hàng";
@@ -932,32 +932,60 @@ public class TaoPhieuDoiTra extends JDialog {
             String maHDGoc = txtSearch.getText().trim();
             String ngayTao = java.time.LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
             String khach = lblKhachHang.getText().trim(); 
-            
             String ghiChu = txtGhiChu.getText().trim();
-            if (loai.equals("Đổi hàng") && spMoiModel.getRowCount() > 0) {
-                StringBuilder tenMoiSb = new StringBuilder();
-                for(int i=0; i<spMoiModel.getRowCount(); i++) {
-                    tenMoiSb.append(spMoiModel.getValueAt(i, 0)).append(", ");
-                }
-                String tenMoiStr = tenMoiSb.toString().replaceAll(", $", "");
-                ghiChu = "Đổi sang: " + tenMoiStr + (ghiChu.isEmpty() ? "" : " | " + ghiChu);
-            }
 
             // =========================================================
-            // FIX LỖI DB: TẠO OBJECT VÀ LƯU PHIẾU ĐỔI TRẢ VÀO SQL
+            // 1. LẤY DANH SÁCH SẢN PHẨM TRẢ LẠI ĐỂ LƯU VÀO GHI CHÚ
             // =========================================================
+            StringBuilder spTraSb = new StringBuilder();
+            boolean hasSelected = false;
+            for (int i = 0; i < chiTietModel.getRowCount(); i++) {
+                boolean isSelected = (boolean) chiTietModel.getValueAt(i, 0);
+                if (isSelected) { // Chỉ lấy những sản phẩm được Tick chọn
+                    spTraSb.append(chiTietModel.getValueAt(i, 1)).append("_").append(chiTietModel.getValueAt(i, 2)).append("; ");
+                    hasSelected = true;
+                }
+            }
+            
+            if (!hasSelected) {
+                JOptionPane.showMessageDialog(this, "Vui lòng tick vào ô chọn ở cột đầu tiên của sản phẩm cần trả!", "Cảnh báo", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            String strSPTra = "TRA: " + spTraSb.toString().replaceAll("; $", "");
+
+            // =========================================================
+            // 2. LẤY DANH SÁCH SẢN PHẨM ĐỔI MỚI ĐỂ LƯU VÀO GHI CHÚ
+            // =========================================================
+            String strSPDoi = "DOI: Không có";
+            if (loai.equals("Đổi hàng") && spMoiModel.getRowCount() > 0) {
+                StringBuilder spDoiSb = new StringBuilder();
+                for(int i = 0; i < spMoiModel.getRowCount(); i++) {
+                    spDoiSb.append(spMoiModel.getValueAt(i, 0)).append("_").append(spMoiModel.getValueAt(i, 1)).append("; ");
+                }
+                strSPDoi = "DOI: " + spDoiSb.toString().replaceAll("; $", "");
+            }
+
+            // Gộp lý do và text ghi chú người dùng gõ
+            String lyDoFull = lyDo + (ghiChu.isEmpty() ? "" : " - " + ghiChu);
+            
+            // =========================================================
+            // CHUỖI FORMAT CHUẨN ĐỂ LƯU XUỐNG DB:
+            // Trạng thái | Lý do | Tiền hoàn | Chênh lệch | SP Trả | SP Đổi
+            // =========================================================
+            String formatGhiChu = "Chờ xử lý | " + lyDoFull + " | " + colHoanTien + " | " + colChenhLech + " | " + strSPTra + " | " + strSPDoi;
+
             HoaDon hdDoiTra = new HoaDon();
             hdDoiTra.setId(maPhieu);
             hdDoiTra.setLoaiHD(loai.equals("Trả hàng") ? Enumeration.LoaiHoaDon.TRA_HANG : Enumeration.LoaiHoaDon.DOI_HANG);
             hdDoiTra.setNgayLapHD(LocalDateTime.now());
             
             Entity.NhanVien nv = new Entity.NhanVien();
-            nv.setNhanVien("DS-0001"); // Tài khoản thao tác (Nên lấy từ tài khoản đang đăng nhập)
+            nv.setNhanVien("DS-0001"); // Nên dùng: UserSession.getInstance().getMaNV()
             hdDoiTra.setNhanVienId(nv);
             
             hdDoiTra.setPhuongThucThanhToan(Enumeration.PhuongThucThanhToan.TIEN_MAT);
-            // Lưu trạng thái "Chờ xử lý" cùng lý do vào DB để màn hình Quản lý đọc được
-            String formatGhiChu = "Chờ xử lý | " + lyDo + (ghiChu.isEmpty() ? "" : " - " + ghiChu) + " | " + colHoanTien + " | " + colChenhLech;
+            
+            // GẮN CHUỖI ĐÃ CHỨA SẢN PHẨM VÀO ĐỐI TƯỢNG HOÁ ĐƠN
             hdDoiTra.setGhiChu(formatGhiChu);
             
             HoaDon hdGoc = new HoaDon();
@@ -966,9 +994,9 @@ public class TaoPhieuDoiTra extends JDialog {
             
             DAO.DAO_HoaDon daoHD = new DAO.DAO_HoaDon();
             if (daoHD.themHoaDon(hdDoiTra)) {
-                // LƯU SQL THÀNH CÔNG THÌ MỚI ADD LÊN BẢNG GIAO DIỆN
+                // THÊM LÊN BẢNG HIỂN THỊ
                 mainModel.addRow(new Object[]{
-                    maPhieu, maHDGoc, khach, loai, lyDo, colHoanTien, colChenhLech, "Chờ xử lý", ngayTao, ghiChu
+                    maPhieu, maHDGoc, khach, loai, lyDoFull, colHoanTien, colChenhLech, "Chờ xử lý", ngayTao, formatGhiChu
                 });
                 JOptionPane.showMessageDialog(this, "Đã tiếp nhận yêu cầu thành công!", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
                 dispose();

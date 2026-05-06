@@ -272,7 +272,8 @@ public class ChiTietHoaDon extends JDialog {
         pnlTop.setBackground(Color.WHITE);
 
         JPanel pnlKhachHang = createInfoBox("THÔNG TIN KHÁCH HÀNG");
-        pnlKhachHang.add(new JLabel("<html><b>" + khachHang + "</b></html>"));
+        // Giới hạn width bằng HTML div
+        pnlKhachHang.add(new JLabel("<html><div style='width:200px;'><b>" + khachHang + "</b></div></html>"));
         pnlKhachHang.add(new JLabel("SĐT: " + (sdt == null || sdt.isEmpty() ? "Không cung cấp" : sdt)));
         if (sdt != null && !sdt.isEmpty()) {
             JLabel lblDiem = new JLabel("Điểm tích lũy: " + String.format("%,d", diemHienTai) + " điểm");
@@ -282,8 +283,9 @@ public class ChiTietHoaDon extends JDialog {
         }
 
         JPanel pnlHoaDon = createInfoBox("THÔNG TIN HÓA ĐƠN");
-        pnlHoaDon.add(new JLabel("<html>Nhân viên: <b>" + this.tenNhanVien + "</b></html>"));
-        pnlHoaDon.add(new JLabel("<html>Phương thức: <font color='#009643'><b>" + phuongThuc + "</b></font></html>")); 
+        // Giới hạn width bằng HTML div
+        pnlHoaDon.add(new JLabel("<html><div style='width:200px;'>Nhân viên: <b>" + this.tenNhanVien + "</b></div></html>"));
+        pnlHoaDon.add(new JLabel("<html><div style='width:200px;'>Phương thức: <font color='#009643'><b>" + phuongThuc + "</b></font></div></html>")); 
         
         pnlTop.add(pnlKhachHang); pnlTop.add(pnlHoaDon); 
         pnl.add(pnlTop);
@@ -291,9 +293,10 @@ public class ChiTietHoaDon extends JDialog {
         if (bacSi != null && !bacSi.isEmpty()) {
             pnl.add(Box.createRigidArea(new Dimension(0, 10)));
             JPanel pnlKeDon = createInfoBox("THÔNG TIN KÊ ĐƠN");
-            pnlKeDon.add(new JLabel("<html>Bác sĩ: <b>" + bacSi + "</b></html>"));
-            pnlKeDon.add(new JLabel("<html>Cơ sở: <b>" + coSo + "</b></html>"));
-            if (chuanDoan != null && !chuanDoan.isEmpty()) pnlKeDon.add(new JLabel("<html>C.Đoán: <b>" + chuanDoan + "</b></html>"));
+            // Giới hạn width bằng HTML div
+            pnlKeDon.add(new JLabel("<html><div style='width:450px;'>Bác sĩ: <b>" + bacSi + "</b></div></html>"));
+            pnlKeDon.add(new JLabel("<html><div style='width:450px;'>Cơ sở: <b>" + coSo + "</b></div></html>"));
+            if (chuanDoan != null && !chuanDoan.isEmpty()) pnlKeDon.add(new JLabel("<html><div style='width:450px;'>C.Đoán: <b>" + chuanDoan + "</b></div></html>"));
             pnl.add(pnlKeDon);
         }
 
@@ -344,19 +347,33 @@ public class ChiTietHoaDon extends JDialog {
         header.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, borderGray));
 
         // Render Icon Quà Tặng
+     // ... (Giữ nguyên đoạn đầu)
+        // 4. 🔥 QUAN TRỌNG: Hiển thị Icon cho hàng Quà Tặng VÀ CẮT TÊN SP NẾU QUÁ DÀI
         table.getColumnModel().getColumn(1).setCellRenderer(new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable t, Object value, boolean isS, boolean hasF, int r, int c) {
                 JLabel lbl = (JLabel) super.getTableCellRendererComponent(t, value, isS, hasF, r, c);
                 String text = (value != null) ? value.toString() : "";
+                
+                // Nếu tên sản phẩm chứa chữ [QUÀ TẶNG]
                 if (text.contains("[QUÀ TẶNG]") || text.contains("QUÀ TẶNG")) {
-                    lbl.setText(text.replace("[QUÀ TẶNG]", "").trim());
+                    text = text.replace("[QUÀ TẶNG]", "").trim();
                     lbl.setIcon(new MenuIcon("QUA_TANG", 14)); 
-                    lbl.setForeground(Color.decode("#DC2626")); 
+                    lbl.setForeground(Color.decode("#DC2626")); // Chữ màu đỏ đậm
                     lbl.setFont(new Font("Segoe UI", Font.BOLD, 12));
                 } else {
-                    lbl.setIcon(null); lbl.setForeground(textDark); lbl.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+                    lbl.setIcon(null);
+                    lbl.setForeground(textDark);
+                    lbl.setFont(new Font("Segoe UI", Font.PLAIN, 12));
                 }
+                
+                // CẮT TÊN SP NẾU QUÁ DÀI TRÁNH VỠ BẢNG
+                if (text.length() > 32) {
+                    text = text.substring(0, 30) + "...";
+                }
+                lbl.setText(text);
+                
+                lbl.setBorder(BorderFactory.createEmptyBorder(0, 5, 0, 0));
                 return lbl;
             }
         });
@@ -447,11 +464,40 @@ public class ChiTietHoaDon extends JDialog {
     private JLabel createRightAlignLabel(String text) { JLabel label = new JLabel(text); label.setHorizontalAlignment(SwingConstants.RIGHT); return label; }
 
     private JPanel createFooterTextPanel() {
-        JPanel pnl = new JPanel(new GridLayout(3, 1, 0, 2)); pnl.setBackground(Color.WHITE);
-        JLabel l1 = new JLabel("Cảm ơn quý khách đã tin dùng MYCARE PHARMACY!", SwingConstants.CENTER); l1.setFont(new Font("Segoe UI", Font.PLAIN, 11)); l1.setForeground(textGray);
-        JLabel l2 = new JLabel("Chính sách đổi trả trong vòng 3 ngày kể từ ngày mua", SwingConstants.CENTER); l2.setFont(new Font("Segoe UI", Font.PLAIN, 11)); l2.setForeground(textGray);
-        JLabel l3 = new JLabel("NV xác nhận: " + this.tenNhanVien, SwingConstants.CENTER); 
-        l3.setFont(new Font("Segoe UI", Font.PLAIN, 11)); l3.setForeground(textGray);
-        pnl.add(l1); pnl.add(l2); pnl.add(l3); return pnl;
+        // Tách ra 2 cột: Cột trái (Cảm ơn), Cột phải (Chữ ký nhân viên) để tránh đẩy khung
+        JPanel pnl = new JPanel(new GridLayout(1, 2, 10, 0)); 
+        pnl.setBackground(Color.WHITE);
+        pnl.setBorder(new EmptyBorder(10, 0, 10, 0));
+
+        // Khối Trái (Cảm ơn)
+        JPanel pnlLeft = new JPanel(new GridLayout(2, 1, 0, 2));
+        pnlLeft.setBackground(Color.WHITE);
+        JLabel l1 = new JLabel("Cảm ơn quý khách đã tin dùng!", SwingConstants.LEFT); 
+        l1.setFont(new Font("Segoe UI", Font.PLAIN, 11)); l1.setForeground(textGray);
+        JLabel l2 = new JLabel("Đổi trả trong 3 ngày kể từ lúc mua.", SwingConstants.LEFT); 
+        l2.setFont(new Font("Segoe UI", Font.PLAIN, 11)); l2.setForeground(textGray);
+        pnlLeft.add(l1); pnlLeft.add(l2);
+
+        // Khối Phải (Ký tên)
+        JPanel pnlRight = new JPanel(new GridLayout(3, 1, 0, 3));
+        pnlRight.setBackground(Color.WHITE);
+        JLabel lbl3 = new JLabel("Nhân viên xác nhận", SwingConstants.CENTER); 
+        lbl3.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        JLabel lbl4 = new JLabel("(Ký & Ghi rõ họ tên)", SwingConstants.CENTER); 
+        lbl4.setFont(new Font("Segoe UI", Font.ITALIC, 11)); lbl4.setForeground(textGray);
+        
+        // Cắt gọn tên nhân viên nếu quá dài
+        String tenRutGon = this.tenNhanVien;
+        if(tenRutGon != null && tenRutGon.length() > 20) {
+             tenRutGon = tenRutGon.substring(0, 18) + "...";
+        }
+        JLabel lbl5 = new JLabel(tenRutGon, SwingConstants.CENTER); 
+        lbl5.setFont(new Font("Segoe UI", Font.BOLD, 12)); lbl5.setBorder(new EmptyBorder(20, 0, 0, 0));
+
+        pnlRight.add(lbl3); pnlRight.add(lbl4); pnlRight.add(lbl5);
+
+        pnl.add(pnlLeft); 
+        pnl.add(pnlRight); 
+        return pnl;
     }
 }
