@@ -456,7 +456,6 @@ public class TaoHoaDon extends JDialog {
             }
             if ("Tiền mặt".equals(phuongThuc)) {
                 if (tongTienMat < tongHoaDon) {
-                    // Định dạng số tiền để hiện thông báo cho đẹp
                     String strCanTra = String.format("%,d", tongHoaDon).replace(',', '.') + "đ";
                     String strKhachDua = String.format("%,d", tongTienMat).replace(',', '.') + "đ";
                     
@@ -468,7 +467,7 @@ public class TaoHoaDon extends JDialog {
                         "Vui lòng chọn đủ mệnh giá tiền khách đưa trước khi thanh toán.", 
                         "WARNING"
                     );
-                    return; // Chặn đứng quy trình, không cho lưu DB
+                    return; 
                 }
             }
             if (pnlDonThuoc.isVisible()) {
@@ -481,6 +480,66 @@ public class TaoHoaDon extends JDialog {
                     return; 
                 }
             }
+
+            // 1. KIỂM TRA TRƯỚC TỒN KHO & QUY ĐỔI ĐƠN VỊ TÍNH (MỚI THÊM)
+            BUS.BUS_DonViDoLuong busDonVi = new BUS.BUS_DonViDoLuong();
+            BUS.BUS_Kho busKho = new BUS.BUS_Kho();
+            
+            // Lặp qua bảng sản phẩm để kiểm tra
+            for (int i = 0; i < productModel.getRowCount(); i++) {
+                String tenSP = productModel.getValueAt(i, 0).toString().trim();
+                if (tenSP.startsWith("[QUÀ TẶNG]")) {
+                    tenSP = tenSP.replace("[QUÀ TẶNG]", "").trim(); // Xóa tag quà tặng để kiểm tra
+                }
+                
+                String tenDVT = productModel.getValueAt(i, 1).toString().trim();
+                int soLuongMua = Integer.parseInt(productModel.getValueAt(i, 2).toString());
+
+                String maSP = "";
+                double tiLeQuyDoi = 1.0;
+                
+                // Truy vấn nhanh lấy mã SP (Tạm dùng DB connection, do mày chưa truyền đủ thông tin mã SP vào model)
+                try (java.sql.Connection con = ConnectDB.getInstance().getConnection();
+                     java.sql.PreparedStatement pst = con.prepareStatement("SELECT id FROM SanPham WHERE ten = ?")) {
+                    pst.setString(1, tenSP);
+                    try (java.sql.ResultSet rs = pst.executeQuery()) {
+                        if (rs.next()) maSP = rs.getString("id");
+                    }
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
+
+                if (maSP.isEmpty()) {
+                    showCustomNotification("LỖI HỆ THỐNG", "Không tìm thấy mã sản phẩm cho: " + tenSP, "ERROR");
+                    return;
+                }
+
+                // TÌM TỈ LỆ QUY ĐỔI (Vd: Khách mua 2 Hộp, Hộp = 100 viên -> Tỉ lệ là 100)
+                List<DonViDoLuong> dsDonVi = busDonVi.getDSTheoMaSP(maSP);
+                for (DonViDoLuong dv : dsDonVi) {
+                    if (dv.getTen().equalsIgnoreCase(tenDVT)) {
+                        tiLeQuyDoi = dv.getChuyenDoiSangDonViCoBan();
+                        break;
+                    }
+                }
+
+                // TÍNH TỔNG SỐ LƯỢNG CƠ BẢN CẦN TRỪ KHO (vd: 2 hộp * 100 = 200 viên)
+                int tongSoLuongCoBan = (int) (soLuongMua * tiLeQuyDoi);
+
+                // KIỂM TRA XEM KHO CÓ ĐỦ SỐ LƯỢNG ĐÓ KHÔNG
+                if (!busKho.kiemTraTonKho(maSP, tongSoLuongCoBan)) {
+                    showCustomNotification(
+                        "TỒN KHO KHÔNG ĐỦ", 
+                        "Sản phẩm: " + tenSP + "\n" +
+                        "Không đủ hàng để xuất " + soLuongMua + " " + tenDVT + " (Quy đổi: " + tongSoLuongCoBan + " đơn vị cơ bản).\n" +
+                        "Vui lòng giảm số lượng hoặc chọn sản phẩm khác!", 
+                        "WARNING"
+                    );
+                    return; // Chặn đứng quy trình thanh toán nếu kho không đủ
+                }
+            }
+
+
             String khach = isCustomerLinked ? linkedTenKH : txtName.getText();
             if(khach.equals("Tên khách (bỏ trống = Khách lẻ)") || khach.trim().isEmpty()) khach = "Khách lẻ";
             String sdt = isCustomerLinked ? linkedSdtKH : txtPhone.getText().replace("Số điện thoại (tuỳ chọn)", "");
@@ -488,7 +547,7 @@ public class TaoHoaDon extends JDialog {
 
             try (java.sql.Connection con = ConnectDB.getInstance().getConnection()) {
 
-            	String maHDMoi = (editingModelRow != -1) ? maHDDangSua.replace("-LuuNhap", "") : phatSinhMaHoaDon();
+                String maHDMoi = (editingModelRow != -1) ? maHDDangSua.replace("-LuuNhap", "") : phatSinhMaHoaDon();
                 Entity.HoaDon hd = new Entity.HoaDon();
                 hd.setId(maHDMoi);
                 hd.setLoaiHD(Enumeration.LoaiHoaDon.BAN_HANG);
@@ -505,7 +564,6 @@ public class TaoHoaDon extends JDialog {
                     strKeDon = " | BS:" + bs + " | CS:" + cs + (cd.isEmpty() ? "" : " | CD:" + cd);
                 }
                 
-                // ĐOẠN CODE THÊM MỚI 1: Gom quà tặng nhét vào chuỗi Ghi Chú
                 StringBuilder strGifts = new StringBuilder();
                 for (int i = 0; i < productModel.getRowCount(); i++) {
                     String tenSP = productModel.getValueAt(i, 0).toString();
@@ -517,7 +575,6 @@ public class TaoHoaDon extends JDialog {
                     }
                 }
                 
-                // SỬA LẠI IF ELSE CHỖ NÀY ĐỂ CỘNG THÊM strGifts
                 if (phuongThuc.equals("Tiền mặt")) {
                     hd.setGhiChu("CASH:" + tongTienMat + strKM + strDiem + strKeDon + strGifts.toString());
                 } else {
@@ -584,6 +641,20 @@ public class TaoHoaDon extends JDialog {
 
                     ct.setSoLuong(soLuong);
                     dsCTHD.add(ct);
+                    
+                    // 2. THỰC SỰ TRỪ KHO BẰNG HÀM FEFO NGAY KHI LƯU DB CHUẨN BỊ XONG (MỚI THÊM)
+                    double tiLeQuyDoi = 1.0;
+                    List<DonViDoLuong> dsDonVi = busDonVi.getDSTheoMaSP(maSP);
+                    for (DonViDoLuong dv_1 : dsDonVi) {
+                        if (dv_1.getTen().equalsIgnoreCase(tenDVT)) {
+                            tiLeQuyDoi = dv_1.getChuyenDoiSangDonViCoBan();
+                            break;
+                        }
+                    }
+                    int tongSoLuongCoBan = (int) (soLuong * tiLeQuyDoi);
+                    
+                    // Gọi hàm trừ kho của sếp. Lỗi thì văng ra catch chặn luôn
+                    busKho.xuLyXuatKhoFEFO(maSP, tongSoLuongCoBan); 
                 }
 
                 BUS.BUS_HoaDon busHD = new BUS.BUS_HoaDon();
@@ -660,11 +731,11 @@ public class TaoHoaDon extends JDialog {
                         mainTableModel.setValueAt(tongTien, editingModelRow, 5);     
                         mainTableModel.setValueAt("Hoàn thành", editingModelRow, 6); 
                     } else {
-                    	mainTableModel.insertRow(0, new Object[]{maHDMoi, ngayStr, khach, sdt, phuongThuc, tongTien, "Hoàn thành", "", "TPCN"});
+                        mainTableModel.insertRow(0, new Object[]{maHDMoi, ngayStr, khach, sdt, phuongThuc, tongTien, "Hoàn thành", "", "TPCN"});
                     }
                     dispose(); 
                 } else {
-                	showCustomNotification("TỪ CHỐI THANH TOÁN", "Hệ thống từ chối giao dịch!\nVui lòng kiểm tra lại số lượng tồn kho.", "WARNING");
+                    showCustomNotification("TỪ CHỐI THANH TOÁN", "Hệ thống từ chối giao dịch!\nVui lòng kiểm tra lại số lượng tồn kho.", "WARNING");
                 }
 
             } catch(Exception ex) {

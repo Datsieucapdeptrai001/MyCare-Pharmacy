@@ -1,6 +1,8 @@
 package GUI;
 
 import BUS.BUS_Kho;
+import BUS.BUS_DonViDoLuong;
+import Entity.DonViDoLuong;
 import Entity.LoHang;
 import Enumeration.TrangThaiLoHang;
 import Utils.MenuIcon;
@@ -30,6 +32,7 @@ public class ManHinhLoHang extends JPanel {
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     private final BUS_Kho busKho = new BUS_Kho();
+    private final BUS_DonViDoLuong busDonVi = new BUS_DonViDoLuong(); // Khai báo BUS Đơn vị
 
     private static final Color BG_APP = new Color(241, 245, 249);
     private static final Color BG_CARD = Color.WHITE;
@@ -71,7 +74,6 @@ public class ManHinhLoHang extends JPanel {
     public ManHinhLoHang() {
         setLayout(new BorderLayout());
         setBackground(BG_APP);
-        // THU GỌN LỀ NGOÀI APP ĐỂ TĂNG DIỆN TÍCH
         setBorder(new EmptyBorder(8, 8, 8, 8));
 
         add(createMainCard(), BorderLayout.CENTER);
@@ -81,7 +83,6 @@ public class ManHinhLoHang extends JPanel {
     private JPanel createMainCard() {
         JPanel unifiedCard = new JPanel(new BorderLayout(0, 12));
         unifiedCard.setBackground(BG_CARD);
-        // THU GỌN LỀ CỦA CARD CHÍNH ĐỂ BẢNG RỘNG HƠN
         unifiedCard.setBorder(new CompoundRoundBorder(
                 new SmoothShadowBorder(new Color(0, 0, 0, 12), 16),
                 new Insets(16, 16, 16, 16)
@@ -92,16 +93,16 @@ public class ManHinhLoHang extends JPanel {
         topSection.setLayout(new BoxLayout(topSection, BoxLayout.Y_AXIS));
 
         topSection.add(createHeaderRow());
-        topSection.add(Box.createVerticalStrut(12)); // Giảm khoảng cách thừa
+        topSection.add(Box.createVerticalStrut(12)); 
         topSection.add(createStatsRow());
-        topSection.add(Box.createVerticalStrut(16)); // Giảm khoảng cách thừa
+        topSection.add(Box.createVerticalStrut(16)); 
         
         JSeparator sep = new JSeparator(SwingConstants.HORIZONTAL);
         sep.setForeground(BORDER_COLOR);
         sep.setBackground(Color.WHITE);
         topSection.add(sep);
         
-        topSection.add(Box.createVerticalStrut(12)); // Giảm khoảng cách thừa
+        topSection.add(Box.createVerticalStrut(12)); 
         topSection.add(createControlBarRow());
 
         unifiedCard.add(topSection, BorderLayout.NORTH);
@@ -110,13 +111,11 @@ public class ManHinhLoHang extends JPanel {
         return unifiedCard;
     }
 
-    // --- FIX LỖI ĐÈ NHAU BẰNG BOXLAYOUT CHO HEADER ---
     private JPanel createHeaderRow() {
         JPanel wrapper = new JPanel();
         wrapper.setLayout(new BoxLayout(wrapper, BoxLayout.X_AXIS));
         wrapper.setOpaque(false);
 
-        // BÊN TRÁI: Tiêu đề + Cảnh báo
         JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 0));
         left.setOpaque(false);
         left.setAlignmentY(Component.CENTER_ALIGNMENT);
@@ -154,7 +153,6 @@ public class ManHinhLoHang extends JPanel {
         left.add(Box.createHorizontalStrut(4));
         left.add(lblWarningBadge);
 
-        // BÊN PHẢI: Tìm kiếm -> Làm mới -> Nhập lô hàng
         JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         right.setOpaque(false);
         right.setAlignmentY(Component.CENTER_ALIGNMENT);
@@ -187,7 +185,6 @@ public class ManHinhLoHang extends JPanel {
         right.add(btnLamMoi);
         right.add(btnThemLo);
 
-        // Ghép trái phải bằng lò xo (Glue) để chống đè nhau
         wrapper.add(left);
         wrapper.add(Box.createHorizontalGlue());
         wrapper.add(right);
@@ -198,7 +195,7 @@ public class ManHinhLoHang extends JPanel {
     private JPanel createStatsRow() {
         JPanel row = new JPanel(new GridLayout(1, 4, 16, 0));
         row.setOpaque(false);
-        row.setPreferredSize(new Dimension(0, 96)); // Thu gọn chiều cao thẻ thống kê 1 chút
+        row.setPreferredSize(new Dimension(0, 96)); 
 
         lblExpired = statValueLabel();
         lblNear = statValueLabel();
@@ -213,13 +210,11 @@ public class ManHinhLoHang extends JPanel {
         return row;
     }
 
-    // --- FIX LỆCH DÒNG CONTROL BAR: Căn giữa theo trục Y ---
     private JPanel createControlBarRow() {
         JPanel wrapper = new JPanel();
         wrapper.setLayout(new BoxLayout(wrapper, BoxLayout.X_AXIS));
         wrapper.setOpaque(false);
 
-        // BÊN TRÁI: Nhóm Tabs Lọc
         JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 4));
         left.setOpaque(false);
         left.setAlignmentY(Component.CENTER_ALIGNMENT);
@@ -259,7 +254,6 @@ public class ManHinhLoHang extends JPanel {
         left.add(lbl);
         left.add(filterGroup);
 
-        // BÊN PHẢI: Nhóm Checkbox
         JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 16, 4));
         right.setOpaque(false);
         right.setAlignmentY(Component.CENTER_ALIGNMENT);
@@ -364,7 +358,7 @@ public class ManHinhLoHang extends JPanel {
         wrap.add(topInfo, BorderLayout.NORTH);
 
         String[] cols = {
-                "#", "Mã lô", "Sản phẩm", "Tồn kho", "Giá nhập",
+                "#", "Mã lô", "Sản phẩm", "Đơn vị", "Tồn kho", "Giá nhập",
                 "Hạn sử dụng", "Còn lại", "Tình trạng", "Thao tác"
         };
 
@@ -373,7 +367,6 @@ public class ManHinhLoHang extends JPanel {
         };
 
         table = new JTable(tableModel);
-        // TỐI ƯU ROW HEIGHT ĐỂ HIỂN THỊ ĐƯỢC NHIỀU DÒNG HƠN
         table.setRowHeight(46);
         table.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         table.setSelectionBackground(new Color(239, 246, 255));
@@ -391,14 +384,15 @@ public class ManHinhLoHang extends JPanel {
         header.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, BORDER_COLOR));
 
         table.getColumnModel().getColumn(0).setPreferredWidth(40);
-        table.getColumnModel().getColumn(1).setPreferredWidth(140);
-        table.getColumnModel().getColumn(2).setPreferredWidth(320);
-        table.getColumnModel().getColumn(3).setPreferredWidth(90);
-        table.getColumnModel().getColumn(4).setPreferredWidth(110);
-        table.getColumnModel().getColumn(5).setPreferredWidth(120);
-        table.getColumnModel().getColumn(6).setPreferredWidth(150);
-        table.getColumnModel().getColumn(7).setPreferredWidth(120);
-        table.getColumnModel().getColumn(8).setPreferredWidth(70);
+        table.getColumnModel().getColumn(1).setPreferredWidth(130);
+        table.getColumnModel().getColumn(2).setPreferredWidth(260); 
+        table.getColumnModel().getColumn(3).setPreferredWidth(70);  
+        table.getColumnModel().getColumn(4).setPreferredWidth(80);
+        table.getColumnModel().getColumn(5).setPreferredWidth(110);
+        table.getColumnModel().getColumn(6).setPreferredWidth(120);
+        table.getColumnModel().getColumn(7).setPreferredWidth(140);
+        table.getColumnModel().getColumn(8).setPreferredWidth(120);
+        table.getColumnModel().getColumn(9).setPreferredWidth(70);  
         
         table.addMouseMotionListener(new MouseMotionAdapter() {
             @Override
@@ -422,16 +416,15 @@ public class ManHinhLoHang extends JPanel {
             public void mouseClicked(MouseEvent e) {
                 int row = table.rowAtPoint(e.getPoint());
                 int col = table.columnAtPoint(e.getPoint());
-                if (row >= 0 && col == 8) {
+                
+                if (row >= 0 && col == 9) {
                     
-                    // --- BẮT ĐẦU CHẶN STAFF ---
                     if (isStaffRole) {
                         JOptionPane.showMessageDialog(wrap, 
                             "Nhân viên Dược sĩ không có quyền Ẩn hoặc Khôi phục lô hàng!", 
                             "Từ chối quyền truy cập", JOptionPane.WARNING_MESSAGE);
-                        return; // Ngắt luôn, không cho chạy xuống dưới
+                        return;
                     }
-                    // --- KẾT THÚC CHẶN STAFF ---
 
                     String maLo = String.valueOf(table.getValueAt(row, 1));
                     BatchItem item = timBatchTheoSoLo(maLo);
@@ -459,31 +452,56 @@ public class ManHinhLoHang extends JPanel {
         try {
             busKho.kiemKeKho();
             List<LoHang> dsLo = busKho.layDSLoHang(hienLoAn);
+            
             if (dsLo != null) {
                 for (LoHang lh : dsLo) {
                     if (lh == null) continue;
+                    
                     String id = safe(lh.getId());
                     String soLo = safe(lh.getSoLoHang());
+                    
                     String maSP = "";
                     String tenSP = "";
+                    String donVi = "Chưa có"; 
+                    
                     if (lh.getSanPhamId() != null) {
                         if (lh.getSanPhamId().getId() != null) maSP = lh.getSanPhamId().getId();
                         if (lh.getSanPhamId().getTen() != null) tenSP = lh.getSanPhamId().getTen();
+                        
+                        // KẾT NỐI DATABASE: Lấy đơn vị đo lường theo mã Sản phẩm
+                        if (!maSP.isEmpty()) {
+                            List<DonViDoLuong> dsDVDL = busDonVi.getDSTheoMaSP(maSP);
+                            if (dsDVDL != null && !dsDVDL.isEmpty()) {
+                                // Ưu tiên tìm đơn vị có tỉ lệ quy đổi cơ bản = 1.0
+                                for (DonViDoLuong dv : dsDVDL) {
+                                    if (dv.getChuyenDoiSangDonViCoBan() == 1.0) {
+                                        donVi = dv.getTen();
+                                        break;
+                                    }
+                                }
+                                // Nếu không có cái nào là 1.0, lấy tạm đơn vị đầu tiên tìm thấy
+                                if ("Chưa có".equals(donVi)) {
+                                    donVi = dsDVDL.get(0).getTen();
+                                }
+                            }
+                        }
                     }
+                    
                     int soLuong = lh.getSoLuongLoHang();
                     int gia = lh.getGia();
                     String hanSuDung = lh.getNgayHetHan() != null
                             ? lh.getNgayHetHan().toLocalDate().format(DATE_FORMAT)
                             : "";
                     String trangThai = convertTrangThaiToText(lh.getTrangThai());
-                    dsTatCa.add(new BatchItem(id, soLo, maSP, tenSP, soLuong, gia, hanSuDung, trangThai));
+                    
+                    dsTatCa.add(new BatchItem(id, soLo, maSP, tenSP, donVi, soLuong, gia, hanSuDung, trangThai));
                 }
             }
             updateStats();
             refreshTable();
         } catch (Exception e) {
             e.printStackTrace();
-            JOptionPane.showMessageDialog(this, "Lỗi tải dữ liệu lô hàng!");
+            JOptionPane.showMessageDialog(this, "Lỗi tải dữ liệu lô hàng từ CSDL!");
         }
     }
 
@@ -554,6 +572,7 @@ public class ManHinhLoHang extends JPanel {
                     stt++,
                     item.soLo,
                     item.maSanPham + (safe(item.tenSanPham).isEmpty() ? "" : " - " + item.tenSanPham),
+                    item.donVi,
                     formatNumber(item.tonKho),
                     formatCurrency(item.giaNhap),
                     item.hanSuDung,
@@ -751,10 +770,11 @@ public class ManHinhLoHang extends JPanel {
     private enum TrangThaiFilter { TAT_CA, DUOC_BAN, HET_HAN, GAN_HET_HAN_90, HET_HANG }
 
     private class BatchItem {
-        String id, soLo, maSanPham, tenSanPham, hanSuDung, trangThai;
+        String id, soLo, maSanPham, tenSanPham, donVi, hanSuDung, trangThai;
         int tonKho, giaNhap;
-        BatchItem(String i, String sl, String msp, String tsp, int tk, int gn, String hsd, String tt) {
-            id = i; soLo = sl; maSanPham = msp; tenSanPham = tsp;
+        
+        BatchItem(String i, String sl, String msp, String tsp, String dv, int tk, int gn, String hsd, String tt) {
+            id = i; soLo = sl; maSanPham = msp; tenSanPham = tsp; donVi = dv;
             tonKho = tk; giaNhap = gn; hanSuDung = hsd; trangThai = tt;
         }
         String getConLai() {
@@ -774,7 +794,8 @@ public class ManHinhLoHang extends JPanel {
         public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
                                                        boolean hasFocus, int row, int column) {
             JLabel lbl = (JLabel) super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-            String trangThaiRow = String.valueOf(table.getValueAt(row, 7));
+            
+            String trangThaiRow = String.valueOf(table.getValueAt(row, 8));
 
             lbl.setIcon(null);
             lbl.setBorder(new EmptyBorder(0, 10, 0, 10));
@@ -804,12 +825,14 @@ public class ManHinhLoHang extends JPanel {
             } else if (column == 1) {
                 lbl.setForeground("Đã ẩn".equals(trangThaiRow) ? HIDDEN : PRIMARY_BLUE);
                 lbl.setFont(new Font("Segoe UI", Font.BOLD, 13));
-            } else if (column == 3 || column == 4) {
-                lbl.setHorizontalAlignment(SwingConstants.RIGHT);
-                if (column == 3) lbl.setFont(new Font("Segoe UI", Font.BOLD, 13));
-            } else if (column == 5) {
+            } else if (column == 3) {
                 lbl.setHorizontalAlignment(SwingConstants.CENTER);
+            } else if (column == 4 || column == 5) {
+                lbl.setHorizontalAlignment(SwingConstants.RIGHT);
+                if (column == 4) lbl.setFont(new Font("Segoe UI", Font.BOLD, 13));
             } else if (column == 6) {
+                lbl.setHorizontalAlignment(SwingConstants.CENTER);
+            } else if (column == 7) {
                 String text = String.valueOf(value);
                 JPanel panel = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 10));
                 panel.setBackground(lbl.getBackground());
@@ -844,7 +867,7 @@ public class ManHinhLoHang extends JPanel {
                 pill.setIconTextGap(4);
                 panel.add(pill);
                 return panel;
-            } else if (column == 7) {
+            } else if (column == 8) {
                 String text = String.valueOf(value);
                 lbl.setHorizontalAlignment(SwingConstants.CENTER);
                 lbl.setFont(new Font("Segoe UI", Font.BOLD, 12));
@@ -854,7 +877,7 @@ public class ManHinhLoHang extends JPanel {
                 else if ("Hết hạn".equals(text)) { lbl.setForeground(DANGER); lbl.setIcon(new MenuIcon("CANCEL")); } 
                 else if ("Đã ẩn".equals(text)) { lbl.setForeground(HIDDEN); lbl.setIcon(new MenuIcon("CLOSE")); } 
                 else { lbl.setForeground(TEXT_SECONDARY); lbl.setIcon(new MenuIcon("BOX")); }
-            } else if (column == 8) {
+            } else if (column == 9) {
                 lbl.setHorizontalAlignment(SwingConstants.CENTER);
                 lbl.setText("");
                 if (isStaffRole) {
@@ -966,7 +989,7 @@ public class ManHinhLoHang extends JPanel {
         if (!readOnly) return;
         disableButtonsByText(this, "Thêm mới", "Nhập lô hàng", "Nhập Excel", "Thêm", "Xóa", "Sửa", "Lưu");
         if (table != null) {
-            javax.swing.table.TableColumn columnThaoTac = table.getColumnModel().getColumn(8);
+            javax.swing.table.TableColumn columnThaoTac = table.getColumnModel().getColumn(9);
             table.removeColumn(columnThaoTac); 
         }
     }
