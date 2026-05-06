@@ -14,6 +14,7 @@ import javax.swing.table.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.util.List;
+
 public class ManHinhNhanVien extends JPanel {
 
     private JTable table;
@@ -151,6 +152,10 @@ public class ManHinhNhanVien extends JPanel {
         JScrollPane sp = new JScrollPane(table);
         sp.setBorder(BorderFactory.createLineBorder(Color.decode("#DFE3E8")));
         sp.getVerticalScrollBar().setPreferredSize(new Dimension(10, 0));
+        
+        // FIX LỖI LAG THANH CUỘN CHO BẢNG
+        sp.getVerticalScrollBar().setUnitIncrement(20);
+        sp.getHorizontalScrollBar().setUnitIncrement(20);
 
         // -- SIDEBAR CHI TIẾT --
         pnlDetail = createDetailSidebar();
@@ -201,6 +206,11 @@ public class ManHinhNhanVien extends JPanel {
 
         // Khởi tạo tải dữ liệu
         loadData();
+
+        // RÀNG BUỘC QUYỀN HẠN
+        if (!UserSession.getInstance().isAdmin()) {
+            setReadOnly(true);
+        }
     }
 
  // ==================== TẢI DỮ LIỆU TỪ TẦNG BUS ====================
@@ -399,14 +409,13 @@ public class ManHinhNhanVien extends JPanel {
         pnlBody.add(pnlInfoList);
         pnlBody.add(pnlStats);
         pnlBody.add(pnlStatus);
-        
-        JScrollPane spBody = new JScrollPane(pnlBody);
-        spBody.setBorder(null);
 
-        // FOOTER ACTIONS
+        // FOOTER ACTIONS ĐƯỢC CHUYỂN VÀO TRONG BODY ĐỂ LUÔN NẰM NGAY DƯỚI TRẠNG THÁI
         JPanel pnlFooterActions = new JPanel(new GridLayout(1, 1, 0, 8));
         pnlFooterActions.setBackground(Color.WHITE);
         pnlFooterActions.setBorder(new EmptyBorder(10, 15, 15, 15));
+        pnlFooterActions.setAlignmentX(Component.LEFT_ALIGNMENT);
+        pnlFooterActions.setMaximumSize(new Dimension(1000, 70));
 
         btnEdit = new JButton("Chỉnh sửa");
         btnEdit.setIcon(new MenuIcon("EDIT"));
@@ -419,6 +428,19 @@ public class ManHinhNhanVien extends JPanel {
         btnEdit.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
         pnlFooterActions.add(btnEdit);
+        pnlBody.add(pnlFooterActions);
+
+        // FIX LỖI GIÃN DỌC KHI PHÓNG TO: Bọc pnlBody vào BorderLayout.NORTH
+        JPanel pnlBodyWrapper = new JPanel(new BorderLayout());
+        pnlBodyWrapper.setBackground(Color.WHITE);
+        pnlBodyWrapper.add(pnlBody, BorderLayout.NORTH);
+        
+        JScrollPane spBody = new JScrollPane(pnlBodyWrapper);
+        spBody.setBorder(null);
+
+        // FIX LỖI LAG THANH CUỘN CHO SIDEBAR
+        spBody.getVerticalScrollBar().setUnitIncrement(20);
+        spBody.getHorizontalScrollBar().setUnitIncrement(20);
 
         JPanel pnlTopWrap = new JPanel(new BorderLayout());
         pnlTopWrap.add(pnlDetHeader, BorderLayout.NORTH);
@@ -426,7 +448,6 @@ public class ManHinhNhanVien extends JPanel {
 
         pnl.add(pnlTopWrap, BorderLayout.NORTH);
         pnl.add(spBody, BorderLayout.CENTER);
-        pnl.add(pnlFooterActions, BorderLayout.SOUTH);
 
         return pnl;
     }
@@ -562,17 +583,24 @@ class DialogThemNhanVien extends JDialog {
 
     private JTextField txtHoTen, txtCCHN, txtSdt, txtEmail;
     private JTextField txtTenDangNhap, txtMatKhau;
-    private JComboBox<String> cboChucVu, cboTrangThai;
+    private JComboBox<String> cboTrangThai;
+    private JLabel lblErrHoTen, lblErrSdt, lblErrEmail, lblErrCCHN, lblErrTenDangNhap, lblErrMatKhau;
     private ManHinhNhanVien parentScreen;
     
     private JLabel lblTitle;
     private JButton btnThem;
     private int editRow; 
+    private String currentChucVu = "Dược sĩ";
 
     public DialogThemNhanVien(Frame parent, ManHinhNhanVien parentScreen, int editRow, String hoten, String cchn, String sdt, String email, String chucVu, String trangThai, String tenDangNhap, String matKhau) {
         super(parent, editRow == -1 ? "Thêm nhân viên mới" : "Chỉnh sửa nhân viên", true);
         this.parentScreen = parentScreen;
         this.editRow = editRow;
+        
+        if (chucVu != null && !chucVu.isEmpty()) {
+            this.currentChucVu = chucVu;
+        }
+        
         initUI(parent);
 
         if (editRow != -1) {
@@ -601,14 +629,20 @@ class DialogThemNhanVien extends JDialog {
                 txtTenDangNhap.setForeground(Color.BLACK);
             }
             
-            }
-            
-            cboChucVu.setSelectedItem(chucVu);
             cboTrangThai.setSelectedItem(trangThai);
         }
+    }
+
+    private JLabel createErrorLabel() {
+        JLabel lbl = new JLabel("");
+        lbl.setForeground(Color.decode("#DC2626"));
+        lbl.setFont(new Font("Segoe UI", Font.ITALIC, 12));
+        lbl.setVisible(false);
+        return lbl;
+    }
 
     private void initUI(Frame parent) {
-        setSize(580, 560);
+        setSize(600, 650);
         setLocationRelativeTo(parent);
         setUndecorated(true);
         setLayout(new BorderLayout());
@@ -643,48 +677,67 @@ class DialogThemNhanVien extends JDialog {
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.insets = new Insets(8, 8, 8, 8); 
 
+        // Khởi tạo các nhãn lỗi
+        lblErrHoTen = createErrorLabel();
+        lblErrSdt = createErrorLabel();
+        lblErrEmail = createErrorLabel();
+        lblErrCCHN = createErrorLabel();
+        lblErrTenDangNhap = createErrorLabel();
+        lblErrMatKhau = createErrorLabel();
+
         // Dòng 1: Họ tên
         gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 2;
         pnlBody.add(createLabel("Họ và tên", true), gbc);
+        
         gbc.gridy = 1;
         txtHoTen = createTextField("Nhập họ và tên đầy đủ");
         pnlBody.add(txtHoTen, gbc);
+        
+        gbc.gridy = 2;
+        pnlBody.add(lblErrHoTen, gbc);
 
         // Dòng 2: SĐT, Email
         gbc.gridwidth = 1; gbc.weightx = 0.5;
-        gbc.gridx = 0; gbc.gridy = 2;
+        gbc.gridx = 0; gbc.gridy = 3;
         pnlBody.add(createLabel("Số điện thoại", true), gbc);
+        
         gbc.gridx = 1;
         pnlBody.add(createLabel("Email", false), gbc);
 
-        gbc.gridx = 0; gbc.gridy = 3;
+        gbc.gridx = 0; gbc.gridy = 4;
         txtSdt = createTextField("0912345678");
         pnlBody.add(txtSdt, gbc);
+        
         gbc.gridx = 1;
         txtEmail = createTextField("email@mycare.vn");
         pnlBody.add(txtEmail, gbc);
 
-        // Dòng 3: Số CCHN, Chức vụ
-        gbc.gridx = 0; gbc.gridy = 4;
-        pnlBody.add(createLabel("Số CCHN", false), gbc);
-        gbc.gridx = 1;
-        pnlBody.add(createLabel("Chức vụ", true), gbc);
-
         gbc.gridx = 0; gbc.gridy = 5;
+        pnlBody.add(lblErrSdt, gbc);
+        
+        gbc.gridx = 1;
+        pnlBody.add(lblErrEmail, gbc);
+
+        // Dòng 3: Số CCHN (Xóa trường chức vụ)
+        gbc.gridx = 0; gbc.gridy = 6; gbc.gridwidth = 2;
+        pnlBody.add(createLabel("Số CCHN", false), gbc);
+
+        gbc.gridy = 7;
         txtCCHN = createTextField("CCHN-xxxx");
         pnlBody.add(txtCCHN, gbc);
         
-        gbc.gridx = 1;
-        cboChucVu = createComboBox(new String[]{"Dược sĩ", "Quản lý"});
-        pnlBody.add(cboChucVu, gbc);
+        gbc.gridy = 8;
+        pnlBody.add(lblErrCCHN, gbc);
 
         // Dòng 4: Thông tin Đăng nhập
-        gbc.gridx = 0; gbc.gridy = 6;
+        gbc.gridwidth = 1;
+        gbc.gridx = 0; gbc.gridy = 9;
         pnlBody.add(createLabel("Tên đăng nhập", true), gbc);
+        
         gbc.gridx = 1;
         pnlBody.add(createLabel("Mật khẩu", true), gbc);
 
-        gbc.gridx = 0; gbc.gridy = 7;
+        gbc.gridx = 0; gbc.gridy = 10;
         txtTenDangNhap = createTextField("Tên đăng nhập (viết liền)");
         pnlBody.add(txtTenDangNhap, gbc);
         
@@ -692,15 +745,25 @@ class DialogThemNhanVien extends JDialog {
         txtMatKhau = createTextField(editRow != -1 ? "(Để trống nếu không đổi)" : "Nhập mật khẩu");
         pnlBody.add(txtMatKhau, gbc);
 
+        gbc.gridx = 0; gbc.gridy = 11;
+        pnlBody.add(lblErrTenDangNhap, gbc);
+        
+        gbc.gridx = 1;
+        pnlBody.add(lblErrMatKhau, gbc);
+
         // Dòng 5: Trạng thái
-        gbc.gridx = 0; gbc.gridy = 8; gbc.gridwidth = 2;
+        gbc.gridx = 0; gbc.gridy = 12; gbc.gridwidth = 2;
         pnlBody.add(createLabel("Trạng thái", true), gbc);
 
-        gbc.gridy = 9;
+        gbc.gridy = 13;
         cboTrangThai = createComboBox(new String[]{"Đang làm việc", "Nghỉ phép", "Đã nghỉ việc"});
         pnlBody.add(cboTrangThai, gbc);
 
-        add(pnlBody, BorderLayout.CENTER);
+        // Bọc pnlBody vào JScrollPane để chống lẹm trên/dưới khi có lỗi hiển thị thêm
+        JScrollPane scrollPane = new JScrollPane(pnlBody);
+        scrollPane.setBorder(null);
+        scrollPane.getVerticalScrollBar().setUnitIncrement(20);
+        add(scrollPane, BorderLayout.CENTER);
 
         JPanel pnlFooter = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 15));
         pnlFooter.setBackground(Color.WHITE);
@@ -736,7 +799,6 @@ class DialogThemNhanVien extends JDialog {
             String cchn = txtCCHN.getText().trim();
             String sdt = txtSdt.getText().trim();
             String email = txtEmail.getText().trim();
-            String chucVuUI = cboChucVu.getSelectedItem().toString();
             String trangThaiUI = cboTrangThai.getSelectedItem().toString();
             
             String tenDangNhap = txtTenDangNhap.getText().trim();
@@ -748,23 +810,59 @@ class DialogThemNhanVien extends JDialog {
             if(email.equals("email@mycare.vn")) email = "";
             if(cchn.equals("CCHN-xxxx")) cchn = "";
             if(tenDangNhap.equals("Tên đăng nhập (viết liền)")) tenDangNhap = "";
-            if(matKhau.equals("Nhập mật khẩu") || matKhau.equals("(Để trống nếu không đổi)")) matKhau = "";
+            if(matKhau.equals("Nhập mật khẩu")) matKhau = "";
 
-            if (editRow == -1) { 
-                if (tenDangNhap.isEmpty() || matKhau.isEmpty() || hoten.isEmpty() || sdt.isEmpty()) {
-                    JOptionPane.showMessageDialog(this, "Vui lòng nhập đầy đủ các trường bắt buộc (Họ tên, SĐT, Tên đăng nhập, Mật khẩu)!", "Lỗi", JOptionPane.WARNING_MESSAGE);
-                    return;
-                }
-            } 
-            else { 
-                if (tenDangNhap.isEmpty() || hoten.isEmpty() || sdt.isEmpty()) {
-                    JOptionPane.showMessageDialog(this, "Vui lòng nhập đầy đủ Họ tên, SĐT và Tên đăng nhập!", "Lỗi", JOptionPane.WARNING_MESSAGE);
-                    return;
-                }
+            // Reset trạng thái lỗi trước khi kiểm tra
+            resetError(txtHoTen, lblErrHoTen);
+            resetError(txtSdt, lblErrSdt);
+            resetError(txtEmail, lblErrEmail);
+            resetError(txtCCHN, lblErrCCHN);
+            resetError(txtTenDangNhap, lblErrTenDangNhap);
+            resetError(txtMatKhau, lblErrMatKhau);
+
+            boolean hasError = false;
+
+            if (hoten.isEmpty()) {
+                setError(txtHoTen, lblErrHoTen, "* Vui lòng nhập họ và tên đầy đủ");
+                hasError = true;
+            }
+            if (sdt.isEmpty()) {
+                setError(txtSdt, lblErrSdt, "* Vui lòng nhập số điện thoại");
+                hasError = true;
+            } else if (!sdt.matches("^(0|\\+84)[0-9]{9}$")) {
+                setError(txtSdt, lblErrSdt, "* Số điện thoại không hợp lệ (gồm 10 số)");
+                hasError = true;
+            }
+            if (!email.isEmpty() && !email.matches("^[A-Za-z0-9+_.-]+@(.+)$")) {
+                setError(txtEmail, lblErrEmail, "* Email không đúng định dạng");
+                hasError = true;
+            }
+            if (tenDangNhap.isEmpty()) {
+                setError(txtTenDangNhap, lblErrTenDangNhap, "* Vui lòng nhập tên đăng nhập");
+                hasError = true;
+            } else if (tenDangNhap.contains(" ")) {
+                setError(txtTenDangNhap, lblErrTenDangNhap, "* Tên đăng nhập không được chứa khoảng trắng");
+                hasError = true;
+            }
+            if (matKhau.isEmpty()) {
+                setError(txtMatKhau, lblErrMatKhau, "* Vui lòng nhập mật khẩu");
+                hasError = true;
             }
 
-            // Gán Enumeration
-            ChucVu chucVuEnum = chucVuUI.equals("Quản lý") ? ChucVu.NGUOI_QUAN_LY : ChucVu.DUOC_SI;
+            if (hasError) {
+                return;
+            }
+
+            // Gán Enumeration: Mặc định là Dược sĩ do bỏ mục chọn (Chỉ có 1 Quản lý)
+            ChucVu chucVuEnum = ChucVu.DUOC_SI;
+            String chucVuUI = "Dược sĩ";
+            
+            // Nếu là cập nhật, giữ nguyên chức vụ cũ
+            if (editRow != -1) {
+                chucVuUI = currentChucVu;
+                chucVuEnum = chucVuUI.equals("Quản lý") ? ChucVu.NGUOI_QUAN_LY : ChucVu.DUOC_SI;
+            }
+            
             TrangThaiLamViec trangThaiEnum = TrangThaiLamViec.DANG_LAM_VIEC;
             if (trangThaiUI.equals("Nghỉ phép")) trangThaiEnum = TrangThaiLamViec.NGHI_PHEP;
             else if (trangThaiUI.equals("Đã nghỉ việc")) trangThaiEnum = TrangThaiLamViec.THOI_VIEC;
@@ -792,11 +890,46 @@ class DialogThemNhanVien extends JDialog {
                     JOptionPane.showMessageDialog(this, "Cập nhật nhân viên và tài khoản thành công!");
                     dispose();
                 } else {
-                    JOptionPane.showMessageDialog(this, ketQua, "Lỗi cập nhật", JOptionPane.ERROR_MESSAGE);
+                    // Phân tích kết quả từ BUS để map vào ô báo lỗi phù hợp
+                    String lowerKetQua = ketQua.toLowerCase();
+                    if (lowerKetQua.contains("tên đăng nhập")) {
+                        setError(txtTenDangNhap, lblErrTenDangNhap, "* " + ketQua);
+                    } else if (lowerKetQua.contains("số điện thoại") || lowerKetQua.contains("sđt")) {
+                        setError(txtSdt, lblErrSdt, "* " + ketQua);
+                    } else if (lowerKetQua.contains("cchn") || lowerKetQua.contains("chứng chỉ")) {
+                        setError(txtCCHN, lblErrCCHN, "* " + ketQua);
+                    } else if (lowerKetQua.contains("email")) {
+                        setError(txtEmail, lblErrEmail, "* " + ketQua);
+                    } else {
+                        JOptionPane.showMessageDialog(this, ketQua, "Lỗi cập nhật", JOptionPane.ERROR_MESSAGE);
+                    }
                 }
             } else {
-                // Thực thi quy trình Thêm mới
-                String idMoi = "NV" + String.format("%03d", System.currentTimeMillis() % 1000); 
+                // TỰ ĐỘNG PHÁT SINH MÃ NHÂN VIÊN THEO CHỨC VỤ (QL-xxxx / DS-xxxx)
+                String prefixId = chucVuEnum == ChucVu.NGUOI_QUAN_LY ? "QL-" : "DS-";
+                int maxIdNum = 0;
+                
+                // Trích xuất mã lớn nhất hiện có trong CSDL (thông qua tầng BUS)
+                List<NhanVien> dsTatCaNV = busNV.layDSNhanVien();
+                if (dsTatCaNV != null) {
+                    for (NhanVien nv : dsTatCaNV) {
+                        String currentId = nv.getNhanVien();
+                        if (currentId != null && currentId.startsWith(prefixId)) {
+                            try {
+                                int num = Integer.parseInt(currentId.substring(3));
+                                if (num > maxIdNum) {
+                                    maxIdNum = num;
+                                }
+                            } catch (NumberFormatException ex) {
+                                // Bỏ qua nếu có lỗi parse định dạng
+                            }
+                        }
+                    }
+                }
+                
+                // Tạo ID mới tự động tăng 4 chữ số
+                String idMoi = prefixId + String.format("%04d", maxIdNum + 1); 
+                
                 NhanVien nv = new NhanVien(idMoi, hoten, cchn, sdt, email, chucVuEnum, trangThaiEnum);
                 
                 String ketQua = busNV.themNhanVienVaTaiKhoan(nv, tenDangNhap, matKhau);
@@ -804,10 +937,22 @@ class DialogThemNhanVien extends JDialog {
                 if (ketQua.equals("SUCCESS")) {
                     mainModel.addRow(new Object[]{ idMoi, hoten, cchn, sdt, email, chucVuUI, trangThaiUI, "" });
                     parentScreen.updateStats();
-                    JOptionPane.showMessageDialog(this, "Thêm nhân viên và tạo tài khoản thành công!");
+                    JOptionPane.showMessageDialog(this, "Thêm nhân viên và tạo tài khoản thành công! Mã tự tạo: " + idMoi);
                     dispose();
                 } else {
-                    JOptionPane.showMessageDialog(this, ketQua, "Lỗi thêm mới", JOptionPane.ERROR_MESSAGE);
+                    // Phân tích kết quả từ BUS để map vào ô báo lỗi phù hợp
+                    String lowerKetQua = ketQua.toLowerCase();
+                    if (lowerKetQua.contains("tên đăng nhập")) {
+                        setError(txtTenDangNhap, lblErrTenDangNhap, "* " + ketQua);
+                    } else if (lowerKetQua.contains("số điện thoại") || lowerKetQua.contains("sđt")) {
+                        setError(txtSdt, lblErrSdt, "* " + ketQua);
+                    } else if (lowerKetQua.contains("cchn") || lowerKetQua.contains("chứng chỉ")) {
+                        setError(txtCCHN, lblErrCCHN, "* " + ketQua);
+                    } else if (lowerKetQua.contains("email")) {
+                        setError(txtEmail, lblErrEmail, "* " + ketQua);
+                    } else {
+                        JOptionPane.showMessageDialog(this, ketQua, "Lỗi thêm mới", JOptionPane.ERROR_MESSAGE);
+                    }
                 }
             }
         });
@@ -815,6 +960,23 @@ class DialogThemNhanVien extends JDialog {
         pnlFooter.add(btnHuy);
         pnlFooter.add(btnThem);
         add(pnlFooter, BorderLayout.SOUTH);
+    }
+
+    private void setError(JTextField txt, JLabel lbl, String msg) {
+        lbl.setText(msg);
+        lbl.setVisible(true);
+        txt.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(Color.decode("#DC2626"), 2, true),
+            BorderFactory.createEmptyBorder(0, 11, 0, 11)
+        ));
+    }
+
+    private void resetError(JTextField txt, JLabel lbl) {
+        lbl.setVisible(false);
+        txt.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(Color.decode("#D1D5DB"), 1, true),
+            BorderFactory.createEmptyBorder(0, 12, 0, 12)
+        ));
     }
 
     private JLabel createLabel(String text, boolean isRequired) {
@@ -826,7 +988,8 @@ class DialogThemNhanVien extends JDialog {
 
     private JTextField createTextField(String placeholder) {
         JTextField txt = new JTextField(placeholder);
-        txt.setPreferredSize(new Dimension(0, 40));
+        txt.setPreferredSize(new Dimension(100, 40));
+        txt.setMinimumSize(new Dimension(100, 40));
         txt.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         txt.setForeground(Color.GRAY);
         txt.setBorder(BorderFactory.createCompoundBorder(
@@ -856,7 +1019,8 @@ class DialogThemNhanVien extends JDialog {
         JComboBox<String> cbo = new JComboBox<>(items);
         cbo.setBackground(Color.WHITE);
         cbo.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        cbo.setPreferredSize(new Dimension(0, 40));
+        cbo.setPreferredSize(new Dimension(100, 40));
+        cbo.setMinimumSize(new Dimension(100, 40));
         return cbo;
     }
 }
