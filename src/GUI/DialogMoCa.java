@@ -302,13 +302,19 @@ public class DialogMoCa extends JDialog {
     private JPanel buildStep2() {
         JPanel pnl = new JPanel(new BorderLayout());
         pnl.setBackground(COLOR_BG);
-        pnl.setBorder(new EmptyBorder(10, 24, 10, 24)); 
+        pnl.setBorder(new EmptyBorder(20, 0, 20, 0)); 
 
         JPanel card = new JPanel(new BorderLayout()) {
+            @Override
+            public Dimension getPreferredSize() {
+                Dimension d = super.getPreferredSize();
+                d.width = 500; // Ép form biên lai chuẩn 500px
+                return d;
+            }
+
             @Override protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                // Khôi phục màu nền xanh ngọc nhạt nguyên bản
                 g2.setColor(Color.decode("#E6F7F2"));
                 g2.fillRoundRect(0, 0, getWidth(), getHeight(), 16, 16);
                 g2.setColor(Color.decode("#B2DFDB"));
@@ -317,7 +323,7 @@ public class DialogMoCa extends JDialog {
             }
         };
         card.setOpaque(false);
-        card.setBorder(new EmptyBorder(12, 20, 12, 20)); 
+        card.setBorder(new EmptyBorder(16, 24, 16, 24)); 
 
         JPanel contentWrap = new JPanel();
         contentWrap.setLayout(new BoxLayout(contentWrap, BoxLayout.Y_AXIS));
@@ -325,7 +331,7 @@ public class DialogMoCa extends JDialog {
 
         JLabel lblTitle = new JLabel("PHIẾU XÁC NHẬN MỞ CA", SwingConstants.CENTER);
         lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 17));
-        lblTitle.setForeground(Color.decode("#006250")); // Màu chữ đậm hơn cho nổi
+        lblTitle.setForeground(Color.decode("#006250")); 
         lblTitle.setAlignmentX(CENTER_ALIGNMENT);
         contentWrap.add(lblTitle);
         contentWrap.add(Box.createRigidArea(new Dimension(0, 4)));
@@ -335,9 +341,9 @@ public class DialogMoCa extends JDialog {
         lblTime.setForeground(Color.decode("#00A76F"));
         lblTime.setAlignmentX(CENTER_ALIGNMENT);
         contentWrap.add(lblTime);
-        contentWrap.add(Box.createRigidArea(new Dimension(0, 8))); 
+        contentWrap.add(Box.createRigidArea(new Dimension(0, 12))); 
         contentWrap.add(createDashedLine());
-        contentWrap.add(Box.createRigidArea(new Dimension(0, 8))); 
+        contentWrap.add(Box.createRigidArea(new Dimension(0, 12))); 
 
         JPanel nvRow = buildConfirmRow("USER", UserSession.getInstance().getTenHienThi() + "  •  " + UserSession.getInstance().getChucVuHienThi());
         nvRow.setMaximumSize(new Dimension(450, 40)); 
@@ -349,10 +355,10 @@ public class DialogMoCa extends JDialog {
         caRow.setMaximumSize(new Dimension(450, 40)); 
         caRow.setAlignmentX(CENTER_ALIGNMENT);
         contentWrap.add(caRow);
-        contentWrap.add(Box.createRigidArea(new Dimension(0, 8))); 
+        contentWrap.add(Box.createRigidArea(new Dimension(0, 12))); 
         
         contentWrap.add(createDashedLine());
-        contentWrap.add(Box.createRigidArea(new Dimension(0, 8))); 
+        contentWrap.add(Box.createRigidArea(new Dimension(0, 12))); 
 
         JPanel chiTietHeader = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
         chiTietHeader.setOpaque(false);
@@ -361,14 +367,14 @@ public class DialogMoCa extends JDialog {
         
         JLabel lblChiTiet = new JLabel("CHI TIẾT MỆNH GIÁ:");
         lblChiTiet.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        lblChiTiet.setForeground(Color.GRAY);
+        lblChiTiet.setForeground(Color.decode("#637381"));
         chiTietHeader.add(lblChiTiet);
         contentWrap.add(chiTietHeader);
-        contentWrap.add(Box.createRigidArea(new Dimension(0, 4))); 
+        contentWrap.add(Box.createRigidArea(new Dimension(0, 8))); 
 
         JPanel chiTietPanel = new JPanel();
         chiTietPanel.setLayout(new BoxLayout(chiTietPanel, BoxLayout.Y_AXIS));
-        chiTietPanel.setOpaque(false); // Sét trong suốt để hiện màu nền xanh ngọc của thẻ
+        chiTietPanel.setOpaque(false); 
         chiTietPanel.setAlignmentX(CENTER_ALIGNMENT);
 
         long tongTien = 0;
@@ -377,7 +383,7 @@ public class DialogMoCa extends JDialog {
                 long subtotal = soLuong[i] * MENH_GIA[i];
                 tongTien += subtotal;
                 JPanel row = new JPanel(new BorderLayout());
-                row.setOpaque(false); // Sét trong suốt
+                row.setOpaque(false); 
                 row.setMaximumSize(new Dimension(450, 22)); 
                 
                 JLabel lLeft = new JLabel(MENH_GIA_STR[i] + "  ×  " + soLuong[i] + " tờ");
@@ -405,9 +411,9 @@ public class DialogMoCa extends JDialog {
 
         contentWrap.add(chiTietPanel);
 
-        contentWrap.add(Box.createRigidArea(new Dimension(0, 6))); 
-        contentWrap.add(createDashedLine());
         contentWrap.add(Box.createRigidArea(new Dimension(0, 8))); 
+        contentWrap.add(createDashedLine());
+        contentWrap.add(Box.createRigidArea(new Dimension(0, 12))); 
 
         JPanel totalRow = new JPanel(new BorderLayout());
         totalRow.setOpaque(false);
@@ -426,12 +432,16 @@ public class DialogMoCa extends JDialog {
         totalRow.add(lAmount, BorderLayout.EAST);
         contentWrap.add(totalRow);
 
-        card.add(contentWrap, BorderLayout.NORTH);
-        pnl.add(card, BorderLayout.CENTER);
+        card.add(contentWrap, BorderLayout.CENTER);
+
+        JPanel centerWrap = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
+        centerWrap.setOpaque(false);
+        centerWrap.add(card);
+
+        pnl.add(centerWrap, BorderLayout.NORTH);
         return pnl;
     }
 
-    // ─── FOOTER STEP 1 ───────────────────────────────────────
     private JPanel buildStep1Footer() {
         JPanel footer = new JPanel(new BorderLayout());
         footer.setBackground(Color.WHITE);
@@ -440,8 +450,6 @@ public class DialogMoCa extends JDialog {
                 new EmptyBorder(12, 20, 12, 20)));
 
         JButton btnReset = new JButton("Nhập lại");
-        btnReset.setIcon(new MenuIcon("REFRESH"));
-        btnReset.setIconTextGap(6);
         btnReset.setFont(new Font("Segoe UI", Font.BOLD, 13));
         btnReset.setForeground(Color.decode("#637381"));
         btnReset.setBackground(Color.WHITE);
@@ -458,9 +466,6 @@ public class DialogMoCa extends JDialog {
         });
 
         JButton btnNext = new JButton("Xem lại & Xác nhận");
-        btnNext.setIcon(new MenuIcon("CHECK_CIRCLE"));
-        btnNext.setIconTextGap(6);
-        btnNext.setHorizontalTextPosition(SwingConstants.LEFT);
         btnNext.setFont(new Font("Segoe UI", Font.BOLD, 13));
         btnNext.setForeground(Color.WHITE);
         btnNext.setBackground(COLOR_CONFIRM);
@@ -469,12 +474,21 @@ public class DialogMoCa extends JDialog {
         btnNext.setOpaque(true);
         btnNext.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnNext.addActionListener(e -> {
-            // Rebuild step2 with fresh data rồi chuyển sang
             stepPanel.remove(1);
             stepPanel.add(buildStep2(), "step2", 1);
             stepCard.show(stepPanel, "step2");
-            // Chuyển footer bằng CardLayout — không cần removeAll nữa
             footerCardLayout.show(footerSwitcher, "step2");
+
+            // TUYỆT CHIÊU ÉP CÂN: Lấy Step 1 ra để CardLayout không bị độn chiều cao
+            Component step1 = stepPanel.getComponent(0);
+            stepPanel.remove(step1);
+
+            // Ép hộp thoại thu nhỏ lại ôm sát sạt vào nội dung của Step 2
+            pack();
+            setLocationRelativeTo(getParent());
+
+            // Âm thầm nhét Step 1 lại vào vị trí cũ
+            stepPanel.add(step1, "step1", 0);
         });
 
         footer.add(btnReset, BorderLayout.WEST);
@@ -482,7 +496,6 @@ public class DialogMoCa extends JDialog {
         return footer;
     }
 
-    // ─── FOOTER STEP 2 ───────────────────────────────────────
     private JPanel buildStep2Footer() {
         JPanel footer = new JPanel(new BorderLayout());
         footer.setBackground(Color.WHITE);
@@ -491,8 +504,6 @@ public class DialogMoCa extends JDialog {
                 new EmptyBorder(12, 20, 12, 20)));
 
         JButton btnSua = new JButton("Sửa lại");
-        btnSua.setIcon(new MenuIcon("EDIT"));
-        btnSua.setIconTextGap(6);
         btnSua.setFont(new Font("Segoe UI", Font.BOLD, 13));
         btnSua.setForeground(Color.decode("#637381"));
         btnSua.setBackground(Color.WHITE);
@@ -504,11 +515,13 @@ public class DialogMoCa extends JDialog {
         btnSua.addActionListener(e -> {
             stepCard.show(stepPanel, "step1");
             footerCardLayout.show(footerSwitcher, "step1");
+            
+            // TRẢ LẠI FORM GỐC: Bung cửa sổ to ra lại thành 680x680
+            setSize(680, 680); 
+            setLocationRelativeTo(getParent());
         });
 
         JButton btnXacNhan = new JButton("Xác nhận vào ca");
-        btnXacNhan.setIcon(new MenuIcon("CORRECT"));
-        btnXacNhan.setIconTextGap(6);
         btnXacNhan.setFont(new Font("Segoe UI", Font.BOLD, 13));
         btnXacNhan.setForeground(Color.WHITE);
         btnXacNhan.setBackground(COLOR_CONFIRM);
