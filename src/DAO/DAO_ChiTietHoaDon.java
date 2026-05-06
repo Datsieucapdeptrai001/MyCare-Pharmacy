@@ -16,18 +16,22 @@ import java.util.List;
 public class DAO_ChiTietHoaDon {
 
     public DAO_ChiTietHoaDon() {}
+
     public boolean themChiTietDoiTra(String maHD, String tenSP, int soLuong, String ghiChu) {
-        // Lưu ý: Cấu trúc câu SQL này phụ thuộc vào thiết kế bảng ChiTietHoaDon của bạn. 
-        // Dưới đây là câu lệnh mẫu, bạn có thể cần join bảng SanPham để lấy sanPhamId từ tenSP
-        String sql = "INSERT INTO ChiTietHoaDon (hoaDonId, sanPhamId, soLuong, ghiChu) " +
-                     "VALUES (?, (SELECT id FROM SanPham WHERE tenSanPham = ?), ?, ?)";
+        // SỬA LỖI 1: Tên cột là 'ten' chứ không phải 'tenSanPham'
+        // SỬA LỖI 2: Lấy luôn donViDoLuongId để tránh bị null làm tàng hình sản phẩm
+        String sql = "INSERT INTO ChiTietHoaDon (hoaDonId, sanPhamId, donViDoLuongId, soLuong, ghiChu) " +
+                     "SELECT TOP 1 ?, sp.id, dv.id, ?, ? " +
+                     "FROM SanPham sp " +
+                     "LEFT JOIN DonViDoLuong dv ON sp.id = dv.sanPhamId " +
+                     "WHERE sp.ten = ?";
                      
-        try (java.sql.Connection con = ConnectDB.getInstance().getConnection();
-             java.sql.PreparedStatement pst = con.prepareStatement(sql)) {
+        try (Connection con = ConnectDB.getInstance().getConnection();
+             PreparedStatement pst = con.prepareStatement(sql)) {
             pst.setString(1, maHD);
-            pst.setString(2, tenSP);
-            pst.setInt(3, soLuong);
-            pst.setString(4, ghiChu);
+            pst.setInt(2, soLuong);
+            pst.setString(3, ghiChu);
+            pst.setString(4, tenSP); // Tìm theo cột 'ten'
             
             return pst.executeUpdate() > 0;
         } catch (Exception e) {
@@ -35,15 +39,17 @@ public class DAO_ChiTietHoaDon {
             return false;
         }
     }
+
     public List<Object[]> layDanhSachSanPhamTheoMaHD(String maHD) {
         List<Object[]> list = new ArrayList<>();
         Connection con = ConnectDB.getInstance().getConnection();
         
+        // SỬA LỖI 3: Dùng LEFT JOIN để an toàn tuyệt đối, kể cả khi donViDoLuong bị Null
         String sql = "SELECT sp.ten AS TenSP, dv.ten AS DVT, ct.soLuong AS SL, " +
                      "dv.gia AS DonGia, sp.thueVAT AS VAT " +
                      "FROM ChiTietHoaDon ct " +
                      "JOIN SanPham sp ON ct.sanPhamId = sp.id " +
-                     "JOIN DonViDoLuong dv ON ct.donViDoLuongId = dv.id AND ct.sanPhamId = dv.sanPhamId " +
+                     "LEFT JOIN DonViDoLuong dv ON sp.id = dv.sanPhamId " + 
                      "WHERE ct.hoaDonId = ?";
                      
         try (PreparedStatement pstm = con.prepareStatement(sql)) {
@@ -53,44 +59,32 @@ public class DAO_ChiTietHoaDon {
                 int stt = 1;
                 while (rs.next()) {
                     String tenSP = rs.getString("TenSP");
-                    String dvt = rs.getString("DVT");
+                    String dvt = rs.getString("DVT") != null ? rs.getString("DVT") : "Hộp";
                     int sl = rs.getInt("SL");
                     double donGia = rs.getDouble("DonGia");
-                    double vatPercent = rs.getDouble("VAT"); // Lấy giá trị VAT từ Database
+                    double vatPercent = rs.getDouble("VAT"); 
                     
-                    // =======================================================
-                    // FIX LỖI 0% VAT: Xử lý số thập phân (VD: 0.05 -> 5.0)
-                    // =======================================================
                     if (vatPercent > 0 && vatPercent < 1) {
                         vatPercent = vatPercent * 100;
                     }
 
-                    // Tính toán thành tiền: (Số lượng * Đơn giá) + Tiền VAT
                     double tienChuaVAT = sl * donGia;
                     double tienVAT = tienChuaVAT * (vatPercent / 100);
                     double thanhTien = tienChuaVAT + tienVAT;
 
-                    // Format chuỗi tiền tệ (vd: 25000 -> 25.000đ)
                     String strDonGia = String.format("%,d", (long)donGia).replace(',', '.') + "đ";
                     String strThanhTien = String.format("%,d", (long)thanhTien).replace(',', '.') + "đ";
-                    String strVAT = (int)vatPercent + "%"; // Bây giờ (int) 5.0 sẽ ra chuẩn 5%
+                    String strVAT = (int)vatPercent + "%"; 
 
-                    // Tạo mảng Object đúng 7 cột mà UI ChiTietHoaDon đang yêu cầu:
                     Object[] row = new Object[]{
-                        String.valueOf(stt++),
-                        tenSP,
-                        dvt,
-                        String.valueOf(sl),
-                        strDonGia,
-                        strVAT,
-                        strThanhTien
+                        String.valueOf(stt++), tenSP, dvt, String.valueOf(sl),
+                        strDonGia, strVAT, strThanhTien
                     };
                     
                     list.add(row);
                 }
             }
         } catch (Exception e) {
-            System.err.println("Lỗi SQL layDanhSachSanPhamTheoMaHD: " + e.getMessage());
             e.printStackTrace();
         } 
         
@@ -98,60 +92,52 @@ public class DAO_ChiTietHoaDon {
     }
 
     public boolean themCTHD(ChiTietHoaDon cthd) {
-        if (cthd == null
-                || cthd.getHoaDonId() == null
-                || cthd.getDonViDoLuongId() == null
-                || cthd.getSanPhamId() == null) {
+        if (cthd == null || cthd.getHoaDonId() == null || cthd.getDonViDoLuongId() == null || cthd.getSanPhamId() == null) {
             return false;
         }
-
         String sql = "INSERT INTO ChiTietHoaDon (hoaDonId, donViDoLuongId, sanPhamId, soLuong) VALUES (?, ?, ?, ?)";
-        Connection con = ConnectDB.getInstance().getConnection();
-
-        try (PreparedStatement pst = con.prepareStatement(sql)) {
+        try (Connection con = ConnectDB.getInstance().getConnection();
+             PreparedStatement pst = con.prepareStatement(sql)) {
             pst.setString(1, cthd.getHoaDonId().getId());
             pst.setString(2, cthd.getDonViDoLuongId().getId());
             pst.setString(3, cthd.getSanPhamId().getId());
             pst.setInt(4, cthd.getSoLuong());
-
             return pst.executeUpdate() > 0;
         } catch (SQLException e) {
             e.printStackTrace();
         }
-
         return false;
     }
     
     public boolean themCTHD(Connection con, ChiTietHoaDon cthd) throws SQLException {
-        if (cthd == null
-                || cthd.getHoaDonId() == null
-                || cthd.getDonViDoLuongId() == null
-                || cthd.getSanPhamId() == null) {
+        if (cthd == null || cthd.getHoaDonId() == null || cthd.getDonViDoLuongId() == null || cthd.getSanPhamId() == null) {
             return false;
         }
-
         String sql = "INSERT INTO ChiTietHoaDon (hoaDonId, donViDoLuongId, sanPhamId, soLuong) VALUES (?, ?, ?, ?)";
-
         try (PreparedStatement pst = con.prepareStatement(sql)) {
             pst.setString(1, cthd.getHoaDonId().getId());
             pst.setString(2, cthd.getDonViDoLuongId().getId());
             pst.setString(3, cthd.getSanPhamId().getId());
             pst.setInt(4, cthd.getSoLuong());
-
             return pst.executeUpdate() > 0;
         }
     }
 
-    // Hàm nạp dữ liệu riêng cho bảng Tạo Hóa Đơn (Lưu nháp)
     public List<Object[]> layDuLieuChoTaoHoaDon(String maHD) {
         List<Object[]> list = new ArrayList<>();
         Connection con = ConnectDB.getInstance().getConnection(); 
         
+        // SỬA LỖI 4: Dùng LEFT JOIN và Tách riêng Sản phẩm "TRA_LAI" không để lọt sản phẩm "DOI_LAY" vào bảng trả
         String sql = "SELECT sp.ten AS TenSP, dv.ten AS DVT, ct.soLuong AS SL, dv.gia AS DonGia " +
                      "FROM ChiTietHoaDon ct " +
                      "JOIN SanPham sp ON ct.sanPhamId = sp.id " +
-                     "JOIN DonViDoLuong dv ON ct.donViDoLuongId = dv.id AND ct.sanPhamId = dv.sanPhamId " +
+                     "LEFT JOIN DonViDoLuong dv ON sp.id = dv.sanPhamId " +
                      "WHERE ct.hoaDonId = ?";
+
+        // Nếu là phiếu DTH, chỉ bóc các SP khách trả lại (TRA_LAI) lên bảng chính
+        if (maHD != null && maHD.startsWith("DTH")) {
+            sql += " AND ct.ghiChu = 'TRA_LAI'";
+        }
                      
         try (PreparedStatement pstm = con.prepareStatement(sql)) {
             pstm.setString(1, maHD);
@@ -159,26 +145,17 @@ public class DAO_ChiTietHoaDon {
             try (ResultSet rs = pstm.executeQuery()) {
                 while (rs.next()) {
                     String tenSP = rs.getString("TenSP");
-                    String dvt = rs.getString("DVT");
+                    String dvt = rs.getString("DVT") != null ? rs.getString("DVT") : "Hộp";
                     int sl = rs.getInt("SL");
                     double donGia = rs.getDouble("DonGia");
                     
-                    double thanhTien = sl * donGia; // Tính tổng thành tiền chưa giảm giá
+                    double thanhTien = sl * donGia; 
 
-                    // Format chuỗi tiền tệ (vd: 50.000đ) để in lên bảng UI cho đẹp
                     String strDonGia = String.format("%,d", (long)donGia).replace(',', '.') + "đ";
                     String strThanhTien = String.format("%,d", (long)thanhTien).replace(',', '.') + "đ";
 
-                    // Bảng Tạo Hóa Đơn của bạn có thứ tự cột: 
-                    // Tên | ĐVT | SL | Đơn giá | Giảm giá | Thành tiền | Ghi chú
                     Object[] row = new Object[]{
-                        tenSP,
-                        dvt,
-                        String.valueOf(sl),
-                        strDonGia,
-                        "0", // Tiền giảm mặc định là 0 (hoặc thay bằng logic KM nếu có)
-                        strThanhTien,
-                        ""   // Ghi chú
+                        tenSP, dvt, String.valueOf(sl), strDonGia, "0", strThanhTien, ""   
                     };
                     list.add(row);
                 }
@@ -220,7 +197,6 @@ public class DAO_ChiTietHoaDon {
         } catch (SQLException e) {
             e.printStackTrace();
         }
-
         return dsCTHD;
     }
 }
