@@ -526,61 +526,185 @@ public class ManHinhChinh extends JPanel {
         Window pw = SwingUtilities.getWindowAncestor(this);
         hienThiPhieuXacNhanCuoi((Frame) pw, ca, maNV, dtCa, tmCa);
     }
-    // ── FORM QUẢN LÝ NẠP THÊM TIỀN ───────────────────────────────────────
+ // ── FORM QUẢN LÝ NẠP THÊM TIỀN (FULL CODE ĐÃ FIX GIAO DIỆN + FOMAT TIỀN) ───────
     private void showNapTienDialog() {
         Window pw = SwingUtilities.getWindowAncestor(this);
-        JDialog dlg = new JDialog((Frame) pw, "Quản lý nạp thêm quỹ", true);
-        dlg.setSize(400, 320);
+        JDialog dlg = new JDialog((Frame) pw, true);
+
+        dlg.setUndecorated(true);
+        dlg.setBackground(new Color(0, 0, 0, 0)); // Nền trong suốt để thấy bóng
+        dlg.setSize(440, 440); 
         dlg.setLocationRelativeTo(pw);
-        dlg.setLayout(new BorderLayout());
-        dlg.setResizable(false);
-        dlg.getContentPane().setBackground(Color.WHITE);
 
-        // Header
-        JLabel lblTitle = new JLabel("XÁC THỰC QUẢN LÝ NẠP QUỸ", SwingConstants.CENTER);
-        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 16));
-        lblTitle.setForeground(BLUE);
-        lblTitle.setBorder(new EmptyBorder(15, 0, 15, 0));
-        dlg.add(lblTitle, BorderLayout.NORTH);
+        // Panel gốc tự vẽ nền trắng + Đổ bóng xung quanh (Drop Shadow)
+        JPanel root = new JPanel(new BorderLayout()) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-        // Body
-        JPanel body = new JPanel(new GridLayout(6, 1, 0, 5));
-        body.setBackground(Color.WHITE);
-        body.setBorder(new EmptyBorder(0, 30, 10, 30));
+                int shadowSize = 6; 
+                // Vẽ bóng
+                for (int i = 0; i < shadowSize; i++) {
+                    g2.setColor(new Color(0, 0, 0, 12 - i * 2)); 
+                    g2.fillRoundRect(i, i, getWidth() - i * 2, getHeight() - i * 2, 20, 20);
+                }
 
-        body.add(new JLabel("Tài khoản Quản lý:"));
+                // Vẽ nền trắng
+                g2.setColor(Color.WHITE);
+                g2.fillRoundRect(shadowSize, shadowSize, getWidth() - shadowSize * 2, getHeight() - shadowSize * 2, 16, 16);
+                
+                // Vẽ viền mờ
+                g2.setColor(Color.decode("#DFE3E8"));
+                g2.drawRoundRect(shadowSize, shadowSize, getWidth() - shadowSize * 2 - 1, getHeight() - shadowSize * 2 - 1, 16, 16);
+                
+                g2.dispose();
+            }
+        };
+        root.setOpaque(false);
+        root.setBorder(new EmptyBorder(6, 6, 6, 6));
+
+        // ================== VÙNG NỘI DUNG CHÍNH ==================
+        JPanel contentContainer = new JPanel(new BorderLayout());
+        contentContainer.setOpaque(false);
+
+        // ── HEADER (Dùng MenuIcon CLOSE) ───────────────────────────────────
+        JPanel hdr = new JPanel(new BorderLayout());
+        hdr.setOpaque(false);
+        hdr.setBorder(new EmptyBorder(15, 20, 10, 20));
+
+        JLabel lblTitle = new JLabel("XÁC THỰC QUẢN LÝ", SwingConstants.CENTER);
+        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        lblTitle.setForeground(Color.decode("#152A4B")); // Màu xanh đen sang trọng
+
+        // Sử dụng MenuIcon("CLOSE") của Pột
+        JButton btnClose = new JButton(new MenuIcon("CLOSE")); 
+        btnClose.setForeground(Color.decode("#919EAB")); 
+        btnClose.setContentAreaFilled(false);
+        btnClose.setBorderPainted(false);
+        btnClose.setFocusPainted(false);
+        btnClose.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnClose.setPreferredSize(new Dimension(35, 35));
+        btnClose.addActionListener(e -> dlg.dispose());
+        
+        // Hiệu ứng rê chuột vào đổi màu đỏ
+        btnClose.addMouseListener(new MouseAdapter() {
+            public void mouseEntered(MouseEvent e) { btnClose.setForeground(Color.RED); }
+            public void mouseExited(MouseEvent e) { btnClose.setForeground(Color.decode("#919EAB")); }
+        });
+
+        hdr.add(lblTitle, BorderLayout.CENTER);
+        hdr.add(btnClose, BorderLayout.EAST);
+        contentContainer.add(hdr, BorderLayout.NORTH);
+
+        // ── BODY (Căn trái toàn bộ chữ và ô nhập) ─────────────────────────
+        JPanel body = new JPanel();
+        body.setLayout(new BoxLayout(body, BoxLayout.Y_AXIS));
+        body.setOpaque(false);
+        body.setBorder(new EmptyBorder(10, 30, 20, 30));
+
+        // 1. User
+        body.add(createLabel("Tài khoản Quản lý:"));
+        body.add(Box.createRigidArea(new Dimension(0, 5)));
         JTextField txtUser = new JTextField();
-        txtUser.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        styleInput(txtUser);
         body.add(txtUser);
+        body.add(Box.createRigidArea(new Dimension(0, 15)));
 
-        body.add(new JLabel("Mật khẩu:"));
+        // 2. Pass
+        body.add(createLabel("Mật khẩu:"));
+        body.add(Box.createRigidArea(new Dimension(0, 5)));
         JPasswordField txtPass = new JPasswordField();
-        txtPass.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        styleInput(txtPass);
         body.add(txtPass);
+        body.add(Box.createRigidArea(new Dimension(0, 15)));
 
-        body.add(new JLabel("Số tiền nạp thêm (VND):"));
+        // 3. Tiền (Có auto format)
+        body.add(createLabel("Số tiền nạp thêm (VND):"));
+        body.add(Box.createRigidArea(new Dimension(0, 5)));
+        
         JTextField txtTien = new JTextField();
-        txtTien.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        txtTien.setForeground(GREEN);
+        styleInput(txtTien);
+        txtTien.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        txtTien.setForeground(Color.decode("#00A76F"));
+        
+        // --- MA THUẬT TỰ ĐỘNG FORMAT TIỀN TỆ KHI GÕ ---
+        txtTien.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+            private boolean isUpdating = false;
+
+            private void formatMoney() {
+                if (isUpdating) return; 
+                
+                SwingUtilities.invokeLater(() -> {
+                    isUpdating = true;
+                    String rawText = txtTien.getText().replaceAll("[^0-9]", "");
+                    
+                    if (!rawText.isEmpty()) {
+                        try {
+                            long val = Long.parseLong(rawText);
+                            DecimalFormat df = new DecimalFormat("###,###,###");
+                            String formatted = df.format(val).replace(",", ".") + "đ";
+                            
+                            txtTien.setText(formatted);
+                            txtTien.setCaretPosition(formatted.length() - 1);
+                        } catch (NumberFormatException ex) {}
+                    } else {
+                        txtTien.setText("");
+                    }
+                    isUpdating = false;
+                });
+            }
+
+            @Override public void insertUpdate(javax.swing.event.DocumentEvent e) { formatMoney(); }
+            @Override public void removeUpdate(javax.swing.event.DocumentEvent e) { formatMoney(); }
+            @Override public void changedUpdate(javax.swing.event.DocumentEvent e) { formatMoney(); }
+        });
+
         body.add(txtTien);
 
-        dlg.add(body, BorderLayout.CENTER);
+        contentContainer.add(body, BorderLayout.CENTER);
 
-        // Footer
-        JPanel ft = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
-        ft.setBackground(Color.WHITE);
-        ft.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, Color.decode("#DFE3E8")));
+        // ── FOOTER (Nút bấm bo tròn 8px) ──────────────────────────────────
+        JPanel ft = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 15));
+        ft.setOpaque(false);
+        ft.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, Color.decode("#EEF2F6")));
 
-        JButton btnHuy = new JButton("Hủy");
-        btnHuy.setBackground(Color.WHITE);
+        JButton btnHuy = new JButton("Hủy bỏ") {
+            @Override protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(Color.decode("#F4F6F8"));
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 8, 8);
+                super.paintComponent(g2);
+            }
+        };
+        btnHuy.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnHuy.setForeground(Color.GRAY);
+        btnHuy.setPreferredSize(new Dimension(100, 38));
+        btnHuy.setContentAreaFilled(false);
+        btnHuy.setBorderPainted(false);
         btnHuy.setFocusPainted(false);
+        btnHuy.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnHuy.addActionListener(e -> dlg.dispose());
 
-        JButton btnXacNhan = new JButton("Xác nhận nạp");
-        btnXacNhan.setBackground(BLUE);
+        JButton btnXacNhan = new JButton("Xác nhận nạp") {
+            @Override protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(Color.decode("#1A73E8")); 
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 8, 8); 
+                super.paintComponent(g2);
+            }
+        };
+        btnXacNhan.setFont(new Font("Segoe UI", Font.BOLD, 13));
         btnXacNhan.setForeground(Color.WHITE);
+        btnXacNhan.setPreferredSize(new Dimension(140, 38));
+        btnXacNhan.setContentAreaFilled(false);
+        btnXacNhan.setBorderPainted(false);
         btnXacNhan.setFocusPainted(false);
+        btnXacNhan.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
+        // Logic DB
         btnXacNhan.addActionListener(e -> {
             String u = txtUser.getText().trim();
             String p = new String(txtPass.getPassword()).trim();
@@ -592,12 +716,8 @@ public class ManHinhChinh extends JPanel {
             }
 
             BUS.BUS_TaiKhoan busTk = new BUS.BUS_TaiKhoan();
-            
-            // 1. Dùng hàm authenticate của BUS_TaiKhoan để check pass băm
             if (busTk.authenticate(u, p)) {
                 Entity.TaiKhoan tkAdmin = busTk.getTaiKhoanDayDu(u);
-                
-                // 2. Check xem có đúng là Quản lý không (VaiTro.ADMIN)
                 if (tkAdmin != null && tkAdmin.getVaiTro() == Enumeration.VaiTro.ADMIN) {
                     long tienNap = Long.parseLong(tStr);
                     long tienDauCaHienTai = UserSession.getInstance().getTienDauCa();
@@ -606,17 +726,12 @@ public class ManHinhChinh extends JPanel {
                     CaLamViec caHienTai = UserSession.getInstance().getCaHienTai();
                     DAO.DAO_CaLamViec daoCa = new DAO.DAO_CaLamViec();
                     
-                    // 3. Cập nhật xuống Database
                     if (daoCa.capNhatTienDauCa(caHienTai.getId(), tienDauCaMoi)) {
-                        
-                        // Cập nhật Session & Object local
                         UserSession.getInstance().setTienDauCa(tienDauCaMoi);
                         caHienTai.setTienDauCa((double) tienDauCaMoi); 
                         
                         JOptionPane.showMessageDialog(dlg, "Nạp thành công " + formatMoney(tienNap) + " vào quỹ!\nTổng tiền quỹ hiện tại: " + formatMoney(tienDauCaMoi));
                         dlg.dispose();
-                        
-                        // Chạy lại hàm load giao diện để cái Banner đầu ca nó đổi số tiền
                         loadCardPanels(); 
                     } else {
                         JOptionPane.showMessageDialog(dlg, "Lỗi cập nhật Database!", "Lỗi", JOptionPane.ERROR_MESSAGE);
@@ -631,9 +746,31 @@ public class ManHinhChinh extends JPanel {
 
         ft.add(btnHuy);
         ft.add(btnXacNhan);
-        dlg.add(ft, BorderLayout.SOUTH);
+        contentContainer.add(ft, BorderLayout.SOUTH);
 
+        root.add(contentContainer, BorderLayout.CENTER);
+        dlg.setContentPane(root);
+        
         dlg.setVisible(true);
+    }
+
+    // --- 2 HÀM PHỤ TRỢ (Nhớ copy vào nha) ---
+    private JLabel createLabel(String text) {
+        JLabel l = new JLabel(text);
+        l.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        l.setForeground(Color.DARK_GRAY);
+        l.setAlignmentX(Component.LEFT_ALIGNMENT); 
+        return l;
+    }
+
+    private void styleInput(JTextField txt) {
+        txt.setPreferredSize(new Dimension(Integer.MAX_VALUE, 40));
+        txt.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
+        txt.setFont(new Font("Segoe UI", Font.PLAIN, 15));
+        txt.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(Color.decode("#DFE3E8")), 
+            new EmptyBorder(5, 12, 5, 12)));
+        txt.setAlignmentX(Component.LEFT_ALIGNMENT); 
     }
 
     // ── FORM XÁC NHẬN CUỐI CÙNG (GỌN GÀNG, TỰ ĐỘNG TÍNH) ───────────
