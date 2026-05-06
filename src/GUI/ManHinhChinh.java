@@ -259,8 +259,15 @@ public class ManHinhChinh extends JPanel {
         body.add(buildBottomRow()); body.add(box(14));
         body.add(buildExpiringPanel());
 
-        JScrollPane sc = new JScrollPane(body); sc.setBorder(null); sc.getVerticalScrollBar().setUnitIncrement(14);
-        root.add(sc, BorderLayout.CENTER); return root;
+        JScrollPane sc = new JScrollPane(body); 
+        sc.setBorder(null); 
+        sc.getVerticalScrollBar().setUnitIncrement(14);
+        
+        sc.getVerticalScrollBar().setUI(new Utils.ModernScrollBarUI());
+        sc.getVerticalScrollBar().setPreferredSize(new Dimension(8, 0));
+        
+        root.add(sc, BorderLayout.CENTER); 
+        return root;
     }
 
     private JPanel buildTienDauCaBanner() {
@@ -365,7 +372,10 @@ public class ManHinhChinh extends JPanel {
         } else {
             mInv.addRow(new Object[]{"—", "Không có hóa đơn", "—", "—"});
         }
-        inv.add(new JScrollPane(tInv), BorderLayout.CENTER);
+        JScrollPane scrollHoaDon = new JScrollPane(tInv);
+        scrollHoaDon.getVerticalScrollBar().setUI(new Utils.ModernScrollBarUI());
+        scrollHoaDon.getVerticalScrollBar().setPreferredSize(new Dimension(8, 0));
+        inv.add(scrollHoaDon, BorderLayout.CENTER);
         row.add(inv);
 
         // BẢNG SẢN PHẨM SẮP HẾT
@@ -392,7 +402,11 @@ public class ManHinhChinh extends JPanel {
         int duTon = busThongKe.getSoSanPhamDuTon();
         JLabel lSum = new JLabel("<html><span style='color:#00A76F;'>✓ " + duTon + " sản phẩm đủ tồn</span>  <span style='color:#FF5630;'>⏰ " + sizeLS + " cần nhập</span></html>");
         lSum.setFont(new Font("Segoe UI", Font.PLAIN, 10)); listS.add(lSum);
-        stk.add(new JScrollPane(listS) {{ setBorder(null); }}, BorderLayout.CENTER);
+        JScrollPane scrollSpHet = new JScrollPane(listS);
+        scrollSpHet.setBorder(null);
+        scrollSpHet.getVerticalScrollBar().setUI(new Utils.ModernScrollBarUI());
+        scrollSpHet.getVerticalScrollBar().setPreferredSize(new Dimension(8, 0));
+        stk.add(scrollSpHet, BorderLayout.CENTER);
         row.add(stk); return row;
     }
 
@@ -424,7 +438,11 @@ public class ManHinhChinh extends JPanel {
             else { l.setBackground(Color.WHITE); l.setForeground(Color.DARK_GRAY); }
             return l;
         });
-        p.add(new JScrollPane(t), BorderLayout.CENTER); return p;
+        JScrollPane scrollLoHang = new JScrollPane(t);
+        scrollLoHang.getVerticalScrollBar().setUI(new Utils.ModernScrollBarUI());
+        scrollLoHang.getVerticalScrollBar().setPreferredSize(new Dimension(8, 0));
+        p.add(scrollLoHang, BorderLayout.CENTER);
+        return p;
     }
 
     // ── ĐỐI CHIẾU ───────────────────────────────────────────

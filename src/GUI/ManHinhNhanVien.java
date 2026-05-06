@@ -557,7 +557,7 @@ public class ManHinhNhanVien extends JPanel {
         if (btnEdit != null) btnEdit.setVisible(false);
         disableButtonsByText(this, "Thêm mới", "Nhập Excel", "Thêm", "Xóa", "Sửa", "Lưu");
         if (table != null) {
-            javax.swing.table.TableColumn colThaoTac = table.getColumnModel().getColumn(7);
+            javax.swing.table.TableColumn colThaoTac = table.getColumnModel().getColumn(6);
             table.removeColumn(colThaoTac);
         }
     }
