@@ -4,14 +4,12 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
 import java.awt.*;
-import java.util.ArrayList;
 import java.util.List;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-
+import Utils.UserSession;
 import Utils.MenuIcon;
-import ConnectDB.ConnectDB;
+import BUS.BUS_TraHang;
+import javax.swing.table.DefaultTableModel;
+import javax.swing.table.DefaultTableCellRenderer;
 
 public class ChiTietPhieuDoiTra extends JDialog {
     
@@ -23,10 +21,12 @@ public class ChiTietPhieuDoiTra extends JDialog {
     
     private String maPhieu, loaiPhieu, trangThai, ngayTao, hoaDonGoc, khachHang, lyDo, nhanVien;
     private String tienHoanThucTe, chenhLechThucTe;
+    
+    private BUS_TraHang busTraHang = new BUS_TraHang(); 
 
     public ChiTietPhieuDoiTra(Frame parent, String maPhieu, String loaiPhieu, String trangThai, 
-                              String ngayTao, String hoaDonGoc, String khachHang, String lyDo, String nhanVien,
-                              String tienHoan, String chenhLech) {
+            String ngayTao, String hoaDonGoc, String khachHang, String lyDo, String nhanVienTruyenVao,
+            String tienHoan, String chenhLech) {
         super(parent, "Chi tiết phiếu " + loaiPhieu, true);
         this.maPhieu = maPhieu;
         this.loaiPhieu = loaiPhieu;
@@ -35,16 +35,21 @@ public class ChiTietPhieuDoiTra extends JDialog {
         this.hoaDonGoc = hoaDonGoc;
         this.khachHang = khachHang;
         this.lyDo = lyDo;
-        this.nhanVien = nhanVien;
         this.tienHoanThucTe = tienHoan;
         this.chenhLechThucTe = chenhLech;
+
+        String tenNVTuSession = Utils.UserSession.getInstance().getTenHienThi();
+        if (tenNVTuSession != null && !tenNVTuSession.isEmpty() && !tenNVTuSession.equals("Người dùng")) {
+            this.nhanVien = tenNVTuSession; 
+        } else {
+            this.nhanVien = nhanVienTruyenVao; 
+        }
 
         initUI();
     }
 
     private void initUI() {
-        // 1. Tăng nhẹ kích thước để không gian thoáng hơn
-        setSize(800, 750); 
+        setSize(700, 650); 
         setLocationRelativeTo(getParent());
         setUndecorated(true);
         setLayout(new BorderLayout());
@@ -66,58 +71,13 @@ public class ChiTietPhieuDoiTra extends JDialog {
         pnlBody.add(createDashedLine());
         pnlBody.add(createSignaturePanel());
 
-        JScrollPane scrollPane = new JScrollPane(pnlBody);
-        scrollPane.setBorder(null);
-        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
-        
-        // ==========================================
-        // 2. KHU VỰC XỬ LÝ THANH CUỘN (SCROLLBAR)
-        // ==========================================
-        // Tắt vĩnh viễn thanh cuộn ngang
-        scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-        // Cho phép cuộn dọc nhưng ẨN hình dạng của nó đi (Đưa width = 0)
-        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
-        scrollPane.getVerticalScrollBar().setPreferredSize(new Dimension(0, 0)); 
-        
-        add(scrollPane, BorderLayout.CENTER);
+        add(pnlBody, BorderLayout.CENTER);
+        pack(); 
+        setLocationRelativeTo(getParent());
     }
 
     private String fetchSoDienThoai(String maHDGoc) {
-        String sdt = "Không cung cấp";
-        String sql = "SELECT kh.sdt FROM HoaDon hd JOIN KhachHang kh ON hd.khachHangId = kh.id WHERE hd.id = ?";
-        try (Connection con = ConnectDB.getInstance().getConnection();
-             PreparedStatement pst = con.prepareStatement(sql)) {
-            pst.setString(1, maHDGoc);
-            try (ResultSet rs = pst.executeQuery()) {
-                if (rs.next()) {
-                    String phone = rs.getString("sdt");
-                    if (phone != null && !phone.isEmpty()) sdt = phone;
-                }
-            }
-        } catch (Exception e) { e.printStackTrace(); }
-        return sdt;
-    }
-
-    private List<Object[]> layDanhSachSanPhamDoi(String maPhieu) {
-        List<Object[]> list = new ArrayList<>();
-        // SỬA LỖI: Thay vì sp.tenSanPham, ta dùng sp.ten cho khớp với Database
-        String sql = "SELECT sp.ten, ct.soLuong FROM ChiTietHoaDon ct " +
-                     "JOIN SanPham sp ON ct.sanPhamId = sp.id " +
-                     "WHERE ct.hoaDonId = ? AND ct.ghiChu = 'DOI_LAY'"; 
-                     
-        try (Connection con = ConnectDB.getInstance().getConnection();
-             PreparedStatement pst = con.prepareStatement(sql)) {
-            pst.setString(1, maPhieu);
-            try (ResultSet rs = pst.executeQuery()) {
-                while (rs.next()) {
-                    // Trích xuất đúng cột ten
-                    list.add(new Object[]{rs.getString("ten"), rs.getInt("soLuong")});
-                }
-            }
-        } catch (Exception e) { 
-            e.printStackTrace(); 
-        }
-        return list;
+        return busTraHang.laySoDienThoaiKhachHang(maHDGoc);
     }
 
     private JPanel createHeaderPanel(Color bgColor) {
@@ -176,7 +136,7 @@ public class ChiTietPhieuDoiTra extends JDialog {
     }
 
     private JPanel createCompanyTitlePanel() {
-        JPanel pnl = new JPanel(new GridLayout(4, 1, 0, 2)); // Cắt khoảng trắng dòng
+        JPanel pnl = new JPanel(new GridLayout(4, 1, 0, 2)); 
         pnl.setBackground(Color.WHITE);
         pnl.setBorder(new EmptyBorder(5, 0, 5, 0));
 
@@ -217,12 +177,10 @@ public class ChiTietPhieuDoiTra extends JDialog {
     }
 
     private JPanel createInfoPanel() {
-        // Thay vì dùng GridLayout cho tất cả, ta tách Lý do ra riêng để không làm phình cột
         JPanel pnlWrapper = new JPanel(new BorderLayout(0, 8)); 
         pnlWrapper.setBackground(Color.WHITE);
         pnlWrapper.setBorder(new EmptyBorder(5, 0, 5, 0));
 
-        // 1. Grid 3 dòng x 2 cột cho các thông tin ngắn
         JPanel pnlGrid = new JPanel(new GridLayout(3, 2, 10, 5));
         pnlGrid.setBackground(Color.WHITE);
         pnlGrid.add(createLabelPair("Ngày tạo: ", ngayTao));
@@ -232,19 +190,17 @@ public class ChiTietPhieuDoiTra extends JDialog {
         
         String sdtThucTe = fetchSoDienThoai(hoaDonGoc); 
         pnlGrid.add(createLabelPair("SĐT: ", sdtThucTe)); 
-        pnlGrid.add(new JLabel("")); // Ô trống cho đều grid
+        pnlGrid.add(new JLabel("")); 
 
-        // 2. Panel riêng cho Lý do nằm trải dài hết chiều ngang
         JPanel pnlLyDo = new JPanel(new BorderLayout());
         pnlLyDo.setBackground(Color.WHITE);
         
         JLabel lblLyDoTitle = new JLabel("Lý do: ");
         lblLyDoTitle.setForeground(textGray);
         lblLyDoTitle.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        lblLyDoTitle.setVerticalAlignment(SwingConstants.TOP); // Ép chữ lên trên cùng nếu rớt dòng
+        lblLyDoTitle.setVerticalAlignment(SwingConstants.TOP); 
         lblLyDoTitle.setBorder(new EmptyBorder(0, 0, 0, 5));
         
-        // Thẻ div giới hạn độ rộng khoảng 460px để tự động xuống dòng mượt mà
         JLabel lblLyDoVal = new JLabel("<html><div style='width: 460px; line-height: 1.3;'>" + lyDo + "</div></html>");
         lblLyDoVal.setFont(new Font("Segoe UI", Font.BOLD, 12));
         lblLyDoVal.setForeground(textDark);
@@ -252,7 +208,6 @@ public class ChiTietPhieuDoiTra extends JDialog {
         pnlLyDo.add(lblLyDoTitle, BorderLayout.WEST);
         pnlLyDo.add(lblLyDoVal, BorderLayout.CENTER);
 
-        // Gom 2 khối lại
         pnlWrapper.add(pnlGrid, BorderLayout.NORTH);
         pnlWrapper.add(pnlLyDo, BorderLayout.CENTER);
         
@@ -275,131 +230,110 @@ public class ChiTietPhieuDoiTra extends JDialog {
     }
 
     private JPanel createProductListPanel() {
-        JPanel pnl = new JPanel();
-        pnl.setLayout(new BoxLayout(pnl, BoxLayout.Y_AXIS));
+        JPanel pnl = new JPanel(new BorderLayout(0, 5)); 
         pnl.setBackground(Color.WHITE);
-        pnl.setBorder(new EmptyBorder(5, 0, 5, 0));
 
         JLabel lblTitle = new JLabel("SẢN PHẨM TRẢ LẠI:");
         lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        lblTitle.setForeground(textDark);
-        lblTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
-        pnl.add(lblTitle);
-        pnl.add(Box.createVerticalStrut(5));
+        pnl.add(lblTitle, BorderLayout.NORTH);
 
-        JPanel pnlHeader = new JPanel(new BorderLayout());
-        pnlHeader.setBackground(Color.WHITE);
-        pnlHeader.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, borderGray));
-        
-        JLabel h1 = new JLabel("Sản phẩm"); h1.setForeground(textGray); h1.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        JPanel pnlRightHeader = new JPanel(new GridLayout(1, 3, 5, 0));
-        pnlRightHeader.setOpaque(false);
-        pnlRightHeader.setPreferredSize(new Dimension(220, 25));
-        JLabel h2 = new JLabel("SL", SwingConstants.CENTER); h2.setForeground(textGray); h2.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        JLabel h3 = new JLabel("Đơn giá", SwingConstants.RIGHT); h3.setForeground(textGray); h3.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        JLabel h4 = new JLabel("Thành tiền", SwingConstants.RIGHT); h4.setForeground(textGray); h4.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        pnlRightHeader.add(h2); pnlRightHeader.add(h3); pnlRightHeader.add(h4);
-        
-        pnlHeader.add(h1, BorderLayout.CENTER); pnlHeader.add(pnlRightHeader, BorderLayout.EAST);
-        pnl.add(pnlHeader); pnl.add(Box.createVerticalStrut(5));
+        String[] cols = {"Sản phẩm", "SL", "Đơn giá", "Thành tiền"};
+        DefaultTableModel model = new DefaultTableModel(cols, 0) { 
+            @Override public boolean isCellEditable(int r, int c) { return false; } 
+        };
 
-        long tongTienSPTra = 0;
+        // BÓC TÁCH TRỰC TIẾP TỪ GHI CHÚ DATABASE (CHỐNG LỖI IN DƯ VÀ ĐƠN GIÁ 0Đ)
+        List<Object[]> dsSP = new java.util.ArrayList<>();
         try {
-            BUS.BUS_TraHang busTra = new BUS.BUS_TraHang();
-            List<Object[]> dsSP = busTra.layChiTietPhieu(maPhieu); 
-            if (dsSP != null) {
-                for (Object[] sp : dsSP) {
-                    String tenSP = sp[0] != null ? sp[0].toString() : "Sản phẩm lỗi";
-                    String soLuong = sp[1] != null ? sp[1].toString() : "0";
-                    long gia = 0;
-                    if(sp[3] != null) gia = Long.parseLong(sp[3].toString().replaceAll("[^0-9]", ""));
-                    long thanhTien = gia * Integer.parseInt(soLuong);
-                    tongTienSPTra += thanhTien;
-
-                    JPanel row = new JPanel(new BorderLayout());
-                    row.setBackground(Color.WHITE);
-                    row.setBorder(new EmptyBorder(5, 0, 5, 0));
-                    
-                    JLabel lblName = new JLabel(tenSP);
-                    lblName.setFont(new Font("Segoe UI", Font.BOLD, 12));
-                    
-                    JPanel rightVals = new JPanel(new GridLayout(1, 3, 5, 0));
-                    rightVals.setOpaque(false);
-                    rightVals.setPreferredSize(new Dimension(220, 25));
-                    
-                    JLabel lblSL = new JLabel(soLuong, SwingConstants.CENTER); lblSL.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-                    JLabel lblGia = new JLabel(String.format("%,d", gia) + "đ", SwingConstants.RIGHT); lblGia.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-                    JLabel lblThanhTien = new JLabel(String.format("%,d", thanhTien) + "đ", SwingConstants.RIGHT); lblThanhTien.setFont(new Font("Segoe UI", Font.BOLD, 12));
-                    
-                    rightVals.add(lblSL); rightVals.add(lblGia); rightVals.add(lblThanhTien);
-                    row.add(lblName, BorderLayout.CENTER); row.add(rightVals, BorderLayout.EAST);
-                    pnl.add(row);
+            BUS.BUS_HoaDon busHD = new BUS.BUS_HoaDon();
+            Entity.HoaDon hd = busHD.getHoaDonTheoMa(maPhieu);
+            if (hd != null && hd.getGhiChu() != null) {
+                String[] parts = hd.getGhiChu().split("\\|");
+                for (String p : parts) {
+                    if (p.trim().startsWith("TRA:")) {
+                        String traStr = p.trim().replace("TRA:", "").trim();
+                        if (!traStr.equals("Không có") && !traStr.isEmpty()) {
+                            String[] items = traStr.split(";");
+                            for (String item : items) {
+                                String[] vals = item.trim().split("_");
+                                if (vals.length >= 3) dsSP.add(new Object[]{vals[0], vals[1], "Hộp", vals[2]});
+                                else if (vals.length == 2) dsSP.add(new Object[]{vals[0], vals[1], "Hộp", "0"});
+                            }
+                        }
+                    }
                 }
             }
-        } catch (Exception ex) { }
+        } catch (Exception e){}
 
-        pnl.add(createDashedLine());
+        long tongTienThucTe = 0;
 
-        JPanel pnlTongSP = new JPanel(new BorderLayout());
-        pnlTongSP.setBackground(Color.WHITE);
-        pnlTongSP.setBorder(new EmptyBorder(5, 0, 5, 0));
-        JLabel lblTongTxt = new JLabel("Tổng tiền SP trả:"); lblTongTxt.setForeground(textGray); lblTongTxt.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        JLabel lblTongVal = new JLabel(String.format("%,d", tongTienSPTra) + "đ"); lblTongVal.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        pnlTongSP.add(lblTongTxt, BorderLayout.WEST); pnlTongSP.add(lblTongVal, BorderLayout.EAST);
-        pnl.add(pnlTongSP);
-
-        if (loaiPhieu.equalsIgnoreCase("Đổi hàng")) {
-            JPanel pnlDoi = new JPanel();
-            pnlDoi.setLayout(new BoxLayout(pnlDoi, BoxLayout.Y_AXIS));
-            pnlDoi.setBackground(Color.decode("#F8F9FA"));
-            pnlDoi.setBorder(BorderFactory.createCompoundBorder(
-                new LineBorder(Color.decode("#F1F3F5"), 1, true), new EmptyBorder(10, 10, 10, 10)
-            ));
-            
-            JLabel lblDoiTxt = new JLabel("SẢN PHẨM ĐỔI LẤY:");
-            lblDoiTxt.setFont(new Font("Segoe UI", Font.BOLD, 11));
-            lblDoiTxt.setAlignmentX(Component.LEFT_ALIGNMENT);
-            pnlDoi.add(lblDoiTxt); pnlDoi.add(Box.createVerticalStrut(5));
-            
-            List<Object[]> dsSPDoi = layDanhSachSanPhamDoi(maPhieu);
-            if (dsSPDoi != null && !dsSPDoi.isEmpty()) {
-                for (Object[] spDoi : dsSPDoi) {
-                    JLabel lblSPDoi = new JLabel("• " + spDoi[0].toString() + " (SL: " + spDoi[1].toString() + ")"); 
-                    lblSPDoi.setFont(new Font("Segoe UI", Font.BOLD, 12));
-                    lblSPDoi.setAlignmentX(Component.LEFT_ALIGNMENT);
-                    pnlDoi.add(lblSPDoi); pnlDoi.add(Box.createVerticalStrut(2));
+        if (!dsSP.isEmpty()) {
+            for (Object[] sp : dsSP) {
+                String ten = sp[0] != null ? sp[0].toString() : "";
+                
+                int sl = 0;
+                try { sl = Integer.parseInt(sp[1].toString()); } catch(Exception e) {}
+                
+                String dvt = sp[2] != null ? sp[2].toString() : "";
+                
+                double gia = 0;
+                if(sp[3] != null) {
+                    try { gia = Double.parseDouble(sp[3].toString()); } catch(Exception e){}
                 }
-            } else {
-                JLabel lblEmpty = new JLabel("Chưa có SP đổi lấy"); lblEmpty.setFont(new Font("Segoe UI", Font.ITALIC, 12)); lblEmpty.setForeground(Color.GRAY); lblEmpty.setAlignmentX(Component.LEFT_ALIGNMENT);
-                pnlDoi.add(lblEmpty);
+
+                long thanhTien = (long) (sl * gia);
+                tongTienThucTe += thanhTien;
+
+                model.addRow(new Object[]{
+                    ten + (dvt.isEmpty() ? "" : " (" + dvt + ")"), 
+                    sl, 
+                    String.format("%,.0fđ", gia).replace(',', '.'),
+                    String.format("%,dđ", thanhTien).replace(',', '.')
+                });
             }
-            pnl.add(Box.createVerticalStrut(5)); pnl.add(pnlDoi);
         }
 
-        JPanel pnlHoan = new JPanel(new BorderLayout());
-        pnlHoan.setBackground(Color.WHITE);
-        pnlHoan.setBorder(new EmptyBorder(10, 0, 5, 0));
+        JTable table = new JTable(model);
+        table.setRowHeight(30);
+        table.setShowGrid(false);
+        table.setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN);
         
-        JLabel lblHoanTxt = new JLabel(loaiPhieu.equalsIgnoreCase("Trả hàng") ? "Số tiền hoàn lại khách:" : "Chênh lệch / Bù trừ:");
-        lblHoanTxt.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        lblHoanTxt.setForeground(loaiPhieu.equalsIgnoreCase("Trả hàng") ? primaryRed : primaryBlue); 
+        DefaultTableCellRenderer right = new DefaultTableCellRenderer(); 
+        right.setHorizontalAlignment(JLabel.RIGHT);
+        table.getColumnModel().getColumn(2).setCellRenderer(right);
+        table.getColumnModel().getColumn(3).setCellRenderer(right);
+
+        JScrollPane spTable = new JScrollPane(table);
+        spTable.setPreferredSize(new Dimension(0, (table.getRowCount() * 30) + 25));
+        spTable.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, borderGray));
+
+        JPanel pnlSummary = new JPanel(new GridLayout(2, 1, 0, 5));
+        pnlSummary.setBackground(Color.WHITE);
+        pnlSummary.add(createTotalRow("Tổng tiền SP trả:", String.format("%,dđ", tongTienThucTe).replace(',', '.'), Color.GRAY, 12));
         
-        // Gắn tiền thực tế đã truyền qua
-        String realMoney = loaiPhieu.equalsIgnoreCase("Trả hàng") ? tienHoanThucTe : chenhLechThucTe;
-        JLabel lblHoanVal = new JLabel(realMoney);
-        lblHoanVal.setFont(new Font("Segoe UI", Font.BOLD, 18));
-        lblHoanVal.setForeground(lblHoanTxt.getForeground());
+        String labelHoan = loaiPhieu.equalsIgnoreCase("Trả hàng") ? "Số tiền hoàn lại:" : "Chênh lệch / Bù trừ:";
+        String valHoan = loaiPhieu.equalsIgnoreCase("Trả hàng") ? tienHoanThucTe : chenhLechThucTe;
+        pnlSummary.add(createTotalRow(labelHoan, valHoan, primaryRed, 16));
 
-        pnlHoan.add(lblHoanTxt, BorderLayout.WEST); pnlHoan.add(lblHoanVal, BorderLayout.EAST);
-        pnl.add(pnlHoan);
-
+        pnl.add(spTable, BorderLayout.CENTER);
+        pnl.add(pnlSummary, BorderLayout.SOUTH);
         return pnl;
+    }
+
+    private JPanel createTotalRow(String label, String value, Color color, int fontSize) {
+        JPanel p = new JPanel(new BorderLayout());
+        p.setBackground(Color.WHITE);
+        JLabel lbl = new JLabel(label); lbl.setForeground(color);
+        JLabel val = new JLabel(value); val.setForeground(color);
+        val.setFont(new Font("Segoe UI", Font.BOLD, fontSize));
+        p.add(lbl, BorderLayout.WEST); p.add(val, BorderLayout.EAST);
+        return p;
     }
 
     private JPanel createSignaturePanel() {
         JPanel pnl = new JPanel(new GridLayout(1, 2));
         pnl.setBackground(Color.WHITE);
-        pnl.setBorder(new EmptyBorder(10, 0, 10, 0)); // Ép nhỏ lề dưới
+        pnl.setBorder(new EmptyBorder(10, 0, 10, 0)); 
 
         JPanel pnlKhach = new JPanel(new GridLayout(2, 1, 0, 3));
         pnlKhach.setBackground(Color.WHITE);

@@ -508,12 +508,63 @@ public class DAO_HoaDon {
     }
 
     public boolean capNhatTrangThaiPhieuDoiTra(String maPhieu, String trangThaiMoi) {
-        String sql = "UPDATE HoaDon SET ghiChu = REPLACE(ghiChu, 'Chờ xử lý', ?) WHERE id = ?";
+        Connection con = ConnectDB.getInstance().getConnection();
+        String ghiChuHienTai = "";
+
+        // BƯỚC 1: LẤY GHI CHÚ HIỆN TẠI TỪ DB LÊN
+        String sqlSelect = "SELECT ghiChu FROM HoaDon WHERE id = ?";
+        try (PreparedStatement pstSelect = con.prepareStatement(sqlSelect)) {
+            pstSelect.setString(1, maPhieu);
+            try (ResultSet rs = pstSelect.executeQuery()) {
+                if (rs.next()) {
+                    ghiChuHienTai = rs.getString("ghiChu");
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+
+        // BƯỚC 2: DÙNG JAVA ĐỂ TÁCH VÀ GẮN LẠI TRẠNG THÁI MỚI (CHẮC CHẮN 100%)
+        if (ghiChuHienTai == null || ghiChuHienTai.isEmpty()) return false;
+
+        // Split chuỗi ra bằng dấu "|" 
+        String[] parts = ghiChuHienTai.split("\\|");
+        if (parts.length > 0) {
+            // Thay thế phần tử đầu tiên (Trạng thái) bằng trạng thái mới
+            parts[0] = trangThaiMoi + " ";
+        }
+        
+        // Nối chuỗi lại
+        String ghiChuMoi = String.join("|", parts);
+
+        // BƯỚC 3: UPDATE GHI CHÚ MỚI VÀO LẠI DB
+        String sqlUpdate = "UPDATE HoaDon SET ghiChu = ? WHERE id = ?";
+        try (PreparedStatement pstUpdate = con.prepareStatement(sqlUpdate)) {
+            pstUpdate.setString(1, ghiChuMoi);
+            pstUpdate.setString(2, maPhieu);
+            return pstUpdate.executeUpdate() > 0;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+    public Object[] layThongTinGiaTuHDGoc(String maHDGoc, String tenSP) {
+        String sql = "SELECT dv.ten, dv.gia FROM ChiTietHoaDon ct " +
+                     "JOIN SanPham sp ON ct.sanPhamId = sp.id " +
+                     "JOIN DonViDoLuong dv ON ct.donViDoLuongId = dv.id " +
+                     "WHERE ct.hoaDonId = ? AND sp.ten = ?";
+        
         try (Connection con = ConnectDB.getInstance().getConnection();
              PreparedStatement pst = con.prepareStatement(sql)) {
-            pst.setString(1, trangThaiMoi);
-            pst.setString(2, maPhieu);
-            return pst.executeUpdate() > 0;
-        } catch (Exception e) { e.printStackTrace(); return false; }
+            pst.setString(1, maHDGoc);
+            pst.setString(2, tenSP);
+            try (ResultSet rs = pst.executeQuery()) {
+                if (rs.next()) {
+                    return new Object[]{ rs.getString(1), rs.getDouble(2) };
+                }
+            }
+        } catch (Exception e) { e.printStackTrace(); }
+        return new Object[]{ "Đơn vị", 0.0 }; 
     }
 }
