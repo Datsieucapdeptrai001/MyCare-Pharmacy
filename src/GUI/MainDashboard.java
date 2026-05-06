@@ -46,6 +46,9 @@ public class MainDashboard extends JFrame {
         setSize(1300, 750);
         setLocationRelativeTo(null);
         setLayout(new BorderLayout());
+        
+        // Thêm dòng này để "xóa" (ẩn) icon ly cà phê mặc định của Java
+        setIconImage(new java.awt.image.BufferedImage(1, 1, java.awt.image.BufferedImage.TYPE_INT_ARGB));
 
         menuButtons = new ArrayList<>();
         cardLayout  = new CardLayout();
