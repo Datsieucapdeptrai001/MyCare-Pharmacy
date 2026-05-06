@@ -42,7 +42,7 @@ public class TaoPhieuDoiTra extends JDialog {
     private final Color primaryRed = Color.decode("#E11D48"); 
     private final Color primaryBlue = Color.decode("#2563EB");
     private final Color borderGray = Color.decode("#E2E8F0");
-    
+    private final Color textDark = Color.decode("#212B36");
     public TaoPhieuDoiTra(Frame parent, DefaultTableModel model) {
         super(parent, "Tạo phiếu đổi / trả hàng", true);
         setSize(850, 420); // Tăng size ban đầu để các ô nhập liệu nhìn thoáng hơn
@@ -537,28 +537,66 @@ public class TaoPhieuDoiTra extends JDialog {
     }
 
     private JPanel createNewProductPanel() {
-        JPanel pnl = new JPanel(new BorderLayout(15, 10));
-        pnl.setBackground(Color.WHITE);
-        pnl.setBorder(BorderFactory.createTitledBorder(null, "Giỏ hàng sản phẩm mới (Có thể chọn nhiều)", TitledBorder.LEFT, TitledBorder.TOP, new Font("Segoe UI", Font.BOLD, 13)));
+        JPanel pnlWrapper = new JPanel(new BorderLayout());
+        pnlWrapper.setBackground(Color.WHITE);
 
-        txtSearchNew = new JTextField();
-        txtSearchNew.setPreferredSize(new Dimension(0, 42));
-        txtSearchNew.setFont(new Font("Segoe UI", Font.PLAIN, 15));
-        txtSearchNew.setText("Gõ tên để tìm sản phẩm...");
+        // --- TẠO KHUNG BO GÓC BÊN NGOÀI ---
+        JPanel pnlMain = new JPanel();
+        pnlMain.setLayout(new BoxLayout(pnlMain, BoxLayout.Y_AXIS));
+        pnlMain.setBackground(Color.decode("#F8FAFC")); // Nền xám nhạt giống ảnh
+        pnlMain.setBorder(BorderFactory.createCompoundBorder(
+            new LineBorder(Color.decode("#E2E8F0"), 1, true), // Viền bo góc
+            new EmptyBorder(15, 15, 15, 15) // Padding bên trong
+        ));
+
+        // 1. Label Tiêu đề & Ghi chú
+        JLabel lblTitle = new JLabel("Sản phẩm mới");
+        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        lblTitle.setForeground(textDark);
+        lblTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JLabel lblSub = new JLabel("Đổi cùng loại miễn phí. Đổi khác loại sẽ tính chênh lệch.");
+        lblSub.setFont(new Font("Segoe UI", Font.ITALIC, 12));
+        lblSub.setForeground(Color.decode("#2563EB")); // Màu xanh nhấn mạnh
+        lblSub.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        // 2. Thanh tìm kiếm có Icon
+        JPanel pnlSearchInput = new JPanel(new BorderLayout(8, 0));
+        pnlSearchInput.setBackground(Color.WHITE);
+        pnlSearchInput.setPreferredSize(new Dimension(0, 40));
+        pnlSearchInput.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
+        pnlSearchInput.setAlignmentX(Component.LEFT_ALIGNMENT);
+        pnlSearchInput.setBorder(BorderFactory.createCompoundBorder(
+            new LineBorder(Color.decode("#CBD5E1"), 1, true),
+            new EmptyBorder(0, 10, 0, 10)
+        ));
+
+        JLabel lblIconSearch = new JLabel(new MenuIcon("SEARCH", 18));
+        lblIconSearch.setForeground(Color.decode("#94A3B8"));
+
+        txtSearchNew = new JTextField("Tìm sản phẩm thay thế...");
+        txtSearchNew.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         txtSearchNew.setForeground(Color.GRAY);
+        txtSearchNew.setBorder(null);
+
+        // Xử lý Placeholder
         txtSearchNew.addFocusListener(new java.awt.event.FocusAdapter() {
             public void focusGained(java.awt.event.FocusEvent evt) {
-                if (txtSearchNew.getText().equals("Gõ tên để tìm sản phẩm...")) {
+                if (txtSearchNew.getText().equals("Tìm sản phẩm thay thế...")) {
                     txtSearchNew.setText(""); txtSearchNew.setForeground(Color.BLACK);
                 }
             }
             public void focusLost(java.awt.event.FocusEvent evt) {
                 if (txtSearchNew.getText().isEmpty()) {
-                    txtSearchNew.setForeground(Color.GRAY); txtSearchNew.setText("Gõ tên để tìm sản phẩm...");
+                    txtSearchNew.setForeground(Color.GRAY); txtSearchNew.setText("Tìm sản phẩm thay thế...");
                 }
             }
         });
 
+        pnlSearchInput.add(lblIconSearch, BorderLayout.WEST);
+        pnlSearchInput.add(txtSearchNew, BorderLayout.CENTER);
+
+        // 3. Logic Suggestion Menu (Giữ nguyên logic cũ của bạn)
         suggestionMenu = new JPopupMenu();
         suggestionMenu.setFocusable(false);
         suggestionMenu.setBackground(Color.WHITE);
@@ -568,34 +606,35 @@ public class TaoPhieuDoiTra extends JDialog {
             public void changedUpdate(javax.swing.event.DocumentEvent e) { timKiemLive(); }
         });
 
+        // 4. Bảng Giỏ hàng (Nằm dưới thanh search)
         tableSPMoi = new JTable(spMoiModel);
         tableSPMoi.setRowHeight(35);
-        tableSPMoi.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        tableSPMoi.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        tableSPMoi.setShowGrid(false);
         tableSPMoi.putClientProperty("terminateEditOnFocusLost", Boolean.TRUE);
-        JScrollPane scrollSPMoi = new JScrollPane(tableSPMoi);
-        scrollSPMoi.setPreferredSize(new Dimension(0, 120));
-
-        JPanel pnlTop = new JPanel(new BorderLayout(10, 0));
-        pnlTop.setOpaque(false);
-        pnlTop.add(txtSearchNew, BorderLayout.CENTER);
         
-        JButton btnXoa = new JButton("Xóa món chọn");
-        btnXoa.setBackground(Color.decode("#FEE2E2"));
-        btnXoa.setForeground(Color.decode("#DC2626"));
-        btnXoa.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        btnXoa.setFocusPainted(false);
-        btnXoa.addActionListener(e -> {
-            int row = tableSPMoi.getSelectedRow();
-            if(row >= 0) {
-                spMoiModel.removeRow(row);
-                tinhTongTienSPMoi();
-            }
-        });
-        pnlTop.add(btnXoa, BorderLayout.EAST);
+        // Ẩn Header bảng cho giống ảnh (Gọn gàng)
+        tableSPMoi.setTableHeader(null); 
+        
+        JScrollPane scrollSPMoi = new JScrollPane(tableSPMoi);
+        scrollSPMoi.setPreferredSize(new Dimension(0, 100)); // Chiều cao mặc định nhỏ
+        scrollSPMoi.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, Color.decode("#E2E8F0")));
+        scrollSPMoi.setAlignmentX(Component.LEFT_ALIGNMENT);
+        
+        // Chỉnh cột cho nút xóa X
+        tableSPMoi.getColumnModel().getColumn(3).setPreferredWidth(80);
 
-        pnl.add(pnlTop, BorderLayout.NORTH);
-        pnl.add(scrollSPMoi, BorderLayout.CENTER);
-        return pnl;
+        // 5. Ráp Component vào Main Panel
+        pnlMain.add(lblTitle);
+        pnlMain.add(Box.createVerticalStrut(5));
+        pnlMain.add(lblSub);
+        pnlMain.add(Box.createVerticalStrut(10));
+        pnlMain.add(pnlSearchInput);
+        pnlMain.add(Box.createVerticalStrut(10));
+        pnlMain.add(scrollSPMoi);
+
+        pnlWrapper.add(pnlMain, BorderLayout.CENTER);
+        return pnlWrapper;
     }
 
     private void xuLyTimKiemHD() {
@@ -918,7 +957,8 @@ public class TaoPhieuDoiTra extends JDialog {
             
             hdDoiTra.setPhuongThucThanhToan(Enumeration.PhuongThucThanhToan.TIEN_MAT);
             // Lưu trạng thái "Chờ xử lý" cùng lý do vào DB để màn hình Quản lý đọc được
-            hdDoiTra.setGhiChu("Chờ xử lý | " + lyDo + " - " + ghiChu); 
+            String formatGhiChu = "Chờ xử lý | " + lyDo + (ghiChu.isEmpty() ? "" : " - " + ghiChu) + " | " + colHoanTien + " | " + colChenhLech;
+            hdDoiTra.setGhiChu(formatGhiChu);
             
             HoaDon hdGoc = new HoaDon();
             hdGoc.setId(maHDGoc);

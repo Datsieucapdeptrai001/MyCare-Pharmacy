@@ -16,7 +16,25 @@ import java.util.List;
 public class DAO_ChiTietHoaDon {
 
     public DAO_ChiTietHoaDon() {}
-
+    public boolean themChiTietDoiTra(String maHD, String tenSP, int soLuong, String ghiChu) {
+        // Lưu ý: Cấu trúc câu SQL này phụ thuộc vào thiết kế bảng ChiTietHoaDon của bạn. 
+        // Dưới đây là câu lệnh mẫu, bạn có thể cần join bảng SanPham để lấy sanPhamId từ tenSP
+        String sql = "INSERT INTO ChiTietHoaDon (hoaDonId, sanPhamId, soLuong, ghiChu) " +
+                     "VALUES (?, (SELECT id FROM SanPham WHERE tenSanPham = ?), ?, ?)";
+                     
+        try (java.sql.Connection con = ConnectDB.getInstance().getConnection();
+             java.sql.PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setString(1, maHD);
+            pst.setString(2, tenSP);
+            pst.setInt(3, soLuong);
+            pst.setString(4, ghiChu);
+            
+            return pst.executeUpdate() > 0;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
     public List<Object[]> layDanhSachSanPhamTheoMaHD(String maHD) {
         List<Object[]> list = new ArrayList<>();
         Connection con = ConnectDB.getInstance().getConnection();

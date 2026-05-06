@@ -389,6 +389,17 @@ public class MenuIcon implements Icon {
                 // 6. Nút thắt nơ tròn ở chính giữa
                 g2d.fillOval(x + 9, y + 4, 4, 3);
                 break;
+            case "SYNC":
+                g2d.setStroke(new BasicStroke(2.0f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                // Cung tròn xoay nửa trên
+                g2d.drawArc(x + 3, y + 3, 14, 14, 45, 180);
+                // Mũi tên cung trên
+                g2d.drawPolyline(new int[]{x + 15, x + 15, x + 11}, new int[]{y + 6, y + 2, y + 2}, 3);
+                // Cung tròn xoay nửa dưới
+                g2d.drawArc(x + 5, y + 5, 14, 14, 225, 180);
+                // Mũi tên cung dưới
+                g2d.drawPolyline(new int[]{x + 7, x + 7, x + 11}, new int[]{y + 16, y + 20, y + 20}, 3);
+                break;
         }
     }
 }

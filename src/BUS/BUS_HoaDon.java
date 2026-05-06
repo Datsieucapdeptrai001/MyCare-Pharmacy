@@ -10,9 +10,11 @@ public class BUS_HoaDon {
     private DAO_ChiTietHoaDon daoCTHD = new DAO_ChiTietHoaDon();
     private DAO_PhanBoLoHang daoPB = new DAO_PhanBoLoHang();
     private DAO_LoHang daoLo = new DAO_LoHang();
+    
     public List<Object[]> layDanhSachHoaDonCuaNhanVien(String maNV) {
         return daoHD.layDanhSachHoaDonCuaNhanVien(maNV); 
     }
+    
     public List<Object[]> layDanhSachHoaDonChoBang() {
         return daoHD.layDanhSachHoaDonChoBang(); 
     }
@@ -33,4 +35,34 @@ public class BUS_HoaDon {
         return daoHD.luuGiaoDichThanhToan(hd, dsCTHD, daoCTHD, daoLo, daoPB);
     }
     
+    // =========================================================
+    // XỬ LÝ LƯU PHIẾU ĐỔI TRẢ VÀ CHI TIẾT SẢN PHẨM (CHUẨN 3 TẦNG)
+    // =========================================================
+    public boolean taoPhieuDoiTra(HoaDon hdDoiTra, List<Object[]> dsTra, List<Object[]> dsDoi) {
+        // 1. Lưu thông tin Phiếu (Hóa đơn) vào Database
+        boolean isSuccess = daoHD.themHoaDon(hdDoiTra);
+        if (!isSuccess) return false;
+
+        // 2. Lưu danh sách sản phẩm KHÁCH TRẢ LẠI
+        if (dsTra != null) {
+            for (Object[] spTra : dsTra) {
+                String tenSP = spTra[0].toString();
+                int soLuong = (int) spTra[1];
+                // Gọi DAO chi tiết (Gắn nhãn 'TRA_LAI')
+                daoCTHD.themChiTietDoiTra(hdDoiTra.getId(), tenSP, soLuong, "TRA_LAI");
+            }
+        }
+
+        // 3. Lưu danh sách sản phẩm KHÁCH LẤY MỚI (Dành cho Đổi hàng)
+        if (dsDoi != null && !dsDoi.isEmpty()) {
+            for (Object[] spDoi : dsDoi) {
+                String tenSP = spDoi[0].toString();
+                int soLuong = (int) spDoi[1];
+                // Gọi DAO chi tiết (Gắn nhãn 'DOI_LAY')
+                daoCTHD.themChiTietDoiTra(hdDoiTra.getId(), tenSP, soLuong, "DOI_LAY");
+            }
+        }
+        
+        return true; // Thành công toàn bộ
+    }
 }

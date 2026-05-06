@@ -458,12 +458,75 @@ public class ManHinhDoiTra extends JPanel {
         pnlLeftTitle.add(lblDetailTitle);
         pnlLeftTitle.add(lblDetailDate);
 
+        // =========================================================
+        // BẮT ĐẦU PHẦN BỔ SUNG: NÚT IN VÀ LOGIC XỬ LÝ
+        // =========================================================
         lblDetailEmp = new JLabel("Nhân viên: Hệ thống"); 
         lblDetailEmp.setFont(new Font("Segoe UI", Font.BOLD, 13));
         lblDetailEmp.setForeground(Color.GRAY);
 
+        JButton btnInPhieu = new JButton("Xem / In Phiếu");
+        btnInPhieu.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnInPhieu.setForeground(Color.decode("#1967D2"));
+        btnInPhieu.setBackground(Color.WHITE);
+        btnInPhieu.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(Color.decode("#1967D2"), 1),
+            BorderFactory.createEmptyBorder(6, 12, 6, 12)
+        ));
+        btnInPhieu.setFocusPainted(false);
+        btnInPhieu.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+        // Bắt sự kiện Click để lấy dữ liệu từ dòng đang chọn truyền sang file in
+     // Bắt sự kiện Click để lấy dữ liệu từ dòng đang chọn truyền sang file in
+        btnInPhieu.addActionListener(e -> {
+            if (expandedMaPhieu != null && !expandedMaPhieu.isEmpty()) {
+                
+                int targetRow = -1;
+                for (int i = 0; i < model.getRowCount(); i++) {
+                    if (model.getValueAt(i, 0).toString().equals(expandedMaPhieu)) {
+                        targetRow = i;
+                        break;
+                    }
+                }
+                
+                if (targetRow != -1) {
+                    String loaiPhieu = model.getValueAt(targetRow, 3).toString(); 
+                    String hdGoc = model.getValueAt(targetRow, 1).toString();
+                    String khachHang = model.getValueAt(targetRow, 2).toString();
+                    String lyDo = model.getValueAt(targetRow, 4).toString();
+                    
+                    // LẤY THÊM 2 CỘT TIỀN TỪ TRÊN BẢNG TRUYỀN SANG
+                    String tienHoan = model.getValueAt(targetRow, 5).toString();
+                    String chenhLech = model.getValueAt(targetRow, 6).toString();
+                    
+                    String trangThai = model.getValueAt(targetRow, 7).toString();
+                    String ngayTao = model.getValueAt(targetRow, 8).toString();
+                    String nhanVien = lblDetailEmp.getText().replace("Nhân viên: ", "").trim();
+
+                    Window parentWindow = SwingUtilities.getWindowAncestor(pnl);
+                    
+                    // GỌI CONSTRUCTOR MỚI VỚI ĐỦ 11 THAM SỐ
+                    ChiTietPhieuDoiTra dialog = new ChiTietPhieuDoiTra(
+                        (Frame) parentWindow, expandedMaPhieu, loaiPhieu, 
+                        trangThai, ngayTao, hdGoc, khachHang, lyDo, nhanVien, 
+                        tienHoan, chenhLech
+                    );
+                    dialog.setVisible(true);
+                }
+            }
+        });
+
+        // Gom Label Nhân viên và Nút bấm vào chung bên phải
+        JPanel pnlRightHeader = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 0));
+        pnlRightHeader.setBackground(Color.WHITE);
+        pnlRightHeader.add(lblDetailEmp);
+        pnlRightHeader.add(btnInPhieu);
+
         pnlHeader.add(pnlLeftTitle, BorderLayout.WEST);
-        pnlHeader.add(lblDetailEmp, BorderLayout.EAST);
+        pnlHeader.add(pnlRightHeader, BorderLayout.EAST);
+        // =========================================================
+        // KẾT THÚC PHẦN BỔ SUNG
+        // =========================================================
 
         // BODY
         JPanel pnlBody = new JPanel(new BorderLayout(30, 0));
