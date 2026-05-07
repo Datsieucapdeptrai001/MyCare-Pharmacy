@@ -75,4 +75,10 @@ public class BUS_HoaDon {
         
         return daoHD.themHoaDon(hdDoiTra);
     }
+    public List<String> timGoiYHoaDonHoanThanh(String tuKhoa) {
+        if (tuKhoa == null || tuKhoa.trim().isEmpty()) {
+            return new java.util.ArrayList<>();
+        }
+        return daoHD.timGoiYHoaDonHoanThanh(tuKhoa.trim());
+    }
 }
