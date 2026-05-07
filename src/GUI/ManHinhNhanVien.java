@@ -44,7 +44,7 @@ public class ManHinhNhanVien extends JPanel {
         this.setBackground(Color.decode("#F3F4F6")); 
         this.setBorder(new EmptyBorder(20, 25, 20, 25));
 
-        // ==================== 1. PHẦN ĐẦU ====================
+        // ==================== 1. PHẦU ĐẦU ====================
         JPanel pnlHeader = new JPanel(new BorderLayout());
         pnlHeader.setOpaque(false);
 
@@ -892,7 +892,7 @@ class DialogThemNhanVien extends JDialog {
                     
                     parentScreen.updateStats();
                     parentScreen.refreshSidebarIfVisible(editRow);
-                    JOptionPane.showMessageDialog(this, "Cập nhật nhân viên và tài khoản thành công!");
+                    showNotification("Thành công", "Cập nhật nhân viên và tài khoản thành công!", "success");
                     dispose();
                 } else {
                     // Phân tích kết quả từ BUS để map vào ô báo lỗi phù hợp
@@ -906,7 +906,7 @@ class DialogThemNhanVien extends JDialog {
                     } else if (lowerKetQua.contains("email")) {
                         setError(txtEmail, lblErrEmail, "* " + ketQua);
                     } else {
-                        JOptionPane.showMessageDialog(this, ketQua, "Lỗi cập nhật", JOptionPane.ERROR_MESSAGE);
+                        showNotification("Lỗi cập nhật", ketQua, "error");
                     }
                 }
             } else {
@@ -942,7 +942,7 @@ class DialogThemNhanVien extends JDialog {
                 if (ketQua.equals("SUCCESS")) {
                     mainModel.addRow(new Object[]{ idMoi, hoten, cchn, sdt, email, chucVuUI, trangThaiUI, "" });
                     parentScreen.updateStats();
-                    JOptionPane.showMessageDialog(this, "Thêm nhân viên và tạo tài khoản thành công! Mã tự tạo: " + idMoi);
+                    showNotification("Thành công", "Thêm nhân viên và tạo tài khoản thành công!<br>Mã tự tạo: <b>" + idMoi + "</b>", "success");
                     dispose();
                 } else {
                     // Phân tích kết quả từ BUS để map vào ô báo lỗi phù hợp
@@ -956,7 +956,7 @@ class DialogThemNhanVien extends JDialog {
                     } else if (lowerKetQua.contains("email")) {
                         setError(txtEmail, lblErrEmail, "* " + ketQua);
                     } else {
-                        JOptionPane.showMessageDialog(this, ketQua, "Lỗi thêm mới", JOptionPane.ERROR_MESSAGE);
+                        showNotification("Lỗi thêm mới", ketQua, "error");
                     }
                 }
             }
@@ -1027,5 +1027,131 @@ class DialogThemNhanVien extends JDialog {
         cbo.setPreferredSize(new Dimension(100, 40));
         cbo.setMinimumSize(new Dimension(100, 40));
         return cbo;
+    }
+
+    // =======================================================================
+    // HÀM HIỂN THỊ THÔNG BÁO TÙY CHỈNH (THAY THẾ CHO JOPTIONPANE)
+    // =======================================================================
+    private void showNotification(String title, String message, String type) {
+        JDialog dialog = new JDialog(this, "", Dialog.ModalityType.APPLICATION_MODAL);
+        dialog.setUndecorated(true);
+
+        Color headerBg, iconBg, borderColor;
+        String iconType;
+        
+        if (type.equals("success")) {
+            headerBg = Color.decode("#00A76F");
+            iconBg = Color.decode("#E8F5E9");
+            borderColor = Color.decode("#00A76F");
+            iconType = "CORRECT"; 
+        } else if (type.equals("error")) {
+            headerBg = Color.decode("#DC2626"); 
+            iconBg = Color.decode("#FFEBEE");
+            borderColor = Color.decode("#DC2626");
+            iconType = "CANCEL"; 
+        } else { // warning
+            headerBg = Color.decode("#F59E0B");
+            iconBg = Color.decode("#FEF3C7");
+            borderColor = Color.decode("#F59E0B");
+            iconType = "WARNING"; 
+        }
+
+        JPanel mainPanel = new JPanel(new BorderLayout());
+        mainPanel.setBackground(Color.WHITE);
+        mainPanel.setBorder(BorderFactory.createLineBorder(borderColor, 2));
+
+        JPanel pnlHeader = new JPanel(new BorderLayout());
+        pnlHeader.setBackground(headerBg);
+        pnlHeader.setPreferredSize(new Dimension(0, 50));
+        pnlHeader.setBorder(new EmptyBorder(0, 20, 0, 15));
+
+        JLabel lblTitleNoti = new JLabel(title);
+        lblTitleNoti.setForeground(Color.WHITE);
+        lblTitleNoti.setFont(new Font("Segoe UI", Font.BOLD, 16));
+
+        JButton btnCloseNoti = new JButton("×");
+        btnCloseNoti.setFont(new Font("Arial", Font.BOLD, 22));
+        btnCloseNoti.setForeground(Color.WHITE);
+        btnCloseNoti.setBorder(null);
+        btnCloseNoti.setContentAreaFilled(false);
+        btnCloseNoti.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnCloseNoti.addActionListener(e -> dialog.dispose());
+
+        pnlHeader.add(lblTitleNoti, BorderLayout.WEST);
+        pnlHeader.add(btnCloseNoti, BorderLayout.EAST);
+
+        JPanel pnlBodyNoti = new JPanel(new BorderLayout());
+        pnlBodyNoti.setOpaque(false);
+        pnlBodyNoti.setBorder(new EmptyBorder(20, 20, 20, 20));
+
+        JPanel pnlIconBox = new JPanel(new BorderLayout()) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(iconBg);
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 18, 18);
+                g2.dispose();
+            }
+        };
+        pnlIconBox.setOpaque(false);
+        pnlIconBox.setPreferredSize(new Dimension(60, 60));
+        
+        JLabel lblIcon = new JLabel();
+        lblIcon.setIcon(new MenuIcon(iconType));
+        lblIcon.setForeground(headerBg); 
+        lblIcon.setHorizontalAlignment(SwingConstants.CENTER);
+        pnlIconBox.add(lblIcon, BorderLayout.CENTER);
+
+        String formattedMessage = message.replace("\n", "<br>");
+        String htmlMsg = "<html><p style='width: 250px; margin: 0; padding: 0; line-height: 1.3;'>" + formattedMessage + "</p></html>";
+        
+        JLabel lblMessage = new JLabel(htmlMsg);
+        lblMessage.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        lblMessage.setForeground(Color.decode("#374151"));
+        lblMessage.setBorder(new EmptyBorder(5, 15, 0, 0)); 
+
+        pnlBodyNoti.add(pnlIconBox, BorderLayout.WEST);
+        pnlBodyNoti.add(lblMessage, BorderLayout.CENTER);
+
+        JPanel pnlFooterNoti = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
+        pnlFooterNoti.setBackground(Color.WHITE);
+        pnlFooterNoti.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, Color.decode("#DFE3E8")));
+
+        JButton btnOk = new JButton("OK") {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(headerBg);
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 10, 10);
+                super.paintComponent(g);
+                g2.dispose();
+            }
+        };
+        btnOk.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btnOk.setForeground(Color.WHITE);
+        btnOk.setIcon(new MenuIcon("CHECK_CIRCLE"));  
+        btnOk.setPreferredSize(new Dimension(100, 38));
+        btnOk.setContentAreaFilled(false);
+        btnOk.setBorderPainted(false);
+        btnOk.setFocusPainted(false);
+        btnOk.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnOk.addActionListener(e -> dialog.dispose());
+
+        pnlFooterNoti.add(btnOk);
+
+        mainPanel.add(pnlHeader, BorderLayout.NORTH);
+        mainPanel.add(pnlBodyNoti, BorderLayout.CENTER);
+        mainPanel.add(pnlFooterNoti, BorderLayout.SOUTH);
+
+        dialog.add(mainPanel);
+        
+        dialog.pack();
+        int safeHeight = Math.max(dialog.getHeight() + 25, 220);
+        dialog.setSize(460, safeHeight);
+        
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
     }
 }
