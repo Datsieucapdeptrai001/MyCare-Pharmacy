@@ -119,6 +119,143 @@ public class DAO_HoaDon {
         return ds;
     }
     
+    /**
+     * Dành cho STAFF: chỉ lấy hóa đơn của nhân viên đó, trong ngày hôm nay,
+     * từ thời điểm bắt đầu ca trở đi (batDauCa = null → chỉ lọc theo ngày).
+     */
+    /**
+     * Dành cho STAFF: chỉ lấy hóa đơn của nhân viên đó trong ngày hôm nay.
+     * KHÔNG lọc theo giờ ca để tránh bỏ sót hóa đơn tạo trước khi mở ca.
+     * Trả về null nếu maNV rỗng (caller sẽ fallback về layDanhSachHoaDonChoBang).
+     */
+    public List<Object[]> layDanhSachHoaDonTheoNVHomNay(String maNV) {
+        if (maNV == null || maNV.trim().isEmpty()) return null;
+
+        List<Object[]> ds = new ArrayList<>();
+        String sql =
+            "SELECT hd.id, hd.loaiHD, hd.ngayLapHD, kh.hoVaTen, kh.sdt, hd.phuongThucThanhToan, hd.ghiChu, " +
+            "(SELECT SUM(ct.soLuong * dv.gia * (1 + (ISNULL(sp.thueVAT, 0) / 100.0))) " +
+            " FROM ChiTietHoaDon ct " +
+            " JOIN DonViDoLuong dv ON ct.donViDoLuongId = dv.id AND ct.sanPhamId = dv.sanPhamId " +
+            " JOIN SanPham sp ON ct.sanPhamId = sp.id " +
+            " WHERE ct.hoaDonId = hd.id) as tongTienGoc " +
+            "FROM HoaDon hd " +
+            "LEFT JOIN KhachHang kh ON hd.khachHangId = kh.id " +
+            "WHERE hd.nhanVienId = ? " +
+            "AND CAST(hd.ngayLapHD AS DATE) = CAST(GETDATE() AS DATE) " +
+            "ORDER BY hd.ngayLapHD DESC";
+
+        try (Connection con = ConnectDB.getInstance().getConnection();
+             PreparedStatement pst = con.prepareStatement(sql)) {
+
+            pst.setString(1, maNV.trim());
+
+            try (ResultSet rs = pst.executeQuery()) {
+                DecimalFormat df = new DecimalFormat("#,###đ");
+                DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+
+                while (rs.next()) {
+                    double totalAmount = rs.getDouble("tongTienGoc");
+                    double originalAmount = totalAmount;
+                    double tongTienGiam = 0;
+                    String ghiChu = rs.getString("ghiChu");
+                    String loaiHD = rs.getString("loaiHD");
+
+                    if (ghiChu != null && !ghiChu.isEmpty()) {
+                        String[] parts = ghiChu.split("\\|");
+                        for (String p : parts) {
+                            p = p.trim();
+                            if (p.startsWith("Dùng điểm: -") || p.contains("KM_GIAM:")) {
+                                try { tongTienGiam += Long.parseLong(p.replaceAll("[^0-9]", "")); } catch (Exception ignored) {}
+                            } else if (p.startsWith("KM:")) {
+                                String[] mks = p.substring(3).trim().split(",");
+                                for (String mk : mks) {
+                                    String sqlKM = "SELECT loaiHinhThuc, giaTri FROM HinhThucKhuyenMai WHERE khuyenMaiId = ?";
+                                    try (PreparedStatement pstKM = con.prepareStatement(sqlKM)) {
+                                        pstKM.setString(1, mk.trim());
+                                        try (ResultSet rsKM = pstKM.executeQuery()) {
+                                            if (rsKM.next()) {
+                                                String loaiKM = rsKM.getString("loaiHinhThuc");
+                                                double val = rsKM.getDouble("giaTri");
+                                                if (loaiKM.contains("PHAN_TRAM") || loaiKM.contains("%"))
+                                                    tongTienGiam += originalAmount * (val / 100.0);
+                                                else if (loaiKM.contains("TIEN_MAT"))
+                                                    tongTienGiam += val;
+                                            }
+                                        }
+                                    } catch (Exception ignored) {}
+                                }
+                            }
+                        }
+                    }
+
+                    totalAmount -= tongTienGiam;
+                    if (totalAmount < 0) totalAmount = 0;
+
+                    String id = rs.getString("id");
+                    String ngay = rs.getTimestamp("ngayLapHD") != null
+                                  ? rs.getTimestamp("ngayLapHD").toLocalDateTime().format(dtf) : "";
+                    String kh = rs.getString("hoVaTen") != null ? rs.getString("hoVaTen") : "Khách lẻ";
+                    String sdt = rs.getString("sdt") != null ? rs.getString("sdt") : "";
+                    String pt = rs.getString("phuongThucThanhToan");
+                    String hienThiPT = "CHUYEN_KHOAN_NGAN_HANG".equals(pt) ? "Chuyển khoản" : "Tiền mặt";
+
+                    String trangThai = "Hoàn thành";
+                    if (loaiHD != null && (loaiHD.equals("TRA_HANG") || loaiHD.equals("DOI_HANG"))) {
+                        trangThai = "Đổi trả";
+                    } else if (ghiChu != null) {
+                        if (ghiChu.contains("Lưu nháp") || ghiChu.contains("Đang xử lý")) trangThai = "Đang xử lý";
+                        else if (ghiChu.contains("Đã hủy")) trangThai = "Đã hủy";
+                    }
+
+                    ds.add(new Object[]{ id, ngay, kh, sdt, hienThiPT, df.format(totalAmount), trangThai, ghiChu });
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return ds;
+    }
+
+    /**
+     * Dành cho STAFF: chỉ lấy phiếu đổi/trả do nhân viên đó lập,
+     * trong ngày hôm nay.
+     */
+    public List<Object[]> layDanhSachPhieuDoiTraTheoNVHomNay(String maNV) {
+        if (maNV == null || maNV.trim().isEmpty()) return null;
+
+        List<Object[]> list = new ArrayList<>();
+        String sql =
+            "SELECT hd.id, hd.hoaDonGocId, kh.hoVaTen, hd.loaiHD, hd.ghiChu, hd.ngayLapHD " +
+            "FROM HoaDon hd " +
+            "LEFT JOIN KhachHang kh ON hd.khachHangId = kh.id " +
+            "WHERE hd.loaiHD IN ('TRA_HANG', 'DOI_HANG') " +
+            "AND hd.nhanVienId = ? " +
+            "AND CAST(hd.ngayLapHD AS DATE) = CAST(GETDATE() AS DATE) " +
+            "ORDER BY hd.ngayLapHD DESC";
+
+        try (Connection con = ConnectDB.getInstance().getConnection();
+             PreparedStatement pst = con.prepareStatement(sql)) {
+
+            pst.setString(1, maNV.trim());
+
+            try (ResultSet rs = pst.executeQuery()) {
+                DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+                while (rs.next()) {
+                    String maPhieu  = rs.getString("id");
+                    String hdGoc    = rs.getString("hoaDonGocId");
+                    String khach    = rs.getString("hoVaTen") != null ? rs.getString("hoVaTen") : "Khách lẻ";
+                    String loaiHD   = rs.getString("loaiHD").equals("TRA_HANG") ? "Trả hàng" : "Đổi hàng";
+                    String ghiChuDB = rs.getString("ghiChu");
+                    String ngay     = rs.getTimestamp("ngayLapHD").toLocalDateTime().format(dtf);
+                    list.add(new Object[]{ maPhieu, hdGoc, khach, loaiHD, ghiChuDB, ngay });
+                }
+            }
+        } catch (Exception e) { e.printStackTrace(); }
+        return list;
+    }
+
+
     public List<Object[]> layDanhSachHoaDonCuaNhanVien(String maNV) {
         List<Object[]> ds = new ArrayList<>();
         

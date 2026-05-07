@@ -9,6 +9,7 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.table.*;
 
 import Utils.MenuIcon;
+import Utils.UserSession;
 import BUS.BUS_HoaDon;
 import java.awt.*;
 import java.awt.event.*;
@@ -351,11 +352,24 @@ public class ManHinhBanHang extends JPanel {
 
     public void loadData() {
         model.setRowCount(0);
-        List<Object[]> ds = busHoaDon.layDanhSachHoaDonChoBang();
+        Utils.UserSession session = Utils.UserSession.getInstance();
+
+        List<Object[]> ds;
+        if (session.isAdmin()) {
+            // ADMIN/Quản lý: thấy tất cả hóa đơn
+            ds = busHoaDon.layDanhSachHoaDonChoBang();
+        } else {
+            // STAFF/Nhân viên: chỉ thấy hóa đơn của mình hôm nay
+            String maNV = session.getMaNhanVien();
+            List<Object[]> staffDs = busHoaDon.layDanhSachHoaDonTheoNVHomNay(maNV);
+            // Nếu maNV rỗng (session chưa load đủ) → fallback toàn bộ để không bị trống
+            ds = (staffDs != null) ? staffDs : busHoaDon.layDanhSachHoaDonChoBang();
+        }
+
         for (Object[] row : ds) {
             String trangThai = row[6].toString();
             // CHỈ HIỂN THỊ: Hoàn thành, Đang xử lý, Đã hủy (Loại bỏ Đổi trả)
-            if (!trangThai.equals("Đổi trả")) { 
+            if (!trangThai.equals("Đổi trả")) {
                 model.addRow(row);
             }
         }
