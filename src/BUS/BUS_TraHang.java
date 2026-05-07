@@ -34,26 +34,32 @@ public class BUS_TraHang {
 
     public List<Object[]> layDanhSachPhieu() {
         List<Object[]> rawList = daoHoaDon.layDanhSachPhieuDoiTra();
+        return parseRawPhieu(rawList);
+    }
+
+    /** STAFF: Chỉ phiếu của nhân viên đó, hôm nay. Trả null nếu maNV rỗng. */
+    public List<Object[]> layDanhSachPhieuCuaNhanVien(String maNV) {
+        List<Object[]> rawList = daoHoaDon.layDanhSachPhieuDoiTraTheoNVHomNay(maNV);
+        if (rawList == null) return null;
+        return parseRawPhieu(rawList);
+    }
+
+    private List<Object[]> parseRawPhieu(List<Object[]> rawList) {
         List<Object[]> result = new ArrayList<>();
-        
         for (Object[] row : rawList) {
             String ghiChuDB = (String) row[4];
             String trangThai = "Chờ xử lý";
             String loi = "Chưa xác định";
             String tienHoan = "0đ";
             String chenhLech = "0đ";
-            
             if (ghiChuDB != null && ghiChuDB.contains("|")) {
                 String[] parts = ghiChuDB.split("\\|");
-                if(parts.length > 0) trangThai = parts[0].trim();
-                if(parts.length > 1) loi = parts[1].trim();
-                if(parts.length > 2) tienHoan = parts[2].trim();
-                if(parts.length > 3) chenhLech = parts[3].trim();
+                if (parts.length > 0) trangThai = parts[0].trim();
+                if (parts.length > 1) loi = parts[1].trim();
+                if (parts.length > 2) tienHoan = parts[2].trim();
+                if (parts.length > 3) chenhLech = parts[3].trim();
             }
-            
-            result.add(new Object[]{
-                row[0], row[1], row[2], row[3], loi, tienHoan, chenhLech, trangThai, row[5], ""
-            });
+            result.add(new Object[]{ row[0], row[1], row[2], row[3], loi, tienHoan, chenhLech, trangThai, row[5], "" });
         }
         return result;
     }

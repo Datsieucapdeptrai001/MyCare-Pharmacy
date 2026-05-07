@@ -360,7 +360,18 @@ public class ManHinhDoiTra extends JPanel {
         model.setRowCount(0);
         BUS_TraHang busTra = new BUS_TraHang();
         DAO.DAO_HoaDon daoHD = new DAO.DAO_HoaDon();
-        List<Object[]> ds = busTra.layDanhSachPhieu();
+
+        // Phân quyền: ADMIN thấy tất cả, STAFF chỉ thấy phiếu của mình hôm nay
+        Utils.UserSession session = Utils.UserSession.getInstance();
+        List<Object[]> ds;
+        if (session.isAdmin()) {
+            ds = busTra.layDanhSachPhieu();
+        } else {
+            String maNV = session.getMaNhanVien();
+            List<Object[]> staffDs = busTra.layDanhSachPhieuCuaNhanVien(maNV);
+            // Nếu maNV rỗng (session chưa load đủ) → fallback toàn bộ
+            ds = (staffDs != null) ? staffDs : busTra.layDanhSachPhieu();
+        }
         
         if (ds != null) {
             for (Object[] row : ds) {
