@@ -156,6 +156,14 @@ CREATE TABLE [dbo].[LoHang](
 )
 GO
 
+CREATE TABLE PhieuXuatKho (
+    MaPhieu INT IDENTITY(1,1) PRIMARY KEY,
+    SoLoHang VARCHAR(50) NOT NULL,
+    SoLuongXuat INT NOT NULL,
+    LyDoXuat NVARCHAR(255) NOT NULL,
+    NgayXuat DATETIME DEFAULT CURRENT_TIMESTAMP
+)
+GO
 
 CREATE TABLE [dbo].[NhanVien](
 	[id] [nvarchar](50) NOT NULL PRIMARY KEY,
