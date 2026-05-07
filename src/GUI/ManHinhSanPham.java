@@ -873,7 +873,6 @@ public class ManHinhSanPham extends JPanel {
     private void setErrorBorder(JTextField t) { if(t!=null) t.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(Color.RED, 2), new EmptyBorder(0, 8, 0, 8))); }
 
     private void thucHienLuu() {
-        // Reset viền báo lỗi
         resetBorder(txtTen); resetBorder(txtVietTat); resetBorder(txtHoatChat); 
         resetBorder(txtHamLuong); resetBorder(txtVAT); 
         if(txtGiaBan != null) resetBorder(txtGiaBan);
@@ -904,33 +903,44 @@ public class ManHinhSanPham extends JPanel {
             if (firstError != null) firstError.requestFocus(); // Tự động trỏ chuột về ô lỗi đầu tiên
             return; 
         }
+        List<String> formatErrors = new ArrayList<>();
 
-        // =========================================================
-        // [ĐÃ FIX] BẮT LỖI SỐ: GIÁ BÁN KHÔNG ĐƯỢC PHÉP = 0
-        // =========================================================
+        if (hamLuong.trim().startsWith("-")) {
+            formatErrors.add("- Hàm lượng không được mang giá trị âm!");
+            setErrorBorder(txtHamLuong);
+            if (firstError == null) firstError = txtHamLuong;
+        }
+
         double vat = 0, giaBan = 0;
         try {
             vat = Double.parseDouble(vatStr);
-            giaBan = Double.parseDouble(giaBanStr);
-            
             if (vat < 0) {
+                formatErrors.add("- Thuế VAT không được là số âm!");
                 setErrorBorder(txtVAT);
-                showCustomNotification("SAI ĐỊNH DẠNG", "Thuế VAT không được là số âm!", "ERROR");
-                txtVAT.requestFocus();
-                return;
-            }
-            if (giaBan <= 0) { // Đã sửa thành <= 0
-                if (txtGiaBan != null) setErrorBorder(txtGiaBan);
-                showCustomNotification("GIÁ BÁN KHÔNG HỢP LỆ", "Giá bán phải là số dương lớn hơn 0!", "ERROR");
-                if (txtGiaBan != null) txtGiaBan.requestFocus();
-                return;
+                if (firstError == null) firstError = txtVAT;
             }
         } catch (NumberFormatException e) {
-            setErrorBorder(txtVAT); if(txtGiaBan!=null) setErrorBorder(txtGiaBan);
-            showCustomNotification("SAI ĐỊNH DẠNG", "VAT và Giá bán phải là số hợp lệ!", "ERROR"); 
-            return;
+            formatErrors.add("- Thuế VAT phải là số hợp lệ!");
+            setErrorBorder(txtVAT);
+            if (firstError == null) firstError = txtVAT;
         }
-
+        try {
+            giaBan = Double.parseDouble(giaBanStr);
+            if (giaBan <= 0) {
+                formatErrors.add("- Giá bán phải là số dương lớn hơn 0!");
+                if (txtGiaBan != null) setErrorBorder(txtGiaBan);
+                if (firstError == null) firstError = txtGiaBan;
+            }
+        } catch (NumberFormatException e) {
+            formatErrors.add("- Giá bán phải là số hợp lệ!");
+            if (txtGiaBan != null) setErrorBorder(txtGiaBan);
+            if (firstError == null) firstError = txtGiaBan;
+        }
+        if (!formatErrors.isEmpty()) {
+            showCustomNotification("SAI ĐỊNH DẠNG", String.join("\n", formatErrors), "ERROR");
+            if (firstError != null) firstError.requestFocus();
+            return; 
+        }
      // Thu thập bảng quy đổi 3 cột
         List<Object[]> dsDonVi = new ArrayList<>();
         String dvtGoc = cbDVT.getSelectedItem().toString().trim();
@@ -1206,7 +1216,6 @@ public class ManHinhSanPham extends JPanel {
     private JLabel createLabelFilter(String t) { JLabel l = new JLabel(t); l.setFont(new Font("Segoe UI", Font.BOLD, 14)); l.setBorder(new EmptyBorder(10, 15, 5, 0)); return l; }
 
     private void applyThinScrollBar(JScrollPane sp) {
-        // [FIX LỖI 1]: Tăng mạnh tốc độ cuộn chuột (UnitIncrement) để hết bị cứng
         sp.getVerticalScrollBar().setUnitIncrement(20);
         sp.getHorizontalScrollBar().setUnitIncrement(20);
 
