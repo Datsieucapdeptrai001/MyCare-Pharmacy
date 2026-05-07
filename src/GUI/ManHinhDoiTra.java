@@ -10,8 +10,14 @@ import java.util.ArrayList;
 import java.util.List;
 import BUS.*;
 import Utils.UserSession;
+import javax.swing.Timer;
+import java.time.LocalDateTime;
+import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
 public class ManHinhDoiTra extends JPanel {
-    
+	private Timer autoCancelTimer;
+	private java.util.Map<String, java.time.LocalDateTime> mapThoiGianTao = new java.util.HashMap<>();
     private JTable table;
     private DefaultTableModel model;
     private TableRowSorter<DefaultTableModel> sorter;
@@ -20,25 +26,26 @@ public class ManHinhDoiTra extends JPanel {
     private JTextField txtSearch;
     private BUS_HoaDon busHD = new BUS_HoaDon();
     private BUS_ChiTietHoaDon busCTHD = new BUS_ChiTietHoaDon();
- // --- CÁC BIẾN CHO KHUNG CHI TIẾT SỔ XUỐNG ---
     private JPanel pnlDetail, pnlRightWrapper; // Bổ sung pnlRightWrapper
     private JLabel lblDetailTitle, lblDetailDate, lblDetailEmp;
     private JPanel pnlDetailProducts;
     private String expandedMaPhieu = ""; 
     private final int ROW_HEIGHT_NORMAL = 55;
     private int currentDetailHeight = 220;
+    private JLabel lblDetailTimer;
     public ManHinhDoiTra() {
         initUI();
         loadDataToTable();
         
-        // --- THÊM ĐOẠN NÀY ĐỂ TỰ ĐỘNG LÀM MỚI BẢNG ĐỔI TRẢ KHI MỞ TAB ---
+        // Kích hoạt đồng hồ đếm ngược trên bảng
+        khoiDongBoDemNguoc(); 
+        
         this.addComponentListener(new java.awt.event.ComponentAdapter() {
             @Override
             public void componentShown(java.awt.event.ComponentEvent e) {
                 loadDataToTable(); 
             }
         });
-        // ---------------------------------------------------------------
     }
 
     private void initUI() {
@@ -358,6 +365,7 @@ public class ManHinhDoiTra extends JPanel {
 
     private void loadDataToTable() {
         model.setRowCount(0);
+        mapThoiGianTao.clear();
         BUS_TraHang busTra = new BUS_TraHang();
         DAO.DAO_HoaDon daoHD = new DAO.DAO_HoaDon();
 
@@ -537,10 +545,25 @@ public class ManHinhDoiTra extends JPanel {
                 lbl.setFont(new Font("Segoe UI", Font.BOLD, 14)); lbl.setForeground(Color.decode("#DC2626"));
             }
             if (c == 7) { 
-                if (v.equals("Hoàn thành")) { lbl.setBackground(Color.decode("#DCFCE7")); lbl.setForeground(Color.decode("#10B981")); }
-                else if (v.equals("Chờ xử lý")) { lbl.setBackground(Color.decode("#FEF3C7")); lbl.setForeground(Color.decode("#D97706")); } 
-                else if (v.equals("Từ chối")) { lbl.setBackground(Color.decode("#FEE2E2")); lbl.setForeground(Color.decode("#EF4444")); } 
-                else { lbl.setBackground(Color.decode("#F3F4F6")); lbl.setForeground(Color.decode("#6B7280")); }
+                String statusStr = (v != null) ? v.toString() : "";
+                lbl.setText(statusStr); // Chỉ hiển thị trạng thái gốc từ Database/Model
+                
+                if (statusStr.equals("Hoàn thành")) { 
+                    lbl.setBackground(Color.decode("#DCFCE7")); 
+                    lbl.setForeground(Color.decode("#10B981")); 
+                }
+                else if (statusStr.equals("Chờ xử lý")) { 
+                    lbl.setBackground(Color.decode("#FEF3C7")); 
+                    lbl.setForeground(Color.decode("#D97706")); 
+                } 
+                else if (statusStr.equals("Từ chối")) { 
+                    lbl.setBackground(Color.decode("#FEE2E2")); 
+                    lbl.setForeground(Color.decode("#EF4444")); 
+                } 
+                else { 
+                    lbl.setBackground(Color.decode("#F3F4F6")); 
+                    lbl.setForeground(Color.decode("#6B7280")); 
+                }
             }
             return lbl;
         }
@@ -568,8 +591,16 @@ public class ManHinhDoiTra extends JPanel {
         lblDetailTitle.setFont(new Font("Segoe UI", Font.BOLD, 15));
         lblDetailDate = new JLabel("Ngày tạo: --/--/----");
         lblDetailDate.setForeground(Color.GRAY);
+        
+        // --- THÊM KHỐI CODE SAU ĐÂY VÀO ---
+        lblDetailTimer = new JLabel("");
+        lblDetailTimer.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        lblDetailTimer.setForeground(Color.decode("#E11D48")); // Màu đỏ nổi bật
+        lblDetailTimer.setBorder(new EmptyBorder(0, 15, 0, 0));
+        
         pnlLeftTitle.add(lblDetailTitle);
         pnlLeftTitle.add(lblDetailDate);
+        pnlLeftTitle.add(lblDetailTimer); // Add thêm label đếm ngược vào giao diện
 
         lblDetailEmp = new JLabel("Nhân viên: Hệ thống"); 
         lblDetailEmp.setFont(new Font("Segoe UI", Font.BOLD, 13));
@@ -682,7 +713,7 @@ public class ManHinhDoiTra extends JPanel {
     private int showDetailPanel(String maPhieu, String ngayTao) {
         lblDetailTitle.setText("Chi tiết phiếu " + maPhieu);
         lblDetailDate.setText("Ngày tạo: " + ngayTao);
-        
+        lblDetailTimer.setText("");
         String tenNV = "Hệ thống";
         try { if (Utils.UserSession.getInstance() != null) tenNV = Utils.UserSession.getInstance().getTenHienThi(); } catch (Exception e) {}
         lblDetailEmp.setText("Nhân viên: " + tenNV);
@@ -1066,5 +1097,90 @@ public class ManHinhDoiTra extends JPanel {
 
         dialog.add(pnlMain); dialog.setSize(440, 260); dialog.setLocationRelativeTo(this); dialog.setVisible(true);
         return result[0];
+    }
+    private void khoiDongBoDemNguoc() {
+        if (autoCancelTimer != null) autoCancelTimer.stop();
+        
+        autoCancelTimer = new Timer(1000, e -> {
+            for (int i = 0; i < model.getRowCount(); i++) {
+                String trangThai = model.getValueAt(i, 7) != null ? model.getValueAt(i, 7).toString() : "";
+                
+                // Chỉ xử lý nếu đúng là "Chờ xử lý"
+                if (trangThai.trim().equals("Chờ xử lý")) {
+                    String maPhieu = model.getValueAt(i, 0).toString();
+                    java.time.LocalDateTime thoiGianTao = mapThoiGianTao.get(maPhieu);
+                    
+                    if (thoiGianTao == null) {
+                        thoiGianTao = layThoiGianTaoTuDB(maPhieu);
+                        if (thoiGianTao != null) {
+                            mapThoiGianTao.put(maPhieu, thoiGianTao);
+                        } else {
+                            // Nếu DB trả về null (Không tìm thấy giờ), gán giờ mặc định quá hạn để hủy luôn
+                            mapThoiGianTao.put(maPhieu, java.time.LocalDateTime.now().minusMinutes(10));
+                            continue; // Bỏ qua giây này, chờ giây sau xử lý
+                        }
+                    }
+                    
+                    long giayDaQua = java.time.Duration.between(thoiGianTao, java.time.LocalDateTime.now()).getSeconds();
+                    long giayConLai = 600 - giayDaQua; 
+                    
+                    if (giayConLai <= 0) {
+                        // 1. GỌI DB HỦY PHIẾU
+                        huyPhieuTuDong(maPhieu);
+                        
+                        // 2. [QUAN TRỌNG] ĐỔI TRẠNG THÁI NGAY TRÊN MODEL ĐỂ DỪNG VÒNG LẶP KẸT LAG
+                        model.setValueAt("Từ chối", i, 7); 
+                        
+                        // 3. THÔNG BÁO HẾT GIỜ (Không đóng sập Detail Panel của người dùng)
+                        if (pnlDetail.isVisible() && maPhieu.equals(expandedMaPhieu)) {
+                            lblDetailTimer.setText("(Đã hủy tự động do quá hạn)");
+                            lblDetailTimer.setForeground(Color.decode("#EF4444")); // Màu đỏ
+                        }
+                        
+                    } else {
+                        // 4. NẾU CHƯA HẾT GIỜ VÀ PANEL ĐANG MỞ -> HIỂN THỊ THỜI GIAN
+                        if (pnlDetail.isVisible() && maPhieu.equals(expandedMaPhieu)) {
+                            long m = giayConLai / 60;
+                            long s = giayConLai % 60;
+                            lblDetailTimer.setText(String.format("(Tự hủy sau: %02d:%02d)", m, s));
+                            lblDetailTimer.setForeground(Color.decode("#E11D48")); 
+                        }
+                    }
+                }
+            }
+        });
+        autoCancelTimer.start();
+    }
+
+    // 2. Lấy thời gian gốc tạo hóa đơn
+    private java.time.LocalDateTime layThoiGianTaoTuDB(String maPhieu) {
+        try (java.sql.Connection con = ConnectDB.ConnectDB.getInstance().getConnection()) {
+            String sql = "SELECT ngayLapHD FROM HoaDon WHERE id = ?";
+            try (java.sql.PreparedStatement pst = con.prepareStatement(sql)) {
+                pst.setString(1, maPhieu);
+                try (java.sql.ResultSet rs = pst.executeQuery()) {
+                    if (rs.next()) {
+                        java.sql.Timestamp ts = rs.getTimestamp("ngayLapHD");
+                        if (ts != null) return ts.toLocalDateTime();
+                    }
+                }
+            }
+        } catch (Exception ex) {}
+        return null;
+    }
+
+    // 3. ĐÃ FIX LỖI SQL: Hủy phiếu tự động (Không dùng cột trangThai)
+    private void huyPhieuTuDong(String maPhieu) {
+        try (java.sql.Connection con = ConnectDB.ConnectDB.getInstance().getConnection()) {
+            // Cập nhật vào cột ghiChu thay vì cột trangThai không tồn tại
+            String sql = "UPDATE HoaDon SET ghiChu = CONCAT(ghiChu, N' | Đã hủy (Tự động quá hạn 10p)') WHERE id = ?";
+            try (java.sql.PreparedStatement pst = con.prepareStatement(sql)) {
+                pst.setString(1, maPhieu);
+                pst.executeUpdate();
+                mapThoiGianTao.remove(maPhieu); 
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
     }
 }
