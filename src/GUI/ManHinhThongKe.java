@@ -420,14 +420,26 @@ public class ManHinhThongKe extends JPanel {
         return p;
     }
 
-    // FILTER BAR
+ // FILTER BAR - ĐÃ NÂNG CẤP CHỐNG LẸM UI
     private JPanel buildFilterBar() {
-        JPanel p = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 8));
+        // 1. Panel chính dùng BoxLayout xếp dọc để chia thành nhiều dòng
+        JPanel p = new JPanel();
+        p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
         p.setBackground(Color.WHITE);
 
+        JPanel pnlTab = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 8));
+        pnlTab.setBackground(Color.WHITE);
+        
         btnDT = makeTabBtn(" Doanh thu & SP", true);
         btnDT.setIcon(new MenuIcon("TAB_CHART"));
         btnNV = makeTabBtn("👥 Nhân viên", false);
+        
+        pnlTab.add(btnDT); 
+        pnlTab.add(btnNV);
+
+        JPanel pnlFilter = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 4));
+        pnlFilter.setBackground(Color.WHITE);
+        pnlFilter.setBorder(new EmptyBorder(0, 0, 8, 0)); // Căn lề dưới cho thoáng
 
         // Group Toggle
         JPanel pnlToggle = new JPanel(new GridLayout(1, 3));
@@ -443,7 +455,7 @@ public class ManHinhThongKe extends JPanel {
         btnTuyChinh.setBackground(inactiveBg); btnTuyChinh.setForeground(inactiveFg);
         pnlToggle.add(btnThang); pnlToggle.add(btnQuy); pnlToggle.add(btnTuyChinh);
 
-        // CÁC Ô TÙY CHỌN THỜI GIAN
+        // Các ô tùy chọn thời gian
         JPanel pnlTimeOptions = new JPanel(new CardLayout());
         pnlTimeOptions.setOpaque(false);
 
@@ -456,7 +468,6 @@ public class ManHinhThongKe extends JPanel {
         txtTuNgay = new JTextField("dd/mm/yyyy", 8); txtTuNgay.setEditable(false); txtTuNgay.setBackground(Color.WHITE);
         txtDenNgay = new JTextField("dd/mm/yyyy", 8); txtDenNgay.setEditable(false); txtDenNgay.setBackground(Color.WHITE);
         
-        // GẮN SỰ KIỆN MỞ LỊCH CHO 2 Ô TEXTFIELD
         MouseAdapter openCal = new MouseAdapter() {
             @Override public void mouseClicked(MouseEvent e) {
                 JTextField txt = (JTextField) e.getSource();
@@ -473,23 +484,19 @@ public class ManHinhThongKe extends JPanel {
         pnlTimeOptions.add(cboQuy, "QUY");
         pnlTimeOptions.add(pnlCustomDate, "TUYCHINH");
 
-        // SỰ KIỆN ĐỔI TAB (THÁNG / QUÝ / TÙY CHỈNH)
         CardLayout cl = (CardLayout) pnlTimeOptions.getLayout();
         btnThang.addActionListener(e -> { modeLocThoiGian="THANG"; cl.show(pnlTimeOptions, "THANG"); btnThang.setBackground(activeBg); btnThang.setForeground(activeFg); btnQuy.setBackground(inactiveBg); btnQuy.setForeground(inactiveFg); btnTuyChinh.setBackground(inactiveBg); btnTuyChinh.setForeground(inactiveFg); onFilterChanged(); });
         btnQuy.addActionListener(e -> { modeLocThoiGian="QUY"; cl.show(pnlTimeOptions, "QUY"); btnQuy.setBackground(activeBg); btnQuy.setForeground(activeFg); btnThang.setBackground(inactiveBg); btnThang.setForeground(inactiveFg); btnTuyChinh.setBackground(inactiveBg); btnTuyChinh.setForeground(inactiveFg); onFilterChanged(); });
         btnTuyChinh.addActionListener(e -> { modeLocThoiGian="TUYCHINH"; cl.show(pnlTimeOptions, "TUYCHINH"); btnTuyChinh.setBackground(activeBg); btnTuyChinh.setForeground(activeFg); btnThang.setBackground(inactiveBg); btnThang.setForeground(inactiveFg); btnQuy.setBackground(inactiveBg); btnQuy.setForeground(inactiveFg); });
 
-        // SỰ KIỆN CHỌN COMBOBOX
         cboThang.addActionListener(e -> onFilterChanged());
         cboQuy.addActionListener(e -> onFilterChanged());
         cboKyLoc = cboThang; 
 
-        // GẮN SỰ KIỆN CHO NÚT NĂM
         btnNamPicker = new JButton(" " + currentYear + " ▼");
         btnNamPicker.setIcon(new MenuIcon("CALENDAR"));
         btnNamPicker.addActionListener(e -> showYearCalendarPopup(btnNamPicker)); 
         
-        // GẮN SỰ KIỆN DƯỢC SĨ
         cboNhanVien = new JComboBox<>(new String[]{"Tất cả"});
         styleCombo(cboNhanVien);
         cboNhanVien.addActionListener(e -> applyNVFilter());
@@ -499,8 +506,14 @@ public class ManHinhThongKe extends JPanel {
         pnlFilterDuocSi.add(new JLabel("| Dược sĩ:")); pnlFilterDuocSi.add(cboNhanVien);
         pnlFilterDuocSi.setVisible(false); 
 
-        p.add(btnDT); p.add(btnNV); p.add(new JLabel(" | "));
-        p.add(pnlToggle); p.add(pnlTimeOptions); p.add(btnNamPicker); p.add(pnlFilterDuocSi);
+        // Ráp các thành phần lọc vào dòng 2
+        pnlFilter.add(pnlToggle); 
+        pnlFilter.add(pnlTimeOptions); 
+        pnlFilter.add(btnNamPicker); 
+        pnlFilter.add(pnlFilterDuocSi);
+
+        p.add(pnlTab);
+        p.add(pnlFilter);
 
         return p;
     }
@@ -830,12 +843,18 @@ public class ManHinhThongKe extends JPanel {
             addMouseMotionListener(new MouseAdapter() {
                 @Override public void mouseMoved(MouseEvent e) {
                     hoverIdx = -1; tooltipPt = null;
-                    int barW = 20, gap = 4; // Tăng độ rộng cột cho mập mạp
-                    int groupW = barW * 3 + gap * 2 + 18;
                     int startX = 50, maxH = getHeight() - 60;
+                    int w = getWidth();
+                    // Tính động độ rộng cột theo cửa sổ
+                    int availW = w - startX - 10;
+                    int groupW = Math.max(10, availW / 12); 
+                    int gap = 2;
+                    int barW = Math.max(2, (groupW - gap * 2 - 4) / 3);
+
                     double maxVal = calcMaxVal();
                     for (int i = 0; i < 12; i++) {
-                        int gx = startX + i * groupW;
+                        int offset = (groupW - (barW * 3 + gap * 2)) / 2;
+                        int gx = startX + i * groupW + offset;
                         for (int b = 0; b < 3; b++) {
                             int bx  = gx + b * (barW + gap);
                             double val = (b==0)?DT_DATA[i]:(b==1)?CP_DATA[i]:Math.max(0, DT_DATA[i]-CP_DATA[i]);
@@ -855,7 +874,6 @@ public class ManHinhThongKe extends JPanel {
 
         private double calcMaxVal() {
             double max = 10.0;
-            // FIX LỖI THỦNG NÓC: Phải dò cả mảng Chi Phí xem có ai vượt Doanh thu không
             for (double v : DT_DATA) if (v > max) max = v;
             for (double v : CP_DATA) if (v > max) max = v; 
             return max * 1.2;
@@ -866,25 +884,32 @@ public class ManHinhThongKe extends JPanel {
             Graphics2D g2 = (Graphics2D)g;
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             int w = getWidth(), h = getHeight();
-            int barW = 20, gap = 4, groupW = barW*3 + gap*2 + 18; 
-            int startX = 50, baseY = h-35, maxH = h-60;
+            int startX = 50, baseY = h - 35, maxH = h - 60;
+            
+            // KÍCH THƯỚC ĐỘNG:
+            int availW = w - startX - 10;
+            int groupW = Math.max(10, availW / 12); // Chia đều 12 tháng
+            int gap = 2;
+            int barW = Math.max(2, (groupW - gap * 2 - 4) / 3); // 3 cột mỗi tháng
+
             double maxVal = calcMaxVal();
             Color[] barColors = {Color.decode("#1A73E8"), Color.decode("#FFAB00"), Color.decode("#00A76F")};
 
-            // Ve cac duong ke ngang (Grid lines)
+            // Vẽ line trục Y
             g2.setStroke(new BasicStroke(0.5f));
             for (double v = 0; v <= maxVal; v += Math.max(1.0, maxVal/5.0)) {
                 int y = baseY - (int)(v/maxVal*maxH);
                 g2.setColor(Color.decode("#F0F0F0")); g2.drawLine(startX, y, w-10, y);
                 g2.setColor(Color.decode("#AAAAAA")); g2.setFont(new Font("Segoe UI", Font.PLAIN, 10));
-                
-                // Dong bo chu M/K o truc Y
                 String axisLabel = formatM(v).replace(" đ", "").replace("đ", "");
                 g2.drawString(axisLabel, 4, y+4);
             }
 
+            // Vẽ cột
             for (int i = 0; i < 12; i++) {
-                int gx = startX + i*groupW;
+                int offset = (groupW - (barW * 3 + gap * 2)) / 2; // Căn giữa cụm cột
+                int gx = startX + i * groupW + offset;
+                
                 double[] vals = {DT_DATA[i], CP_DATA[i], Math.max(0, DT_DATA[i]-CP_DATA[i])};
                 for (int b = 0; b < 3; b++) {
                     int bh = maxVal>0 ? (int)(vals[b]/maxVal*maxH) : 0;
@@ -898,20 +923,19 @@ public class ManHinhThongKe extends JPanel {
                         c = Color.getHSBColor(hsb[0], hsb[1], Math.min(1f, hsb[2]*1.2f));
                     }
                     g2.setColor(c);
-                    
-                    // Bo góc 8px ở trên cùng cho xịn
                     g2.fillRoundRect(bx, by, barW, bh, 8, 8);
-                    
-                    // Che phần bo góc ở dưới đáy để cột cắm thẳng xuống mốc 0
-                    if (bh > 4) {
-                        g2.fillRect(bx, by + 4, barW, bh - 4);
-                    }
+                    if (bh > 4) g2.fillRect(bx, by + 4, barW, bh - 4);
                 }
-                g2.setColor(Color.decode("#888888")); g2.setFont(new Font("Segoe UI", Font.BOLD, 10));
-                g2.drawString(THANG[i], gx+12, h-16);
+                
+                // Trục X (T1, T2...) - Ẩn chữ nếu khung quá chật
+                if (groupW > 20) {
+                    g2.setColor(Color.decode("#888888")); g2.setFont(new Font("Segoe UI", Font.BOLD, 10));
+                    int lblW = g2.getFontMetrics().stringWidth(THANG[i]);
+                    g2.drawString(THANG[i], startX + i * groupW + (groupW - lblW)/2, h - 16);
+                }
             }
 
-            // Legend (chú thích màu)
+            // Legend 
             String[] legends = {"Doanh thu","Chi phí","Lợi nhuận"};
             int lx = startX;
             for (int b = 0; b < 3; b++) {
@@ -921,7 +945,7 @@ public class ManHinhThongKe extends JPanel {
                 lx += 90;
             }
 
-         // Tooltip (hien thi khi re chuot)
+            // Tooltip
             if (hoverIdx >= 0 && tooltipPt != null) {
                 int i = hoverIdx;
                 String txt = String.format("Tháng %d  |  DT: %s  |  CP: %s  |  LN: %s", 
@@ -1027,7 +1051,7 @@ public class ManHinhThongKe extends JPanel {
         }
     }
 
-    // BIỂU ĐỒ DONUT
+ // BIỂU ĐỒ DONUT
     class DonutChart extends JPanel {
         private int   hoverIdx  = -1;
         private Point tooltipPt = null;
@@ -1036,10 +1060,17 @@ public class ManHinhThongKe extends JPanel {
             setBackground(Color.WHITE);
             addMouseMotionListener(new MouseAdapter() {
                 @Override public void mouseMoved(MouseEvent e) {
-                    double cx = getWidth()/2.0, cy = getHeight()/2.0;
-                    double dist = Math.hypot(e.getX()-cx, e.getY()-cy);
-                    int r = Math.min(getWidth(),getHeight())/2-10, inner = r-50;
                     hoverIdx = -1; tooltipPt = null;
+                    int w = getWidth(), h = getHeight();
+                    int legendSpace = 40; // Dành 40px chiều cao cho chú thích
+                    int size = Math.min(w, h - legendSpace) - 20;
+                    if (size < 10) return;
+
+                    double cx = w / 2.0, cy = (h - legendSpace) / 2.0;
+                    double dist = Math.hypot(e.getX() - cx, e.getY() - cy);
+                    double r = size / 2.0;
+                    double inner = r * 0.55; // Khoét rỗng 55% bán kính
+
                     if (dist >= inner && dist <= r) {
                         double angle = Math.toDegrees(Math.atan2(-(e.getY()-cy), e.getX()-cx));
                         if (angle < 0) angle += 360;
@@ -1062,41 +1093,59 @@ public class ManHinhThongKe extends JPanel {
             Graphics2D g2 = (Graphics2D)g;
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             int w = getWidth(), h = getHeight();
-            int size = Math.min(w,h)-40, x=(w-size)/2, y=(h-size)/2;
+            int legendSpace = 40; // Dành chỗ cho Legend
+            int size = Math.min(w, h - legendSpace) - 20;
+            if (size < 10) return;
+
+            int x = (w - size) / 2;
+            int y = (h - legendSpace - size) / 2;
+
             double total = 0; for (int v : DONUT_VALS) total += v;
             int startAngle = 0;
+            double radius = size / 2.0;
+            double labelRadius = radius * 0.65; // Đặt chữ % ở 65% bán kính
+
             for (int i = 0; i < DONUT_VALS.length; i++) {
                 int sweep = (int)Math.round(DONUT_VALS[i]/total*360);
                 Color c = DONUT_COLORS[i];
                 if (i == hoverIdx) {
                     float[] hsb = Color.RGBtoHSB(c.getRed(),c.getGreen(),c.getBlue(),null);
                     c = Color.getHSBColor(hsb[0], hsb[1], Math.min(1f, hsb[2]*1.15f));
-                    g2.setColor(c); g2.fillArc(x-5,y-5,size+10,size+10,startAngle,sweep);
+                    g2.setColor(c); g2.fillArc(x-5, y-5, size+10, size+10, startAngle, sweep);
                 } else {
-                    g2.setColor(c); g2.fillArc(x,y,size,size,startAngle,sweep);
+                    g2.setColor(c); g2.fillArc(x, y, size, size, startAngle, sweep);
                 }
+                // Vẽ % linh động theo bán kính hiện tại
                 double mid = Math.toRadians(startAngle + sweep/2.0);
-                int lx = (int)(x+size/2.0+(size/2.0-35)*Math.cos(mid));
-                int ly = (int)(y+size/2.0-(size/2.0-35)*Math.sin(mid));
-                g2.setColor(Color.WHITE); g2.setFont(new Font("Segoe UI",Font.BOLD,11));
-                g2.drawString((int)Math.round(DONUT_VALS[i]/total*100)+"%", lx-10, ly+4);
+                int lx = (int)(x + radius + labelRadius * Math.cos(mid));
+                int ly = (int)(y + radius - labelRadius * Math.sin(mid));
+
+                g2.setColor(Color.WHITE); g2.setFont(new Font("Segoe UI", Font.BOLD, 11));
+                int pct = (int)Math.round(DONUT_VALS[i]/total*100);
+                g2.drawString(pct + "%", lx - 10, ly + 4);
                 startAngle += sweep;
             }
+
+            // Khoét lỗ (Dùng tỷ lệ 55% thay vì trừ số cứng)
             g2.setColor(Color.WHITE);
-            int hole = size-100;
-            g2.fillOval(x+50, y+50, hole, hole);
+            int holeSize = (int)(size * 0.55);
+            int holeX = x + (size - holeSize) / 2;
+            int holeY = y + (size - holeSize) / 2;
+            g2.fillOval(holeX, holeY, holeSize, holeSize);
             
-            int ly2 = y + size + 8;
-            g2.setFont(new Font("Segoe UI",Font.PLAIN,10));
-            int lx2 = x;
+            // Vẽ Legend tự động căn giữa và xuống dòng
+            int ly2 = h - legendSpace + 10;
+            g2.setFont(new Font("Segoe UI", Font.PLAIN, 10));
+            int lx2 = Math.max(10, (w - (4 * 70)) / 2); // Căn giữa
             for (int i = 0; i < 4; i++) {
-                if (lx2 + 80 > w) { lx2 = x; ly2 += 16; }
-                g2.setColor(DONUT_COLORS[i]); g2.fillRoundRect(lx2,ly2,10,10,3,3);
-                g2.setColor(Color.decode("#555555")); g2.drawString(DONUT_LABELS[i], lx2+14, ly2+10);
-                lx2 += 90;
+                if (lx2 + 70 > w) { lx2 = 10; ly2 += 16; } // Wrap nều hẹp
+                g2.setColor(DONUT_COLORS[i]); g2.fillRoundRect(lx2, ly2, 10, 10, 3, 3);
+                g2.setColor(Color.decode("#555555")); g2.drawString(DONUT_LABELS[i], lx2 + 14, ly2 + 10);
+                lx2 += 80;
             }
+
             if (hoverIdx >= 0 && tooltipPt != null) {
-                drawTooltip(g2, tooltipPt.x+8, tooltipPt.y-28,
+                drawTooltip(g2, Math.min(tooltipPt.x + 8, w - 100), tooltipPt.y - 28,
                     DONUT_LABELS[hoverIdx] + ": " + (int)Math.round(DONUT_VALS[hoverIdx]/total*100) + "%");
             }
         }
