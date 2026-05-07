@@ -1221,7 +1221,7 @@ public class ManHinhThongKe extends JPanel {
             });
         }
 
-        void setFilter(int idx) { this.filterIdx=idx; repaint(); }
+        void setFilter(int idx) { this.filterIdx=idx; this.hoverIdx=-1; this.tooltipPt=null; repaint(); }
 
         @Override protected void paintComponent(Graphics g) {
             super.paintComponent(g);
@@ -1264,7 +1264,7 @@ public class ManHinhThongKe extends JPanel {
                 g2.drawString(nv<NV_SHORT.length?NV_SHORT[nv]:"NV"+(nv+1), gx+2, h-12);
             }
 
-            if (hoverIdx>=0 && tooltipPt!=null) {
+            if (hoverIdx>=0 && hoverIdx<nvIdxs.length && tooltipPt!=null) {
                 int nv = nvIdxs[hoverIdx];
                 String txt = String.format("%s  Sáng:%d | Chiều:%d | Tối:%d HĐ",
                     nv<NV_NAMES.length?NV_NAMES[nv]:"NV"+(nv+1),
