@@ -1308,7 +1308,7 @@ public class ManHinhSanPham extends JPanel {
             Sheet sheet = workbook.createSheet("Danh Sach San Pham");
             
             Row headerRow = sheet.createRow(0);
-            String[] headers = {"id", "danhMuc", "dang", "ten", "tenVietTat", "nhaSanXuat", "hoatChat", "thueVAT", "hamLuong", "moTa", "donViDoCoBan", "ngayTao"};
+            String[] headers = {"id", "danhMuc", "dang", "ten", "tenVietTat", "nhaSanXuat", "hoatChat", "thueVAT", "hamLuong", "moTa", "donViDoCoBan", "giaBan", "ngayTao"};
             
             CellStyle headerStyle = workbook.createCellStyle();
             headerStyle.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
@@ -1338,7 +1338,8 @@ public class ManHinhSanPham extends JPanel {
                 row.createCell(8).setCellValue((sp.getHamLuong() != null && !sp.getHamLuong().isEmpty()) ? sp.getHamLuong() : "NULL");
                 row.createCell(9).setCellValue((sp.getMoTa() != null && !sp.getMoTa().isEmpty()) ? sp.getMoTa() : "NULL");
                 row.createCell(10).setCellValue(sp.getDonViDoCoBan() != null ? sp.getDonViDoCoBan() : "");
-                row.createCell(11).setCellValue(sp.getNgayTao() != null ? sp.getNgayTao().format(dtf) : "");
+                row.createCell(11).setCellValue(sp.getGiaBan());
+                row.createCell(12).setCellValue(sp.getNgayTao() != null ? sp.getNgayTao().format(dtf) : "");
             }
             
             for (int i = 0; i < headers.length; i++) {
@@ -1438,20 +1439,19 @@ public class ManHinhSanPham extends JPanel {
                                 bus.capNhatSP(spCu.getId(), mapToDbDanhMuc(loai), mapToDbDang(dang), ten, vietTat, nsx, hoatChat, vat, hamLuong, moTa, donVi, giaBanCu, new ArrayList<>());
                                 updateCount++;
                             } else {
-                                // Đọc giaBan từ cột 11 của file Excel
-                                double giaBanMoi = 0;
+                            	double giaBanMoi = 0;
                                 try {
                                     String giaBanStr = formatter.formatCellValue(row.getCell(11))
                                                                 .replace(",", "").replace(".", "").trim();
                                     if (!giaBanStr.isEmpty() && !giaBanStr.equals("NULL"))
                                         giaBanMoi = Double.parseDouble(giaBanStr);
                                 } catch (Exception ignored) {}
-                                if (giaBanMoi <= 0) {
-                                    missingDataRows.add(i + 1); // Bỏ qua dòng không có giá hợp lệ
-                                    continue;
+
+                                if (giaBanMoi < 0) {
+                                    giaBanMoi = 0; 
                                 }
+                                
                                 String newId = bus.taoMaMoi();
-                                // ĐÃ FIX: Thêm tham số new ArrayList<>() vào cuối hàm
                                 boolean isSaved = bus.themSP(newId, mapToDbDanhMuc(loai), mapToDbDang(dang), ten, vietTat, nsx, hoatChat, vat, hamLuong, moTa, donVi, giaBanMoi, new ArrayList<>());
                                 if (isSaved) {
                                     successCount++;
