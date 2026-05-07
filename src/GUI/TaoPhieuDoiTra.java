@@ -185,11 +185,12 @@ public class TaoPhieuDoiTra extends JDialog {
         btnTraHang = new JButton("Trả hàng");
         btnDoiHang = new JButton("Đổi hàng");
         cboLyDo = new JComboBox<>(new String[]{
-                "Lỗi do NSX / Giao sai thuốc (Hỗ trợ 100%)", 
-                "Bác sĩ đổi phác đồ / Dị ứng (Hỗ trợ 100%)", 
-                "Sản phẩm cận date / Hết hạn (Hỗ trợ 100%)", 
-                "Lỗi bảo quản từ phía khách hàng (Từ chối)"
-            });
+        	    "Lỗi do NSX / Giao sai thuốc (Hỗ trợ 100%)", 
+        	    "Bác sĩ đổi phác đồ / Dị ứng (Hỗ trợ 100%)", 
+        	    "Sản phẩm cận date / Hết hạn (Hỗ trợ 100%)", 
+        	    "Lỗi bảo quản từ phía khách hàng (Từ chối)",
+        	    "Khách hàng đổi ý (Hỗ trợ theo thời gian)" // <-- Dòng mới thêm
+        	});
         
         // THÊM CỘT ĐVT VÀO BẢNG SẢN PHẨM TRẢ
         String[] cols = {"Chọn", "Sản phẩm", "ĐVT", "Số lượng", "Đơn giá", "MaxSL"};
@@ -484,6 +485,9 @@ public class TaoPhieuDoiTra extends JDialog {
                         lblId.setForeground(Color.decode("#1967D2"));
                         pnlItem.add(lblId, BorderLayout.CENTER);
 
+                        // FIX LỖI "effectively final": Tạo một biến final để truyền an toàn vào Timer
+                        final String finalIdHD = idHD;
+
                         pnlItem.addMouseListener(new java.awt.event.MouseAdapter() {
                             public void mouseEntered(java.awt.event.MouseEvent evt) { pnlItem.setBackground(Color.decode("#F8FAFC")); }
                             public void mouseExited(java.awt.event.MouseEvent evt) { pnlItem.setBackground(Color.WHITE); }
@@ -491,14 +495,25 @@ public class TaoPhieuDoiTra extends JDialog {
                             public void mousePressed(java.awt.event.MouseEvent evt) {
                                 suggestionInvoiceMenu.setVisible(false);
                                 
-                                // FIX: Bật cờ hiệu khóa sự kiện nhập liệu
-                                isSelectingInvoice = true; 
-                                txtSearch.setText(idHD); 
-                                txtSearch.setForeground(Color.BLACK);
-                                isSelectingInvoice = false; // Tắt cờ hiệu đi
+                                // FIX NHẢY CHỮ: Chuyển focus ra khỏi ô tìm kiếm để Unikey nhả bộ đệm
+                                TaoPhieuDoiTra.this.requestFocusInWindow();
                                 
-                                // Đưa hàm xử lý nặng vào invokeLater để UI không bị đơ
-                                SwingUtilities.invokeLater(() -> xuLyTimKiemHD()); 
+                                // Chờ 50ms để Unikey xả sạch chữ thừa giống hệt bên tìm sản phẩm
+                                javax.swing.Timer timerUnikey = new javax.swing.Timer(50, e -> {
+                                    isSelectingInvoice = true; 
+                                    
+                                    // SỬ DỤNG BIẾN finalIdHD TẠI ĐÂY
+                                    txtSearch.setText(finalIdHD); 
+                                    txtSearch.setForeground(Color.BLACK);
+                                    isSelectingInvoice = false;
+                                    
+                                    SwingUtilities.invokeLater(() -> xuLyTimKiemHD()); 
+                                    
+                                    // Trả lại focus
+                                    txtSearch.requestFocusInWindow();
+                                });
+                                timerUnikey.setRepeats(false);
+                                timerUnikey.start();
                             }
                         });
                         pnlList.add(pnlItem);
@@ -1141,9 +1156,21 @@ public class TaoPhieuDoiTra extends JDialog {
         double phanTramHoan = 0.0;
         String thongBaoHoanTien = "";
 
+        // BẮT ĐẦU VÙNG CẬP NHẬT LOGIC
         if (lyDo.contains("Từ chối")) {
             phanTramHoan = 0.0;
             thongBaoHoanTien = "Từ chối (Lỗi KH)";
+        } else if (lyDo.contains("Khách hàng đổi ý")) { // Logic mới thêm vào
+            if (soGioDaMua <= 24) {
+                phanTramHoan = 100.0;
+                thongBaoHoanTien = "Hoàn 100% (≤ 24 giờ)";
+            } else if (soGioDaMua > 24 && soGioDaMua <= 72) {
+                phanTramHoan = 80.0;
+                thongBaoHoanTien = "Hoàn 80% (> 24h & ≤ 3 ngày)";
+            } else {
+                phanTramHoan = 0.0;
+                thongBaoHoanTien = "Từ chối (> 3 ngày)";
+            }
         } else if (lyDo.contains("Hỗ trợ 100%")) {
             if (soGioDaMua <= 24) {
                 phanTramHoan = 100.0;
@@ -1164,6 +1191,7 @@ public class TaoPhieuDoiTra extends JDialog {
                 thongBaoHoanTien = "Từ chối (> 3 ngày)";
             }
         }
+        // KẾT THÚC VÙNG CẬP NHẬT LOGIC
         
         if (phanTramHoan == 0.0) {
             lblBadgeHoanTien.setText(thongBaoHoanTien); lblBadgeHoanTien.setForeground(primaryRed); lblBadgeHoanTien.setBackground(Color.decode("#FEE2E2"));
@@ -1412,43 +1440,55 @@ public class TaoPhieuDoiTra extends JDialog {
                         pnlItem.add(pnlInfo, BorderLayout.CENTER); 
                         pnlItem.add(lblGia, BorderLayout.EAST);
 
-                        // SỰ KIỆN CLICK CHỌN SẢN PHẨM
+                     // SỰ KIỆN CLICK CHỌN SẢN PHẨM MỚI (ĐÃ FIX LỖI COPY NHẦM)
+                        final String tenSP = sp.getTen();
+                        final String dvtChuan = finalDvt;
+                        final double giaChuan = finalGia;
+
                         pnlItem.addMouseListener(new java.awt.event.MouseAdapter() {
                             public void mouseEntered(java.awt.event.MouseEvent evt) { pnlItem.setBackground(Color.decode("#F8FAFC")); }
                             public void mouseExited(java.awt.event.MouseEvent evt) { pnlItem.setBackground(Color.WHITE); }
                             
                             public void mousePressed(java.awt.event.MouseEvent evt) {
-                                suggestionMenu.setVisible(false); 
+                                suggestionMenu.setVisible(false);
                                 
-                                // 5. FIX NHẢY CHỮ: Chuyển focus ra khỏi ô tìm kiếm để Unikey nhả bộ đệm
+                                // FIX NHẢY CHỮ: Chuyển focus ra khỏi ô tìm kiếm để Unikey nhả bộ đệm
                                 TaoPhieuDoiTra.this.requestFocusInWindow();
-
-                                // 6. Chờ một khoảng thời gian rất ngắn (50ms) để Unikey xả sạch chữ thừa
+                                
                                 javax.swing.Timer timerUnikey = new javax.swing.Timer(50, e -> {
-                                    // Xóa sạch ô search
-                                    isSelectingProduct = true;
-                                    txtSearchNew.setText(""); 
-                                    isSelectingProduct = false;
-
-                                    // Xử lý thêm vào bảng sản phẩm mới
-                                    boolean exists = false;
-                                    for(int i=0; i < spMoiModel.getRowCount(); i++) {
-                                        if(spMoiModel.getValueAt(i, 0).equals(sp.getTen()) && spMoiModel.getValueAt(i, 1).equals(finalDvt)) {
-                                            int oldSL = Integer.parseInt(spMoiModel.getValueAt(i, 2).toString());
-                                            spMoiModel.setValueAt(oldSL + 1, i, 2); 
-                                            spMoiModel.setValueAt(String.format("%,.0fđ", (oldSL + 1) * finalGia), i, 4);
-                                            exists = true; 
+                                    isSelectingProduct = true; 
+                                    
+                                    // 1. Kiểm tra xem sản phẩm đã có trong bảng giỏ hàng chưa
+                                    boolean tonTai = false;
+                                    for (int i = 0; i < spMoiModel.getRowCount(); i++) {
+                                        if (spMoiModel.getValueAt(i, 0).toString().equals(tenSP) && 
+                                            spMoiModel.getValueAt(i, 1).toString().equals(dvtChuan)) {
+                                            int slCu = Integer.parseInt(spMoiModel.getValueAt(i, 2).toString());
+                                            spMoiModel.setValueAt(slCu + 1, i, 2); // Tăng số lượng lên 1
+                                            tonTai = true;
                                             break;
                                         }
                                     }
-                                    if(!exists) {
-                                        isUpdatingCart = true; 
-                                        spMoiModel.addRow(new Object[]{ sp.getTen(), finalDvt, 1, String.format("%,.0fđ", finalGia), String.format("%,.0fđ", finalGia) }); 
-                                        isUpdatingCart = false;
-                                    }
-                                    tinhTongTienSPMoi(); 
                                     
-                                    // Trả lại con trỏ chuột cho ô search để khách tìm tiếp
+                                    // 2. Nếu chưa có thì thêm dòng sản phẩm mới vào bảng
+                                    if (!tonTai) {
+                                        spMoiModel.addRow(new Object[]{
+                                            tenSP, 
+                                            dvtChuan, 
+                                            1, 
+                                            String.format("%,.0fđ", giaChuan), 
+                                            String.format("%,.0fđ", giaChuan)
+                                        });
+                                    }
+                                    
+                                    // 3. Xóa text đã nhập, đưa ô tìm kiếm về trạng thái ban đầu
+                                    txtSearchNew.setText("Tìm sản phẩm thay thế..."); 
+                                    txtSearchNew.setForeground(Color.GRAY);
+                                    isSelectingProduct = false;
+                                    
+                                    // 4. Tính toán lại tổng tiền chênh lệch của hóa đơn
+                                    SwingUtilities.invokeLater(() -> tinhTongTienSPMoi()); 
+                                    
                                     txtSearchNew.requestFocusInWindow();
                                 });
                                 timerUnikey.setRepeats(false);
