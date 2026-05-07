@@ -379,7 +379,7 @@ public class ManHinhDangNhap extends JFrame {
                                     UserSession.getInstance().setLoaiCa(caDangMo.getLoaiCa());
                                     
                                 } else {
-                                    DialogMoCa dlg = new DialogMoCa(ManHinhDangNhap.this);
+                                    ManHinhMoCa dlg = new ManHinhMoCa(ManHinhDangNhap.this);
                                     dlg.setVisible(true);
                                     
                                     if (!dlg.isConfirmed()) {
