@@ -19,7 +19,25 @@ public class DAO_KhuyenMai {
         try { ConnectDB.getInstance().connect(); } 
         catch (Exception e) { System.err.println("Lỗi khởi tạo kết nối DB tại DAO_KhuyenMai: " + e.getMessage()); }
     }
-
+    public List<String> layDanhSachMaKMCoHieuLuc() {
+        List<String> dsMa = new ArrayList<>();
+        // Truy vấn các khuyến mãi: Còn thời gian và trangThai = 1 (Đang hoạt động)
+        String sql = "SELECT id FROM KhuyenMai WHERE ngayBatDau <= ? AND ngayKetThuc >= ? AND trangThai = 1";
+        Connection con = ConnectDB.getInstance().getConnection();
+        try (PreparedStatement pst = con.prepareStatement(sql)) {
+            Timestamp bayGio = Timestamp.valueOf(LocalDateTime.now());
+            pst.setTimestamp(1, bayGio);
+            pst.setTimestamp(2, bayGio);
+            try (ResultSet rs = pst.executeQuery()) {
+                while (rs.next()) {
+                    dsMa.add(rs.getString("id"));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return dsMa;
+    }
     public boolean themKhuyenMai(KhuyenMai km) {
         String sql = "INSERT INTO KhuyenMai (id, tenKhuyenMai, moTa, ngayTao, ngayBatDau, ngayKetThuc) VALUES (?, ?, ?, ?, ?, ?)";
         int n = 0; Connection con = ConnectDB.getInstance().getConnection();

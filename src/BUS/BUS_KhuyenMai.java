@@ -21,7 +21,31 @@ public class BUS_KhuyenMai {
         this.daoDieuKienKhuyenMai = new DAO_DieuKienKhuyenMai();
         this.daoHinhThucKhuyenMai = new DAO_HinhThucKhuyenMai();
     }
+    public Object[] timKhuyenMaiTotNhat(double tongTienHoaDon) {
+        List<String> dsMaKM = daoKhuyenMai.layDanhSachMaKMCoHieuLuc();
+        String maTotNhat = null;
+        double tienGiamMax = 0;
 
+        for (String maKM : dsMaKM) {
+            // Kiểm tra xem hóa đơn có đủ điều kiện áp dụng mã này không (ví dụ: tối thiểu 200k, 500k)
+            if (kiemTraDieuKienKhuyenMai(maKM, tongTienHoaDon)) {
+                // Tính số tiền sau khi giảm bằng phương thức hiện có trong BUS
+                double giaSauGiam = apDungKM(maKM, tongTienHoaDon);
+                double tienGiamThucTe = tongTienHoaDon - giaSauGiam;
+
+                // So sánh để chọn cái giảm nhiều nhất
+                if (tienGiamThucTe > tienGiamMax) {
+                    tienGiamMax = tienGiamThucTe;
+                    maTotNhat = maKM;
+                }
+            }
+        }
+
+        if (maTotNhat != null) {
+            return new Object[]{maTotNhat, tienGiamMax};
+        }
+        return null;
+    }
     public boolean capNhatTrangThai(String maKM, boolean trangThai) {
         return daoKhuyenMai.capNhatTrangThai(maKM, trangThai);
     }

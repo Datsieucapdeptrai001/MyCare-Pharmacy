@@ -3992,6 +3992,9 @@ txtSearchProduct.addKeyListener(new java.awt.event.KeyAdapter() {
              java.sql.PreparedStatement pst = con.prepareStatement(sql);
              java.sql.ResultSet rs = pst.executeQuery()) {
              
+        	long maxTienGiam = 0;
+            String bestMaKM_GiamGia = "";
+
             while (rs.next()) {
                 String maKM = rs.getString("id").trim();
                 
@@ -4032,24 +4035,21 @@ txtSearchProduct.addKeyListener(new java.awt.event.KeyAdapter() {
                     
                     if (slYeuCau > 0 && slSanPhamYeuCauThucTe >= slYeuCau) {
                         duDieuKien = true;
-                        // TÍNH BỘI SỐ: (Số lượng mua thực tế / Số lượng yêu cầu) * Số lượng tặng
                         soLuongTangThucTe = (slSanPhamYeuCauThucTe / slYeuCau) * (slTang > 0 ? slTang : 1); 
                         if (unitToGive.isEmpty()) unitToGive = matchedUnit; 
                     }
                 } 
                 // TRƯỜNG HỢP 2: KHÔNG yêu cầu sản phẩm cụ thể (Tính trên tổng giỏ hàng)
                 else {
-                    // 2.1 - Mã yêu cầu TỔNG SỐ LƯỢNG SẢN PHẨM (Ví dụ: Mua 2 món bất kỳ tặng 1)
+                    // 2.1 - Mã yêu cầu TỔNG SỐ LƯỢNG SẢN PHẨM
                     if (slYeuCau > 0 && tongSoLuongSP_ThucTe >= slYeuCau) {
                         duDieuKien = true;
-                        // TÍNH BỘI SỐ THEO TỔNG ĐƠN
                         soLuongTangThucTe = (tongSoLuongSP_ThucTe / slYeuCau) * (slTang > 0 ? slTang : 1);
                         if (unitToGive.isEmpty()) unitToGive = "Hộp";
                     } 
                     // 2.2 - Mã yêu cầu TỔNG TIỀN (Ví dụ: Đơn >= 500k)
                     else if (donToiThieu > 0 && tongTienBill >= donToiThieu) {
                         duDieuKien = true;
-                        // Đơn tổng tiền thường chỉ tặng 1 lần quà, không nhân bội số
                         soLuongTangThucTe = (slTang > 0 ? slTang : 1);
                         if (unitToGive.isEmpty()) unitToGive = "Hộp";
                     } 
@@ -4061,11 +4061,14 @@ txtSearchProduct.addKeyListener(new java.awt.event.KeyAdapter() {
                     }
                 }
 
+                // =======================================================
+                // XỬ LÝ KHUYẾN MÃI: CHỌN MÃ TỐT NHẤT & KHÔNG CỘNG DỒN
+                // =======================================================
                 if (duDieuKien) {
-                    processedPromoIds.add(maKM);
-                    danhSachMaDaDuyet.add(maKM);
-
                     if (loaiKM.contains("SAN_PHAM_KEM_THEO") || loaiKM.contains("TANG")) {
+                        // Quà tặng: Cứ đủ điều kiện là tặng, có thể cộng dồn nhiều quà
+                        processedPromoIds.add(maKM);
+                        danhSachMaDaDuyet.add(maKM);
                         if (soLuongTangThucTe > 0 && !spTang.isEmpty()) {
                             boolean daGop = false;
                             for (Object[] q : danhSachQuaTang) {
@@ -4085,17 +4088,34 @@ txtSearchProduct.addKeyListener(new java.awt.event.KeyAdapter() {
                             }
                         }
                     } else {
+                        // Khuyến mãi Tiền / Phần trăm: Tính thử xem giảm được bao nhiêu tiền
+                        long tienGiamTamTinh = 0;
                         if (loaiKM.contains("PHAN_TRAM") || loaiKM.contains("%")) {
-                            tongTienGiamDoc += (long) (tongTienBill * (giaTriGiam / 100.0));
+                            tienGiamTamTinh = (long) (tongTienBill * (giaTriGiam / 100.0));
                         } else {
-                            tongTienGiamDoc += (long) giaTriGiam;
+                            tienGiamTamTinh = (long) giaTriGiam;
+                        }
+
+                        // So sánh: Chỉ ghi nhận nếu mã này giảm được NHIỀU TIỀN HƠN mã trước đó
+                        if (tienGiamTamTinh > maxTienGiam) {
+                            maxTienGiam = tienGiamTamTinh;
+                            bestMaKM_GiamGia = maKM;
                         }
                     }
                 }
             }
+            
+            // =======================================================
+            // CHỐT MÃ KHUYẾN MÃI SAU KHI ĐÃ QUÉT QUA TẤT CẢ
+            // =======================================================
+            if (maxTienGiam > 0 && !bestMaKM_GiamGia.isEmpty()) {
+                tongTienGiamDoc = maxTienGiam; // Chỉ lấy số tiền giảm của mã tốt nhất
+                danhSachMaDaDuyet.add(bestMaKM_GiamGia); // Chỉ đưa 1 mã giảm giá vào bill
+            }
+
         } catch (Exception ex) {
             System.err.println("Lỗi quét khuyến mãi DB: " + ex.getMessage());
-        } 
+        }
 
         // [4] BẮN MÓN QUÀ LÊN BẢNG
         isTableUpdating = true; 
@@ -4148,4 +4168,5 @@ txtSearchProduct.addKeyListener(new java.awt.event.KeyAdapter() {
         btn.setFocusPainted(false);
         btn.setBorderPainted(false);
     }
+    
 }
