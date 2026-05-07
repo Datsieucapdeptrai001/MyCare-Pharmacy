@@ -443,20 +443,28 @@ public class DAO_ThongKe {
         return list;
     }
 
-    public double getDoanhThu7NgayQua() {
+    public double getDoanhThu7NgayQua(String maNV) {
         double dt = 0;
-        String sql = "SELECT ISNULL(SUM(ct.soLuong*dvl.gia),0) FROM HoaDon hd JOIN ChiTietHoaDon ct ON hd.id=ct.hoaDonId JOIN DonViDoLuong dvl ON ct.donViDoLuongId=dvl.id AND ct.sanPhamId=dvl.sanPhamId WHERE hd.ngayLapHD>=DATEADD(DAY,-7,GETDATE()) AND hd.loaiHD='BAN_HANG'";
-        try (Statement st = getConn().createStatement(); ResultSet rs = st.executeQuery(sql)) {
-            if (rs.next()) dt = rs.getDouble(1);
+        String sql = "SELECT ISNULL(SUM(ct.soLuong*dvl.gia),0) FROM HoaDon hd JOIN ChiTietHoaDon ct ON hd.id=ct.hoaDonId JOIN DonViDoLuong dvl ON ct.donViDoLuongId=dvl.id AND ct.sanPhamId=dvl.sanPhamId WHERE hd.ngayLapHD>=DATEADD(DAY,-7,GETDATE()) AND hd.loaiHD='BAN_HANG'"
+            + (maNV != null && !maNV.isEmpty() ? " AND hd.nhanVienId=?" : "");
+        try (PreparedStatement ps = getConn().prepareStatement(sql)) {
+            if (maNV != null && !maNV.isEmpty()) ps.setString(1, maNV);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) dt = rs.getDouble(1);
+            }
         } catch (SQLException e) { e.printStackTrace(); }
         return dt;
     }
 
-    public int getSoHoaDon7NgayQua() {
+    public int getSoHoaDon7NgayQua(String maNV) {
         int count = 0;
-        String sql = "SELECT COUNT(*) FROM HoaDon WHERE ngayLapHD>=DATEADD(DAY,-7,GETDATE()) AND loaiHD='BAN_HANG'";
-        try (Statement st = getConn().createStatement(); ResultSet rs = st.executeQuery(sql)) {
-            if (rs.next()) count = rs.getInt(1);
+        String sql = "SELECT COUNT(*) FROM HoaDon WHERE ngayLapHD>=DATEADD(DAY,-7,GETDATE()) AND loaiHD='BAN_HANG'"
+            + (maNV != null && !maNV.isEmpty() ? " AND nhanVienId=?" : "");
+        try (PreparedStatement ps = getConn().prepareStatement(sql)) {
+            if (maNV != null && !maNV.isEmpty()) ps.setString(1, maNV);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) count = rs.getInt(1);
+            }
         } catch (SQLException e) { e.printStackTrace(); }
         return count;
     }

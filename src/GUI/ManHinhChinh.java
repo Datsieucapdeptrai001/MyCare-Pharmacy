@@ -487,8 +487,8 @@ public class ManHinhChinh extends JPanel {
             lk.setFont(new Font("Segoe UI", Font.PLAIN, 11)); lk.setForeground(Color.GRAY); lk.setAlignmentX(CENTER_ALIGNMENT);
             c2.add(Box.createVerticalGlue()); c2.add(lk); c2.add(Box.createVerticalGlue());
         } else {
-            double dt7 = busThongKe.getDoanhThu7NgayQua();
-            int hd7 = busThongKe.getSoHoaDon7NgayQua();
+            double dt7 = busThongKe.getDoanhThu7NgayQua(filterMaNV);
+            int hd7 = busThongKe.getSoHoaDon7NgayQua(filterMaNV);
             addLine(c2, "Số hóa đơn:", String.valueOf(hd7), Color.BLACK, false);
             addLine(c2, "Doanh thu:", formatMoney((long)dt7), GREEN, true);
         }
