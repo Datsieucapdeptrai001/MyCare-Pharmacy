@@ -58,6 +58,8 @@ public class ManHinhKhuyenMai extends JPanel {
     private BUS_DonViDoLuong busDonVi; 
     private BUS_SanPham busSanPham; 
 
+    private boolean isReadOnly = false; // Biến cờ kiểm soát quyền Nhân viên
+
     private DefaultTableModel tableModel;
     private TableRowSorter<DefaultTableModel> rowSorter;
     private JTable tblKhuyenMai;
@@ -511,6 +513,12 @@ public class ManHinhKhuyenMai extends JPanel {
                 int modelRow = tblKhuyenMai.convertRowIndexToModel(viewRow);
 
                 if (viewCol == 9) { 
+                    // Chặn quyền nhân viên
+                    if (isReadOnly) {
+                        showNotification("Cảnh báo", "Nhân viên không có quyền Bật/Tắt khuyến mại!", "warning");
+                        return;
+                    }
+                    
                     boolean currentState = (boolean) tableModel.getValueAt(modelRow, 9);
                     boolean newState = !currentState;
                     String maKM = tableModel.getValueAt(modelRow, 0).toString();
@@ -769,6 +777,12 @@ public class ManHinhKhuyenMai extends JPanel {
             lblDetAvatar.setForeground(COLOR_SUCCESS);
             btnDetailToggle.setText("Tạm dừng");
             btnDetailToggle.setIcon(new MenuIcon("CANCEL"));
+        }
+
+        // Chặn hiển thị các nút thao tác nếu là Nhân viên
+        if (isReadOnly) {
+            btnDetailToggle.setVisible(false);
+            btnDetailEdit.setVisible(false);
         }
     }
 
@@ -1706,8 +1720,21 @@ public class ManHinhKhuyenMai extends JPanel {
     }
 
     public void setReadOnly(boolean readOnly) {
+        this.isReadOnly = readOnly;
         if (!readOnly) return;
-        disableButtonsByText(this, "Thêm mới", "Nhập Excel", "Thêm", "Xóa", "Sửa", "Lưu", "Lưu cài đặt", "Chỉnh sửa", "Xóa chương trình", "Lưu chương trình", "Cập nhật");
+        
+        // Ẩn các nút thao tác liên quan tới thay đổi dữ liệu
+        disableButtonsByText(this, "Thêm mới", "Nhập Excel", "Thêm", "Xóa", "Sửa", "Lưu", "Lưu cài đặt", "Chỉnh sửa", "Xóa chương trình", "Lưu chương trình", "Cập nhật", "Tạm dừng / Kích hoạt", "Tạm dừng", "Kích hoạt lại");
+        
+        // Ẩn thủ công các nút trong thanh Chi tiết
+        if (btnDetailToggle != null) btnDetailToggle.setVisible(false);
+        if (btnDetailEdit != null) btnDetailEdit.setVisible(false);
+        
+        // Khóa các ô TextFields nhập thông tin tích điểm của Nhân viên
+        if (txtTienMua != null) txtTienMua.setEditable(false);
+        if (txtDiemThuong != null) txtDiemThuong.setEditable(false);
+        if (txtTienDoi != null) txtTienDoi.setEditable(false);
+        if (txtDiemToiThieu != null) txtDiemToiThieu.setEditable(false);
     }
 
     private void disableButtonsByText(java.awt.Container container, String... texts) {
