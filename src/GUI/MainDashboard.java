@@ -15,6 +15,8 @@ import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
+import java.io.File;
+import javax.imageio.ImageIO;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -47,15 +49,15 @@ public class MainDashboard extends JFrame {
         setSize(1300, 750);
         setLocationRelativeTo(null);
         setLayout(new BorderLayout());
+        
         try {
-            String imagePath = "data/logo.png"; // Đường dẫn bạn đã chỉ định
-            java.io.File file = new java.io.File(imagePath);
+            String imagePath = "D:\\Github\\MyCare-Pharmacy\\data\\logo.png"; // Cập nhật đúng đường dẫn
+            File file = new File(imagePath);
             
             if (file.exists()) {
-                Image appIcon = new ImageIcon(imagePath).getImage();
+                Image appIcon = ImageIO.read(file);
                 this.setIconImage(appIcon);
             } else {
-                // Nếu vẫn đen, hãy nhìn vào màn hình Output của NetBeans/Eclipse để thấy dòng này:
                 System.out.println("LỖI: Không tìm thấy file logo tại: " + file.getAbsolutePath());
             }
         } catch (Exception ex) {
@@ -121,6 +123,7 @@ public class MainDashboard extends JFrame {
             }
         }
     }
+    
     // ── TOP HEADER ──────────────────────────────────────────────
     private JPanel createTopHeader() {
         JPanel header = new JPanel(new BorderLayout());
@@ -142,8 +145,9 @@ public class MainDashboard extends JFrame {
         String tenNV    = UserSession.getInstance().getTenHienThi();
         boolean isAdmin = UserSession.getInstance().isAdmin();
 
-        // Chỉ hiện " ▼" trên tên nút nếu đang là Admin, nếu là nhân viên thì ẩn đi.
+        // Nút user hiển thị Initials và Tên nhân viên
         JButton btnUser = new JButton(initials + "  " + tenNV + (isAdmin ? "  ▼" : ""));
+        
         btnUser.setBackground(isAdmin ? Color.decode("#E53935") : Color.decode("#1A73E8"));
         btnUser.setForeground(Color.WHITE);
         btnUser.setFocusPainted(false);
@@ -209,12 +213,22 @@ public class MainDashboard extends JFrame {
         sidebar.setBackground(Color.decode("#152A4B"));
         sidebar.setPreferredSize(new Dimension(230, 0));
 
-        // Logo
-        JPanel logoPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 10));
+        // ================= LOGO GÓC TRÁI (VÙNG ĐỎ) =================
+        JPanel logoPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 15));
         logoPanel.setBackground(Color.decode("#152A4B"));
-        logoPanel.setMaximumSize(new Dimension(230, 70));
-        logoPanel.add(new JLabel("<html><b style='color:white;font-size:16px;'>MYCARE</b><br>"
-                + "<span style='color:#00BFFF;font-size:11px;'>PHARMACY</span></html>"));
+        logoPanel.setMaximumSize(new Dimension(230, 100));
+        
+        try {
+            File fileAnh = new File("D:\\Github\\MyCare-Pharmacy\\data\\anhlogo.png");
+            if (fileAnh.exists()) {
+                Image img = ImageIO.read(fileAnh);
+                // Đã chỉnh Scale width=150, height=-1 để ảnh cực kỳ cân đối, không to thô
+                ImageIcon iconLogoDuyNhat = new ImageIcon(img.getScaledInstance(150, -1, Image.SCALE_SMOOTH));
+                logoPanel.add(new JLabel(iconLogoDuyNhat));
+            }
+        } catch (Exception e) {
+            System.err.println("Lỗi load logo góc trái: " + e.getMessage());
+        }
         sidebar.add(logoPanel);
 
         // User info
@@ -227,6 +241,7 @@ public class MainDashboard extends JFrame {
         userPanel.setBackground(Color.decode("#152A4B"));
         userPanel.setMaximumSize(new Dimension(230, 70));
 
+        // Avatar nhân viên dạng chữ cái
         JLabel lblAvatar = new JLabel(initials, SwingConstants.CENTER);
         lblAvatar.setOpaque(true);
         lblAvatar.setBackground(isAdmin ? Color.decode("#C62828") : Color.decode("#1362B1"));

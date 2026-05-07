@@ -10,6 +10,8 @@ import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import java.awt.*;
 import java.awt.event.*;
+import java.io.File;
+import javax.imageio.ImageIO;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -40,6 +42,18 @@ public class ManHinhDangNhap extends JFrame {
         setSize(1100, 750);
         setLocationRelativeTo(null);
         setResizable(true);
+
+        // ĐẶT LOGO CHO CỬA SỔ (TASKBAR ICON)
+        try {
+            String imagePath = "D:\\Github\\MyCare-Pharmacy\\data\\logo.png";
+            File file = new File(imagePath);
+            if (file.exists()) {
+                Image appIcon = ImageIO.read(file);
+                this.setIconImage(appIcon);
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
 
         String savedStr = prefs.get("saved_users", "");
         savedUsersList = savedStr.isEmpty()
@@ -92,23 +106,19 @@ public class ManHinhDangNhap extends JFrame {
         pnlContent.setOpaque(false);
         pnlWrapper.add(pnlContent);
 
-        JPanel pnlLogo = new JPanel() {
-            @Override protected void paintComponent(Graphics g) {
-                Graphics2D g2d = (Graphics2D) g.create();
-                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2d.setColor(Color.WHITE);
-                g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 22, 22);
-                g2d.setColor(COLOR_HEADER_LIGHT);
-                g2d.setStroke(new BasicStroke(3, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-                g2d.translate(getWidth() / 2, getHeight() / 2);
-                g2d.rotate(Math.toRadians(-45));
-                g2d.drawRoundRect(-13, -6, 26, 12, 10, 10);
-                g2d.drawLine(0, -6, 0, 6);
-                g2d.dispose();
-            }
-        };
+        // LOGO CHÍNH CỦA FORM ĐĂNG NHẬP
+        JLabel pnlLogo = new JLabel();
         pnlLogo.setBounds(215, 20, 70, 70);
-        pnlLogo.setOpaque(false);
+        pnlLogo.setHorizontalAlignment(SwingConstants.CENTER);
+        try {
+            File fileLogo = new File("D:\\Github\\MyCare-Pharmacy\\data\\logo.png");
+            if (fileLogo.exists()) {
+                Image img = ImageIO.read(fileLogo);
+                pnlLogo.setIcon(new ImageIcon(img.getScaledInstance(70, 70, Image.SCALE_SMOOTH)));
+            }
+        } catch (Exception e) {
+            System.err.println("Lỗi load logo chính: " + e.getMessage());
+        }
         pnlContent.add(pnlLogo);
 
         JLabel lblTitle = new JLabel("MYCARE", SwingConstants.CENTER);
@@ -143,6 +153,8 @@ public class ManHinhDangNhap extends JFrame {
 
         JPanel pnlInputUser = createInputBorder();
         pnlInputUser.setBounds(40, 293, 420, 48);
+        
+        // TRẢ LẠI ICON HÌNH NGƯỜI NHƯ GỐC
         JLabel iconUser = new JLabel(new MenuIcon("USER"));
         iconUser.setBounds(15, 13, 22, 22);
         pnlInputUser.add(iconUser);
