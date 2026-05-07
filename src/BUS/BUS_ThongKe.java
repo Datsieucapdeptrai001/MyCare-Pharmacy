@@ -104,10 +104,16 @@ public class BUS_ThongKe {
         return dao.getKetQuaCaSang(nvId, year, condHD);
     }
 
-    /** double[2] = {hdCount, dt_triệu} cho ca CHIỀU (từ 14h) của 1 NV */
+    /** double[2] = {hdCount, dt_triệu} cho ca CHIỀU (14h–22h) của 1 NV */
     public double[] getKetQuaCaChieu(String nvId, int year, String condHD) {
         if (nvId == null || nvId.isEmpty()) return new double[]{0, 0};
         return dao.getKetQuaCaChieu(nvId, year, condHD);
+    }
+
+    /** double[2] = {hdCount, dt_triệu} cho ca TỐI (22h–6h) của 1 NV */
+    public double[] getKetQuaCaToi(String nvId, int year, String condHD) {
+        if (nvId == null || nvId.isEmpty()) return new double[]{0, 0};
+        return dao.getKetQuaCaToi(nvId, year, condHD);
     }
 
     // TỔNG HÓA ĐƠN

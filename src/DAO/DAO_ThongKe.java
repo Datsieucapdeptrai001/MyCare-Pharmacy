@@ -192,13 +192,13 @@ public class DAO_ThongKe {
 
     // NHÂN VIÊN - CA SÁNG / CHIỀU
 
-    /** Ca SÁNG (trước 14h): double[2] = {hdCount, dt_triệu_đồng} */
+    /** Ca SÁNG (6h–14h): double[2] = {hdCount, dt_triệu_đồng} */
     public double[] getKetQuaCaSang(String nvId, int year, String condHD) {
         String sql = "SELECT COUNT(DISTINCT hd.id) hd, ISNULL(SUM(ct.soLuong*dvl.gia),0)/1000000.0 dt " +
                      "FROM HoaDon hd JOIN ChiTietHoaDon ct ON ct.hoaDonId=hd.id " +
                      "JOIN DonViDoLuong dvl ON dvl.id=ct.donViDoLuongId AND dvl.sanPhamId=ct.sanPhamId " +
                      "WHERE hd.nhanVienId=? AND YEAR(hd.ngayLapHD)=? AND hd.loaiHD='BAN_HANG' " +
-                     "AND DATEPART(HOUR,hd.ngayLapHD) < 14" + condHD;
+                     "AND DATEPART(HOUR,hd.ngayLapHD) >= 6 AND DATEPART(HOUR,hd.ngayLapHD) < 14" + condHD;
         try (PreparedStatement ps = getConn().prepareStatement(sql)) {
             ps.setString(1, nvId); ps.setInt(2, year);
             ResultSet rs = ps.executeQuery();
@@ -207,13 +207,28 @@ public class DAO_ThongKe {
         return new double[]{0, 0};
     }
 
-    /** Ca CHIỀU (từ 14h): double[2] = {hdCount, dt_triệu_đồng} */
+    /** Ca CHIỀU (14h–22h): double[2] = {hdCount, dt_triệu_đồng} */
     public double[] getKetQuaCaChieu(String nvId, int year, String condHD) {
         String sql = "SELECT COUNT(DISTINCT hd.id) hd, ISNULL(SUM(ct.soLuong*dvl.gia),0)/1000000.0 dt " +
                      "FROM HoaDon hd JOIN ChiTietHoaDon ct ON ct.hoaDonId=hd.id " +
                      "JOIN DonViDoLuong dvl ON dvl.id=ct.donViDoLuongId AND dvl.sanPhamId=ct.sanPhamId " +
                      "WHERE hd.nhanVienId=? AND YEAR(hd.ngayLapHD)=? AND hd.loaiHD='BAN_HANG' " +
-                     "AND DATEPART(HOUR,hd.ngayLapHD) >= 14" + condHD;
+                     "AND DATEPART(HOUR,hd.ngayLapHD) >= 14 AND DATEPART(HOUR,hd.ngayLapHD) < 22" + condHD;
+        try (PreparedStatement ps = getConn().prepareStatement(sql)) {
+            ps.setString(1, nvId); ps.setInt(2, year);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) return new double[]{rs.getInt("hd"), rs.getDouble("dt")};
+        } catch (Exception e) { /* ignored */ }
+        return new double[]{0, 0};
+    }
+
+    /** Ca TỐI (22h–6h sáng hôm sau): double[2] = {hdCount, dt_triệu_đồng} */
+    public double[] getKetQuaCaToi(String nvId, int year, String condHD) {
+        String sql = "SELECT COUNT(DISTINCT hd.id) hd, ISNULL(SUM(ct.soLuong*dvl.gia),0)/1000000.0 dt " +
+                     "FROM HoaDon hd JOIN ChiTietHoaDon ct ON ct.hoaDonId=hd.id " +
+                     "JOIN DonViDoLuong dvl ON dvl.id=ct.donViDoLuongId AND dvl.sanPhamId=ct.sanPhamId " +
+                     "WHERE hd.nhanVienId=? AND YEAR(hd.ngayLapHD)=? AND hd.loaiHD='BAN_HANG' " +
+                     "AND (DATEPART(HOUR,hd.ngayLapHD) >= 22 OR DATEPART(HOUR,hd.ngayLapHD) < 6)" + condHD;
         try (PreparedStatement ps = getConn().prepareStatement(sql)) {
             ps.setString(1, nvId); ps.setInt(2, year);
             ResultSet rs = ps.executeQuery();

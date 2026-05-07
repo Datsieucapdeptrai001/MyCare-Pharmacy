@@ -6,6 +6,7 @@ import java.awt.*;
 public class MenuIcon implements Icon {
     private String type;
     private int size = 22;
+    private Color customColor = null;
 
     public MenuIcon(String type) {
         this.type = type;
@@ -14,6 +15,13 @@ public class MenuIcon implements Icon {
     public MenuIcon(String type, int size) {
         this.type = type;
         this.size = size;
+    }
+
+    /** Constructor dùng khi cần màu tùy chỉnh (ví dụ: LEGEND_DOT) */
+    public MenuIcon(String type, int size, Color color) {
+        this.type = type;
+        this.size = size;
+        this.customColor = color;
     }
 
     @Override
@@ -31,7 +39,9 @@ public class MenuIcon implements Icon {
         Graphics2D g2d = (Graphics2D) g.create();
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-        if (c != null) {
+        if (customColor != null) {
+            g2d.setColor(customColor);
+        } else if (c != null) {
             g2d.setColor(c.getForeground()); 
         } else {
             g2d.setColor(Color.GRAY);
@@ -389,16 +399,8 @@ public class MenuIcon implements Icon {
                 // 6. Nút thắt nơ tròn ở chính giữa
                 g2d.fillOval(x + 9, y + 4, 4, 3);
                 break;
-            case "SYNC":
-                g2d.setStroke(new BasicStroke(2.0f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-                // Cung tròn xoay nửa trên
-                g2d.drawArc(x + 3, y + 3, 14, 14, 45, 180);
-                // Mũi tên cung trên
-                g2d.drawPolyline(new int[]{x + 15, x + 15, x + 11}, new int[]{y + 6, y + 2, y + 2}, 3);
-                // Cung tròn xoay nửa dưới
-                g2d.drawArc(x + 5, y + 5, 14, 14, 225, 180);
-                // Mũi tên cung dưới
-                g2d.drawPolyline(new int[]{x + 7, x + 7, x + 11}, new int[]{y + 16, y + 20, y + 20}, 3);
+            case "LEGEND_DOT": // Chấm tròn màu cho legend biểu đồ (dùng với constructor MenuIcon(type, size, color))
+                g2d.fillRoundRect(x, y + (size / 2) - 5, 10, 10, 3, 3);
                 break;
         }
     }

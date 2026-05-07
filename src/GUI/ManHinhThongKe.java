@@ -29,8 +29,10 @@ public class ManHinhThongKe extends JPanel {
     static Color[]  NV_COLORS = {};
     static int[]    NV_HD_S   = {};
     static int[]    NV_HD_C   = {};
+    static int[]    NV_HD_T   = {};
     static double[] NV_DT_S   = {};
     static double[] NV_DT_C   = {};
+    static double[] NV_DT_T   = {};
     static String[] DATES_10  = {};
     static int[][]  NV_DAILY  = {};
     
@@ -88,7 +90,7 @@ public class ManHinhThongKe extends JPanel {
     private String modeLocThoiGian = "THANG"; // Lưu trạng thái đang lọc theo gì
 
     private JLabel lblTongNV, lblDTTB_NV, lblTongDT_NV;
-    private JLabel lblHDSang, lblHDChieu;
+    private JLabel lblHDSang, lblHDChieu, lblHDToi;
 
     // Panel dược sĩ chỉ hiện ở tab NV
     private JPanel pnlFilterDuocSi;
@@ -147,6 +149,29 @@ public class ManHinhThongKe extends JPanel {
         return sp;
     }
 
+    /**
+     * Gắn logic tự động dãn chiều cao hàng cho JTable theo viewport.
+     * Rows sẽ dãn đều lấp đầy phần trắng khi dữ liệu ít hơn chiều cao panel.
+     */
+    private void attachDynamicRows(JTable tbl, JScrollPane sp) {
+        Runnable adjust = () -> {
+            int rows = tbl.getRowCount();
+            if (rows <= 0) return;
+            int viewH = sp.getViewport().getHeight();
+            int hdrH  = (tbl.getTableHeader() != null) ? tbl.getTableHeader().getHeight() : 0;
+            int avail = viewH - hdrH;
+            if (avail <= 0) return;
+            int newRH = Math.max(30, avail / rows);
+            if (tbl.getRowHeight() != newRH) tbl.setRowHeight(newRH);
+        };
+        // Trigger khi viewport thay đổi kích thước (scroll/resize)
+        sp.getViewport().addComponentListener(new ComponentAdapter() {
+            @Override public void componentResized(ComponentEvent e) { adjust.run(); }
+        });
+        // Trigger khi dữ liệu bảng thay đổi (add/remove row)
+        tbl.getModel().addTableModelListener(e -> SwingUtilities.invokeLater(adjust));
+    }
+
     // LOAD DỮ LIỆU TỪ DATABASE (tham số year)
     private void loadDataFromDB(int year) {
         // BƯỚC 1: XÂY DỰNG ĐIỀU KIỆN LỌC
@@ -191,8 +216,8 @@ public class ManHinhThongKe extends JPanel {
                 NV_NAMES  = new String[n]; NV_IDS   = new String[n];
                 NV_ROLES  = new String[n]; NV_SHORT = new String[n];
                 NV_COLORS = new Color[n];
-                NV_HD_S   = new int[n];    NV_HD_C  = new int[n];
-                NV_DT_S   = new double[n]; NV_DT_C  = new double[n];
+                NV_HD_S   = new int[n];    NV_HD_C  = new int[n];    NV_HD_T = new int[n];
+                NV_DT_S   = new double[n]; NV_DT_C  = new double[n]; NV_DT_T = new double[n];
 
                 for (int i = 0; i < n; i++) {
                     NV_IDS[i]   = nvList.get(i)[0];
@@ -245,12 +270,14 @@ public class ManHinhThongKe extends JPanel {
                     }
                 }
 
-                // 4c. Kết quả ca sáng/chiều từng NV
+                // 4c. Kết quả ca sáng/chiều/tối từng NV
                 for (int i = 0; i < n; i++) {
                     double[] sang  = busThongKe.getKetQuaCaSang(NV_IDS[i], year, fCondHD);
                     double[] chieu = busThongKe.getKetQuaCaChieu(NV_IDS[i], year, fCondHD);
+                    double[] toi   = busThongKe.getKetQuaCaToi(NV_IDS[i], year, fCondHD);
                     NV_HD_S[i] = (int) sang[0];  NV_DT_S[i] = sang[1];
                     NV_HD_C[i] = (int) chieu[0]; NV_DT_C[i] = chieu[1];
+                    NV_HD_T[i] = (int) toi[0];   NV_DT_T[i] = toi[1];
                 }
 
                 // 5. KPI tổng hợp
@@ -304,14 +331,17 @@ public class ManHinhThongKe extends JPanel {
                     double sumDT_NV = 0;
                     for (double s : NV_DT_S) sumDT_NV += s;
                     for (double c : NV_DT_C) sumDT_NV += c;
+                    for (double t : NV_DT_T) sumDT_NV += t;
                     if (lblTongDT_NV != null) lblTongDT_NV.setText(formatM(sumDT_NV));
                     if (lblDTTB_NV   != null) lblDTTB_NV.setText(soLuongNV > 0 ? formatM(sumDT_NV / soLuongNV) : "0đ");
 
-                    int sumHDSang = 0, sumHDChieu = 0;
+                    int sumHDSang = 0, sumHDChieu = 0, sumHDToi = 0;
                     for (int s : NV_HD_S) sumHDSang  += s;
                     for (int c : NV_HD_C) sumHDChieu += c;
+                    for (int t : NV_HD_T) sumHDToi   += t;
                     if (lblHDSang  != null) lblHDSang.setText(sumHDSang  + " HĐ");
                     if (lblHDChieu != null) lblHDChieu.setText(sumHDChieu + " HĐ");
+                    if (lblHDToi   != null) lblHDToi.setText(sumHDToi   + " HĐ");
 
                     if (chartLineDaily != null) chartLineDaily.setData(DAILY_30_DT, DAILY_30_DATES);
 
@@ -335,15 +365,15 @@ public class ManHinhThongKe extends JPanel {
         }).start();
     }
 
-    private String formatM(double val) {
-        if (val >= 1000) return String.format("%.1fB đ", val / 1000);
-        return String.format("%.1fM đ", val);
+    private String formatM(double valInMillions) {
+        return formatK(valInMillions * 1_000_000);
     }
-    private String formatK(double val) {
-        if (val >= 1_000_000) return String.format("%.1fM đ", val / 1_000_000);
-        if (val >= 1000)      return String.format("%.0fK đ", val / 1000);
-        return String.format("%.0fđ", val);
+
+    private String formatK(double rawVal) {
+        // Hiện số đầy đủ với dấu chấm ngàn: 1.234.567 đ
+        return String.format("%,.0f đ", rawVal).replace(",", ".");
     }
+    
     private String getKyString() {
         if (cboKyLoc == null) return "Cả năm";
         String s = (String) cboKyLoc.getSelectedItem();
@@ -371,7 +401,7 @@ public class ManHinhThongKe extends JPanel {
         left.setOpaque(false);
         left.add(title); left.add(lblYearBadge);
 
-        JButton btnXuat = new JButton("📥 Xuất báo cáo ▼");
+        JButton btnXuat = new JButton("📥Xuất báo cáo ▼");
         btnXuat.setBackground(Color.decode("#152A4B"));
         btnXuat.setForeground(Color.WHITE);
         btnXuat.setFocusPainted(false);
@@ -597,7 +627,6 @@ public class ManHinhThongKe extends JPanel {
 
         JPanel row3 = new JPanel(new GridLayout(1, 2, 12, 0));
         row3.setOpaque(false);
-        row3.setMaximumSize(new Dimension(Integer.MAX_VALUE, 300));
         row3.add(buildTopSPTable());
         row3.add(buildVATTable());
         root.add(row3);
@@ -663,9 +692,9 @@ public class ManHinhThongKe extends JPanel {
         root.add(nvDailyCard);
         root.add(Box.createVerticalStrut(12));
 
-        JPanel row2 = new JPanel(new GridLayout(1, 2, 12, 0));
+        JPanel row2 = new JPanel(new GridLayout(1, 1, 12, 0));
         row2.setOpaque(false);
-        row2.setMaximumSize(new Dimension(Integer.MAX_VALUE, 380));
+        row2.setMaximumSize(new Dimension(Integer.MAX_VALUE, 500));
 
         JPanel shiftCard = new JPanel(new BorderLayout(0, 8));
         shiftCard.setBackground(Color.WHITE);
@@ -676,13 +705,15 @@ public class ManHinhThongKe extends JPanel {
         shTitle.setFont(new Font("Segoe UI", Font.BOLD, 13));
         shTitle.setForeground(Color.decode("#152A4B"));
 
-        lblHDSang = makeKpiVal("...", "#F59E0B");
+        lblHDSang  = makeKpiVal("...", "#F59E0B");
         lblHDChieu = makeKpiVal("...", "#6366F1");
+        lblHDToi   = makeKpiVal("...", "#8B5CF6");
 
-        JPanel shMini = new JPanel(new GridLayout(1, 2, 8, 0));
+        JPanel shMini = new JPanel(new GridLayout(1, 3, 8, 0));
         shMini.setOpaque(false);
-        shMini.add(statCardDynamic("Ca sáng (6h–13h)",  lblHDSang,  makeKpiSub("Hóa đơn"), "SHIFT_MORNING",   "#FFF8E1"));
-        shMini.add(statCardDynamic("Ca chiều (14h–21h)", lblHDChieu, makeKpiSub("Hóa đơn"), "SHIFT_AFTERNOON", "#EEF2FF"));
+        shMini.add(statCardDynamic("Ca sáng (6h–13h)",   lblHDSang,  makeKpiSub("Hóa đơn"), "SHIFT_MORNING",   "#FFF8E1"));
+        shMini.add(statCardDynamic("Ca chiều (14h–21h)",  lblHDChieu, makeKpiSub("Hóa đơn"), "SHIFT_AFTERNOON", "#EEF2FF"));
+        shMini.add(statCardDynamic("Ca tối (21h–6h)",     lblHDToi,   makeKpiSub("Hóa đơn"), "SHIFT_NIGHT",     "#F3E8FF"));
 
         chartNVShift = new NVShiftChart();
         chartNVShift.setPreferredSize(new Dimension(0, 160));
@@ -691,6 +722,7 @@ public class ManHinhThongKe extends JPanel {
         shLegend.setOpaque(false);
         shLegend.add(legendDot(Color.decode("#FFAB00"), "Ca sáng"));
         shLegend.add(legendDot(Color.decode("#4F46E5"), "Ca chiều"));
+        shLegend.add(legendDot(Color.decode("#8B5CF6"), "Ca tối"));
 
         shiftCard.add(shTitle, BorderLayout.NORTH);
         JPanel shCenter = new JPanel(new BorderLayout(0, 6));
@@ -702,11 +734,13 @@ public class ManHinhThongKe extends JPanel {
         row2.add(shiftCard);
 
         tblNVDetail = new NVDetailTable();
-        row2.add(tblNVDetail);
+        tblNVDetail.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
         root.add(row2);
         root.add(Box.createVerticalStrut(12));
 
-        root.add(Box.createVerticalStrut(8));
+        // Bảng Chi tiết dược sĩ theo ca – hàng riêng, full width
+        root.add(tblNVDetail);
+        root.add(Box.createVerticalStrut(12));
 
         JScrollPane sp = makeScrollPane(root);
         JPanel wrapper = new JPanel(new BorderLayout());
@@ -785,7 +819,7 @@ public class ManHinhThongKe extends JPanel {
         btnNV.setForeground(!isDT ? Color.decode("#9C27B0") : Color.decode("#444444"));
     }
 
-    // BIỂU ĐỒ CỘT CHÍNH (DT-CP-LN)
+ // BIỂU ĐỒ CỘT CHÍNH (DT-CP-LN)
     class BarChartMain extends JPanel {
         private int   hoverIdx  = -1;
         private Point tooltipPt = null;
@@ -796,8 +830,8 @@ public class ManHinhThongKe extends JPanel {
             addMouseMotionListener(new MouseAdapter() {
                 @Override public void mouseMoved(MouseEvent e) {
                     hoverIdx = -1; tooltipPt = null;
-                    int barW = 16, gap = 4;
-                    int groupW = barW * 3 + gap * 2 + 14;
+                    int barW = 20, gap = 4; // Tăng độ rộng cột cho mập mạp
+                    int groupW = barW * 3 + gap * 2 + 18;
                     int startX = 50, maxH = getHeight() - 60;
                     double maxVal = calcMaxVal();
                     for (int i = 0; i < 12; i++) {
@@ -821,7 +855,9 @@ public class ManHinhThongKe extends JPanel {
 
         private double calcMaxVal() {
             double max = 10.0;
+            // FIX LỖI THỦNG NÓC: Phải dò cả mảng Chi Phí xem có ai vượt Doanh thu không
             for (double v : DT_DATA) if (v > max) max = v;
+            for (double v : CP_DATA) if (v > max) max = v; 
             return max * 1.2;
         }
 
@@ -830,18 +866,21 @@ public class ManHinhThongKe extends JPanel {
             Graphics2D g2 = (Graphics2D)g;
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             int w = getWidth(), h = getHeight();
-            int barW = 16, gap = 4, groupW = barW*3 + gap*2 + 14;
+            int barW = 20, gap = 4, groupW = barW*3 + gap*2 + 18; 
             int startX = 50, baseY = h-35, maxH = h-60;
             double maxVal = calcMaxVal();
             Color[] barColors = {Color.decode("#1A73E8"), Color.decode("#FFAB00"), Color.decode("#00A76F")};
 
-            // Grid lines (Dùng double để vẽ mượt hơn)
+            // Ve cac duong ke ngang (Grid lines)
             g2.setStroke(new BasicStroke(0.5f));
-            for (double v = 0; v <= maxVal; v += Math.max(1.0, maxVal/4.0)) {
+            for (double v = 0; v <= maxVal; v += Math.max(1.0, maxVal/5.0)) {
                 int y = baseY - (int)(v/maxVal*maxH);
                 g2.setColor(Color.decode("#F0F0F0")); g2.drawLine(startX, y, w-10, y);
-                g2.setColor(Color.decode("#AAAAAA")); g2.setFont(new Font("Segoe UI",Font.PLAIN,10));
-                g2.drawString(String.format("%.1fM", v), 4, y+4);
+                g2.setColor(Color.decode("#AAAAAA")); g2.setFont(new Font("Segoe UI", Font.PLAIN, 10));
+                
+                // Dong bo chu M/K o truc Y
+                String axisLabel = formatM(v).replace(" đ", "").replace("đ", "");
+                g2.drawString(axisLabel, 4, y+4);
             }
 
             for (int i = 0; i < 12; i++) {
@@ -853,32 +892,41 @@ public class ManHinhThongKe extends JPanel {
                     int bx = gx + b*(barW+gap);
                     int by = baseY - bh;
                     Color c = barColors[b];
+                    
                     if (i == hoverIdx) {
-                        float[] hsb = Color.RGBtoHSB(c.getRed(),c.getGreen(),c.getBlue(),null);
+                        float[] hsb = Color.RGBtoHSB(c.getRed(), c.getGreen(), c.getBlue(), null);
                         c = Color.getHSBColor(hsb[0], hsb[1], Math.min(1f, hsb[2]*1.2f));
                     }
                     g2.setColor(c);
-                    g2.fillRoundRect(bx, by, barW, bh, 3, 3);
+                    
+                    // Bo góc 8px ở trên cùng cho xịn
+                    g2.fillRoundRect(bx, by, barW, bh, 8, 8);
+                    
+                    // Che phần bo góc ở dưới đáy để cột cắm thẳng xuống mốc 0
+                    if (bh > 4) {
+                        g2.fillRect(bx, by + 4, barW, bh - 4);
+                    }
                 }
-                g2.setColor(Color.decode("#888888")); g2.setFont(new Font("Segoe UI",Font.PLAIN,10));
-                g2.drawString(THANG[i], gx+4, h-16);
+                g2.setColor(Color.decode("#888888")); g2.setFont(new Font("Segoe UI", Font.BOLD, 10));
+                g2.drawString(THANG[i], gx+12, h-16);
             }
 
-            // Legend
+            // Legend (chú thích màu)
             String[] legends = {"Doanh thu","Chi phí","Lợi nhuận"};
             int lx = startX;
             for (int b = 0; b < 3; b++) {
-                g2.setColor(barColors[b]); g2.fillRoundRect(lx, 8, 10, 10, 3, 3);
-                g2.setColor(Color.decode("#555555")); g2.setFont(new Font("Segoe UI",Font.PLAIN,10));
-                g2.drawString(legends[b], lx+14, 18);
-                lx += 80;
+                g2.setColor(barColors[b]); g2.fillRoundRect(lx, 8, 12, 12, 3, 3);
+                g2.setColor(Color.decode("#555555")); g2.setFont(new Font("Segoe UI", Font.BOLD, 11));
+                g2.drawString(legends[b], lx+18, 18);
+                lx += 90;
             }
 
-            // Tooltip (Hiển thị số thập phân)
+         // Tooltip (hien thi khi re chuot)
             if (hoverIdx >= 0 && tooltipPt != null) {
                 int i = hoverIdx;
-                String txt = String.format("T%d  DT:%.1fM | CP:%.1fM | LN:%.1fM", i+1, DT_DATA[i], CP_DATA[i], DT_DATA[i]-CP_DATA[i]);
-                drawTooltip(g2, Math.min(tooltipPt.x+10, w-200), tooltipPt.y-30, txt);
+                String txt = String.format("Tháng %d  |  DT: %s  |  CP: %s  |  LN: %s", 
+                                i+1, formatM(DT_DATA[i]), formatM(CP_DATA[i]), formatM(DT_DATA[i]-CP_DATA[i]));
+                drawTooltip(g2, Math.min(tooltipPt.x+10, w-240), tooltipPt.y-30, txt);
             }
         }
     }
@@ -971,11 +1019,10 @@ public class ManHinhThongKe extends JPanel {
                 g2.drawString(dLabel, xs[li]-12, h-4);
             }
             
-            // ---- ĐÃ FIX: In ngày tháng thực tế lên Tooltip khi rê chuột ----
             if (hoverIdx >= 0 && tooltipPt != null) {
                 String dateStr = (dates[hoverIdx] != null && dates[hoverIdx].length() >= 5) ? dates[hoverIdx].substring(0, 5) : "";
                 drawTooltip(g2, Math.min(tooltipPt.x+8, w-160), tooltipPt.y-28,
-                    String.format("Ngày %s: %.1fM đ", dateStr, vals[hoverIdx]));
+                    String.format("Ngày %s: %s", dateStr, formatM(vals[hoverIdx])));
             }
         }
     }
@@ -1184,10 +1231,14 @@ public class ManHinhThongKe extends JPanel {
             int[] nvIdxs = buildNVIdxs();
             int n = nvIdxs.length; if (n==0) return;
             int maxVal = 10;
-            for (int nv : nvIdxs) if (nv < NV_HD_S.length) { if(NV_HD_S[nv]>maxVal)maxVal=NV_HD_S[nv]; if(NV_HD_C[nv]>maxVal)maxVal=NV_HD_C[nv]; }
+            for (int nv : nvIdxs) {
+                if (nv < NV_HD_S.length && NV_HD_S[nv]>maxVal) maxVal=NV_HD_S[nv];
+                if (nv < NV_HD_C.length && NV_HD_C[nv]>maxVal) maxVal=NV_HD_C[nv];
+                if (nv < NV_HD_T.length && NV_HD_T[nv]>maxVal) maxVal=NV_HD_T[nv];
+            }
             maxVal = (int)(maxVal*1.2)+1;
             int startX=30, baseY=h-28, maxH=h-40;
-            int groupW=(w-startX-10)/n, barW=Math.max(8,(groupW-6)/2);
+            int groupW=(w-startX-10)/n, barW=Math.max(6,(groupW-8)/3);
 
             for (int v=0; v<=maxVal; v+=Math.max(1,maxVal/4)) {
                 int y=baseY-(int)((double)v/maxVal*maxH);
@@ -1199,22 +1250,28 @@ public class ManHinhThongKe extends JPanel {
                 int nv  = nvIdxs[i];
                 int gx  = startX + i*groupW + 2;
                 boolean hov = (i==hoverIdx);
-                int shS = nv<NV_HD_S.length?NV_HD_S[nv]:0, shC = nv<NV_HD_C.length?NV_HD_C[nv]:0;
-                int hS  = (int)((double)shS/maxVal*maxH), hC = (int)((double)shC/maxVal*maxH);
+                int shS = nv<NV_HD_S.length?NV_HD_S[nv]:0;
+                int shC = nv<NV_HD_C.length?NV_HD_C[nv]:0;
+                int shT = nv<NV_HD_T.length?NV_HD_T[nv]:0;
+                int hS=(int)((double)shS/maxVal*maxH), hC=(int)((double)shC/maxVal*maxH), hT=(int)((double)shT/maxVal*maxH);
                 Color cS = hov?Color.decode("#FFD54F"):Color.decode("#FFAB00");
                 Color cC = hov?Color.decode("#7986CB"):Color.decode("#4F46E5");
-                if (hS>0) { g2.setColor(cS); g2.fillRoundRect(gx, baseY-hS, barW, hS, 3, 3); }
-                if (hC>0) { g2.setColor(cC); g2.fillRoundRect(gx+barW+2, baseY-hC, barW, hC, 3, 3); }
+                Color cT = hov?Color.decode("#C4B5FD"):Color.decode("#8B5CF6");
+                if (hS>0) { g2.setColor(cS); g2.fillRoundRect(gx,              baseY-hS, barW, hS, 3, 3); }
+                if (hC>0) { g2.setColor(cC); g2.fillRoundRect(gx+barW+2,       baseY-hC, barW, hC, 3, 3); }
+                if (hT>0) { g2.setColor(cT); g2.fillRoundRect(gx+(barW+2)*2,   baseY-hT, barW, hT, 3, 3); }
                 g2.setColor(Color.decode("#888888")); g2.setFont(new Font("Segoe UI",Font.PLAIN,9));
                 g2.drawString(nv<NV_SHORT.length?NV_SHORT[nv]:"NV"+(nv+1), gx+2, h-12);
             }
 
             if (hoverIdx>=0 && tooltipPt!=null) {
                 int nv = nvIdxs[hoverIdx];
-                String txt = String.format("%s  Sáng:%d HĐ | Chiều:%d HĐ",
+                String txt = String.format("%s  Sáng:%d | Chiều:%d | Tối:%d HĐ",
                     nv<NV_NAMES.length?NV_NAMES[nv]:"NV"+(nv+1),
-                    nv<NV_HD_S.length?NV_HD_S[nv]:0, nv<NV_HD_C.length?NV_HD_C[nv]:0);
-                drawTooltip(g2, Math.min(tooltipPt.x+8, w-220), tooltipPt.y-28, txt);
+                    nv<NV_HD_S.length?NV_HD_S[nv]:0,
+                    nv<NV_HD_C.length?NV_HD_C[nv]:0,
+                    nv<NV_HD_T.length?NV_HD_T[nv]:0);
+                drawTooltip(g2, Math.min(tooltipPt.x+8, w-260), tooltipPt.y-28, txt);
             }
         }
 
@@ -1229,8 +1286,10 @@ public class ManHinhThongKe extends JPanel {
     // BẢNG CHI TIẾT NHÂN VIÊN THEO CA
     class NVDetailTable extends JPanel {
         private int filterIdx = -1;
+        private String filterText = "";
         private JTable tbl;
         private DefaultTableModel model;
+        private JScrollPane detailSp; // field để dùng trong attachDynamicRows
 
         NVDetailTable() {
             setLayout(new BorderLayout(0, 6));
@@ -1244,16 +1303,47 @@ public class ManHinhThongKe extends JPanel {
             JLabel t1 = new JLabel(" Chi tiết dược sĩ theo ca", new MenuIcon("CLOCK"), SwingConstants.LEFT);
             t1.setFont(new Font("Segoe UI", Font.BOLD, 13));
             t1.setForeground(Color.decode("#152A4B"));
-            JTextField search = new JTextField("🔍 Tìm nhân viên...");
+
+            // Search field với placeholder và DocumentListener
+            JTextField search = new JTextField();
             search.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-            search.setPreferredSize(new Dimension(150, 26));
+            search.setPreferredSize(new Dimension(160, 28));
             search.setForeground(Color.GRAY);
-            search.setBorder(BorderFactory.createLineBorder(Color.decode("#DFE3E8"), 1, true));
+            search.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(Color.decode("#DFE3E8"), 1, true),
+                BorderFactory.createEmptyBorder(0, 8, 0, 8)));
+
+            final String PLACEHOLDER = "Tìm nhân viên...";
+            search.setText(PLACEHOLDER);
+            search.addFocusListener(new FocusAdapter() {
+                @Override public void focusGained(FocusEvent e) {
+                    if (search.getText().equals(PLACEHOLDER)) {
+                        search.setText(""); search.setForeground(Color.decode("#333333"));
+                    }
+                }
+                @Override public void focusLost(FocusEvent e) {
+                    if (search.getText().trim().isEmpty()) {
+                        search.setText(PLACEHOLDER); search.setForeground(Color.GRAY);
+                        filterText = ""; refreshData();
+                    }
+                }
+            });
+            search.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+                public void insertUpdate(javax.swing.event.DocumentEvent e)  { applySearch(); }
+                public void removeUpdate(javax.swing.event.DocumentEvent e)  { applySearch(); }
+                public void changedUpdate(javax.swing.event.DocumentEvent e) { applySearch(); }
+                private void applySearch() {
+                    String t = search.getText();
+                    filterText = t.equals(PLACEHOLDER) ? "" : t.trim().toLowerCase();
+                    refreshData();
+                }
+            });
+
             header.add(t1,     BorderLayout.WEST);
             header.add(search, BorderLayout.EAST);
             add(header, BorderLayout.NORTH);
 
-            String[] cols = {"Nhân viên","HĐ Sáng","DT Sáng","HĐ Chiều","DT Chiều","T.HĐ","T.DT"};
+            String[] cols = {"Nhân viên","HĐ Sáng","DT Sáng","HĐ Chiều","DT Chiều","HĐ Tối","DT Tối","T.HĐ","T.DT"};
             model = new DefaultTableModel(cols, 0) {
                 @Override public boolean isCellEditable(int r, int c) { return false; }
             };
@@ -1266,39 +1356,55 @@ public class ManHinhThongKe extends JPanel {
             tbl.setShowHorizontalLines(true);
             tbl.setGridColor(Color.decode("#F0F0F0"));
             tbl.setSelectionBackground(Color.decode("#F0F4FF"));
+            tbl.setFillsViewportHeight(true);
             tbl.getColumnModel().getColumn(1).setCellRenderer(new ShiftRenderer(Color.decode("#D97706")));
             tbl.getColumnModel().getColumn(2).setCellRenderer(new DefaultTableCellRenderer(){{ setHorizontalAlignment(RIGHT); }});
             tbl.getColumnModel().getColumn(3).setCellRenderer(new ShiftRenderer(Color.decode("#4F46E5")));
             tbl.getColumnModel().getColumn(4).setCellRenderer(new DefaultTableCellRenderer(){{ setHorizontalAlignment(RIGHT); }});
-            tbl.getColumnModel().getColumn(5).setCellRenderer(new ShiftRenderer(Color.decode("#152A4B")));
-            tbl.getColumnModel().getColumn(6).setCellRenderer(new DTRenderer());
+            tbl.getColumnModel().getColumn(5).setCellRenderer(new ShiftRenderer(Color.decode("#8B5CF6")));
+            tbl.getColumnModel().getColumn(6).setCellRenderer(new DefaultTableCellRenderer(){{ setHorizontalAlignment(RIGHT); }});
+            tbl.getColumnModel().getColumn(7).setCellRenderer(new ShiftRenderer(Color.decode("#152A4B")));
+            tbl.getColumnModel().getColumn(8).setCellRenderer(new DTRenderer());
 
             refreshData();
-            JScrollPane sp = new JScrollPane(tbl);
-            sp.setBorder(BorderFactory.createEmptyBorder());
-            sp.getVerticalScrollBar().setUI(new ModernScrollBarUI());
-            add(sp, BorderLayout.CENTER);
+            detailSp = new JScrollPane(tbl);
+            detailSp.setBorder(BorderFactory.createEmptyBorder());
+            detailSp.getVerticalScrollBar().setUI(new ModernScrollBarUI());
+            attachDynamicRows(tbl, detailSp);
+            add(detailSp, BorderLayout.CENTER);
         }
 
         void setFilter(int idx) { this.filterIdx=idx; refreshData(); }
 
         void refreshData() {
             model.setRowCount(0);
-            double totalDTS=0, totalDTC=0; int totalHDS=0, totalHDC=0;
+            double totalDTS=0, totalDTC=0, totalDTT=0;
+            int totalHDS=0, totalHDC=0, totalHDT=0;
             for (int i = 0; i < NV_NAMES.length; i++) {
-                if (filterIdx>=0 && i!=filterIdx) continue;
-                totalHDS+=NV_HD_S[i]; totalHDC+=NV_HD_C[i];
-                totalDTS+=NV_DT_S[i]; totalDTC+=NV_DT_C[i];
+                if (filterIdx >= 0 && i != filterIdx) continue;
+                if (!filterText.isEmpty() && !NV_NAMES[i].toLowerCase().contains(filterText)) continue;
+                totalHDS += NV_HD_S[i]; totalHDC += NV_HD_C[i];
+                if (i < NV_HD_T.length) totalHDT += NV_HD_T[i];
+                totalDTS += NV_DT_S[i]; totalDTC += NV_DT_C[i];
+                if (i < NV_DT_T.length) totalDTT += NV_DT_T[i];
+                int hdT = i < NV_HD_T.length ? NV_HD_T[i] : 0;
+                double dtT = i < NV_DT_T.length ? NV_DT_T[i] : 0;
                 model.addRow(new Object[]{
-                    NV_NAMES[i], NV_HD_S[i], String.format("%.1fM đ",NV_DT_S[i]),
-                    NV_HD_C[i],  String.format("%.1fM đ",NV_DT_C[i]),
-                    NV_HD_S[i]+NV_HD_C[i], String.format("%.1fM đ",NV_DT_S[i]+NV_DT_C[i])
+                    NV_NAMES[i],
+                    NV_HD_S[i], formatM(NV_DT_S[i]),
+                    NV_HD_C[i], formatM(NV_DT_C[i]),
+                    hdT,        formatM(dtT),
+                    NV_HD_S[i] + NV_HD_C[i] + hdT,
+                    formatM(NV_DT_S[i] + NV_DT_C[i] + dtT)
                 });
             }
             model.addRow(new Object[]{
-                "TỔNG:", totalHDS, String.format("%.1fM đ",totalDTS),
-                totalHDC, String.format("%.1fM đ",totalDTC),
-                totalHDS+totalHDC, String.format("%.1fM đ",totalDTS+totalDTC)
+                "TỔNG:",
+                totalHDS, formatM(totalDTS),
+                totalHDC, formatM(totalDTC),
+                totalHDT, formatM(totalDTT),
+                totalHDS + totalHDC + totalHDT,
+                formatM(totalDTS + totalDTC + totalDTT)
             });
         }
     }
@@ -1349,6 +1455,7 @@ public class ManHinhThongKe extends JPanel {
         tbl.setShowHorizontalLines(true);
         tbl.setGridColor(Color.decode("#F0F0F0"));
         tbl.setSelectionBackground(Color.decode("#F0F4FF"));
+        tbl.setFillsViewportHeight(true);
         tbl.getColumnModel().getColumn(2).setCellRenderer(new DefaultTableCellRenderer() {
             @Override public Component getTableCellRendererComponent(JTable t2, Object v, boolean s, boolean f, int r, int c) {
                 JLabel lbl = new JLabel(v!=null?v.toString():"", SwingConstants.CENTER);
@@ -1367,6 +1474,7 @@ public class ManHinhThongKe extends JPanel {
         JScrollPane sp = new JScrollPane(tbl);
         sp.setBorder(BorderFactory.createEmptyBorder());
         sp.getVerticalScrollBar().setUI(new ModernScrollBarUI());
+        attachDynamicRows(tbl, sp);
         p.add(sp, BorderLayout.CENTER);
         return p;
     }
@@ -1436,6 +1544,7 @@ public class ManHinhThongKe extends JPanel {
                 setForeground(Color.decode("#1A73E8")); setFont(new Font("Segoe UI",Font.BOLD,11)); return this;
             }
         });
+        tbl.setFillsViewportHeight(true);
         tbl.getColumnModel().getColumn(2).setCellRenderer(new DefaultTableCellRenderer() {
             @Override public Component getTableCellRendererComponent(JTable t2, Object v, boolean s, boolean f, int r, int c) {
                 JLabel l = new JLabel(v!=null?v.toString():"", SwingConstants.CENTER); l.setOpaque(true);
@@ -1458,6 +1567,7 @@ public class ManHinhThongKe extends JPanel {
         JScrollPane sp = new JScrollPane(tbl);
         sp.setBorder(BorderFactory.createEmptyBorder());
         sp.getVerticalScrollBar().setUI(new ModernScrollBarUI());
+        attachDynamicRows(tbl, sp);
         p.add(sp, BorderLayout.CENTER);
         return p;
     }
