@@ -34,7 +34,8 @@ public class BUS_SanPham {
                 } catch (Exception ignored) {}
             }
         }
-        return 0.0;
+        SanPham sp = daoSanPham.getSanPhamDayDu(maSP.trim());
+        return sp != null ? sp.getGiaBan() : 0.0;
     }
 
     public List<LoHang> layLoTheoSP(String maSP) {

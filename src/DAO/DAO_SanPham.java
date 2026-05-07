@@ -94,8 +94,7 @@ public class DAO_SanPham {
 
     public List<LoHang> layLoTheoSP(String maSP) {
         List<LoHang> dsLoHang = new ArrayList<>();
-        String sql = "SELECT * FROM LoHang WHERE sanPhamId = ? AND soLuongLoHang > 0 " +
-                     "AND trangThai NOT IN ('HET_HAN', 'AN') ORDER BY ngayHetHan ASC";
+        String sql = "SELECT * FROM LoHang WHERE sanPhamId = ? AND ISNULL(trangThai, '') != 'AN' ORDER BY ngayHetHan ASC";
         try (Connection con = ConnectDB.getInstance().getConnection();
              PreparedStatement pst = con.prepareStatement(sql)) {
             pst.setString(1, maSP);
@@ -307,7 +306,8 @@ public class DAO_SanPham {
 
     public int getSoLuongTon(String maSP) {
         String sql = "SELECT ISNULL(SUM(lh.soLuongLoHang),0) AS tonKho FROM LoHang lh " +
-                     "WHERE lh.sanPhamId=? AND lh.soLuongLoHang>0 AND lh.ngayHetHan>=GETDATE()";
+        		"WHERE lh.sanPhamId=? AND lh.soLuongLoHang>0 AND lh.ngayHetHan>=GETDATE() " +
+        		"AND ISNULL(lh.trangThai,'CON_HANG') NOT IN ('AN','HET_HAN')";
         try (Connection con = ConnectDB.getInstance().getConnection();
              PreparedStatement pst = con.prepareStatement(sql)) {
             pst.setString(1, maSP);
@@ -346,7 +346,7 @@ public class DAO_SanPham {
         List<String> ds = new ArrayList<>();
         try (Connection con = ConnectDB.getInstance().getConnection();
              Statement stmt = con.createStatement();
-             ResultSet rs = stmt.executeQuery("SELECT ten FROM SanPham")) {
+             ResultSet rs = stmt.executeQuery("SELECT ten FROM SanPham WHERE ISNULL(trangThai,'HOAT_DONG') != 'AN'")) {
             while (rs.next()) ds.add(rs.getString("ten"));
         } catch (SQLException e) { e.printStackTrace(); }
         return ds;
