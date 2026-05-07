@@ -188,10 +188,13 @@ public class ChiTietPhieuDoiTra extends JDialog {
         pnlGrid.add(createLabelPair("Hóa đơn gốc: ", hoaDonGoc));
         pnlGrid.add(createLabelPair("Khách hàng: ", khachHang));
         
+        
         String sdtThucTe = fetchSoDienThoai(hoaDonGoc); 
         pnlGrid.add(createLabelPair("SĐT: ", sdtThucTe)); 
-        pnlGrid.add(new JLabel("")); 
-
+        
+        // GỌI HÀM VÀ THÊM PHƯƠNG THỨC THANH TOÁN VÀO CỘT BÊN PHẢI (DƯỚI KHÁCH HÀNG)
+        String phuongThuc = fetchPhuongThucThanhToan(maPhieu);
+        pnlGrid.add(createLabelPair("Thanh toán: ", phuongThuc));
         JPanel pnlLyDo = new JPanel(new BorderLayout());
         pnlLyDo.setBackground(Color.WHITE);
         
@@ -254,7 +257,9 @@ public class ChiTietPhieuDoiTra extends JDialog {
         // Khởi tạo DAO để dự phòng lấy giá trực tiếp từ Database nếu chuỗi ghi chú bị lỗi
         DAO.DAO_HoaDon daoHD = new DAO.DAO_HoaDon();
 
+        // ==========================================
         // 1. ĐỔ DỮ LIỆU SẢN PHẨM KHÁCH TRẢ LẠI
+        // ==========================================
         if (dsTra != null) {
             for (Object[] sp : dsTra) {
                 String ten = sp[0] != null ? sp[0].toString() : "Sản phẩm";
@@ -270,18 +275,22 @@ public class ChiTietPhieuDoiTra extends JDialog {
                 // LỚP BẢO VỆ 1: Lọc sạch chuỗi, chỉ lấy số
                 try { 
                     if (sp[3] != null) {
-                        String giaStr = sp[3].toString().replaceAll("[^0-9]", "");
+                        String giaStr = sp[3].toString().replaceAll(",00$|\\.00$|,0$|\\.0$", "");
+                        giaStr = giaStr.replaceAll("[^0-9]", "");
                         if (!giaStr.isEmpty()) gia = Long.parseLong(giaStr);
                     }
                 } catch(Exception e){}
                 
-                // LỚP BẢO VỆ 2: Truy vấn thẳng vào Hóa Đơn Gốc nếu giá = 0
-                if (gia == 0) {
+                // LỚP BẢO VỆ 2: Truy vấn thẳng vào Hóa Đơn Gốc nếu giá <= 1 (Đã Fix)
+                if (gia <= 1) {
                     try {
                         Object[] info = daoHD.layThongTinGiaTuHDGoc(hoaDonGoc, ten);
                         if (info != null) {
                             if (info[0] != null) dvt = info[0].toString();
-                            if (info[1] != null) gia = Long.parseLong(info[1].toString().replaceAll("[^0-9]", ""));
+                            if (info[1] != null) {
+                                String infoGia = info[1].toString().replaceAll(",00$|\\.00$|,0$|\\.0$", "").replaceAll("[^0-9]", "");
+                                if (!infoGia.isEmpty()) gia = Long.parseLong(infoGia);
+                            }
                         }
                     } catch(Exception ex){}
                 }
@@ -297,7 +306,9 @@ public class ChiTietPhieuDoiTra extends JDialog {
             }
         }
 
+        // ==========================================
         // 2. ĐỔ DỮ LIỆU SẢN PHẨM KHÁCH ĐỔI LẤY MỚI
+        // ==========================================
         if (dsDoi != null) {
             for (Object[] sp : dsDoi) {
                 String ten = sp[0] != null ? sp[0].toString() : "Sản phẩm";
@@ -313,18 +324,24 @@ public class ChiTietPhieuDoiTra extends JDialog {
                 // LỚP BẢO VỆ 1: Lọc sạch chuỗi, chỉ lấy số
                 try { 
                     if (sp[3] != null) {
-                        String giaStr = sp[3].toString().replaceAll("[^0-9]", "");
+                        // ĐÃ FIX: Thêm bộ lọc thập phân vào Lớp bảo vệ 1 của Sản phẩm Đổi
+                        String giaStr = sp[3].toString().replaceAll(",00$|\\.00$|,0$|\\.0$", "");
+                        giaStr = giaStr.replaceAll("[^0-9]", "");
                         if (!giaStr.isEmpty()) gia = Long.parseLong(giaStr);
                     }
                 } catch(Exception e){}
                 
                 // LỚP BẢO VỆ 2: Truy vấn thẳng vào Phiếu Đổi hiện tại
-                if (gia == 0) {
+                // ĐÃ FIX: Sửa điều kiện thành gia <= 1 và thêm bộ lọc thập phân
+                if (gia <= 1) {
                     try {
                         Object[] info = daoHD.layThongTinGiaTuHDGoc(maPhieu, ten);
                         if (info != null) {
                             if (info[0] != null) dvt = info[0].toString();
-                            if (info[1] != null) gia = Long.parseLong(info[1].toString().replaceAll("[^0-9]", ""));
+                            if (info[1] != null) {
+                                String infoGia = info[1].toString().replaceAll(",00$|\\.00$|,0$|\\.0$", "").replaceAll("[^0-9]", "");
+                                if (!infoGia.isEmpty()) gia = Long.parseLong(infoGia);
+                            }
                         }
                     } catch(Exception ex){}
                 }
@@ -366,7 +383,9 @@ public class ChiTietPhieuDoiTra extends JDialog {
         spTable.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, borderGray));
         spTable.getViewport().setBackground(Color.WHITE);
 
+        // ==========================================
         // 3. KHU VỰC SUMMARY TỔNG TIỀN VÀ CHÊNH LỆCH
+        // ==========================================
         JPanel pnlSummary = new JPanel(new GridLayout(2, 1, 0, 5));
         pnlSummary.setBackground(Color.WHITE);
         
@@ -378,9 +397,9 @@ public class ChiTietPhieuDoiTra extends JDialog {
                 String.format("%,dđ", tongTienDoi).replace(',', '.') + " / " + String.format("%,dđ", tongTienTra).replace(',', '.'), 
                 Color.GRAY, 12));
                 
-            // Tính toán hoàn toàn dựa trên dữ liệu dương đã được làm sạch
+            // ĐÃ FIX: Tự động tính lại độc lập, bỏ qua chuỗi bị lưu lỗi trong Database cũ
             long chenhLech = tongTienDoi - tongTienTra;
-            boolean isKhachBu = (chenhLech >= 0); 
+            boolean isKhachBu = (chenhLech > 0); 
             
             String textChenhLech = isKhachBu ? "Khách bù thêm:" : "Thối lại khách:";
             String valueChenhLech = String.format("%,dđ", Math.abs(chenhLech)).replace(',', '.'); 
@@ -394,7 +413,17 @@ public class ChiTietPhieuDoiTra extends JDialog {
         return pnl;
     }
     
-    
+    private String fetchPhuongThucThanhToan(String maPhieu) {
+        String phuongThuc = "Tiền mặt";
+        try {
+            BUS.BUS_HoaDon busHD = new BUS.BUS_HoaDon();
+            Entity.HoaDon hd = busHD.getHoaDonTheoMa(maPhieu);
+            if (hd != null && hd.getPhuongThucThanhToan() != null) {
+                phuongThuc = hd.getPhuongThucThanhToan().toString().contains("CHUYEN_KHOAN") ? "Chuyển khoản" : "Tiền mặt";
+            }
+        } catch (Exception e) {}
+        return phuongThuc;
+    }
     private JPanel createTotalRow(String label, String value, Color color, int fontSize) {
         JPanel p = new JPanel(new BorderLayout());
         p.setBackground(Color.WHITE);

@@ -46,9 +46,20 @@ public class MainDashboard extends JFrame {
         setSize(1300, 750);
         setLocationRelativeTo(null);
         setLayout(new BorderLayout());
-        
-        // Thêm dòng này để "xóa" (ẩn) icon ly cà phê mặc định của Java
-        setIconImage(new java.awt.image.BufferedImage(1, 1, java.awt.image.BufferedImage.TYPE_INT_ARGB));
+        try {
+            String imagePath = "data/logo.png"; // Đường dẫn bạn đã chỉ định
+            java.io.File file = new java.io.File(imagePath);
+            
+            if (file.exists()) {
+                Image appIcon = new ImageIcon(imagePath).getImage();
+                this.setIconImage(appIcon);
+            } else {
+                // Nếu vẫn đen, hãy nhìn vào màn hình Output của NetBeans/Eclipse để thấy dòng này:
+                System.out.println("LỖI: Không tìm thấy file logo tại: " + file.getAbsolutePath());
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
 
         menuButtons = new ArrayList<>();
         cardLayout  = new CardLayout();

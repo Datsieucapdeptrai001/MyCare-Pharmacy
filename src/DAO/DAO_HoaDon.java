@@ -554,6 +554,7 @@ public class DAO_HoaDon {
         }
     }
     public Object[] layThongTinGiaTuHDGoc(String maHDGoc, String tenSP) {
+        // 1. Thử lấy giá từ bảng ChiTietHoaDon (để đảm bảo lấy đúng giá gốc lúc giao dịch)
         String sql = "SELECT dv.ten, dv.gia FROM ChiTietHoaDon ct " +
                      "JOIN SanPham sp ON ct.sanPhamId = sp.id " +
                      "JOIN DonViDoLuong dv ON ct.donViDoLuongId = dv.id " +
@@ -568,7 +569,22 @@ public class DAO_HoaDon {
                     return new Object[]{ rs.getString(1), rs.getDouble(2) };
                 }
             }
+            
+            // 2. FALLBACK: NẾU KHÔNG TÌM THẤY (Do SP mới đổi lấy chưa lưu kịp vào ChiTietHoaDon)
+            // -> Truy vấn trực tiếp giá bán hiện hành của sản phẩm đó từ danh mục
+            String sqlFallback = "SELECT TOP 1 dv.ten, dv.gia FROM SanPham sp " +
+                                 "JOIN DonViDoLuong dv ON sp.id = dv.sanPhamId " +
+                                 "WHERE sp.ten = ?";
+            try (PreparedStatement pst2 = con.prepareStatement(sqlFallback)) {
+                pst2.setString(1, tenSP);
+                try (ResultSet rs2 = pst2.executeQuery()) {
+                    if (rs2.next()) {
+                        return new Object[]{ rs2.getString(1), rs2.getDouble(2) };
+                    }
+                }
+            }
         } catch (Exception e) { e.printStackTrace(); }
-        return new Object[]{ "Đơn vị", 0.0 }; 
+        
+        return new Object[]{ "Hộp", 0.0 }; 
     }
 }

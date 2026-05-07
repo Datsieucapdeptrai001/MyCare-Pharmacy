@@ -62,7 +62,7 @@ public class BUS_TraHang {
         return daoHoaDon.capNhatTrangThaiPhieuDoiTra(maPhieu, trangThaiMoi);
     }
 
- // LOGIC BUS: BÓC TÁCH SẢN PHẨM TRỰC TIẾP TỪ GHI CHÚ HÓA ĐƠN
+    // LOGIC BUS: BÓC TÁCH SẢN PHẨM TRỰC TIẾP TỪ GHI CHÚ HÓA ĐƠN
     private List<Object[]> parseGhiChuLaySanPham(String maPhieu, boolean isTraLai) {
         List<Object[]> result = new ArrayList<>();
         HoaDon hd = daoHoaDon.layHoaDonTheoMa(maPhieu);
@@ -83,9 +83,19 @@ public class BUS_TraHang {
                 String sl = vals[1];
                 long donGia = 0;
                 
-                // MỚI: Bóc tách Đơn Giá thẳng từ chuỗi, chuẩn xác 100%
+                // ĐÃ FIX: Bóc tách Đơn Giá thẳng từ chuỗi, xử lý triệt để phần thập phân và dấu phân cách
                 if (vals.length >= 3) {
-                    try { donGia = Long.parseLong(vals[2]); } catch (Exception e) {}
+                    try { 
+                        // 1. Chỉ xóa phần thập phân .0, .00, ,0, ,00 ở tận cùng chuỗi
+                        String strGia = vals[2].replaceAll(",00$|\\.00$|,0$|\\.0$", "");
+                        // 2. Lọc bỏ toàn bộ chữ, dấu phẩy, dấu chấm nghìn (chỉ giữ lại số)
+                        strGia = strGia.replaceAll("[^0-9]", ""); 
+                        if (!strGia.isEmpty()) {
+                            donGia = Long.parseLong(strGia);
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace(); // In ra console để dễ debug nếu có lỗi khác
+                    }
                 }
                 
                 result.add(new Object[]{ ten, sl, "", donGia });
@@ -98,8 +108,7 @@ public class BUS_TraHang {
         return parseGhiChuLaySanPham(maPhieu, false); // false = Lấy SP Đổi
     }
 
-    // ĐÃ THÊM HÀM NÀY ĐỂ KHẮC PHỤC LỖI GỌI HÀM BÊN GUI
- // Đã thêm hàm này vào BUS_TraHang.java
+    // Đã thêm hàm này vào BUS_TraHang.java
     public List<Object[]> layChiTietPhieu(String maPhieu) {
         // true = Lấy danh sách Sản Phẩm Trả lại
         return parseGhiChuLaySanPham(maPhieu, true); 

@@ -83,6 +83,7 @@ public class TaoHoaDon extends JDialog {
     private JLabel lblQRCode;
     private JLabel lblQRAmount;
     private JLabel lblExactValue;
+    private JScrollPane mainScrollPane;
     private java.util.List<int[]> listCounters = new java.util.ArrayList<>();
     private java.util.List<JLabel> listCountLabels = new java.util.ArrayList<>();
  // Thêm dòng này ngay cạnh pendingPhoneToLink của bạn
@@ -365,14 +366,13 @@ public class TaoHoaDon extends JDialog {
         wrapperPanel.add(pnlBody, BorderLayout.NORTH); // Chốt cứng ở phía Bắc để ép chiều ngang vừa khít màn hình
 
         // --- 2. BỎ WRAPPER VÀO SCROLLPANE THAY VÌ PNLBODY ---
-        JScrollPane scrollPane = new JScrollPane(wrapperPanel);
-        scrollPane.setBorder(null);
-        scrollPane.getViewport().setBackground(Color.WHITE);
+        mainScrollPane = new JScrollPane(wrapperPanel); // Dùng biến toàn cục
+        mainScrollPane.setBorder(null);
+        mainScrollPane.getViewport().setBackground(Color.WHITE);
         
         // --- 3. KHÓA VĨNH VIỄN THANH CUỘN NGANG ---
-        scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        mainScrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
 
-        // (Giữ nguyên đoạn code làm đẹp thanh cuộn dọc của bạn)
         JScrollBar customScrollBar = new JScrollBar() {
             @Override
             public void updateUI() {
@@ -381,9 +381,9 @@ public class TaoHoaDon extends JDialog {
         };
         customScrollBar.setPreferredSize(new Dimension(10, 0));
         customScrollBar.setUnitIncrement(16);
-        scrollPane.setVerticalScrollBar(customScrollBar);
+        mainScrollPane.setVerticalScrollBar(customScrollBar);
         
-        add(scrollPane, BorderLayout.CENTER);
+        add(mainScrollPane, BorderLayout.CENTER);
         
         JPanel pnlFooter = new JPanel(new BorderLayout());
         pnlFooter.setBackground(Color.WHITE);
@@ -849,16 +849,20 @@ public class TaoHoaDon extends JDialog {
     private void recalculateTotals() {
         if (productModel == null) return;
         
+        // [1] LƯU TRẠNG THÁI THANH CUỘN TRƯỚC KHI TÍNH TOÁN
+        int currentScrollPos = 0;
+        if (mainScrollPane != null) {
+            currentScrollPos = mainScrollPane.getVerticalScrollBar().getValue();
+        }
+        
         long tongTien = 0;     // Tiền hàng (Tạm tính)
         long tongVat = 0;      // Tổng tiền thuế VAT
         int soLuongSanPham = 0;
         
-        // --- THÊM MỚI: BIẾN KIỂM TRA THUỐC KÊ ĐƠN ---
         boolean hasThuocKeDon = false; 
 
         for (int i = 0; i < productModel.getRowCount(); i++) {
             try {
-                // --- THÊM MỚI: Quét cột số 6 xem có chứa chữ "kê đơn" không ---
                 Object danhMucObj = getSafeValue(productModel, i, 6);
                 if (danhMucObj != null) {
                     String dm = danhMucObj.toString().toLowerCase();
@@ -867,14 +871,12 @@ public class TaoHoaDon extends JDialog {
                     }
                 }
 
-                // 1. Lấy Số lượng (Cột 2)
                 int sl = 0;
                 Object slObj = getSafeValue(productModel, i, 2);
                 if (slObj != null) {
                     sl = Integer.parseInt(slObj.toString().trim());
                 }
 
-                // 2. Lấy Đơn giá (Cột 3)
                 long donGia = 0;
                 Object donGiaObj = getSafeValue(productModel, i, 3);
                 if (donGiaObj != null) {
@@ -882,12 +884,10 @@ public class TaoHoaDon extends JDialog {
                     if (!donGiaStr.isEmpty()) donGia = Long.parseLong(donGiaStr);
                 }
 
-                // 3. Tính tiền trước VAT (Tạm tính từng món)
                 long thanhTien = sl * donGia;
                 tongTien += thanhTien;
                 soLuongSanPham += sl;
 
-                // 4. Lấy % VAT (Cột 4) và tính VAT thực tế
                 double thueSuat = 0.0;
                 Object vatObj = getSafeValue(productModel, i, 4);
                 if (vatObj != null) {
@@ -898,100 +898,74 @@ public class TaoHoaDon extends JDialog {
                 }
                 tongVat += (long) (thanhTien * thueSuat);
 
-            } catch (Exception ex) {
-                System.out.println("Lỗi định dạng số ở dòng " + i + ": " + ex.getMessage());
-            }
+            } catch (Exception ex) {}
         }
 
-        // --- THÊM MỚI: TỰ ĐỘNG BẬT/TẮT BẢNG KÊ ĐƠN & RENDER LẠI GIAO DIỆN ---
         if (pnlDonThuoc != null && pnlDonThuoc.isVisible() != hasThuocKeDon) {
             pnlDonThuoc.setVisible(hasThuocKeDon);
-            this.revalidate(); // Yêu cầu vẽ lại giao diện cho khít
-            this.repaint();
         }
 
-        // --- TỔNG HỢP VÀ CẬP NHẬT BIẾN ---
-        if (lblTotalItems != null) {
-            lblTotalItems.setText(String.format("Tổng sản phẩm: %d", soLuongSanPham));
-        }
+        if (lblTotalItems != null) lblTotalItems.setText(String.format("Tổng sản phẩm: %d", soLuongSanPham));
 
         this.tamTinh = tongTien;
         this.vat = tongVat;
-        tuDongApDungKhuyenMai();
-        long totalToPay = this.tamTinh + this.vat;
         
-        // 1. Trừ tiền giảm giá từ Khuyến mãi (Ưu tiên trừ trước)
+        tuDongApDungKhuyenMai(); 
+        
+        long totalToPay = this.tamTinh + this.vat;
         totalToPay -= tienGiamGia; 
         if (totalToPay < 0) totalToPay = 0;
         
-        // 2. FIX LỖI NUỐT ĐIỂM: Trừ điểm tích lũy khách hàng (Không trừ lố)
         if (isDungDiem) {
             long maxTienGiam = diemHienTaiKH * 100L;
             if (maxTienGiam > totalToPay) {
-                // Nếu điểm khách lớn hơn tiền hóa đơn -> Chỉ trừ đúng bằng số tiền hóa đơn (làm tròn theo 100đ)
                 this.tienGiamTuDiem = (totalToPay / 100L) * 100L; 
             } else {
-                this.tienGiamTuDiem = maxTienGiam; // Nếu không đủ thì dùng hết điểm
+                this.tienGiamTuDiem = maxTienGiam; 
             }
             totalToPay -= this.tienGiamTuDiem;
         } else {
             this.tienGiamTuDiem = 0; 
         }
         
-        // Đảm bảo tổng tiền không bị âm
         if (totalToPay < 0) totalToPay = 0;
-        
-        // Gán lại để hàm khác (như thanh toán, tiền khách đưa) xài đúng
         this.tongHoaDon = totalToPay; 
 
-        // --- ĐỔ SỐ LIỆU RA GIAO DIỆN ---
-        if (lblSubtotalValue != null) {
-            lblSubtotalValue.setText(String.format("%,d", this.tamTinh).replace(',', '.') + "đ");
-        }
-        if (lblVatValue != null) {
-            lblVatValue.setText("+" + String.format("%,d", this.vat).replace(',', '.') + "đ");
-        }
-        if (lblDiscountValue != null) {
-            lblDiscountValue.setText("-" + String.format("%,d", tienGiamGia).replace(',', '.') + "đ");
-        }
-        if (lblDungDiemValue != null) {
-            lblDungDiemValue.setText("-" + String.format("%,d", this.tienGiamTuDiem).replace(',', '.') + "đ");
-        }
-        if (lblTotalPriceValue != null) {
-            lblTotalPriceValue.setText(String.format("%,d", totalToPay).replace(',', '.') + "đ");
-        }
-        if (lblQRAmount != null) {
-            lblQRAmount.setText("Cần thanh toán: " + String.format("%,d", totalToPay).replace(',', '.') + "đ");
-        }
-        if (lblExactValue != null) {
-            lblExactValue.setText(String.format("%,d", totalToPay).replace(',', '.') + "đ");
-        }
+        if (lblSubtotalValue != null) lblSubtotalValue.setText(String.format("%,d", this.tamTinh).replace(',', '.') + "đ");
+        if (lblVatValue != null) lblVatValue.setText("+" + String.format("%,d", this.vat).replace(',', '.') + "đ");
+        if (lblDiscountValue != null) lblDiscountValue.setText("-" + String.format("%,d", tienGiamGia).replace(',', '.') + "đ");
+        if (lblDungDiemValue != null) lblDungDiemValue.setText("-" + String.format("%,d", this.tienGiamTuDiem).replace(',', '.') + "đ");
+        if (lblTotalPriceValue != null) lblTotalPriceValue.setText(String.format("%,d", totalToPay).replace(',', '.') + "đ");
+        if (lblQRAmount != null) lblQRAmount.setText("Cần thanh toán: " + String.format("%,d", totalToPay).replace(',', '.') + "đ");
+        if (lblExactValue != null) lblExactValue.setText(String.format("%,d", totalToPay).replace(',', '.') + "đ");
 
-        // --- FIX UI/UX: CẬP NHẬT TRỰC TIẾP ĐIỂM CÒN LẠI LÊN GIAO DIỆN NGAY LẬP TỨC ---
         if (lblDungDiemText != null) {
             int diemThucTeDung = (int)(this.tienGiamTuDiem / 100L);
-            
-            // Đổi chữ hiển thị trên công tắc bật/tắt
             if (isDungDiem) {
                 lblDungDiemText.setText(String.format("Dùng %,d điểm", diemThucTeDung) + " (-" + String.format("%,d", this.tienGiamTuDiem).replace(',', '.') + "đ)");
             } else {
                 lblDungDiemText.setText(String.format("Dùng %,d điểm", diemHienTaiKH) + " (-" + String.format("%,d", diemHienTaiKH * 100L).replace(',', '.') + "đ)");
             }
-            
-            // Ép điểm của khách hàng trên bảng thông tin xanh nhạt thụt giảm ngay lập tức
-            if (lblLinkedPoints != null && isCustomerLinked) {
-                int diemConLai = diemHienTaiKH - diemThucTeDung;
-                lblLinkedPoints.setText(String.format("%,d", diemConLai).replace(',', '.') + " điểm");
-                lblLinkedMoney.setText("≈ " + String.format("%,d", diemConLai * 100L).replace(',', '.') + "đ");
-            }
         }
 
-        // Nếu đang ở tab mã QR, update lại QR với số tiền mới
         if ("Chuyển khoản".equals(phuongThuc) && lblQRCode != null) {
             loadQRCodeVCB(lblQRCode); 
         }
         
         capNhatTongTien();
+
+        // [2] PHỤC HỒI LẠI TRẠNG THÁI THANH CUỘN (Dùng Double InvokeLater)
+        if (mainScrollPane != null) {
+            final int savedScrollPos = currentScrollPos;
+            SwingUtilities.invokeLater(() -> {
+                mainScrollPane.revalidate();
+                mainScrollPane.repaint();
+                // Ép vòng lặp sự kiện tiếp theo (sau khi bảng đã thực sự phình to) phải cuộn về chỗ cũ
+                SwingUtilities.invokeLater(() -> {
+                    mainScrollPane.getVerticalScrollBar().setValue(savedScrollPos);
+                });
+            });
+        }
     }
     private Object getSafeValue(javax.swing.table.TableModel model, int row, int col) {
         try {
@@ -3249,13 +3223,65 @@ txtSearchProduct.addKeyListener(new java.awt.event.KeyAdapter() {
                         mainTableModel.setValueAt(tongTien, editingModelRow, 5);     
                         mainTableModel.setValueAt("Đang xử lý", editingModelRow, 6); 
                     } else {
-                    	mainTableModel.insertRow(0, new Object[]{maHD, ngayStr, khach, sdt, "Tiền mặt", tongTien, "Đang xử lý", "", "Tất cả"});
+                        mainTableModel.insertRow(0, new Object[]{maHD, ngayStr, khach, sdt, "Tiền mặt", tongTien, "Đang xử lý", "", "Tất cả"});
                         this.editingModelRow = 0;
                         this.maHDDangSua = maHD;
                     }
                     
+                    // =========================================================
+                    // TÍNH NĂNG MỚI: TỰ ĐỘNG HỦY ĐƠN NHÁP SAU 10 PHÚT
+                    // =========================================================
+                    final String maHoaDonHuy = maHD;
+                    final DefaultTableModel modelBangChinh = mainTableModel;
+                    
+                    // 10 phút = 10 * 60 * 1000 = 600.000 milliseconds
+                    javax.swing.Timer timerHuyDon = new javax.swing.Timer(600000, new java.awt.event.ActionListener() {
+                        @Override
+                        public void actionPerformed(java.awt.event.ActionEvent e) {
+                            try (java.sql.Connection conTimer = ConnectDB.getInstance().getConnection()) {
+                                // Kiểm tra xem đơn này đã được thanh toán chưa, hay vẫn đang nháp
+                                String checkSql = "SELECT ghiChu FROM HoaDon WHERE id = ?";
+                                try (java.sql.PreparedStatement pstCheck = conTimer.prepareStatement(checkSql)) {
+                                    pstCheck.setString(1, maHoaDonHuy);
+                                    try (java.sql.ResultSet rsCheck = pstCheck.executeQuery()) {
+                                        if (rsCheck.next()) {
+                                            String ghiChu = rsCheck.getString("ghiChu");
+                                            
+                                            // Nếu ghi chú vẫn chứa chữ "Lưu nháp" -> Hủy đơn
+                                            if (ghiChu != null && ghiChu.contains("Lưu nháp")) {
+                                                
+                                                // 1. Cập nhật Database thành Đã hủy
+                                                String updateSql = "UPDATE HoaDon SET ghiChu = N'Đã hủy (Hết hạn)' WHERE id = ?";
+                                                try (java.sql.PreparedStatement pstUpdate = conTimer.prepareStatement(updateSql)) {
+                                                    pstUpdate.setString(1, maHoaDonHuy);
+                                                    pstUpdate.executeUpdate();
+                                                }
+                                                
+                                                // 2. Cập nhật UI Bảng Hóa Đơn ngoài màn hình chính (nếu form chưa bị đóng hoàn toàn)
+                                                if (modelBangChinh != null) {
+                                                    for (int i = 0; i < modelBangChinh.getRowCount(); i++) {
+                                                        if (maHoaDonHuy.equals(modelBangChinh.getValueAt(i, 0))) {
+                                                            modelBangChinh.setValueAt("Đã hủy", i, 6);
+                                                            break;
+                                                        }
+                                                    }
+                                                }
+                                                System.out.println("Hệ thống tự động hủy đơn nháp quá hạn: " + maHoaDonHuy);
+                                            }
+                                        }
+                                    }
+                                }
+                            } catch (Exception ex) {
+                                ex.printStackTrace();
+                            }
+                        }
+                    });
+                    timerHuyDon.setRepeats(false); // Chỉ chạy 1 lần
+                    timerHuyDon.start(); // Bắt đầu đếm ngược 10 phút
+                    // =========================================================
+
                     if (!isAutoSave) {
-                        showCustomNotification("THÀNH CÔNG", "Đã lưu nháp hóa đơn thành công!", "SUCCESS");
+                        showCustomNotification("THÀNH CÔNG", "Đã lưu nháp hóa đơn thành công!\n(Hóa đơn sẽ tự động hủy nếu không thanh toán trong 10 phút tới)", "SUCCESS");
                         this.dispose(); 
                     }
                 }
@@ -3829,7 +3855,6 @@ txtSearchProduct.addKeyListener(new java.awt.event.KeyAdapter() {
         
         // Khóa chặn lặp mã (1 Voucher chỉ được quét 1 lần)
         java.util.Set<String> processedPromoIds = new java.util.HashSet<>();
-        String[] cacMaDangApDung = this.maKhuyenMaiApDung != null ? this.maKhuyenMaiApDung.split(",") : new String[0];
 
         String sql = "SELECT k.id, h.loaiHinhThuc, h.giaTri AS mucGiam, ISNULL(d.giaTri, 0) AS donToiThieu, " +
                 "ISNULL(h.slYeuCau, 0) AS slYeuCau, ISNULL(h.spYeuCau, '') AS spYeuCau, ISNULL(h.dvdlYeuCau, '') AS dvdlYeuCau, " +
@@ -3837,7 +3862,7 @@ txtSearchProduct.addKeyListener(new java.awt.event.KeyAdapter() {
                 "FROM KhuyenMai k " +
                 "JOIN HinhThucKhuyenMai h ON k.id = h.khuyenMaiId " +
                 "LEFT JOIN DieuKienKhuyenMai d ON k.id = d.khuyenMaiId " +
-                "WHERE k.trangThai = 1 " + // <--- SỬA THÀNH SỐ 1 Ở ĐÂY
+                "WHERE k.trangThai = 1 " + 
                 "AND CAST(k.ngayBatDau AS DATE) <= CAST(GETDATE() AS DATE) " +
                 "AND (k.ngayKetThuc IS NULL OR CAST(k.ngayKetThuc AS DATE) >= CAST(GETDATE() AS DATE))";
 
@@ -3848,18 +3873,7 @@ txtSearchProduct.addKeyListener(new java.awt.event.KeyAdapter() {
             while (rs.next()) {
                 String maKM = rs.getString("id").trim();
                 
-                // Tránh lỗi lặp vô tận từ SQL Join
                 if (processedPromoIds.contains(maKM)) continue;
-
-                boolean isMaDuocPhepDuyet = false;
-                for (String m : cacMaDangApDung) {
-                    if (m.trim().equalsIgnoreCase(maKM)) {
-                        isMaDuocPhepDuyet = true;
-                        break;
-                    }
-                }
-                
-                if (!isMaDuocPhepDuyet) continue;
 
                 String loaiKM = rs.getString("loaiHinhThuc") != null ? rs.getString("loaiHinhThuc").toUpperCase() : "";
                 double giaTriGiam = rs.getDouble("mucGiam");
@@ -3877,6 +3891,7 @@ txtSearchProduct.addKeyListener(new java.awt.event.KeyAdapter() {
                 long soLuongTangThucTe = 0;
                 String unitToGive = dvdlTang;
 
+                // TRƯỜNG HỢP 1: Yêu cầu SẢN PHẨM CỤ THỂ
                 if (!spYeuCau.isEmpty()) {
                     int slSanPhamYeuCauThucTe = 0;
                     String matchedUnit = "Hộp";
@@ -3886,7 +3901,6 @@ txtSearchProduct.addKeyListener(new java.awt.event.KeyAdapter() {
                         String dvtTrongBang = productModel.getValueAt(i, 1).toString();
                         
                         if (!tenSpTrongBang.startsWith("[QUÀ TẶNG]") && tenSpTrongBang.toLowerCase().contains(spYeuCau.toLowerCase())) {
-                            // Nếu DB không yêu cầu ĐVT cụ thể (Rỗng), HOẶC ĐVT khớp -> Được tính
                             if (dvdlYeuCau.isEmpty() || dvtTrongBang.equalsIgnoreCase(dvdlYeuCau)) {
                                 slSanPhamYeuCauThucTe += Integer.parseInt(productModel.getValueAt(i, 2).toString());
                                 matchedUnit = dvtTrongBang; 
@@ -3896,20 +3910,30 @@ txtSearchProduct.addKeyListener(new java.awt.event.KeyAdapter() {
                     
                     if (slYeuCau > 0 && slSanPhamYeuCauThucTe >= slYeuCau) {
                         duDieuKien = true;
-                        
-                        // FIX TẬN GỐC TẠI ĐÂY: KHÔNG NHÂN HỆ SỐ NỮA (Chỉ lấy đúng Số lượng tặng, mua 8 tặng 1)
-                        soLuongTangThucTe = (slTang > 0 ? slTang : 1); 
-                        
-                        // FIX ĐVT: Nếu DB không set ĐVT tặng, thì khách mua ĐVT nào, tặng đúng ĐVT đó (Viên -> Viên)
+                        // TÍNH BỘI SỐ: (Số lượng mua thực tế / Số lượng yêu cầu) * Số lượng tặng
+                        soLuongTangThucTe = (slSanPhamYeuCauThucTe / slYeuCau) * (slTang > 0 ? slTang : 1); 
                         if (unitToGive.isEmpty()) unitToGive = matchedUnit; 
                     }
-                } else {
-                    if (donToiThieu > 0 && tongTienBill >= donToiThieu) {
+                } 
+                // TRƯỜNG HỢP 2: KHÔNG yêu cầu sản phẩm cụ thể (Tính trên tổng giỏ hàng)
+                else {
+                    // 2.1 - Mã yêu cầu TỔNG SỐ LƯỢNG SẢN PHẨM (Ví dụ: Mua 2 món bất kỳ tặng 1)
+                    if (slYeuCau > 0 && tongSoLuongSP_ThucTe >= slYeuCau) {
                         duDieuKien = true;
+                        // TÍNH BỘI SỐ THEO TỔNG ĐƠN
+                        soLuongTangThucTe = (tongSoLuongSP_ThucTe / slYeuCau) * (slTang > 0 ? slTang : 1);
+                        if (unitToGive.isEmpty()) unitToGive = "Hộp";
+                    } 
+                    // 2.2 - Mã yêu cầu TỔNG TIỀN (Ví dụ: Đơn >= 500k)
+                    else if (donToiThieu > 0 && tongTienBill >= donToiThieu) {
+                        duDieuKien = true;
+                        // Đơn tổng tiền thường chỉ tặng 1 lần quà, không nhân bội số
                         soLuongTangThucTe = (slTang > 0 ? slTang : 1);
                         if (unitToGive.isEmpty()) unitToGive = "Hộp";
-                    } else if (slYeuCau == 0 && donToiThieu == 0) {
-                        duDieuKien = true; // Mã Free
+                    } 
+                    // 2.3 - Mã Free (Không có điều kiện)
+                    else if (slYeuCau == 0 && donToiThieu == 0) {
+                        duDieuKien = true; 
                         soLuongTangThucTe = (slTang > 0 ? slTang : 1);
                         if (unitToGive.isEmpty()) unitToGive = "Hộp";
                     }
@@ -3921,7 +3945,6 @@ txtSearchProduct.addKeyListener(new java.awt.event.KeyAdapter() {
 
                     if (loaiKM.contains("SAN_PHAM_KEM_THEO") || loaiKM.contains("TANG")) {
                         if (soLuongTangThucTe > 0 && !spTang.isEmpty()) {
-                            // Gộp quà nếu trùng Tên + ĐVT
                             boolean daGop = false;
                             for (Object[] q : danhSachQuaTang) {
                                 if (q[0].toString().equals("[QUÀ TẶNG] " + spTang) && q[1].toString().equals(unitToGive)) {
