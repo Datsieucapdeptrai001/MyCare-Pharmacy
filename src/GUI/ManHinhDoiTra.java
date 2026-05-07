@@ -75,21 +75,10 @@ public class ManHinhDoiTra extends JPanel {
                 BorderFactory.createMatteBorder(0, 0, 4, 0, Color.decode("#E11D48")),
                 BorderFactory.createEmptyBorder(20, 0, 20, 40)));
 
-        JLabel lblDanhSachHD = new JLabel("Danh Sách Hóa Đơn");
-        lblDanhSachHD.setIcon(new MenuIcon("LIST")); 
-        lblDanhSachHD.setIconTextGap(8);
-        lblDanhSachHD.setFont(new Font("Segoe UI", Font.PLAIN, 15));
-        lblDanhSachHD.setForeground(Color.decode("#6C757D"));
-        lblDanhSachHD.setBorder(BorderFactory.createEmptyBorder(20, 0, 20, 40));
-        lblDanhSachHD.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        lblDanhSachHD.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mousePressed(MouseEvent e) { chuyenManHinh("DanhSachHD"); }
-        });
-
+        
         pnlLeftTabs.add(lblBanHang);
         pnlLeftTabs.add(lblDoiTra);
-        pnlLeftTabs.add(lblDanhSachHD); 
+       
         pnlTabs.add(pnlLeftTabs, BorderLayout.WEST);
 
         // ==================== 2. HEADER (TITLE & SEARCH) ====================

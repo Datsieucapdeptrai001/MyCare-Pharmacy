@@ -75,7 +75,7 @@ public class MainDashboard extends JFrame {
         ManHinhNhanVien  mhNhanVien = new ManHinhNhanVien();
         ManHinhKhachHang mhKhachHang= new ManHinhKhachHang();
         ManHinhHuongDan  mhHuongDan = new ManHinhHuongDan();
-        ManHinhDanhSachHoaDon mhDanhSachHD = new ManHinhDanhSachHoaDon();
+        
         ManHinhDoiTra         mhDoiTra     = new ManHinhDoiTra();
 
         // 2. Add vào cardPanel
@@ -88,7 +88,7 @@ public class MainDashboard extends JFrame {
         cardPanel.add(mhNhanVien,  "Nhân viên");
         cardPanel.add(mhKhachHang, "Khách hàng");
         cardPanel.add(mhHuongDan,  "Hướng dẫn");
-        cardPanel.add(mhDanhSachHD, "DanhSachHD");
+        
         cardPanel.add(mhDoiTra,     "DoiTra");
 
         // 3. Phân quyền
@@ -98,7 +98,7 @@ public class MainDashboard extends JFrame {
             mhKhuyenMai.setReadOnly(true);
             mhNhanVien.setReadOnly(true);
             mhKhachHang.setReadOnly(true);
-            mhDanhSachHD.setReadOnly(true);
+           
         }
 
         JPanel sidebar    = createSidebar();

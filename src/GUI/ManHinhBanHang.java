@@ -21,7 +21,7 @@ public class ManHinhBanHang extends JPanel {
     public static String pendingPhoneToLink = null;
     public static String pendingNameToLink = null; // BẠN THÊM ĐÚNG 1 DÒNG NÀY VÀO ĐÂY LÀ XONG
     private BUS_HoaDon busHoaDon;
-    private ManHinhDanhSachHoaDon pnlDanhSachHoaDon;
+    
     private JTable table;
     private DefaultTableModel model;
     private TableRowSorter<DefaultTableModel> sorter;
@@ -75,24 +75,11 @@ public class ManHinhBanHang extends JPanel {
         });
 
         // --- 3. Tab Danh Sách Hóa Đơn ---
-        JLabel lblDanhSachHD = new JLabel("Danh Sách Hóa Đơn");
-        lblDanhSachHD.setIcon(new MenuIcon("LIST"));
-        lblDanhSachHD.setIconTextGap(8);
-        lblDanhSachHD.setFont(new Font("Segoe UI", Font.PLAIN, 15));
-        lblDanhSachHD.setForeground(Color.decode("#6C757D"));
-        lblDanhSachHD.setBorder(BorderFactory.createEmptyBorder(20, 0, 20, 40));
-        lblDanhSachHD.setCursor(new Cursor(Cursor.HAND_CURSOR));
-
-        lblDanhSachHD.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mousePressed(MouseEvent e) { 
-                chuyenManHinh("DanhSachHD"); 
-            }
-        });
+        
 
         pnlLeftTabs.add(lblBanHang);
         pnlLeftTabs.add(lblDoiTra);
-        pnlLeftTabs.add(lblDanhSachHD);
+        
         pnlTabs.add(pnlLeftTabs, BorderLayout.WEST);
 
         // ==================== 2. HEADER ====================
