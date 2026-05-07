@@ -258,8 +258,11 @@ public class DAO_HoaDon {
 
     public HoaDon layHoaDonTheoMa(String maHD) {
         HoaDon hd = null;
-        String sql = "SELECT * FROM HoaDon WHERE id = ?";
-        // Đã đúng, không có try(Connection) ở đây
+        // JOIN NhanVien để lấy đúng tên NV đã tạo hóa đơn
+        String sql = "SELECT hd.*, nv.hoVaTen AS tenNhanVien " +
+                     "FROM HoaDon hd " +
+                     "LEFT JOIN NhanVien nv ON hd.nhanVienId = nv.id " +
+                     "WHERE hd.id = ?";
         Connection con = ConnectDB.getInstance().getConnection();
 
         try (PreparedStatement pst = con.prepareStatement(sql)) {
@@ -282,6 +285,8 @@ public class DAO_HoaDon {
                     if (rs.getString("nhanVienId") != null) {
                         NhanVien nv = new NhanVien();
                         nv.setNhanVien(rs.getString("nhanVienId"));
+                        // Lấy đúng tên NV từ JOIN — không phụ thuộc UserSession
+                        nv.setHoVaTen(rs.getString("tenNhanVien"));
                         hd.setNhanVienId(nv);
                     }
 

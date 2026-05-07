@@ -264,8 +264,8 @@ public class ManHinhBanHang extends JPanel {
                     
                     Window p = SwingUtilities.getWindowAncestor(ManHinhBanHang.this);
 
-                    // 1. FIX TÊN NHÂN VIÊN: Lấy từ phiên làm việc hiện tại
-                    String tenNhanVienHienTai = Utils.UserSession.getInstance().getTenHienThi();
+                    // tenNhanVien để trống — ChiTietHoaDon sẽ tự lấy đúng từ DB qua JOIN NhanVien
+                    String tenNhanVienHienTai = "";
 
                     if (status.equals("Đang xử lý")) {
                         TaoHoaDon dialogSua = new TaoHoaDon((Frame) p, model, modelRow, maHoaDon, khach, sdt); 

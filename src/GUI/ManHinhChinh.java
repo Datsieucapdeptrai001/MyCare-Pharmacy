@@ -72,7 +72,7 @@ public class ManHinhChinh extends JPanel {
         add(cardPanel, BorderLayout.CENTER);
     }
 
-    private void loadCardPanels() {
+    public void loadCardPanels() {
         cardPanel.removeAll();
         cardPanel.add(createTongQuanPanel(), "TongQuan");
         cardPanel.add(createDoiChieuPanel(), "DoiChieu");

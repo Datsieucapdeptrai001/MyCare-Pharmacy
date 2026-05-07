@@ -25,6 +25,7 @@ public class MainDashboard extends JFrame {
     private CardLayout cardLayout;
     private JPanel cardPanel;
     private List<JButton> menuButtons;
+    private ManHinhChinh mhChinh; // Field để có thể refresh từ bên ngoài
 
     private final String[] ALL_MENU_ITEMS = {
         "Màn hình chính", "Bán hàng & Đổi trả", "Sản phẩm", "Lô hàng",
@@ -66,7 +67,7 @@ public class MainDashboard extends JFrame {
         cardPanel   = new JPanel(cardLayout);
 
         // 1. Khởi tạo các instance (Dùng biến để Dashboard "nắm đầu" tụi nó)
-        ManHinhChinh     mhChinh    = new ManHinhChinh();
+        mhChinh = new ManHinhChinh();
         ManHinhBanHang   mhBanHang  = new ManHinhBanHang();
         ManHinhSanPham   mhSanPham  = new ManHinhSanPham();
         ManHinhLoHang    mhLoHang   = new ManHinhLoHang();
@@ -447,6 +448,11 @@ public class MainDashboard extends JFrame {
             if (c instanceof ManHinhKhachHang) return ((ManHinhKhachHang) c).getModel();
         }
         return null;
+    }
+
+    /** Dùng để refresh ManHinhChinh sau khi tạo hóa đơn thành công */
+    public ManHinhChinh getManHinhChinh() {
+        return mhChinh;
     }
 
     public static void main(String[] args) {

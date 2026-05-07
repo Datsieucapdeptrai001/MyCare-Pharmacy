@@ -601,7 +601,10 @@ public class TaoHoaDon extends JDialog {
                 hd.setNgayLapHD(java.time.LocalDateTime.now());
 
                 Entity.NhanVien nv = new Entity.NhanVien();
-                try { nv.setNhanVien("DS-0001"); } catch(Exception ex) { }
+                try {
+                    String maNV = Utils.UserSession.getInstance().getMaNhanVien();
+                    nv.setNhanVien(maNV != null && !maNV.isEmpty() ? maNV : "DS-0001");
+                } catch(Exception ex) { }
                 hd.setNhanVienId(nv);
 
                 if (isCustomerLinked && !sdt.isEmpty()) {
@@ -751,7 +754,15 @@ public class TaoHoaDon extends JDialog {
                     } else {
                         mainTableModel.insertRow(0, new Object[]{maHDMoi, ngayStr, khach, sdt, phuongThuc, tongTien, "Hoàn thành", "", "TPCN"});
                     }
-                    dispose(); 
+                    dispose();
+                    // Refresh ManHinhChinh để cập nhật số hóa đơn, doanh thu trong ca
+                    Window parentWin = SwingUtilities.getWindowAncestor(this);
+                    if (parentWin instanceof MainDashboard) {
+                        ManHinhChinh mhc = ((MainDashboard) parentWin).getManHinhChinh();
+                        if (mhc != null) {
+                            SwingUtilities.invokeLater(mhc::loadCardPanels);
+                        }
+                    }
                 } else {
                     showCustomNotification("TỪ CHỐI THANH TOÁN", "Hệ thống từ chối giao dịch!\nVui lòng kiểm tra lại số lượng tồn kho.", "WARNING");
                 }
@@ -3199,7 +3210,8 @@ txtSearchProduct.addKeyListener(new java.awt.event.KeyAdapter() {
                 hd.setId(maHD);
                 hd.setNgayLapHD(java.time.LocalDateTime.now());
                 
-                Entity.NhanVien nv = new Entity.NhanVien("DS-0001"); 
+                String maNVHienTai = Utils.UserSession.getInstance().getMaNhanVien();
+                Entity.NhanVien nv = new Entity.NhanVien(maNVHienTai != null && !maNVHienTai.isEmpty() ? maNVHienTai : "DS-0001");
                 hd.setNhanVienId(nv);
 
                 String idKH = null;
