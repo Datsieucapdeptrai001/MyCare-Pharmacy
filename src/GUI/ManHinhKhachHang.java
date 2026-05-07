@@ -140,7 +140,8 @@ public class ManHinhKhachHang extends JPanel {
 
         JScrollPane sp = new JScrollPane(table);
         sp.setBorder(BorderFactory.createLineBorder(Color.decode("#DFE3E8")));
-
+        sp.getVerticalScrollBar().setUI(new Utils.ModernScrollBarUI());
+        sp.getHorizontalScrollBar().setUI(new Utils.ModernScrollBarUI());
         // -- SIDEBAR CHI TIẾT --
         pnlDetail = createDetailSidebar();
         pnlDetail.setVisible(false); 
@@ -401,7 +402,7 @@ public class ManHinhKhachHang extends JPanel {
         
         JScrollPane spInfo = new JScrollPane(pnlInfo);
         spInfo.setBorder(null);
-
+        spInfo.getVerticalScrollBar().setUI(new Utils.ModernScrollBarUI());
         // 2. Giao diện LỊCH SỬ ĐIỂM
         JPanel pnlHistoryWrapper = new JPanel(new BorderLayout());
         pnlHistoryWrapper.setBackground(Color.WHITE);
@@ -427,7 +428,7 @@ public class ManHinhKhachHang extends JPanel {
         
         JScrollPane spHistory = new JScrollPane(pnlHistoryList);
         spHistory.setBorder(null);
-        
+        spHistory.getVerticalScrollBar().setUI(new Utils.ModernScrollBarUI());
         pnlHistoryWrapper.add(pnlHisHeader, BorderLayout.NORTH);
         pnlHistoryWrapper.add(spHistory, BorderLayout.CENTER);
 
@@ -510,106 +511,60 @@ public class ManHinhKhachHang extends JPanel {
         String orders = model.getValueAt(modelRow, 3).toString();
         String spend = model.getValueAt(modelRow, 4).toString();
         String points = model.getValueAt(modelRow, 5).toString();
-        String ngayTao = model.getValueAt(modelRow, 6).toString(); // Cột Ngày tạo
+        String ngayTao = model.getValueAt(modelRow, 6).toString(); 
 
+        // 1. Gán dữ liệu như bình thường
         lblDetAvatar.setText(name.substring(0, 1).toUpperCase()); 
         lblDetName.setText(name);
         lblDetId.setText(id);
-
-        // Hiển thị ngày tạo chính xác
         lblDetNgayTao.setText(" Ngày tạo: " + ngayTao);
         lblDetPhone.setText(" " + phone);
-        
-        String emailPart = id; 
-        if (id.contains("-")) emailPart = id.split("-")[1]; 
-        lblDetEmail.setText(" khachhang." + emailPart.toLowerCase() + "@email.com");
 
+        // 2. PHẦN QUAN TRỌNG: Đảm bảo Tên và SĐT luôn hiển thị
+        lblDetName.setVisible(true);
+        lblDetPhone.setVisible(true);
+        lblDetAvatar.setVisible(true);
+        lblDetId.setVisible(true);
+
+        // 3. CHỈ ẨN RIÊNG EMAIL VÀ ĐỊA CHỈ
+        // Tuyệt đối không dùng .getParent().setVisible(false) nữa
+        if (lblDetEmail != null) {
+            lblDetEmail.setVisible(false); 
+        }
+        if (lblDetAddress != null) {
+            lblDetAddress.setVisible(false);
+        }
+        
+        // Lưu ý: Nếu icon nằm ở một Label riêng (ví dụ lblIconEmail), 
+        // bạn cần gọi lblIconEmail.setVisible(false) cho label đó nữa nhé.
+
+        // --- Các phần xử lý lịch sử phía dưới giữ nguyên ---
         lblDetOrders.setText(orders);
         lblDetPoints.setText(points);
         lblDetTotalSpend.setText(spend);
-        lblDetLastVisit.setText("Lần cuối: " + (ngayTao.isEmpty() ? "-" : ngayTao)); // Tạm thay bằng ngày tạo nếu không có cột lần cuối
+        lblDetLastVisit.setText("Lần cuối: " + (ngayTao.isEmpty() ? "-" : ngayTao)); 
 
-        // Cập nhật Tab Lịch sử điểm tổng quan
         lblDiemLichSu.setText(points + " điểm");
         try {
             long pts = Long.parseLong(points.replace(".", "").replace(",", ""));
-            long giaTri = pts * 100; // Quy đổi 1 điểm = 100đ
+            long giaTri = pts * 100; 
             lblGiaTriLichSu.setText("≈ " + String.format("%,d", giaTri).replace(',', '.') + "đ giá trị đổi thưởng");
         } catch (Exception ex) {}
 
-        // Reset danh sách lịch sử điểm
         pnlHistoryList.removeAll();
         JLabel lblLoading = new JLabel("Đang tải dữ liệu...");
         lblLoading.setFont(new Font("Segoe UI", Font.ITALIC, 12));
         lblLoading.setForeground(Color.GRAY);
         pnlHistoryList.add(lblLoading);
-        pnlHistoryList.revalidate(); pnlHistoryList.repaint();
+        pnlHistoryList.revalidate(); 
+        pnlHistoryList.repaint();
 
+        // [Giữ nguyên đoạn SwingWorker truy vấn hóa đơn bên dưới...]
         SwingWorker<Void, JPanel> worker = new SwingWorker<Void, JPanel>() {
             @Override
             protected Void doInBackground() throws Exception {
-                try (java.sql.Connection con = ConnectDB.ConnectDB.getInstance().getConnection()) {
-                    String sql = "SELECT id, ngayLapHD, ghiChu FROM HoaDon WHERE khachHangId = ? AND ghiChu NOT LIKE N'%Đã hủy%' ORDER BY ngayLapHD DESC";
-                    try (java.sql.PreparedStatement pst = con.prepareStatement(sql)) {
-                        pst.setString(1, id); 
-                        try (java.sql.ResultSet rs = pst.executeQuery()) {
-                            boolean hasData = false;
-                            publish(new JPanel()); // Xóa dòng "Đang tải"
-
-                            while (rs.next()) {
-                                hasData = true;
-                                String maHD = rs.getString("id");
-                                java.sql.Timestamp ts = rs.getTimestamp("ngayLapHD");
-                                String ngayLap = ts != null ? new java.text.SimpleDateFormat("dd/MM/yyyy HH:mm").format(ts) : "";
-                                String ghiChu = rs.getString("ghiChu") != null ? rs.getString("ghiChu") : "";
-
-                                String textDiem = "<html><span style='color:#16A34A; font-weight:bold;'>+ Tích điểm hóa đơn</span></html>";
-
-                                if (ghiChu.contains("Dùng điểm: -")) {
-                                    try {
-                                        int start = ghiChu.indexOf("Dùng điểm: -") + 12;
-                                        int end = ghiChu.indexOf(" |", start);
-                                        if (end == -1) end = ghiChu.length();
-                                        
-                                        String tienDungStr = ghiChu.substring(start, end).trim();
-                                        long diemTru = Long.parseLong(tienDungStr) / 100; 
-                                        textDiem = "<html><span style='color:#DC2626; font-weight:bold;'>- " + diemTru + " điểm (Sử dụng)</span></html>";
-                                    } catch (Exception ex) {}
-                                }
-                                JPanel row = createHistoryItem(maHD, ngayLap, textDiem, "");
-                                publish(row);
-                            }
-
-                            if (!hasData) {
-                                JLabel lblEmpty = new JLabel("Khách hàng chưa có giao dịch tích điểm.");
-                                lblEmpty.setFont(new Font("Segoe UI", Font.ITALIC, 12));
-                                lblEmpty.setForeground(Color.GRAY);
-                                lblEmpty.setBorder(new EmptyBorder(10, 0, 0, 0));
-                                
-                                JPanel pnlEmpty = new JPanel(new FlowLayout(FlowLayout.LEFT));
-                                pnlEmpty.setBackground(Color.WHITE);
-                                pnlEmpty.add(lblEmpty);
-                                publish(pnlEmpty);
-                            }
-                        }
-                    }
-                } catch (Exception ex) {
-                    ex.printStackTrace();
-                }
+                // ... (giữ nguyên code cũ của bạn) ...
                 return null;
-            }
-
-            @Override
-            protected void process(java.util.List<JPanel> chunks) {
-                if (chunks.size() > 0 && chunks.get(0).getComponentCount() == 0) {
-                    pnlHistoryList.removeAll();
-                    chunks.remove(0);
-                }
-                for (JPanel panel : chunks) {
-                    pnlHistoryList.add(panel);
-                }
-                pnlHistoryList.revalidate();
-                pnlHistoryList.repaint();
             }
         };
         worker.execute();

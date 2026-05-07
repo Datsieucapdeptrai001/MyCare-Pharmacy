@@ -45,7 +45,7 @@ public class ManHinhDangNhap extends JFrame {
 
         // ĐẶT LOGO CHO CỬA SỔ (TASKBAR ICON)
         try {
-            String imagePath = "D:\\Github\\MyCare-Pharmacy\\data\\logo.png";
+            String imagePath = "D:\\MYCARE\\MyCare-Pharmacy\\data\\logo.png";
             File file = new File(imagePath);
             if (file.exists()) {
                 Image appIcon = ImageIO.read(file);

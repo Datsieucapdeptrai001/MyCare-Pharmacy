@@ -51,7 +51,7 @@ public class MainDashboard extends JFrame {
         setLayout(new BorderLayout());
         
         try {
-            String imagePath = "D:\\Github\\MyCare-Pharmacy\\data\\logo.png"; // Cập nhật đúng đường dẫn
+            String imagePath = "D:\\MYCARE\\MyCare-Pharmacy\\data\\logo.png"; // Cập nhật đúng đường dẫn
             File file = new File(imagePath);
             
             if (file.exists()) {
@@ -175,7 +175,7 @@ public class MainDashboard extends JFrame {
         logoPanel.setMaximumSize(new Dimension(230, 100));
         
         try {
-            File fileAnh = new File("D:\\Github\\MyCare-Pharmacy\\data\\anhlogo.png");
+            File fileAnh = new File("");
             if (fileAnh.exists()) {
                 Image img = ImageIO.read(fileAnh);
                 // Đã chỉnh Scale width=150, height=-1 để ảnh cực kỳ cân đối, không to thô
