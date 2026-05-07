@@ -109,9 +109,10 @@ public class ChiTietHoaDon extends JDialog {
             
             long tienChuaVat = donGia * sl; 
             long tienVat = Math.round(tienChuaVat * (vatPercent / 100.0));
+            long tienDaCoVat = tienChuaVat + tienVat; // CỘNG VAT VÀO THÀNH TIỀN
             
             sp[4] = String.format("%,d", donGia).replace(',', '.') + "đ";
-            sp[6] = String.format("%,d", tienChuaVat).replace(',', '.') + "đ"; 
+            sp[6] = String.format("%,d", tienDaCoVat).replace(',', '.') + "đ"; // HIỂN THỊ ĐÚNG TIỀN ĐÃ CÓ VAT
             
             this.tamTinhThucTe += tienChuaVat;
             this.vatThucTe += tienVat;
@@ -368,16 +369,18 @@ public class ChiTietHoaDon extends JDialog {
         pnl.add(lblTitle, BorderLayout.NORTH);
 
         // BỔ SUNG: Tách riêng cột ĐVT và SL thành 5 cột
-        String[] cols = {"Sản phẩm", "ĐVT", "SL", "Đơn giá", "Thành tiền"};
-        Object[][] data = new Object[dsSanPham.size()][5];
-        
+     // BỔ SUNG: Tách riêng cột ĐVT, SL và thêm cột VAT thành 6 cột
+        String[] cols = {"Sản phẩm", "ĐVT", "SL", "Đơn giá", "VAT%", "Thành tiền"};
+        Object[][] data = new Object[dsSanPham.size()][6];
+
         for (int i = 0; i < dsSanPham.size(); i++) { 
             Object[] sp = dsSanPham.get(i);
             data[i][0] = sp[1]; // Tên sản phẩm                          
             data[i][1] = sp[2]; // Đơn vị tính (Hộp, Viên...)
             data[i][2] = sp[3]; // Số lượng
-            data[i][3] = sp[4]; // Đơn giá                          
-            data[i][4] = sp[6]; // Thành tiền                          
+            data[i][3] = sp[4]; // Đơn giá
+            data[i][4] = sp[5]; // VAT% (Lấy từ mảng dữ liệu gốc)
+            data[i][5] = sp[6]; // Thành tiền (đã có VAT)                          
         }
 
         DefaultTableModel model = new DefaultTableModel(data, cols) { 
@@ -426,24 +429,24 @@ public class ChiTietHoaDon extends JDialog {
         DefaultTableCellRenderer center = new DefaultTableCellRenderer(); center.setHorizontalAlignment(JLabel.CENTER);
         DefaultTableCellRenderer right = new DefaultTableCellRenderer(); right.setHorizontalAlignment(JLabel.RIGHT);
         
-        // Căn giữa ĐVT và SL
-        table.getColumnModel().getColumn(1).setCellRenderer(center); 
-        table.getColumnModel().getColumn(2).setCellRenderer(center); 
-        table.getColumnModel().getColumn(3).setCellRenderer(right);  
-        table.getColumnModel().getColumn(4).setCellRenderer(right);  
+     // KHÓA CỨNG ĐỘ RỘNG 5 CỘT CUỐI ĐỂ BẢNG ĐẸP HƠN
+        table.getColumnModel().getColumn(1).setMinWidth(50); // Cột ĐVT
+        table.getColumnModel().getColumn(1).setMaxWidth(60);
 
-        // KHÓA CỨNG ĐỘ RỘNG 4 CỘT CUỐI ĐỂ BẢNG ĐẸP HƠN
-        table.getColumnModel().getColumn(1).setMinWidth(55); // Cột ĐVT
-        table.getColumnModel().getColumn(1).setMaxWidth(65);
-        
-        table.getColumnModel().getColumn(2).setMinWidth(40); // Cột SL
-        table.getColumnModel().getColumn(2).setMaxWidth(50);
-        
-        table.getColumnModel().getColumn(3).setMinWidth(85); // Cột Đơn giá
-        table.getColumnModel().getColumn(3).setMaxWidth(95);
-        
-        table.getColumnModel().getColumn(4).setMinWidth(95); // Cột Thành tiền
-        table.getColumnModel().getColumn(4).setMaxWidth(105);
+        table.getColumnModel().getColumn(2).setMinWidth(35); // Cột SL
+        table.getColumnModel().getColumn(2).setMaxWidth(45);
+
+        table.getColumnModel().getColumn(3).setMinWidth(80); // Cột Đơn giá
+        table.getColumnModel().getColumn(3).setMaxWidth(90);
+
+        // Bổ sung căn lề và độ rộng cho cột VAT
+        table.getColumnModel().getColumn(4).setCellRenderer(center);
+        table.getColumnModel().getColumn(4).setMinWidth(45); // Cột VAT
+        table.getColumnModel().getColumn(4).setMaxWidth(55);
+
+        table.getColumnModel().getColumn(5).setCellRenderer(right);
+        table.getColumnModel().getColumn(5).setMinWidth(90); // Cột Thành tiền
+        table.getColumnModel().getColumn(5).setMaxWidth(105);
 
         // Cột 0 (Sản phẩm) tự do giãn để lấp đầy phần diện tích còn trống
         table.getColumnModel().getColumn(0).setMinWidth(150);

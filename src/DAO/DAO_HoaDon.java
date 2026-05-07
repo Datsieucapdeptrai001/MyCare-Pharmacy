@@ -30,16 +30,16 @@ public class DAO_HoaDon {
     public List<Object[]> layDanhSachHoaDonChoBang() {
         List<Object[]> ds = new ArrayList<>();
         
-        // SỬA: Thêm hd.loaiHD và BỎ điều kiện "WHERE hd.loaiHD = 'BAN_HANG'"
+        // ĐÃ SỬA: Đổi / 100 thành / 100.0 để tránh lỗi chia số nguyên (mất VAT) trong SQL
         String sql = "SELECT hd.id, hd.loaiHD, hd.ngayLapHD, kh.hoVaTen, kh.sdt, hd.phuongThucThanhToan, hd.ghiChu, " +
-                "(SELECT SUM(ct.soLuong * dv.gia * (1 + (ISNULL(sp.thueVAT, 0) / 100))) " + 
+                "(SELECT SUM(ct.soLuong * dv.gia * (1 + (ISNULL(sp.thueVAT, 0) / 100.0))) " + 
                 " FROM ChiTietHoaDon ct " +
                 " JOIN DonViDoLuong dv ON ct.donViDoLuongId = dv.id AND ct.sanPhamId = dv.sanPhamId " +
                 " JOIN SanPham sp ON ct.sanPhamId = sp.id " + 
                 " WHERE ct.hoaDonId = hd.id) as tongTienGoc " +
                 "FROM HoaDon hd " +
                 "LEFT JOIN KhachHang kh ON hd.khachHangId = kh.id " +
-                "ORDER BY hd.ngayLapHD DESC"; // Bỏ WHERE đi để lấy mọi loại hóa đơn
+                "ORDER BY hd.ngayLapHD DESC"; 
                      
         try (Connection con = ConnectDB.getInstance().getConnection();
              PreparedStatement pst = con.prepareStatement(sql);
@@ -50,10 +50,12 @@ public class DAO_HoaDon {
 
             while (rs.next()) {
                 double totalAmount = rs.getDouble("tongTienGoc");
+                double originalAmount = totalAmount; // Lưu lại tổng tiền gốc để tính % KM
+                double tongTienGiam = 0;
                 String ghiChu = rs.getString("ghiChu");
-                String loaiHD = rs.getString("loaiHD"); // Đọc loại HD từ SQL lên
+                String loaiHD = rs.getString("loaiHD"); 
                 
-                // XỬ LÝ KHẤU TRỪ TIỀN GIẢM GIÁ
+                // ĐÃ SỬA: Xử lý khấu trừ tiền giảm giá đồng bộ với hàm layThongTinGiaTuHDGoc
                 if (ghiChu != null && !ghiChu.isEmpty()) {
                     String[] parts = ghiChu.split("\\|");
                     for (String p : parts) {
@@ -61,12 +63,33 @@ public class DAO_HoaDon {
                         if (p.startsWith("Dùng điểm: -") || p.contains("KM_GIAM:")) {
                             try {
                                 long tienGiam = Long.parseLong(p.replaceAll("[^0-9]", ""));
-                                totalAmount -= tienGiam;
+                                tongTienGiam += tienGiam;
                             } catch (Exception ignored) {}
+                        } else if (p.startsWith("KM:")) {
+                            // Truy vấn để bóc tách và tính toán % giảm hoặc tiền mặt từ HinhThucKhuyenMai
+                            String[] mks = p.substring(3).trim().split(",");
+                            for (String mk : mks) {
+                                String sqlKM = "SELECT loaiHinhThuc, giaTri FROM HinhThucKhuyenMai WHERE khuyenMaiId = ?";
+                                try (PreparedStatement pstKM = con.prepareStatement(sqlKM)) {
+                                    pstKM.setString(1, mk.trim());
+                                    try (ResultSet rsKM = pstKM.executeQuery()) {
+                                        if (rsKM.next()) {
+                                            String loaiKM = rsKM.getString("loaiHinhThuc");
+                                            double val = rsKM.getDouble("giaTri");
+                                            if (loaiKM.contains("PHAN_TRAM") || loaiKM.contains("%")) {
+                                                tongTienGiam += originalAmount * (val / 100.0);
+                                            } else if (loaiKM.contains("TIEN_MAT")) {
+                                                tongTienGiam += val;
+                                            }
+                                        }
+                                    }
+                                } catch (Exception ignored) {}
+                            }
                         }
                     }
                 }
                 
+                totalAmount -= tongTienGiam; // Trừ đi tổng tiền khuyến mãi
                 if (totalAmount < 0) totalAmount = 0;
 
                 String id = rs.getString("id");
@@ -78,7 +101,6 @@ public class DAO_HoaDon {
                 String pt = rs.getString("phuongThucThanhToan");
                 String hienThiPT = "CHUYEN_KHOAN_NGAN_HANG".equals(pt) ? "Chuyển khoản" : "Tiền mặt";
 
-                // LOGIC MỚI: XÁC ĐỊNH ĐÚNG TRẠNG THÁI HIỂN THỊ
                 String trangThai = "Hoàn thành";
                 if (loaiHD != null && (loaiHD.equals("TRA_HANG") || loaiHD.equals("DOI_HANG"))) {
                     trangThai = "Đổi trả";
@@ -554,37 +576,76 @@ public class DAO_HoaDon {
         }
     }
     public Object[] layThongTinGiaTuHDGoc(String maHDGoc, String tenSP) {
-        // 1. Thử lấy giá từ bảng ChiTietHoaDon (để đảm bảo lấy đúng giá gốc lúc giao dịch)
-        String sql = "SELECT dv.ten, dv.gia FROM ChiTietHoaDon ct " +
-                     "JOIN SanPham sp ON ct.sanPhamId = sp.id " +
-                     "JOIN DonViDoLuong dv ON ct.donViDoLuongId = dv.id " +
-                     "WHERE ct.hoaDonId = ? AND sp.ten = ?";
+        String dvt = "Hộp";
+        double giaGocHienTai = 0.0, thueVAT = 0.0;
         
-        try (Connection con = ConnectDB.getInstance().getConnection();
-             PreparedStatement pst = con.prepareStatement(sql)) {
-            pst.setString(1, maHDGoc);
-            pst.setString(2, tenSP);
-            try (ResultSet rs = pst.executeQuery()) {
-                if (rs.next()) {
-                    return new Object[]{ rs.getString(1), rs.getDouble(2) };
+        try (java.sql.Connection con = ConnectDB.getInstance().getConnection()) {
+            // 1. Lấy giá niêm yết và VAT của SP
+            String sql1 = "SELECT dv.ten, dv.gia, ISNULL(sp.thueVAT, 0) as vat FROM ChiTietHoaDon ct JOIN SanPham sp ON ct.sanPhamId = sp.id JOIN DonViDoLuong dv ON ct.donViDoLuongId = dv.id AND ct.sanPhamId = dv.sanPhamId WHERE ct.hoaDonId = ? AND sp.ten = ?";
+            try (java.sql.PreparedStatement pst1 = con.prepareStatement(sql1)) {
+                pst1.setString(1, maHDGoc); pst1.setString(2, tenSP);
+                try (java.sql.ResultSet rs1 = pst1.executeQuery()) {
+                    if (rs1.next()) { dvt = rs1.getString("ten"); giaGocHienTai = rs1.getDouble("gia"); thueVAT = rs1.getDouble("vat"); }
+                }
+            }
+            if (giaGocHienTai <= 0) return new Object[]{dvt, 0.0};
+            
+            // Tính giá đã gồm VAT (VD: 650k + 10% = 715k)
+            double giaSPCoVAT = giaGocHienTai * (1 + (thueVAT / 100.0));
+            
+            // 2. Lấy TỔNG TIỀN của nguyên Hóa đơn & GHI CHÚ để bóc tách Voucher
+            double tongTienGocCuaHD = 0;
+            String ghiChuHD = "";
+            String sql2 = "SELECT hd.ghiChu, SUM(ct.soLuong * dv.gia * (1 + ISNULL(sp.thueVAT, 0)/100.0)) as tong FROM HoaDon hd JOIN ChiTietHoaDon ct ON hd.id = ct.hoaDonId JOIN SanPham sp ON ct.sanPhamId = sp.id JOIN DonViDoLuong dv ON ct.donViDoLuongId = dv.id AND ct.sanPhamId = dv.sanPhamId WHERE hd.id = ? GROUP BY hd.ghiChu";
+            try (java.sql.PreparedStatement pst2 = con.prepareStatement(sql2)) {
+                pst2.setString(1, maHDGoc);
+                try (java.sql.ResultSet rs2 = pst2.executeQuery()) {
+                    if (rs2.next()) { ghiChuHD = rs2.getString("ghiChu"); tongTienGocCuaHD = rs2.getDouble("tong"); }
                 }
             }
             
-            // 2. FALLBACK: NẾU KHÔNG TÌM THẤY (Do SP mới đổi lấy chưa lưu kịp vào ChiTietHoaDon)
-            // -> Truy vấn trực tiếp giá bán hiện hành của sản phẩm đó từ danh mục
-            String sqlFallback = "SELECT TOP 1 dv.ten, dv.gia FROM SanPham sp " +
-                                 "JOIN DonViDoLuong dv ON sp.id = dv.sanPhamId " +
-                                 "WHERE sp.ten = ?";
-            try (PreparedStatement pst2 = con.prepareStatement(sqlFallback)) {
-                pst2.setString(1, tenSP);
-                try (ResultSet rs2 = pst2.executeQuery()) {
-                    if (rs2.next()) {
-                        return new Object[]{ rs2.getString(1), rs2.getDouble(2) };
+            // 3. Quét Ghi chú y hệt như form ChiTietHoaDon để tìm đúng số tiền 235.950đ
+            double tongTienGiam = 0;
+            if (ghiChuHD != null && !ghiChuHD.isEmpty()) {
+                String[] parts = ghiChuHD.split("\\|");
+                for (String p : parts) {
+                    p = p.trim();
+                    if (p.startsWith("Dùng điểm: -")) {
+                        try { tongTienGiam += Double.parseDouble(p.substring(12).replaceAll("[^0-9]", "")); } catch(Exception e){}
+                    } else if (p.startsWith("KM:")) {
+                        String[] mks = p.substring(3).trim().split(",");
+                        for (String mk : mks) {
+                            String sql3 = "SELECT loaiHinhThuc, giaTri FROM HinhThucKhuyenMai WHERE khuyenMaiId = ?";
+                            try (java.sql.PreparedStatement pst3 = con.prepareStatement(sql3)) {
+                                pst3.setString(1, mk.trim());
+                                try (java.sql.ResultSet rs3 = pst3.executeQuery()) {
+                                    if (rs3.next()) {
+                                        String loaiKM = rs3.getString("loaiHinhThuc");
+                                        double val = rs3.getDouble("giaTri");
+                                        if (loaiKM.contains("PHAN_TRAM") || loaiKM.contains("%")) {
+                                            tongTienGiam += tongTienGocCuaHD * (val / 100.0);
+                                        } else if (loaiKM.contains("TIEN_MAT")) {
+                                            tongTienGiam += val;
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
+            
+            // 4. Khấu trừ tiền giảm giá vào SP (Chia đều phần trăm)
+            double giaThucTe = giaSPCoVAT;
+            if (tongTienGocCuaHD > 0 && tongTienGiam > 0) {
+                double tyLeDongGop = giaSPCoVAT / tongTienGocCuaHD;
+                double giamChoSpNay = tongTienGiam * tyLeDongGop;
+                giaThucTe = giaSPCoVAT - giamChoSpNay;
+            }
+            
+            return new Object[]{dvt, giaThucTe};
+            
         } catch (Exception e) { e.printStackTrace(); }
-        
-        return new Object[]{ "Hộp", 0.0 }; 
-    }
+        return new Object[]{dvt, 0.0};
+    } 
 }

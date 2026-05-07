@@ -766,36 +766,20 @@ public class TaoPhieuDoiTra extends JDialog {
         return pnlWrapper;
     }
 
-    // THUẬT TOÁN LOẠI BỎ TRÙNG LẶP SẢN PHẨM KHẮC PHỤC LỖI BACKEND
+ // THUẬT TOÁN LOẠI BỎ TRÙNG LẶP SẢN PHẨM KHẮC PHỤC LỖI BACKEND
     private void xuLyTimKiemHD() {
     	String maHD = txtSearch.getText().trim();
         if (maHD.isEmpty() || maHD.equals("Nhập mã hóa đơn (VD: HD-2024-0001)...")) {
-            lblError.setText(" Vui lòng nhập mã hóa đơn!"); 
-            lblError.setVisible(true); 
-            
-            // ĐÃ FIX LỖI NHẢY FORM
-            if (pnlFoundData != null && pnlFoundData.isVisible()) {
-                pnlFoundData.setVisible(false);
-                setSize(850, 330); 
-                setLocationRelativeTo(getOwner()); 
-            }
-            btnTaoPhieu.setEnabled(false);
-            return;
+            lblError.setText(" Vui lòng nhập mã hóa đơn!"); lblError.setVisible(true); 
+            if (pnlFoundData != null && pnlFoundData.isVisible()) { pnlFoundData.setVisible(false); setSize(850, 330); setLocationRelativeTo(getOwner()); }
+            btnTaoPhieu.setEnabled(false); return;
         }
 
         boolean isHopLe = busTraHang.kiemTraDieuKien(maHD);
         if (!isHopLe) {
-            lblError.setText(" Hóa đơn không tồn tại, quá 7 ngày, hoặc không phải HD Bán Hàng!");
-            lblError.setVisible(true);
-            
-            // ĐÃ FIX LỖI NHẢY FORM
-            if (pnlFoundData != null && pnlFoundData.isVisible()) {
-                pnlFoundData.setVisible(false);
-                setSize(850, 330); 
-                setLocationRelativeTo(getOwner()); 
-            }
-            btnTaoPhieu.setEnabled(false);
-            return;
+            lblError.setText(" Hóa đơn không tồn tại, quá 7 ngày, hoặc không phải HD Bán Hàng!"); lblError.setVisible(true);
+            if (pnlFoundData != null && pnlFoundData.isVisible()) { pnlFoundData.setVisible(false); setSize(850, 330); setLocationRelativeTo(getOwner()); }
+            btnTaoPhieu.setEnabled(false); return;
         }
 
         HoaDon hd = busHD.getHoaDonTheoMa(maHD); 
@@ -808,41 +792,31 @@ public class TaoPhieuDoiTra extends JDialog {
 
         if (dsChiTiet != null && !dsChiTiet.isEmpty()) {
             java.util.Set<String> addedProducts = new java.util.HashSet<>();
-            BUS_SanPham busSP = new BUS_SanPham();
-            BUS_DonViDoLuong busDVT = new BUS_DonViDoLuong();
+            DAO.DAO_HoaDon daoHD = new DAO.DAO_HoaDon(); // ĐÃ THÊM: Gọi DAO để dùng Smart Calculation
 
             for (Object[] rowData : dsChiTiet) {
                 String tenSP = rowData[0].toString();
                 int slMua = Integer.parseInt(rowData[2].toString());
-                String donGiaStr = rowData[3].toString();
-                long donGiaNum = 0;
                 
-                try {
-                    String clean = donGiaStr.replaceAll("[^0-9]", "");
-                    donGiaNum = Long.parseLong(clean);
-                } catch(Exception e){}
+                long donGiaNum = 0;
+                String correctDvt = "Hộp";
 
-                // Kỹ thuật gộp chung Tên và Giá để khử trùng lặp 100%
+                // ÉP BUỘC GỌI HÀM TÍNH TOÁN (Giảm giá / VAT)
+                try {
+                    Object[] info = daoHD.layThongTinGiaTuHDGoc(hd.getId(), tenSP);
+                    if (info != null) {
+                        if (info[0] != null) correctDvt = info[0].toString();
+                        if (info[1] != null) donGiaNum = Math.round((Double) info[1]); // Làm tròn để ra số nguyên
+                    }
+                } catch(Exception e) {}
+
+                // Dự phòng nếu lỗi
+                if (donGiaNum <= 0) {
+                    try { donGiaNum = Long.parseLong(rowData[3].toString().replaceAll("[^0-9]", "")); } catch(Exception e){}
+                }
+
                 String uniqueKey = tenSP + "_" + donGiaNum;
                 if (!addedProducts.contains(uniqueKey)) {
-                    
-                    // Tìm ĐVT thực sự khớp với Giá bán trong Kho
-                    String correctDvt = "Hộp";
-                    try {
-                        List<SanPham> listSP = busSP.traCuuSanPham(tenSP);
-                        if(listSP != null && !listSP.isEmpty()) {
-                            List<DonViDoLuong> listDVT = busDVT.getDSTheoMaSP(listSP.get(0).getId());
-                            if(listDVT != null) {
-                                for(DonViDoLuong d : listDVT) {
-                                    if(d.getGia() == donGiaNum) {
-                                        correctDvt = d.getTen();
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                    } catch(Exception e){}
-
                     String donGiaFmt = String.format("%,dđ", donGiaNum).replace(',', '.');
                     chiTietModel.addRow(new Object[]{false, tenSP, correctDvt, slMua, donGiaFmt, slMua});
                     addedProducts.add(uniqueKey);
@@ -851,40 +825,41 @@ public class TaoPhieuDoiTra extends JDialog {
         }
 
         String khachName = "Khách lẻ";
-        if(hd.getKhachHangId() != null) {
-            BUS_KhachHang bkh = new BUS_KhachHang();
-            KhachHang kh = bkh.getKhachHangTheoSDT(hd.getKhachHangId().getId()); 
-            if(kh != null) khachName = kh.getHoVaTen();
+        try (java.sql.Connection con = ConnectDB.ConnectDB.getInstance().getConnection()) {
+            // Nối bảng HoaDon và KhachHang để lấy chính xác họ tên
+            String sql = "SELECT kh.hoVaTen FROM HoaDon hd JOIN KhachHang kh ON hd.khachHangId = kh.id WHERE hd.id = ?";
+            try (java.sql.PreparedStatement pst = con.prepareStatement(sql)) {
+                pst.setString(1, hd.getId());
+                try (java.sql.ResultSet rs = pst.executeQuery()) {
+                    if (rs.next()) {
+                        String ten = rs.getString("hoVaTen");
+                        if (ten != null && !ten.trim().isEmpty()) {
+                            khachName = ten;
+                        }
+                    }
+                }
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
         }
-        lblKhachHang.setText(khachName);
+        
+        lblKhachHang.setText(khachName); 
         lblMaHoaDonInfo.setText(hd.getId());
+        lblKhachHang.setText(khachName); lblMaHoaDonInfo.setText(hd.getId());
         lblThoiGianThanhToan.setText(hd.getNgayLapHD().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
-        
-        long hours = java.time.Duration.between(ngayHoaDonGoc, LocalDateTime.now()).toHours();
-        lblThoiGianMua.setText(hours + " giờ");
+        lblThoiGianMua.setText(java.time.Duration.between(ngayHoaDonGoc, LocalDateTime.now()).toHours() + " giờ");
 
-        lblError.setVisible(false);
-        pnlFoundData.setVisible(true);
-        btnTaoPhieu.setEnabled(true);
-        
-        setSize(1050, 720); 
-        setLocationRelativeTo(getOwner());
-        setShape(new RoundRectangle2D.Double(0, 0, getWidth(), getHeight(), 15, 15)); 
+        lblError.setVisible(false); pnlFoundData.setVisible(true); btnTaoPhieu.setEnabled(true);
+        setSize(1050, 720); setLocationRelativeTo(getOwner());
+        setShape(new java.awt.geom.RoundRectangle2D.Double(0, 0, getWidth(), getHeight(), 15, 15)); 
         capNhatDieuKienDoiTra(); 
 
         SwingUtilities.invokeLater(() -> {
             if (pnlTableTraHang != null && spTableTraHang != null && table != null) {
-                int rowCount = chiTietModel.getRowCount();
-                int headerHeight = table.getTableHeader() != null ? table.getTableHeader().getPreferredSize().height : 0;
-                
-                int dynamicHeight = (rowCount * table.getRowHeight()) + headerHeight + 8;
-                
-                spTableTraHang.setPreferredSize(new Dimension(0, dynamicHeight));
-                spTableTraHang.setMaximumSize(new Dimension(Integer.MAX_VALUE, dynamicHeight)); 
-                pnlTableTraHang.setMaximumSize(new Dimension(Integer.MAX_VALUE, dynamicHeight + 40)); 
-                
-                pnlFoundData.revalidate();
-                pnlFoundData.repaint();
+                int rHeight = (chiTietModel.getRowCount() * table.getRowHeight()) + (table.getTableHeader() != null ? table.getTableHeader().getPreferredSize().height : 0) + 8;
+                spTableTraHang.setPreferredSize(new Dimension(0, rHeight)); spTableTraHang.setMaximumSize(new Dimension(Integer.MAX_VALUE, rHeight)); 
+                pnlTableTraHang.setMaximumSize(new Dimension(Integer.MAX_VALUE, rHeight + 40)); 
+                pnlFoundData.revalidate(); pnlFoundData.repaint();
             }
         });
     }

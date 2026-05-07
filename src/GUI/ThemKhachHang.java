@@ -11,7 +11,7 @@ import java.awt.event.*;
 
 public class ThemKhachHang extends JDialog {
 
-    private JTextField txtHoTen, txtNgaySinh, txtSdt, txtEmail, txtDiaChi;
+    private JTextField txtHoTen, txtNgayTao, txtSdt, txtEmail, txtDiaChi; // Đổi txtNgaySinh thành txtNgayTao
     private JComboBox<String> cboGioiTinh;
     private DefaultTableModel mainModel;
     
@@ -26,8 +26,8 @@ public class ThemKhachHang extends JDialog {
         initUI(parent);
     }
 
-    // 2. Constructor dùng cho CHỈNH SỬA
-    public ThemKhachHang(Frame parent, DefaultTableModel model, int editRow, String hoten, String sdt) {
+    // 2. Constructor dùng cho CHỈNH SỬA (Đã bổ sung thuộc tính Ngày tạo vào tham số)
+    public ThemKhachHang(Frame parent, DefaultTableModel model, int editRow, String hoten, String sdt, String ngayTao) {
         super(parent, "Chỉnh sửa khách hàng", true);
         this.mainModel = model;
         this.editRow = editRow;
@@ -36,10 +36,18 @@ public class ThemKhachHang extends JDialog {
         // Đổ dữ liệu cũ vào Form
         lblTitle.setText("Chỉnh sửa khách hàng");
         btnThem.setText("✓ Lưu thay đổi");
+        
         txtHoTen.setText(hoten);
         txtHoTen.setForeground(Color.BLACK);
+        
         txtSdt.setText(sdt);
         txtSdt.setForeground(Color.BLACK);
+        
+        // Đổ dữ liệu Ngày tạo có sẵn của dòng vào Textfield
+        if(ngayTao != null && !ngayTao.isEmpty()){
+            txtNgayTao.setText(ngayTao);
+            txtNgayTao.setForeground(Color.BLACK);
+        }
     }
 
     private void initUI(Frame parent) {
@@ -91,7 +99,7 @@ public class ThemKhachHang extends JDialog {
         gbc.gridx = 0; gbc.gridy = 2;
         pnlBody.add(createLabel("Giới tính", false), gbc);
         gbc.gridx = 1;
-        pnlBody.add(createLabel("Ngày sinh", false), gbc);
+        pnlBody.add(createLabel("Ngày tạo", false), gbc); // Đổi label thành Ngày tạo
 
         gbc.gridx = 0; gbc.gridy = 3;
         cboGioiTinh = new JComboBox<>(new String[]{"Nam", "Nữ", "Khác"});
@@ -101,17 +109,17 @@ public class ThemKhachHang extends JDialog {
         pnlBody.add(cboGioiTinh, gbc);
 
         gbc.gridx = 1;
-        txtNgaySinh = createTextField("dd/mm/yyyy");
-        txtNgaySinh.setEditable(false); 
-        txtNgaySinh.setBackground(Color.WHITE);
-        txtNgaySinh.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        txtNgaySinh.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mousePressed(MouseEvent e) {
-                new Utils.ModernDatePicker(ThemKhachHang.this, txtNgaySinh).setVisible(true);
-            }
-        });
-        pnlBody.add(txtNgaySinh, gbc);
+        txtNgayTao = createTextField("dd/MM/yyyy");
+        txtNgayTao.setEditable(false); 
+        txtNgayTao.setBackground(Color.decode("#F8F9FA")); // Tô xám nhẹ cho ô Ngày tạo
+        
+        // --- Cập nhật "Áp sẵn thông tin": Nếu thêm mới thì mặc định điền Ngày hiện tại
+        if (editRow == -1) {
+            String homNay = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+            txtNgayTao.setText(homNay);
+            txtNgayTao.setForeground(Color.BLACK);
+        }
+        pnlBody.add(txtNgayTao, gbc);
 
         gbc.gridx = 0; gbc.gridy = 4;
         pnlBody.add(createLabel("Số điện thoại", true), gbc);
@@ -156,79 +164,66 @@ public class ThemKhachHang extends JDialog {
         btnThem.setFont(new Font("Segoe UI", Font.BOLD, 14));
         btnThem.setBackground(Color.decode("#DC2626")); 
         btnThem.setForeground(Color.WHITE);
-        btnThem.setIcon(new MenuIcon("USER_ADD"));
+        
+        if (editRow != -1) {
+            btnThem.setText("Lưu thay đổi");
+            btnThem.setIcon(new MenuIcon("SAVE")); 
+        } else {
+            btnThem.setText("Thêm khách hàng");
+            btnThem.setIcon(new MenuIcon("USER_ADD")); 
+        }
+        
         btnThem.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(Color.decode("#DC2626"), 1, true),
                 BorderFactory.createEmptyBorder(8, 20, 8, 20)
         ));
-        if (editRow != -1) {
-            btnThem.setText("Lưu thay đổi");
-            btnThem.setIcon(new MenuIcon("SAVE")); // Dùng icon SAVE khi sửa
-        } else {
-            btnThem.setText("Thêm khách hàng");
-            btnThem.setIcon(new MenuIcon("USER_ADD")); // Dùng icon thêm người khi tạo mới
-        }
         btnThem.setIconTextGap(10);
         btnThem.setFocusPainted(false);
         btnThem.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
         // LOGIC LƯU DỮ LIỆU
-     // LOGIC LƯU DỮ LIỆU
         btnThem.addActionListener(e -> {
             String hoten = txtHoTen.getText().trim();
             String sdt = txtSdt.getText().trim();
+            String ngayTao = txtNgayTao.getText().trim();
             
-            // Kiểm tra dữ liệu đầu vào
+            // Validate: Bỏ qua placeholder
             if(hoten.isEmpty() || hoten.equals("Nhập họ và tên đầy đủ") || sdt.isEmpty() || sdt.equals("0912345678")) {
-                JOptionPane.showMessageDialog(this, "Vui lòng nhập Họ tên và Số điện thoại!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(this, "Vui lòng nhập Họ tên và Số điện thoại hợp lệ!", "Lỗi", JOptionPane.ERROR_MESSAGE);
                 return;
             }
 
-            // Khởi tạo DAO
             DAO.DAO_KhachHang daoKH = new DAO.DAO_KhachHang();
 
             if(mainModel != null) {
                 if (editRow != -1) {
-                    // ================= ĐANG Ở CHẾ ĐỘ SỬA =================
+                    // CHẾ ĐỘ SỬA
                     String maKH = mainModel.getValueAt(editRow, 0).toString();
                     
-                    // BƯỚC 1: Cập nhật xuống Database (Giả sử bạn đã viết hàm capNhatKhachHang trong DAO)
-                    // Entity.KhachHang khUpdate = new Entity.KhachHang();
-                    // khUpdate.setId(maKH);
-                    // khUpdate.setHoVaTen(hoten);
-                    // khUpdate.setSdt(sdt);
-                    // daoKH.capNhatKhachHang(khUpdate);
-
-                    // BƯỚC 2: Cập nhật Giao diện (JTable)
+                    // Bạn có thể kích hoạt daoKH.capNhatKhachHang(khUpdate) tại đây nếu CSDL cần cập nhật.
                     mainModel.setValueAt(hoten, editRow, 1);
                     mainModel.setValueAt(sdt, editRow, 2);
-                    
+                    // Dòng Ngày tạo đã bị khóa sửa, nên ta không cần setValueAt vào Table Model
                 } else {
-                    // ================= ĐANG Ở CHẾ ĐỘ THÊM MỚI =================
-                    // 1. Xin mã tự động từ CSDL (Hàm phatSinhMaKHTiepTheo đã tạo ở bước trước)
+                    // CHẾ ĐỘ THÊM MỚI
                     String maMoi = daoKH.phatSinhMaKHTiepTheo();
-                    
-                    // 2. Đóng gói dữ liệu vào đối tượng KhachHang
                     Entity.KhachHang kh = new Entity.KhachHang();
                     kh.setId(maMoi);
                     kh.setHoVaTen(hoten);
                     kh.setSdt(sdt);
-                    kh.setDiemTichLuy(0); // Khách mới mặc định 0 điểm
+                    kh.setDiemTichLuy(0); 
                     
-                    // 3. Đẩy xuống Database
                     boolean isSuccess = daoKH.themKhachHang(kh);
 
-                    // 4. Nếu thêm Database thành công thì mới hiện lên JTable
                     if (isSuccess) {
-                        String ngay = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"));
-                        mainModel.addRow(new Object[]{ maMoi, hoten, sdt, "0", "0đ", "0", ngay, "" });
+                        mainModel.addRow(new Object[]{ maMoi, hoten, sdt, "0", "0đ", "0", ngayTao, "" });
                     } else {
                         JOptionPane.showMessageDialog(this, "Có lỗi xảy ra khi lưu vào Cơ sở dữ liệu!", "Lỗi", JOptionPane.ERROR_MESSAGE);
-                        return; // Lỗi thì dừng lại, không đóng cửa sổ
+                        return; 
                     }
                 }
             }
-            dispose(); // Đóng form
+            dispose(); 
         });
 
         pnlFooter.add(btnHuy);

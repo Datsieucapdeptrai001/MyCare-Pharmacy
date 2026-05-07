@@ -84,6 +84,9 @@ public class TaoHoaDon extends JDialog {
     private JLabel lblQRAmount;
     private JLabel lblExactValue;
     private JScrollPane mainScrollPane;
+    private int thoiGianConLai = 600; // 600 giây = 10 phút
+    private javax.swing.Timer boDemNguoc;
+    private JLabel lblDongHoDemNguoc;
     private java.util.List<int[]> listCounters = new java.util.ArrayList<>();
     private java.util.List<JLabel> listCountLabels = new java.util.ArrayList<>();
  // Thêm dòng này ngay cạnh pendingPhoneToLink của bạn
@@ -321,7 +324,7 @@ public class TaoHoaDon extends JDialog {
         updateVoucherTagsUI(); 
     }
     private void initUI(Frame parent) {
-    	setSize(1250, 750);
+    	setSize(1350, 750);
         setLocationRelativeTo(parent);
         setLayout(new BorderLayout());
 
@@ -360,13 +363,13 @@ public class TaoHoaDon extends JDialog {
         
         pnlBody.add(createSummaryPanel());
 
-     // --- 1. THÊM LỚP "ÁO KHOÁC" ĐỂ ÉP KÍCH THƯỚC ---
+        // --- 1. THÊM LỚP "ÁO KHOÁC" ĐỂ ÉP KÍCH THƯỚC ---
         JPanel wrapperPanel = new JPanel(new BorderLayout());
         wrapperPanel.setBackground(Color.WHITE);
-        wrapperPanel.add(pnlBody, BorderLayout.NORTH); // Chốt cứng ở phía Bắc để ép chiều ngang vừa khít màn hình
+        wrapperPanel.add(pnlBody, BorderLayout.NORTH); 
 
         // --- 2. BỎ WRAPPER VÀO SCROLLPANE THAY VÌ PNLBODY ---
-        mainScrollPane = new JScrollPane(wrapperPanel); // Dùng biến toàn cục
+        mainScrollPane = new JScrollPane(wrapperPanel); 
         mainScrollPane.setBorder(null);
         mainScrollPane.getViewport().setBackground(Color.WHITE);
         
@@ -385,11 +388,14 @@ public class TaoHoaDon extends JDialog {
         
         add(mainScrollPane, BorderLayout.CENTER);
         
+        // =========================================================
+        // GIAO DIỆN CHÂN TRANG (FOOTER) - LÀM TO NÚT & THÊM ĐỒNG HỒ
+        // =========================================================
         JPanel pnlFooter = new JPanel(new BorderLayout());
         pnlFooter.setBackground(Color.WHITE);
         pnlFooter.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createMatteBorder(1, 0, 0, 0, borderColor),
-            new EmptyBorder(10, 25, 10, 25)
+            new EmptyBorder(15, 25, 15, 25) // Tăng lề để form rộng ra
         ));
 
         if (editingModelRow != -1) {
@@ -397,11 +403,13 @@ public class TaoHoaDon extends JDialog {
             btnXoaDon.setIcon(new MenuIcon("TRASH")); 
             btnXoaDon.setIconTextGap(8);
             styleButton(btnXoaDon, Color.decode("#EF4444")); 
+            btnXoaDon.setPreferredSize(new Dimension(140, 45)); // Nút to ra
             
             btnXoaDon.addActionListener(e -> {
                 boolean confirm = showCustomConfirmDialog("Xác nhận hủy", "Bạn có chắc chắn muốn HỦY hóa đơn này không?<br>Thao tác này không thể hoàn tác.");
                 
                 if (confirm) {
+                    if (boDemNguoc != null) boDemNguoc.stop(); // Dừng đồng hồ
                     if (this.maHDDangSua != null && !this.maHDDangSua.isEmpty()) {
                         String sql = "UPDATE HoaDon SET ghiChu = N'Đã hủy' WHERE id = ?"; 
                         try (java.sql.Connection con = ConnectDB.getInstance().getConnection();
@@ -431,11 +439,26 @@ public class TaoHoaDon extends JDialog {
         JPanel pnlRightFooter = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 0));
         pnlRightFooter.setOpaque(false);
 
+        // Khởi tạo label Đồng hồ
+        if (lblDongHoDemNguoc == null) {
+            lblDongHoDemNguoc = new JLabel("");
+        }
+        lblDongHoDemNguoc.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        lblDongHoDemNguoc.setForeground(Color.decode("#EF4444")); 
+        lblDongHoDemNguoc.setBorder(new EmptyBorder(0, 0, 0, 15)); 
+        
+        // --- CHỈ HIỆN ĐỒNG HỒ NẾU ĐANG MỞ HÓA ĐƠN ĐÃ LƯU NHÁP ---
+        if (editingModelRow == -1) {
+            lblDongHoDemNguoc.setVisible(false);
+        }
+
         JButton btnLuuNhap = new JButton("Lưu nháp");
         styleButton(btnLuuNhap, orangeLogo);
+        btnLuuNhap.setPreferredSize(new Dimension(140, 45)); 
 
         JButton btnThanhToan = new JButton("Thanh toán");
         styleButton(btnThanhToan, successGreen);
+        btnThanhToan.setPreferredSize(new Dimension(140, 45));
 
         btnThanhToan.addActionListener(e -> {
             if (productModel.getRowCount() == 0) {
@@ -481,15 +504,14 @@ public class TaoHoaDon extends JDialog {
                 }
             }
 
-            // 1. KIỂM TRA TRƯỚC TỒN KHO & QUY ĐỔI ĐƠN VỊ TÍNH (MỚI THÊM)
+            // 1. KIỂM TRA TRƯỚC TỒN KHO & QUY ĐỔI ĐƠN VỊ TÍNH
             BUS.BUS_DonViDoLuong busDonVi = new BUS.BUS_DonViDoLuong();
             BUS.BUS_Kho busKho = new BUS.BUS_Kho();
             
-            // Lặp qua bảng sản phẩm để kiểm tra
             for (int i = 0; i < productModel.getRowCount(); i++) {
                 String tenSP = productModel.getValueAt(i, 0).toString().trim();
                 if (tenSP.startsWith("[QUÀ TẶNG]")) {
-                    tenSP = tenSP.replace("[QUÀ TẶNG]", "").trim(); // Xóa tag quà tặng để kiểm tra
+                    tenSP = tenSP.replace("[QUÀ TẶNG]", "").trim(); 
                 }
                 
                 String tenDVT = productModel.getValueAt(i, 1).toString().trim();
@@ -498,7 +520,6 @@ public class TaoHoaDon extends JDialog {
                 String maSP = "";
                 double tiLeQuyDoi = 1.0;
                 
-                // Truy vấn nhanh lấy mã SP (Tạm dùng DB connection, do mày chưa truyền đủ thông tin mã SP vào model)
                 try (java.sql.Connection con = ConnectDB.getInstance().getConnection();
                      java.sql.PreparedStatement pst = con.prepareStatement("SELECT id FROM SanPham WHERE ten = ?")) {
                     pst.setString(1, tenSP);
@@ -514,7 +535,6 @@ public class TaoHoaDon extends JDialog {
                     return;
                 }
 
-                // TÌM TỈ LỆ QUY ĐỔI (Vd: Khách mua 2 Hộp, Hộp = 100 viên -> Tỉ lệ là 100)
                 List<DonViDoLuong> dsDonVi = busDonVi.getDSTheoMaSP(maSP);
                 for (DonViDoLuong dv : dsDonVi) {
                     if (dv.getTen().equalsIgnoreCase(tenDVT)) {
@@ -523,10 +543,8 @@ public class TaoHoaDon extends JDialog {
                     }
                 }
 
-                // TÍNH TỔNG SỐ LƯỢNG CƠ BẢN CẦN TRỪ KHO (vd: 2 hộp * 100 = 200 viên)
                 int tongSoLuongCoBan = (int) (soLuongMua * tiLeQuyDoi);
 
-                // KIỂM TRA XEM KHO CÓ ĐỦ SỐ LƯỢNG ĐÓ KHÔNG
                 if (!busKho.kiemTraTonKho(maSP, tongSoLuongCoBan)) {
                     showCustomNotification(
                         "TỒN KHO KHÔNG ĐỦ", 
@@ -535,7 +553,7 @@ public class TaoHoaDon extends JDialog {
                         "Vui lòng giảm số lượng hoặc chọn sản phẩm khác!", 
                         "WARNING"
                     );
-                    return; // Chặn đứng quy trình thanh toán nếu kho không đủ
+                    return; 
                 }
             }
 
@@ -642,7 +660,6 @@ public class TaoHoaDon extends JDialog {
                     ct.setSoLuong(soLuong);
                     dsCTHD.add(ct);
                     
-                    // 2. THỰC SỰ TRỪ KHO BẰNG HÀM FEFO NGAY KHI LƯU DB CHUẨN BỊ XONG (MỚI THÊM)
                     double tiLeQuyDoi = 1.0;
                     List<DonViDoLuong> dsDonVi = busDonVi.getDSTheoMaSP(maSP);
                     for (DonViDoLuong dv_1 : dsDonVi) {
@@ -653,7 +670,6 @@ public class TaoHoaDon extends JDialog {
                     }
                     int tongSoLuongCoBan = (int) (soLuong * tiLeQuyDoi);
                     
-                    // Gọi hàm trừ kho của sếp. Lỗi thì văng ra catch chặn luôn
                     busKho.xuLyXuatKhoFEFO(maSP, tongSoLuongCoBan); 
                 }
 
@@ -661,6 +677,8 @@ public class TaoHoaDon extends JDialog {
                 boolean success = busHD.thanhToan(hd, dsCTHD);
 
                 if (success) {
+                    if (boDemNguoc != null) boDemNguoc.stop(); // DỪNG ĐỒNG HỒ
+                    
                     if (isCustomerLinked && !sdt.isEmpty()) {
                         try {
                             int diemDaDung = isDungDiem ? (int)(tienGiamTuDiem / 100) : 0;
@@ -751,14 +769,70 @@ public class TaoHoaDon extends JDialog {
             }
         });
 
-        btnLuuNhap.addActionListener(e -> luuNhapHoaDon(false));
+        btnLuuNhap.addActionListener(e -> {
+            if (boDemNguoc != null) boDemNguoc.stop(); // Dừng đồng hồ
+            luuNhapHoaDon(false);
+        });
 
+        pnlRightFooter.add(lblDongHoDemNguoc); // Gắn đồng hồ vào màn hình
         pnlRightFooter.add(btnLuuNhap);
         pnlRightFooter.add(btnThanhToan);
         pnlFooter.add(pnlRightFooter, BorderLayout.EAST);
         add(pnlFooter, BorderLayout.SOUTH);
+
+        // BẮT ĐẦU ĐẾM NGƯỢC NGAY KHI MỞ FORM
+        
+    }
+    private void khoiDongDongHoHuyDon(int thoiGianGiay) {
+        if (boDemNguoc != null && boDemNguoc.isRunning()) {
+            boDemNguoc.stop();
+        }
+        thoiGianConLai = thoiGianGiay; 
+        
+        // Nếu mở lên mà đã quá hạn 10 phút -> Hủy luôn
+        if (thoiGianConLai <= 0) {
+            thucHienHuyDonTuDong();
+            return;
+        }
+
+        // Khởi chạy dòng chữ hiển thị ngay lập tức để không bị delay 1s
+        int p = thoiGianConLai / 60;
+        int g = thoiGianConLai % 60;
+        if (lblDongHoDemNguoc != null) {
+            lblDongHoDemNguoc.setText(String.format("Hủy đơn sau: %02d:%02d", p, g));
+        }
+        
+        boDemNguoc = new javax.swing.Timer(1000, e -> {
+            thoiGianConLai--;
+            int phut = thoiGianConLai / 60;
+            int giay = thoiGianConLai % 60;
+            if (lblDongHoDemNguoc != null) {
+                lblDongHoDemNguoc.setText(String.format("Hủy đơn sau: %02d:%02d", phut, giay));
+            }
+            
+            if (thoiGianConLai <= 0) {
+                boDemNguoc.stop();
+                thucHienHuyDonTuDong();
+            }
+        });
+        boDemNguoc.start();
     }
 
+    private void thucHienHuyDonTuDong() {
+        if (this.maHDDangSua != null && !this.maHDDangSua.isEmpty()) {
+            String sql = "UPDATE HoaDon SET ghiChu = N'Đã hủy' WHERE id = ?"; 
+            try (java.sql.Connection con = ConnectDB.getInstance().getConnection();
+                 java.sql.PreparedStatement pst = con.prepareStatement(sql)) {
+                pst.setString(1, this.maHDDangSua);
+                pst.executeUpdate();
+            } catch (Exception ex) {}
+        }
+        if (this.editingModelRow != -1 && mainTableModel != null) {
+            mainTableModel.setValueAt("Đã hủy", this.editingModelRow, 6); 
+        }
+        showCustomNotification("HẾT THỜI GIAN", "Hóa đơn đã tự động HỦY do vượt quá 10 phút!", "WARNING");
+        this.dispose(); 
+    }
     class CustomToggleSwitch extends JPanel {
         private boolean isOn = false;
         private Runnable onToggle;
@@ -1915,13 +1989,21 @@ public class TaoHoaDon extends JDialog {
                                 productModel.setValueAt(String.valueOf(sl), row, 2); 
                             }
 
-                            // Lấy Đơn giá (đã được làm mới tự động nếu vừa đổi ĐVT ở Bước 1)
+                         // Lấy Đơn giá (đã được làm mới tự động nếu vừa đổi ĐVT ở Bước 1)
                             String giaStr = productModel.getValueAt(row, 3).toString().replaceAll("[^0-9]", "");
                             long donGia = 0;
                             try { donGia = Long.parseLong(giaStr); } catch (Exception ex) {}
 
-                            // Tính lại Thành tiền và đẩy lên cột 5
-                            long thanhTien = sl * donGia;
+                            // LẤY VÀ TÍNH VAT
+                            double vatPercent = 0;
+                            try {
+                                String vatStr = productModel.getValueAt(row, 4).toString().replace("%", "").trim();
+                                vatPercent = Double.parseDouble(vatStr) / 100.0;
+                            } catch (Exception ex) {}
+
+                            // Tính lại Thành tiền (Đã bao gồm VAT) và đẩy lên cột 5
+                            long tienHang = sl * donGia;
+                            long thanhTien = tienHang + (long)(tienHang * vatPercent);
                             productModel.setValueAt(String.format("%,d", thanhTien).replace(',', '.') + "đ", row, 5);
                             
                             // Cập nhật lại Tổng Hóa Đơn bên dưới
@@ -1941,6 +2023,15 @@ public class TaoHoaDon extends JDialog {
         // 2. KHỞI TẠO BẢNG VỚI COMBOBOX ĐỘNG THEO DẠNG THUỐC (CỘT 1)
         // ====================================================================
         JTable tbl = new JTable(productModel) {
+        	
+        	@Override
+            public void scrollRectToVisible(Rectangle aRect) {
+                // Nếu bảng đang cập nhật quà tặng -> Cấm tuyệt đối việc tự động cuộn!
+                if (isTableUpdating) return; 
+                super.scrollRectToVisible(aRect);
+            }
+            // --------------------------------------------------------
+
             @Override
             public Dimension getPreferredScrollableViewportSize() {
                 int tableHeight = getRowCount() * getRowHeight();
@@ -2469,11 +2560,29 @@ txtSearchProduct.addKeyListener(new java.awt.event.KeyAdapter() {
                                 if (daTonTai) {
                                     currentQty++; // Tăng 1
                                     productModel.setValueAt(String.valueOf(currentQty), rowIndex, 2);
-                                    productModel.setValueAt(String.format("%,d", giaBan * currentQty).replace(',', '.') + "đ", rowIndex, 5);
+                                    
+                                    // TÍNH LẠI THÀNH TIỀN CÓ VAT
+                                    double vat = 0;
+                                    try {
+                                        String vatStr = productModel.getValueAt(rowIndex, 4).toString().replace("%", "").trim();
+                                        vat = Double.parseDouble(vatStr) / 100.0;
+                                    } catch (Exception ex) {}
+                                    
+                                    long tienHang = giaBan * currentQty;
+                                    long thanhTien = tienHang + (long)(tienHang * vat);
+                                    
+                                    productModel.setValueAt(String.format("%,d", thanhTien).replace(',', '.') + "đ", rowIndex, 5);
                                 } else {
-                                    // Nếu chỉ trùng tên mà KHÁC đơn vị tính -> Thêm thành dòng mới tinh
+                                    // TÍNH THÀNH TIỀN CÓ VAT CHO SẢN PHẨM MỚI
+                                    double vat = 0;
+                                    try {
+                                        String vatStr = thueVat.replace("%", "").trim();
+                                        vat = Double.parseDouble(vatStr) / 100.0;
+                                    } catch (Exception ex) {}
+                                    long thanhTien = giaBan + (long)(giaBan * vat);
+
                                     productModel.addRow(new Object[]{
-                                        name, unit, "1", price, thueVat, String.format("%,d", giaBan).replace(',', '.') + "đ", danhMuc 
+                                        name, unit, "1", price, thueVat, String.format("%,d", thanhTien).replace(',', '.') + "đ", danhMuc 
                                     });
                                 }
                                 
@@ -3423,11 +3532,16 @@ txtSearchProduct.addKeyListener(new java.awt.event.KeyAdapter() {
                 if (isLeftClick) {
                     currentQty++;
                     if (daTonTai) {
-                        productModel.setValueAt(String.valueOf(currentQty), rowIndex, 2);
-                        // Sửa để lấy đúng giá đang có trong bảng thay vì price gốc
+                    	productModel.setValueAt(String.valueOf(currentQty), rowIndex, 2);
                         long donGia = 0;
                         try { donGia = Long.parseLong(productModel.getValueAt(rowIndex, 3).toString().replaceAll("[^0-9]", "")); } catch(Exception ex){}
-                        productModel.setValueAt(String.format("%,d", donGia * currentQty).replace(',', '.') + "đ", rowIndex, 5);
+                        
+                        double vat = 0;
+                        try { vat = Double.parseDouble(productModel.getValueAt(rowIndex, 4).toString().replace("%", "").trim()) / 100.0; } catch (Exception ex) {}
+                        
+                        long tienHang = donGia * currentQty;
+                        long thanhTien = tienHang + (long)(tienHang * vat);
+                        productModel.setValueAt(String.format("%,d", thanhTien).replace(',', '.') + "đ", rowIndex, 5);
                     } else {
                         // --- VÁ LỖI ĐƠN GIÁ: Lấy giá chính xác của ĐVT trước khi đưa vào bảng ---
                         long donGiaChuan = Long.parseLong(price);
@@ -3737,6 +3851,14 @@ txtSearchProduct.addKeyListener(new java.awt.event.KeyAdapter() {
                     
                     if (hdGoc.getKhuyenMaiId() != null) {
                         txtVoucherInput.setText(hdGoc.getKhuyenMaiId().getId());
+                    }
+                    if (hdGoc.getNgayLapHD() != null) {
+                        // Tính số giây từ lúc lưu nháp đến hiện tại
+                        long giayDaQua = java.time.temporal.ChronoUnit.SECONDS.between(hdGoc.getNgayLapHD(), java.time.LocalDateTime.now());
+                        int giayConLai = 600 - (int) giayDaQua;
+                        khoiDongDongHoHuyDon(giayConLai); // Tiếp tục chạy phần thời gian còn lại
+                    } else {
+                        khoiDongDongHoHuyDon(600);
                     }
                 }
                 
