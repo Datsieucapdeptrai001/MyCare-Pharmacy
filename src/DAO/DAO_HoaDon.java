@@ -119,15 +119,28 @@ public class DAO_HoaDon {
         return ds;
     }
     
-    /**
-     * Dành cho STAFF: chỉ lấy hóa đơn của nhân viên đó, trong ngày hôm nay,
-     * từ thời điểm bắt đầu ca trở đi (batDauCa = null → chỉ lọc theo ngày).
-     */
-    /**
-     * Dành cho STAFF: chỉ lấy hóa đơn của nhân viên đó trong ngày hôm nay.
-     * KHÔNG lọc theo giờ ca để tránh bỏ sót hóa đơn tạo trước khi mở ca.
-     * Trả về null nếu maNV rỗng (caller sẽ fallback về layDanhSachHoaDonChoBang).
-     */
+    public List<String> timGoiYHoaDonHoanThanh(String tuKhoa) {
+        List<String> ds = new ArrayList<>();
+        // Lọc nghiêm ngặt: Không có hóa đơn gốc (tức là HD bán hàng gốc) và phải thành công
+        String sql = "SELECT id FROM HoaDon WHERE id LIKE ? AND hoaDonGocId IS NULL AND trangThai = N'Hoàn thành'";
+        
+        try (Connection con = ConnectDB.getInstance().getConnection();
+             PreparedStatement pst = con.prepareStatement(sql)) {
+             
+            pst.setString(1, "%" + tuKhoa + "%");
+            
+            try (ResultSet rs = pst.executeQuery()) {
+                int count = 0;
+                while (rs.next() && count < 5) {
+                    ds.add(rs.getString("id"));
+                    count++;
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Lỗi truy vấn gợi ý hóa đơn: " + e.getMessage());
+        }
+        return ds;
+    }
     public List<Object[]> layDanhSachHoaDonTheoNVHomNay(String maNV) {
         if (maNV == null || maNV.trim().isEmpty()) return null;
 
