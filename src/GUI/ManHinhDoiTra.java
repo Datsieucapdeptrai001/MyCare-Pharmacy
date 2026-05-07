@@ -46,6 +46,16 @@ public class ManHinhDoiTra extends JPanel {
                 loadDataToTable(); 
             }
         });
+        this.addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override
+            public void componentShown(java.awt.event.ComponentEvent e) {
+                if (txtSearch != null) {
+                    txtSearch.setText("Mã phiếu, mã HĐ gốc...");
+                    txtSearch.setForeground(Color.GRAY);
+                }
+                loadDataToTable(); // Gọi lại hàm load dữ liệu
+            }
+        });
     }
 
     private void initUI() {
@@ -362,95 +372,106 @@ public class ManHinhDoiTra extends JPanel {
         }
         table.repaint();
     }
-
+    private long layTienTrucTiepTuDB(String maPhieu, String loaiGhiChu) {
+        long tong = 0;
+        String sql = "SELECT ISNULL(SUM(ct.soLuong * dvl.gia), 0) FROM ChiTietHoaDon ct " +
+                     "JOIN DonViDoLuong dvl ON ct.donViDoLuongId = dvl.id AND ct.sanPhamId = dvl.sanPhamId " +
+                     "WHERE ct.hoaDonId = ?";
+        if (loaiGhiChu != null) sql += " AND ct.ghiChu = '" + loaiGhiChu + "'";
+        try (java.sql.Connection con = ConnectDB.ConnectDB.getInstance().getConnection();
+             java.sql.PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, maPhieu);
+            try (java.sql.ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) tong = (long) rs.getDouble(1);
+            }
+        } catch (Exception e) {}
+        return tong;
+    }
     private void loadDataToTable() {
         model.setRowCount(0);
         mapThoiGianTao.clear();
-        BUS_TraHang busTra = new BUS_TraHang();
         DAO.DAO_HoaDon daoHD = new DAO.DAO_HoaDon();
-
-        // Phân quyền: ADMIN thấy tất cả, STAFF chỉ thấy phiếu của mình hôm nay
         Utils.UserSession session = Utils.UserSession.getInstance();
-        List<Object[]> ds;
-        if (session.isAdmin()) {
-            ds = busTra.layDanhSachPhieu();
-        } else {
-            String maNV = session.getMaNhanVien();
-            List<Object[]> staffDs = busTra.layDanhSachPhieuCuaNhanVien(maNV);
-            // Nếu maNV rỗng (session chưa load đủ) → fallback toàn bộ
-            ds = (staffDs != null) ? staffDs : busTra.layDanhSachPhieu();
-        }
-        
-        if (ds != null) {
-            for (Object[] row : ds) {
-                String maPhieu = row[0].toString();
-                String hoaDonGoc = row[1] != null ? row[1].toString() : "";
-                String loaiPhieu = row[3] != null ? row[3].toString() : "";
 
-                long tongTienTra = 0;
-                List<Object[]> dsTra = busTra.layChiTietPhieu(maPhieu);
-                if (dsTra != null) {
-                    for (Object[] sp : dsTra) {
-                        int sl = 1; try { sl = Integer.parseInt(sp[1].toString().replaceAll("[^0-9]", "")); } catch(Exception e){}
-                        long gia = 0; try { gia = Long.parseLong(sp[3].toString().replaceAll(",00$|\\.00$|,0$|\\.0$", "").replaceAll("[^0-9]", "")); } catch(Exception e){}
-                        if (gia <= 1) {
+        // 1. Lấy toàn bộ danh sách phiếu
+        List<Object[]> ds = daoHD.layDanhSachPhieuDoiTra();
+        if (ds == null) ds = new java.util.ArrayList<>();
+
+        // 2. Lấy giờ bắt đầu ca (nếu là nhân viên)
+        java.time.LocalDateTime shiftStart = null;
+        if (!session.isAdmin() && session.getCaHienTai() != null) {
+            shiftStart = session.getCaHienTai().getThoiGianBatDau();
+        }
+
+        for (Object[] dbRow : ds) {
+            String maPhieu = dbRow[0] != null ? dbRow[0].toString() : "";
+            String hoaDonGoc = dbRow[1] != null ? dbRow[1].toString() : "";
+            String khachHang = dbRow[2] != null ? dbRow[2].toString() : "Khách lẻ";
+            String loaiPhieu = dbRow[3] != null ? dbRow[3].toString() : "";
+            String ghiChuDB = dbRow[4] != null ? dbRow[4].toString() : "";
+            String ngayStr = dbRow[5] != null ? dbRow[5].toString() : "";
+
+            // ========================================================
+            // BỘ LỌC THEO CA LÀM VIỆC (ĐÃ BỔ SUNG ĐỌC NGÀY KHÔNG CÓ GIỜ)
+            // ========================================================
+            if (shiftStart != null && ngayStr != null && !ngayStr.trim().isEmpty()) {
+                java.time.LocalDateTime hdTime = null;
+                try {
+                    java.time.format.DateTimeFormatter formatter1 = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+                    hdTime = java.time.LocalDateTime.parse(ngayStr.trim(), formatter1);
+                } catch (Exception e1) {
+                    try {
+                        java.time.format.DateTimeFormatter formatter2 = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
+                        hdTime = java.time.LocalDateTime.parse(ngayStr.trim(), formatter2);
+                    } catch (Exception e2) {
+                        try {
+                            java.time.format.DateTimeFormatter formatter3 = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss[.S]");
+                            hdTime = java.time.LocalDateTime.parse(ngayStr.trim(), formatter3);
+                        } catch (Exception e3) {
                             try {
-                                Object[] info = daoHD.layThongTinGiaTuHDGoc(hoaDonGoc, sp[0].toString());
-                                // ĐÃ FIX: Ép kiểu chuẩn Double để không bị nhân 10 lần giá trị (.0)
-                                if (info != null && info[1] != null) gia = (long) Double.parseDouble(info[1].toString());
-                            } catch(Exception e){}
+                                // Thử format 4: CHỈ CÓ NGÀY (Khớp với dữ liệu thực tế DB của bạn)
+                                java.time.format.DateTimeFormatter formatter4 = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy");
+                                java.time.LocalDate dateOnly = java.time.LocalDate.parse(ngayStr.trim(), formatter4);
+                                // Ép thời gian về cuối ngày (23:59:59) để phiếu trong ngày không bị bộ lọc ca (shiftStart) loại bỏ
+                                hdTime = dateOnly.atTime(23, 59, 59);
+                            } catch (Exception e4) {
+                                System.err.println("Lỗi format ngày tại Đổi Trả! Chuỗi từ DB: [" + ngayStr + "]");
+                            }
                         }
-                        tongTienTra += gia * sl;
                     }
                 }
 
-                if (loaiPhieu.equalsIgnoreCase("Đổi hàng")) {
-                    long tongTienDoi = 0;
-                    List<Object[]> dsDoi = busTra.layDanhSachSanPhamDoi(maPhieu);
-                    if (dsDoi != null) {
-                        for (Object[] sp : dsDoi) {
-                            int sl = 1; try { sl = Integer.parseInt(sp[1].toString().replaceAll("[^0-9]", "")); } catch(Exception e){}
-                            long gia = 0; try { gia = Long.parseLong(sp[3].toString().replaceAll(",00$|\\.00$|,0$|\\.0$", "").replaceAll("[^0-9]", "")); } catch(Exception e){}
-                            if (gia <= 1) {
-                                try {
-                                    Object[] info = daoHD.layThongTinGiaTuHDGoc(maPhieu, sp[0].toString());
-                                    // ĐÃ FIX: Ép kiểu chuẩn Double
-                                    if (info != null && info[1] != null) gia = (long) Double.parseDouble(info[1].toString());
-                                } catch(Exception e){}
-                            }
-                            tongTienDoi += gia * sl;
-                        }
-                    }
-
-                    long diff = tongTienDoi - tongTienTra;
-
-                    // Sửa lỗi Database ghi nhầm chữ "Bù" thành "Hoàn"
-                    if (tongTienDoi == 0 && dsDoi != null && !dsDoi.isEmpty()) {
-                         long dbChenhLech = 0;
-                         try { if (row[6] != null) dbChenhLech = Long.parseLong(row[6].toString().replaceAll("[^0-9]", "")); } catch(Exception e){}
-                         
-                         long giaTriThoiLai = tongTienTra - dbChenhLech; 
-                         if (giaTriThoiLai > 0 && dbChenhLech > 0 && row[6].toString().contains("Bù")) {
-                             diff = -dbChenhLech; 
-                         } else {
-                             diff = row[6].toString().contains("Hoàn") ? -dbChenhLech : dbChenhLech;
-                         }
-                    }
-
-                    if (diff < 0) {
-                        row[6] = "Hoàn: " + String.format("%,dđ", Math.abs(diff)).replace(',', '.');
-                    } else if (diff > 0) {
-                        row[6] = "Bù: " + String.format("%,dđ", Math.abs(diff)).replace(',', '.');
-                    } else {
-                        row[6] = "0đ";
+                // Logic lọc:
+                if (hdTime != null) {
+                    if (hdTime.isBefore(shiftStart)) {
+                        continue; // Bỏ qua hóa đơn vì tạo trước khi mở ca
                     }
                 } else {
-                    row[5] = String.format("%,dđ", tongTienTra).replace(',', '.');
-                    row[6] = "0đ";
+                    continue; // Lỗi format quá nặng, bỏ qua để an toàn
                 }
-                
-                model.addRow(row);
             }
+            // ========================================================
+
+            // --- FIX TIỀN: Lấy trực tiếp từ chuỗi Ghi chú của Hóa đơn ---
+            String trangThai = "Chờ xử lý";
+            String loi = "";
+            String tienHoanStr = "0đ";
+            String chenhLechStr = "0đ";
+
+            if (ghiChuDB.contains("|")) {
+                String[] parts = ghiChuDB.split("\\|");
+                if (parts.length >= 1) trangThai = parts[0].trim();
+                if (parts.length >= 2) loi = parts[1].trim();
+                if (parts.length >= 3) tienHoanStr = parts[2].trim(); 
+                if (parts.length >= 4) chenhLechStr = parts[3].trim(); 
+            }
+
+            Object[] finalRow = new Object[]{
+                maPhieu, hoaDonGoc, khachHang, loaiPhieu, loi, 
+                tienHoanStr, 
+                chenhLechStr, trangThai, ngayStr, ""
+            };
+            model.addRow(finalRow);
         }
     }
 

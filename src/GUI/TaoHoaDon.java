@@ -3813,10 +3813,11 @@ txtSearchProduct.addKeyListener(new java.awt.event.KeyAdapter() {
     
     private String phatSinhMaHoaDon() {
         int year = java.time.Year.now().getValue();
-        String maMoi = "HD-" + year + "-0001"; 
+        String prefix = "HD-" + year + "-"; 
+        String maMoi = prefix + "1"; 
         
         // Tìm tất cả các mã trong năm hiện tại
-        String sql = "SELECT id FROM HoaDon WHERE id LIKE 'HD-" + year + "-%'";
+        String sql = "SELECT id FROM HoaDon WHERE id LIKE '" + prefix + "%'";
         
         try (java.sql.Connection con = ConnectDB.getInstance().getConnection();
              java.sql.Statement st = con.createStatement();
@@ -3824,9 +3825,9 @@ txtSearchProduct.addKeyListener(new java.awt.event.KeyAdapter() {
              
             int maxStt = 0;
             while (rs.next()) {
-                String id = rs.getString("id"); // VD: HD-2026-0001 hoặc HD-2026-0001-LuuNhap
+                String id = rs.getString("id"); // VD: HD-2026-1 hoặc HD-2026-1-LuuNhap
                 String[] parts = id.split("-");
-                // Lấy phần tử số 3 (index 2) chính là số thứ tự 0001
+                // Lấy phần tử số 3 (index 2) chính là số thứ tự
                 if (parts.length >= 3) {
                     try {
                         int stt = Integer.parseInt(parts[2]);
@@ -3837,9 +3838,10 @@ txtSearchProduct.addKeyListener(new java.awt.event.KeyAdapter() {
                 }
             }
             
-            // Nếu đã có hóa đơn trong năm, cộng thêm 1
+            // Nếu đã có hóa đơn trong năm, cộng thêm 1 từ số đếm lớn nhất
             if (maxStt > 0) {
-                maMoi = String.format("HD-%d-%04d", year, maxStt + 1);
+                // Sửa %04d thành %d để bỏ padding các số 0 ở đầu
+                maMoi = String.format("HD-%d-%d", year, maxStt + 1);
             }
         } catch (Exception e) {
             e.printStackTrace();

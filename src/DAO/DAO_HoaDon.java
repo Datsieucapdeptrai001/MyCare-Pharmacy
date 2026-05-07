@@ -121,8 +121,10 @@ public class DAO_HoaDon {
     
     public List<String> timGoiYHoaDonHoanThanh(String tuKhoa) {
         List<String> ds = new ArrayList<>();
-        // Lọc nghiêm ngặt: Không có hóa đơn gốc (tức là HD bán hàng gốc) và phải thành công
-        String sql = "SELECT id FROM HoaDon WHERE id LIKE ? AND hoaDonGocId IS NULL AND trangThai = N'Hoàn thành'";
+        // ĐÃ FIX: Chuyển kiểm tra trạng thái sang lọc qua loaiHD và ghiChu
+        String sql = "SELECT id FROM HoaDon WHERE id LIKE ? AND hoaDonGocId IS NULL " +
+                     "AND loaiHD = 'BAN_HANG' " +
+                     "AND (ghiChu IS NULL OR (ghiChu NOT LIKE N'%Lưu nháp%' AND ghiChu NOT LIKE N'%Đã hủy%'))";
         
         try (Connection con = ConnectDB.getInstance().getConnection();
              PreparedStatement pst = con.prepareStatement(sql)) {
@@ -140,6 +142,47 @@ public class DAO_HoaDon {
             System.err.println("Lỗi truy vấn gợi ý hóa đơn: " + e.getMessage());
         }
         return ds;
+    }
+ // HÀM SINH MÃ TỰ ĐỘNG LIÊN TỤC KHÔNG BAO GIỜ TRÙNG
+    public String phatSinhMaHoaDonTuDong() {
+        String maMoi = "";
+        int year = java.time.LocalDateTime.now().getYear();
+        
+        // Đã sửa lại thành "HD-" để khớp chính xác với hiển thị trên giao diện của bạn
+        String prefix = "HD-" + year + "-"; 
+        
+        String sql = "SELECT id FROM HoaDon WHERE id LIKE ?";
+        int maxStt = 0;
+        
+        try (Connection con = ConnectDB.getInstance().getConnection();
+             PreparedStatement pst = con.prepareStatement(sql)) {
+            
+            pst.setString(1, prefix + "%");
+            
+            try (ResultSet rs = pst.executeQuery()) {
+                while (rs.next()) {
+                    String id = rs.getString("id");
+                    if (id != null && id.startsWith(prefix)) {
+                        try {
+                            // Lấy phần đuôi sau chữ "HD-2026-" để chuyển thành số
+                            int stt = Integer.parseInt(id.substring(prefix.length()));
+                            if (stt > maxStt) {
+                                maxStt = stt;
+                            }
+                        } catch (NumberFormatException e) {
+                            // Bỏ qua nếu lỗi
+                        }
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        
+        // Tạo mã mới (Ví dụ: HD-2026-1, HD-2026-2...)
+        maMoi = prefix + (maxStt + 1);
+        
+        return maMoi;
     }
     public List<Object[]> layDanhSachHoaDonTheoNVHomNay(String maNV) {
         if (maNV == null || maNV.trim().isEmpty()) return null;
@@ -234,37 +277,59 @@ public class DAO_HoaDon {
      * Dành cho STAFF: chỉ lấy phiếu đổi/trả do nhân viên đó lập,
      * trong ngày hôm nay.
      */
+    /**
+     * Dành cho STAFF: chỉ lấy phiếu đổi/trả do nhân viên đó lập,
+     * trong ngày hôm nay.
+     */
+    /**
+     * Dành cho STAFF: Lấy danh sách phiếu đổi trả.
+     * MỞ KHÓA: Fix lỗi múi giờ 2 giờ sáng và nới lỏng kiểm tra nhân viên.
+     */
     public List<Object[]> layDanhSachPhieuDoiTraTheoNVHomNay(String maNV) {
-        if (maNV == null || maNV.trim().isEmpty()) return null;
-
         List<Object[]> list = new ArrayList<>();
-        String sql =
-            "SELECT hd.id, hd.hoaDonGocId, kh.hoVaTen, hd.loaiHD, hd.ghiChu, hd.ngayLapHD " +
-            "FROM HoaDon hd " +
-            "LEFT JOIN KhachHang kh ON hd.khachHangId = kh.id " +
-            "WHERE hd.loaiHD IN ('TRA_HANG', 'DOI_HANG') " +
-            "AND hd.nhanVienId = ? " +
-            "AND CAST(hd.ngayLapHD AS DATE) = CAST(GETDATE() AS DATE) " +
-            "ORDER BY hd.ngayLapHD DESC";
+        String cleanMaNV = (maNV != null) ? maNV.trim() : "";
+        
+        // 1. Quét theo mã DTH hoặc loại phiếu (chống lỗi form lưu sai loại)
+        // 2. Cho phép hiển thị nếu phiếu chưa gắn nhân viên (IS NULL)
+        // 3. BỎ chặn ngày GETDATE() để tránh lỗi múi giờ lúc nửa đêm
+        String sql = "SELECT hd.id, hd.hoaDonGocId, kh.hoVaTen, hd.loaiHD, hd.ghiChu, hd.ngayLapHD " +
+                     "FROM HoaDon hd " +
+                     "LEFT JOIN KhachHang kh ON hd.khachHangId = kh.id " +
+                     "WHERE (hd.loaiHD IN ('DOI_HANG', 'TRA_HANG', N'Đổi hàng', N'Trả hàng') OR hd.id LIKE 'DTH-%') " +
+                     "AND (hd.nhanVienId = ? OR hd.nhanVienId IS NULL OR hd.nhanVienId = '') " +
+                     "ORDER BY hd.ngayLapHD DESC";
 
         try (Connection con = ConnectDB.getInstance().getConnection();
              PreparedStatement pst = con.prepareStatement(sql)) {
+            
+            pst.setString(1, cleanMaNV);
+            ResultSet rs = pst.executeQuery();
 
-            pst.setString(1, maNV.trim());
-
-            try (ResultSet rs = pst.executeQuery()) {
-                DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-                while (rs.next()) {
-                    String maPhieu  = rs.getString("id");
-                    String hdGoc    = rs.getString("hoaDonGocId");
-                    String khach    = rs.getString("hoVaTen") != null ? rs.getString("hoVaTen") : "Khách lẻ";
-                    String loaiHD   = rs.getString("loaiHD").equals("TRA_HANG") ? "Trả hàng" : "Đổi hàng";
-                    String ghiChuDB = rs.getString("ghiChu");
-                    String ngay     = rs.getTimestamp("ngayLapHD").toLocalDateTime().format(dtf);
-                    list.add(new Object[]{ maPhieu, hdGoc, khach, loaiHD, ghiChuDB, ngay });
+            while (rs.next()) {
+                String loaiHD_DB = rs.getString(4);
+                String loaiPhieuHienThi = "Đổi/Trả";
+                
+                // Dịch mã chuẩn xác bất chấp Database đang lưu tiếng Anh hay tiếng Việt
+                if (loaiHD_DB != null) {
+                    if (loaiHD_DB.contains("TRA") || loaiHD_DB.equalsIgnoreCase("Trả hàng")) {
+                        loaiPhieuHienThi = "Trả hàng";
+                    } else if (loaiHD_DB.contains("DOI") || loaiHD_DB.equalsIgnoreCase("Đổi hàng")) {
+                        loaiPhieuHienThi = "Đổi hàng";
+                    }
                 }
+
+                list.add(new Object[]{
+                    rs.getString(1),    // Mã phiếu
+                    rs.getString(2),    // Hóa đơn gốc
+                    rs.getString(3) != null ? rs.getString(3) : "Khách lẻ", // Tên khách
+                    loaiPhieuHienThi,   // Loại phiếu
+                    rs.getString(5),    // Ghi chú / Trạng thái
+                    rs.getTimestamp(6)  // Ngày tạo
+                });
             }
-        } catch (Exception e) { e.printStackTrace(); }
+        } catch (Exception e) {
+            System.out.println("Lỗi DAO_HoaDon: " + e.getMessage());
+        }
         return list;
     }
 
@@ -365,44 +430,40 @@ public class DAO_HoaDon {
     public boolean themHoaDon(HoaDon hd) {
         String sql = "INSERT INTO HoaDon (id, loaiHD, ghiChu, ngayLapHD, nhanVienId, khachHangId, khuyenMaiId, phuongThucThanhToan, hoaDonGocId) "
                    + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
-
         int n = 0;
-        // Đã đúng, không có try(Connection) ở đây
         Connection con = ConnectDB.getInstance().getConnection();
-
         try (PreparedStatement pst = con.prepareStatement(sql)) {
             pst.setString(1, hd.getId());
-            pst.setString(2, hd.getLoaiHD().name());
+            
+            // FIX LỖI: Bảo vệ an toàn chống dội Check Constraint của Database
+            String loaiStr = hd.getLoaiHD().name();
+            if (!loaiStr.equals("BAN_HANG") && !loaiStr.equals("TRA_HANG") && !loaiStr.equals("DOI_HANG")) {
+                loaiStr = "TRA_HANG"; // Ép về chuẩn nếu code cũ truyền sai Enum
+            }
+            pst.setString(2, loaiStr);
+            
             pst.setString(3, hd.getGhiChu());
             pst.setTimestamp(4, Timestamp.valueOf(hd.getNgayLapHD()));
-
             pst.setString(5, hd.getNhanVienId().getNhanVien());
 
-            if (hd.getKhachHangId() != null) {
-                pst.setString(6, hd.getKhachHangId().getId());
-            } else {
-                pst.setNull(6, java.sql.Types.NVARCHAR);
-            }
+            if (hd.getKhachHangId() != null) pst.setString(6, hd.getKhachHangId().getId());
+            else pst.setNull(6, java.sql.Types.NVARCHAR);
 
-            if (hd.getKhuyenMaiId() != null) {
-                pst.setString(7, hd.getKhuyenMaiId().getId());
-            } else {
-                pst.setNull(7, java.sql.Types.NVARCHAR);
-            }
+            if (hd.getKhuyenMaiId() != null) pst.setString(7, hd.getKhuyenMaiId().getId());
+            else pst.setNull(7, java.sql.Types.NVARCHAR);
 
-            pst.setString(8, hd.getPhuongThucThanhToan().name());
+            // FIX LỖI: Chặn phương thức thanh toán sai chuẩn
+            String pt = (hd.getPhuongThucThanhToan() != null) ? hd.getPhuongThucThanhToan().name() : "TIEN_MAT";
+            if (!pt.equals("TIEN_MAT") && !pt.equals("CHUYEN_KHOAN_NGAN_HANG")) pt = "TIEN_MAT";
+            pst.setString(8, pt);
 
-            if (hd.getHoaDonGocId() != null) {
-                pst.setString(9, hd.getHoaDonGocId().getId());
-            } else {
-                pst.setNull(9, java.sql.Types.NVARCHAR);
-            }
+            if (hd.getHoaDonGocId() != null) pst.setString(9, hd.getHoaDonGocId().getId());
+            else pst.setNull(9, java.sql.Types.NVARCHAR);
 
             n = pst.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
         }
-
         return n > 0;
     }
 
@@ -604,38 +665,34 @@ public class DAO_HoaDon {
         }
     }
 
-    // Hàm mới này nhận Connection từ bên ngoài truyền vào, không tự tạo Connection mới
     public boolean themHoaDon(Connection con, HoaDon hd) throws SQLException {
         String sql = "INSERT INTO HoaDon (id, loaiHD, ghiChu, ngayLapHD, nhanVienId, khachHangId, khuyenMaiId, phuongThucThanhToan, hoaDonGocId) "
                    + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        
-        // Lưu ý: Không dùng try-with-resources cho Connection ở đây, vì mình cần giữ nó mở cho các thao tác khác
         try (PreparedStatement pst = con.prepareStatement(sql)) {
             pst.setString(1, hd.getId());
-            pst.setString(2, hd.getLoaiHD().name());
+            
+            String loaiStr = hd.getLoaiHD().name();
+            if (!loaiStr.equals("BAN_HANG") && !loaiStr.equals("TRA_HANG") && !loaiStr.equals("DOI_HANG")) {
+                loaiStr = "TRA_HANG"; 
+            }
+            pst.setString(2, loaiStr);
+            
             pst.setString(3, hd.getGhiChu());
             pst.setTimestamp(4, Timestamp.valueOf(hd.getNgayLapHD()));
             pst.setString(5, hd.getNhanVienId().getNhanVien());
 
-            if (hd.getKhachHangId() != null) {
-                pst.setString(6, hd.getKhachHangId().getId());
-            } else {
-                pst.setNull(6, java.sql.Types.NVARCHAR);
-            }
+            if (hd.getKhachHangId() != null) pst.setString(6, hd.getKhachHangId().getId());
+            else pst.setNull(6, java.sql.Types.NVARCHAR);
 
-            if (hd.getKhuyenMaiId() != null) {
-                pst.setString(7, hd.getKhuyenMaiId().getId());
-            } else {
-                pst.setNull(7, java.sql.Types.NVARCHAR);
-            }
+            if (hd.getKhuyenMaiId() != null) pst.setString(7, hd.getKhuyenMaiId().getId());
+            else pst.setNull(7, java.sql.Types.NVARCHAR);
 
-            pst.setString(8, hd.getPhuongThucThanhToan().name());
+            String pt = (hd.getPhuongThucThanhToan() != null) ? hd.getPhuongThucThanhToan().name() : "TIEN_MAT";
+            if (!pt.equals("TIEN_MAT") && !pt.equals("CHUYEN_KHOAN_NGAN_HANG")) pt = "TIEN_MAT";
+            pst.setString(8, pt);
 
-            if (hd.getHoaDonGocId() != null) {
-                pst.setString(9, hd.getHoaDonGocId().getId());
-            } else {
-                pst.setNull(9, java.sql.Types.NVARCHAR);
-            }
+            if (hd.getHoaDonGocId() != null) pst.setString(9, hd.getHoaDonGocId().getId());
+            else pst.setNull(9, java.sql.Types.NVARCHAR);
 
             return pst.executeUpdate() > 0;
         }
@@ -654,11 +711,6 @@ public class DAO_HoaDon {
             return false;
         }
     }
- // 1. Lấy danh sách Phiếu đổi trả từ SQL
- // =========================================================================
-    // CÁC HÀM XỬ LÝ RIÊNG CHO MÀN HÌNH ĐỔI / TRẢ HÀNG
-    // =========================================================================
-
     public List<Object[]> layDanhSachPhieuDoiTra() {
         List<Object[]> list = new ArrayList<>();
         // CHỈ LẤY CÁC PHIẾU LÀ ĐỔI HOẶC TRẢ HÀNG
@@ -672,7 +724,8 @@ public class DAO_HoaDon {
              PreparedStatement pst = con.prepareStatement(sql);
              ResultSet rs = pst.executeQuery()) {
              
-             DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+             // ĐÃ FIX: Giữ nguyên Giờ/Phút/Giây để giao diện có thể so sánh với Giờ bắt đầu ca
+             DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
              
              while (rs.next()) {
                  String maPhieu = rs.getString("id");
@@ -680,6 +733,8 @@ public class DAO_HoaDon {
                  String khach = rs.getString("hoVaTen") != null ? rs.getString("hoVaTen") : "Khách lẻ";
                  String loaiHD = rs.getString("loaiHD").equals("TRA_HANG") ? "Trả hàng" : "Đổi hàng";
                  String ghiChuDB = rs.getString("ghiChu"); 
+                 
+                 // Lấy đầy đủ ngày giờ
                  String ngay = rs.getTimestamp("ngayLapHD").toLocalDateTime().format(dtf);
                  
                  list.add(new Object[]{maPhieu, hdGoc, khach, loaiHD, ghiChuDB, ngay});

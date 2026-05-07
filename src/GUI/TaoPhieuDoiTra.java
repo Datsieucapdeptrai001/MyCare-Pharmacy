@@ -1630,7 +1630,11 @@ public class TaoPhieuDoiTra extends JDialog {
             hdDoiTra.setNgayLapHD(LocalDateTime.now());
             
             Entity.NhanVien nv = new Entity.NhanVien();
-            nv.setNhanVien("DS-0001");
+            String maNVHienTai = Utils.UserSession.getInstance().getMaNhanVien();
+            if (maNVHienTai == null || maNVHienTai.trim().isEmpty()) {
+                maNVHienTai = "DS-0001"; // Phòng hờ nếu session bị rỗng
+            }
+            nv.setNhanVien(maNVHienTai);
             hdDoiTra.setNhanVienId(nv);
             hdDoiTra.setPhuongThucThanhToan(phuongThucDoiTra.equals("Chuyển khoản") ? 
                 Enumeration.PhuongThucThanhToan.CHUYEN_KHOAN_NGAN_HANG : Enumeration.PhuongThucThanhToan.TIEN_MAT);

@@ -7,7 +7,8 @@ public class ChiTietHoaDon {
 	private DonViDoLuong donViDoLuongId;
 	private SanPham sanPhamId;
 	private int soLuong;
-	
+	private double donGiaThucTe;
+	private double thanhTien;
 	public ChiTietHoaDon() {
 		super();
 		// TODO Auto-generated constructor stub
@@ -43,6 +44,11 @@ public class ChiTietHoaDon {
 	public void setSoLuong(int soLuong) {
 		this.soLuong = soLuong;
 	}
+	public double getDonGiaThucTe() { return donGiaThucTe; }
+	public void setDonGiaThucTe(double donGiaThucTe) { this.donGiaThucTe = donGiaThucTe; }
+
+	public double getThanhTien() { return thanhTien; }
+	public void setThanhTien(double thanhTien) { this.thanhTien = thanhTien; }
 	@Override
 	public int hashCode() {
 		return Objects.hash(donViDoLuongId, hoaDonId, sanPhamId, soLuong);

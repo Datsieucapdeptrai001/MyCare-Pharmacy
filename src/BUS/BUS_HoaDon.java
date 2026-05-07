@@ -15,7 +15,16 @@ public class BUS_HoaDon {
     public List<Object[]> layDanhSachHoaDonCuaNhanVien(String maNV) {
         return daoHD.layDanhSachHoaDonCuaNhanVien(maNV); 
     }
+    public String phatSinhMaHoaDonTuDong() {
+        return daoHD.phatSinhMaHoaDonTuDong();
+    }
+    public List<Object[]> layDanhSachPhieuDoiTra() {
+        return daoHD.layDanhSachPhieuDoiTra();
+    }
     
+    public List<Object[]> layDanhSachPhieuDoiTraTheoNVHomNay(String maNV) {
+        return daoHD.layDanhSachPhieuDoiTraTheoNVHomNay(maNV);
+    }
     /** STAFF: Chỉ hóa đơn của nhân viên đó, hôm nay. Trả null nếu maNV rỗng. */
     public List<Object[]> layDanhSachHoaDonTheoNVHomNay(String maNV) {
         return daoHD.layDanhSachHoaDonTheoNVHomNay(maNV);

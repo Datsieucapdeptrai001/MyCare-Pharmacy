@@ -525,7 +525,7 @@ GO
 -- ==============================================================================
 -- 6. TẠO LẠI CÁC KHÓA NGOẠI (FOREIGN KEYS) SAU KHI DỮ LIỆU ĐÃ VÀO KHỚP NHAU
 -- ==============================================================================
-
+ALTER TABLE ChiTietHoaDon ADD ghiChu NVARCHAR(255) NULL;
 ALTER TABLE [dbo].[ApDungKhuyenMai] ADD CONSTRAINT [FK_ApDungKhuyenMai_KhuyenMai] FOREIGN KEY([khuyenMaiId]) REFERENCES [dbo].[KhuyenMai] ([id]) ON UPDATE CASCADE ON DELETE CASCADE
 ALTER TABLE [dbo].[ApDungKhuyenMai] ADD CONSTRAINT [FK_ApDungKhuyenMai_SanPham] FOREIGN KEY([sanPhamId]) REFERENCES [dbo].[SanPham] ([id]) ON UPDATE CASCADE ON DELETE CASCADE
 ALTER TABLE [dbo].[CaLamViec] ADD CONSTRAINT [FK_CaLamViec_NhanVien] FOREIGN KEY([nhanVienId]) REFERENCES [dbo].[NhanVien] ([id]) ON UPDATE CASCADE

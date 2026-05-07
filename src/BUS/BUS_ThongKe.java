@@ -13,7 +13,15 @@ public class BUS_ThongKe {
     }
 
     // LEGACY METHODS
-
+    public double getTongTienHangHomNay(String maNV, int ca) { 
+        return dao.getTongTienHangHomNay(maNV, ca); 
+    }
+    public double getTienHoanTraTheoCa(String maNV, LocalDateTime start) { 
+        return dao.getTienHoanTraTheoCa(maNV, start); 
+    }
+    public double getTongKhuyenMaiHomNay(String maNV, int ca) { 
+        return dao.getTongKhuyenMaiHomNay(maNV, ca); 
+    }
     private boolean kiemTraThoiGianHople(LocalDateTime tuNgay, LocalDateTime denNgay) {
         if (tuNgay == null || denNgay == null) return false;
         if (tuNgay.isAfter(denNgay)) return false;
