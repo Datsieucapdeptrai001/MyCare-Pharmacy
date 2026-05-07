@@ -146,7 +146,7 @@ public class MainDashboard extends JFrame {
         boolean isAdmin = UserSession.getInstance().isAdmin();
 
         // Nút user hiển thị Initials và Tên nhân viên
-        JButton btnUser = new JButton(initials + "  " + tenNV + (isAdmin ? "  ▼" : ""));
+        JButton btnUser = new JButton(initials + "  " + tenNV);
         
         btnUser.setBackground(isAdmin ? Color.decode("#E53935") : Color.decode("#1A73E8"));
         btnUser.setForeground(Color.WHITE);
@@ -154,50 +154,6 @@ public class MainDashboard extends JFrame {
         btnUser.setBorderPainted(false);
         btnUser.setOpaque(true);
         btnUser.setFont(new Font("Segoe UI", Font.BOLD, 13));
-
-        // Phân quyền đổi tài khoản nhanh: Chỉ có ADMIN mới xổ JPopupMenu xuống được.
-        if (isAdmin) {
-            btnUser.setCursor(new Cursor(Cursor.HAND_CURSOR));
-            JPopupMenu popupMenu = new JPopupMenu();
-            popupMenu.setBackground(Color.WHITE);
-            popupMenu.setBorder(BorderFactory.createLineBorder(Color.decode("#DFE3E8"), 1));
-            
-            BUS_NhanVien busNV = new BUS_NhanVien();
-            BUS_TaiKhoan busTK = new BUS_TaiKhoan();
-            List<NhanVien> listNV = busNV.layDSNhanVien();
-            String currentMaNV = UserSession.getInstance().getMaNhanVien();
-            
-            for (NhanVien nv : listNV) {
-                // Ẩn tài khoản đang đăng nhập khỏi danh sách chuyển đổi
-                if (nv.getNhanVien().equals(currentMaNV)) {
-                    continue; 
-                }
-                
-                JMenuItem item = new JMenuItem("  " + nv.getNhanVien() + " - " + nv.getHoVaTen());
-                item.setIcon(new MenuIcon("USER", 16));
-                item.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-                item.setBackground(Color.WHITE);
-                item.setBorder(BorderFactory.createEmptyBorder(8, 12, 8, 12));
-                
-                item.addActionListener(e -> {
-                    TaiKhoan tkSwitchBase = busNV.layTaiKhoanTheoMaNV(nv.getNhanVien());
-                    if (tkSwitchBase != null) {
-                        TaiKhoan tkSwitchFull = busTK.getTaiKhoanDayDu(tkSwitchBase.getTenDangNhap());
-                        if (tkSwitchFull != null) {
-                            // Gọi hàm hiển thị Dialog Custom đẹp mắt thay vì dùng JOptionPane thô ráp
-                            hienThiThongBaoChuyenTaiKhoan(nv, tkSwitchFull);
-                        }
-                    } else {
-                        JOptionPane.showMessageDialog(MainDashboard.this, "Nhân viên này chưa có tài khoản trên hệ thống!");
-                    }
-                });
-                popupMenu.add(item);
-            }
-            
-            btnUser.addActionListener(e -> {
-                popupMenu.show(btnUser, 0, btnUser.getHeight());
-            });
-        }
 
         pnlRight.add(lblTime);
         pnlRight.add(btnUser);
@@ -290,72 +246,6 @@ public class MainDashboard extends JFrame {
         sidebar.add(btnLogout);
 
         return sidebar;
-    }
-
-    private void hienThiThongBaoChuyenTaiKhoan(NhanVien nv, TaiKhoan tkSwitchFull) {
-        JDialog dialog = new JDialog(this, "Xác nhận chuyển đổi", true);
-        dialog.setSize(440, 200);
-        dialog.setLocationRelativeTo(this);
-        dialog.setUndecorated(true);
-
-        JPanel mainPanel = new JPanel(new BorderLayout());
-        mainPanel.setBorder(BorderFactory.createLineBorder(Color.decode("#1A73E8"), 2));
-        mainPanel.setBackground(Color.WHITE);
-
-        JPanel hdr = new JPanel(new BorderLayout());
-        hdr.setBackground(Color.decode("#1A73E8"));
-        hdr.setPreferredSize(new Dimension(0, 40));
-        JLabel lblTitle = new JLabel("   XÁC NHẬN CHUYỂN TÀI KHOẢN");
-        lblTitle.setForeground(Color.WHITE);
-        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        
-        JButton btnX = new JButton(new MenuIcon("CLOSE", 16));
-        btnX.setFocusPainted(false); btnX.setBorderPainted(false);
-        btnX.setContentAreaFilled(false); btnX.setForeground(Color.WHITE);
-        btnX.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        btnX.addActionListener(e -> dialog.dispose());
-        hdr.add(lblTitle, BorderLayout.WEST); hdr.add(btnX, BorderLayout.EAST);
-        mainPanel.add(hdr, BorderLayout.NORTH);
-
-        // Giảm vgap xuống 25 để tránh bị tàng hình khi xuống dòng
-        JPanel body = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 25));
-        body.setBackground(Color.WHITE);
-        JLabel lblIcon = new JLabel(new MenuIcon("SYNC", 28));
-        lblIcon.setForeground(Color.decode("#1A73E8"));
-        body.add(lblIcon);
-        
-        // Thêm thẻ <br> để ép tên xuống dòng mới, chống tràn width
-        JLabel lMsg = new JLabel("<html>Bạn có muốn chuyển sang tài khoản:<br><b>" + nv.getHoVaTen() + "</b>?</html>");
-        lMsg.setFont(new Font("Segoe UI", Font.PLAIN, 15));
-        body.add(lMsg);
-        mainPanel.add(body, BorderLayout.CENTER);
-
-        JPanel footer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 12));
-        footer.setBackground(Color.decode("#F4F6F8"));
-        footer.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, Color.decode("#DFE3E8")));
-
-        JButton btnHuy = new JButton("Hủy");
-        btnHuy.setFont(new Font("Segoe UI", Font.BOLD, 13)); btnHuy.setBackground(Color.WHITE);
-        btnHuy.setForeground(Color.decode("#637381")); btnHuy.setFocusPainted(false);
-        btnHuy.setPreferredSize(new Dimension(90, 35)); btnHuy.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        btnHuy.addActionListener(e -> dialog.dispose());
-
-        JButton btnXN = new JButton("Chuyển đổi");
-        btnXN.setFont(new Font("Segoe UI", Font.BOLD, 13)); btnXN.setBackground(Color.decode("#1A73E8"));
-        btnXN.setForeground(Color.WHITE); btnXN.setFocusPainted(false);
-        btnXN.setPreferredSize(new Dimension(110, 35)); btnXN.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        btnXN.addActionListener(e -> {
-            dialog.dispose();
-            UserSession.getInstance().setTaiKhoan(tkSwitchFull);
-            MainDashboard.this.dispose();
-            new MainDashboard().setVisible(true);
-        });
-        
-        footer.add(btnHuy); footer.add(btnXN);
-        mainPanel.add(footer, BorderLayout.SOUTH);
-
-        dialog.add(mainPanel);
-        dialog.setVisible(true);
     }
 
     private void hienThiThongBaoDangXuat() {
