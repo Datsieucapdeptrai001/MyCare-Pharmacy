@@ -164,6 +164,18 @@ CREATE TABLE PhieuXuatKho (
 )
 GO
 
+CREATE TABLE [dbo].[LogLoHang](
+    [id]        [int]           IDENTITY(1,1) NOT NULL PRIMARY KEY,
+    [hanhDong]  [nvarchar](50)  NULL,
+    [loHangId]  [nvarchar](50)  NULL,
+    [soLoHang]  [nvarchar](100) NULL,
+    [soLuongCu] [int]           NULL,
+    [soLuongMoi][int]           NULL,
+    [ghiChu]    [nvarchar](max) NULL,
+    [ngayTao]   [datetime2](7)  DEFAULT GETDATE()
+)
+GO
+
 CREATE TABLE [dbo].[NhanVien](
 	[id] [nvarchar](50) NOT NULL PRIMARY KEY,
 	[hoVaTen] [nvarchar](100) NOT NULL,
@@ -314,14 +326,14 @@ INSERT [dbo].[SanPham] VALUES (N'SP2024-0029', N'MY_PHAM', N'HON_DICH', N'Kem ch
 INSERT [dbo].[SanPham] VALUES (N'SP2024-0030', N'MY_PHAM', N'DUNG_DICH', N'Sữa rửa mặt CeraVe', N'CeraVe Foam', N'CeraVe', N'Chưa cập nhật', CAST(10.00 AS Decimal(18, 2)), N'Chưa cập nhật', N'Sữa rửa mặt tạo bọt', N'Chai', CAST(N'2024-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(320000.00 AS Decimal(18, 2)))
 INSERT [dbo].[SanPham] VALUES (N'SP2024-0031', N'MY_PHAM', N'DUNG_DICH', N'Nước tẩy trang Bioderma', N'Bioderma', N'Bioderma', N'Chưa cập nhật', CAST(10.00 AS Decimal(18, 2)), N'Chưa cập nhật', N'Tẩy trang dịu nhẹ', N'Chai', CAST(N'2024-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(280000.00 AS Decimal(18, 2)))
 INSERT [dbo].[SanPham] VALUES (N'SP2024-0032', N'MY_PHAM', N'DUNG_DICH', N'Toner Paula Niacinamide', N'Paula Toner', N'Paula Choice', N'Niacinamide', CAST(10.00 AS Decimal(18, 2)), N'10%', N'Làm sáng da', N'Chai', CAST(N'2024-01-05T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(850000.00 AS Decimal(18, 2)))
-INSERT [dbo].[SanPham] VALUES (N'SP2024-0033', N'THUOC_KHONG_KE_DON', N'THUOC_NHO_GIOT', N'V.Rohto Vitamin', N'V.Rohto', N'Rohto', N'Vitamin B5, B6', CAST(10.00 AS Decimal(18, 2)), N'13ml', N'Giảm mỏi mắt', N'Chai', CAST(N'2026-04-30T20:49:44.0066667' AS DateTime2), N'HOAT_DONG', CAST(52000.00 AS Decimal(18, 2)))
-INSERT [dbo].[SanPham] VALUES (N'SP2024-0034', N'THUOC_KHONG_KE_DON', N'THUOC_NHO_GIOT', N'Thuốc nhỏ mắt Osla', N'Osla', N'MerAP', N'Natri clorid', CAST(5.00 AS Decimal(18, 2)), N'15ml', N'Rửa mắt', N'Chai', CAST(N'2026-04-30T20:49:44.0066667' AS DateTime2), N'HOAT_DONG', CAST(22000.00 AS Decimal(18, 2)))
-INSERT [dbo].[SanPham] VALUES (N'SP2024-0035', N'MY_PHAM', N'SUC_MIENG', N'Listerine Cool Mint', N'Listerine', N'Johnson', N'Thymol', CAST(10.00 AS Decimal(18, 2)), N'750ml', N'Hơi thở thơm mát', N'Chai', CAST(N'2026-04-30T20:49:44.0066667' AS DateTime2), N'HOAT_DONG', CAST(115000.00 AS Decimal(18, 2)))
-INSERT [dbo].[SanPham] VALUES (N'SP2024-0036', N'MY_PHAM', N'SUC_MIENG', N'Betadine Gargle', N'Betadine', N'Mundipharma', N'Povidone-Iodine', CAST(10.00 AS Decimal(18, 2)), N'125ml', N'Sát khuẩn miệng', N'Chai', CAST(N'2026-04-30T20:49:44.0066667' AS DateTime2), N'HOAT_DONG', CAST(68000.00 AS Decimal(18, 2)))
-INSERT [dbo].[SanPham] VALUES (N'SP2024-0037', N'THUOC_KHONG_KE_DON', N'KEO_NGAM', N'Strepsils Cool', N'Strepsils', N'Reckitt', N'Dichlorobenzyl', CAST(10.00 AS Decimal(18, 2)), N'1.2mg', N'Giảm đau họng', N'Viên', CAST(N'2026-04-30T20:49:44.0066667' AS DateTime2), N'HOAT_DONG', CAST(80000.00 AS Decimal(18, 2)))
-INSERT [dbo].[SanPham] VALUES (N'SP2024-0038', N'THUOC_KHONG_KE_DON', N'VIEN_SUI', N'Efferalgan 500mg', N'Efferalgan', N'UPSA', N'Paracetamol', CAST(5.00 AS Decimal(18, 2)), N'500mg', N'Hạ sốt nhanh', N'Viên', CAST(N'2026-04-30T20:49:44.0066667' AS DateTime2), N'HOAT_DONG', CAST(62000.00 AS Decimal(18, 2)))
-INSERT [dbo].[SanPham] VALUES (N'SP2024-0039', N'THUOC_KHONG_KE_DON', N'THUOC_BOT', N'Hapacol 150', N'Hapacol 150', N'DHG Pharma', N'Paracetamol', CAST(5.00 AS Decimal(18, 2)), N'150mg', N'Hạ sốt cho trẻ', N'Gói', CAST(N'2026-04-30T20:49:44.0100000' AS DateTime2), N'HOAT_DONG', CAST(68000.00 AS Decimal(18, 2)))
-INSERT [dbo].[SanPham] VALUES (N'SP2024-0040', N'THUOC_KE_DON', N'HON_DICH', N'Phosphalugel', N'Chữ P', N'Astellas', N'Aluminum phosphate', CAST(5.00 AS Decimal(18, 2)), N'20%', N'Kháng axit dạ dày', N'Gói', CAST(N'2026-04-30T20:49:44.0100000' AS DateTime2), N'HOAT_DONG', CAST(110000.00 AS Decimal(18, 2)))
+INSERT [dbo].[SanPham] VALUES (N'SP2024-0033', N'THUOC_KHONG_KE_DON', N'THUOC_NHO_GIOT', N'V.Rohto Vitamin', N'V.Rohto', N'Rohto', N'Vitamin B5, B6', CAST(10.00 AS Decimal(18, 2)), N'13ml', N'Giảm mỏi mắt', N'Chai', GETDATE(), N'HOAT_DONG', CAST(52000.00 AS Decimal(18, 2)))
+INSERT [dbo].[SanPham] VALUES (N'SP2024-0034', N'THUOC_KHONG_KE_DON', N'THUOC_NHO_GIOT', N'Thuốc nhỏ mắt Osla', N'Osla', N'MerAP', N'Natri clorid', CAST(5.00 AS Decimal(18, 2)), N'15ml', N'Rửa mắt', N'Chai', GETDATE(), N'HOAT_DONG', CAST(22000.00 AS Decimal(18, 2)))
+INSERT [dbo].[SanPham] VALUES (N'SP2024-0035', N'MY_PHAM', N'SUC_MIENG', N'Listerine Cool Mint', N'Listerine', N'Johnson', N'Thymol', CAST(10.00 AS Decimal(18, 2)), N'750ml', N'Hơi thở thơm mát', N'Chai', GETDATE(), N'HOAT_DONG', CAST(115000.00 AS Decimal(18, 2)))
+INSERT [dbo].[SanPham] VALUES (N'SP2024-0036', N'MY_PHAM', N'SUC_MIENG', N'Betadine Gargle', N'Betadine', N'Mundipharma', N'Povidone-Iodine', CAST(10.00 AS Decimal(18, 2)), N'125ml', N'Sát khuẩn miệng', N'Chai', GETDATE(), N'HOAT_DONG', CAST(68000.00 AS Decimal(18, 2)))
+INSERT [dbo].[SanPham] VALUES (N'SP2024-0037', N'THUOC_KHONG_KE_DON', N'KEO_NGAM', N'Strepsils Cool', N'Strepsils', N'Reckitt', N'Dichlorobenzyl', CAST(10.00 AS Decimal(18, 2)), N'1.2mg', N'Giảm đau họng', N'Viên', GETDATE(), N'HOAT_DONG', CAST(80000.00 AS Decimal(18, 2)))
+INSERT [dbo].[SanPham] VALUES (N'SP2024-0038', N'THUOC_KHONG_KE_DON', N'VIEN_SUI', N'Efferalgan 500mg', N'Efferalgan', N'UPSA', N'Paracetamol', CAST(5.00 AS Decimal(18, 2)), N'500mg', N'Hạ sốt nhanh', N'Viên', GETDATE(), N'HOAT_DONG', CAST(62000.00 AS Decimal(18, 2)))
+INSERT [dbo].[SanPham] VALUES (N'SP2024-0039', N'THUOC_KHONG_KE_DON', N'THUOC_BOT', N'Hapacol 150', N'Hapacol 150', N'DHG Pharma', N'Paracetamol', CAST(5.00 AS Decimal(18, 2)), N'150mg', N'Hạ sốt cho trẻ', N'Gói', GETDATE(), N'HOAT_DONG', CAST(68000.00 AS Decimal(18, 2)))
+INSERT [dbo].[SanPham] VALUES (N'SP2024-0040', N'THUOC_KE_DON', N'HON_DICH', N'Phosphalugel', N'Chữ P', N'Astellas', N'Aluminum phosphate', CAST(5.00 AS Decimal(18, 2)), N'20%', N'Kháng axit dạ dày', N'Gói', GETDATE(), N'HOAT_DONG', CAST(110000.00 AS Decimal(18, 2)))
 
 -- B. BẢNG CÓ KHÓA NGOẠI (Cần đảm bảo dữ liệu Cha đã tồn tại ở trên)
 INSERT [dbo].[TaiKhoan] VALUES (N'TK0001', N'QL-0001', N'ADMIN', N'admin', N'12345678')
@@ -466,7 +478,26 @@ INSERT [dbo].[LoHang] VALUES (N'LH-0038', N'LOT-2024-0038', N'SP2024-0038', 300,
 INSERT [dbo].[LoHang] VALUES (N'LH-0039', N'LOT-2024-0039', N'SP2024-0039', 600, CAST(1500.00 AS Decimal(18, 2)), CAST(N'2026-09-30T00:00:00.0000000' AS DateTime2), N'CON_HANG', CAST(N'2026-04-30T20:49:43.9466667' AS DateTime2), N'KHO-0001')
 INSERT [dbo].[LoHang] VALUES (N'LH-0040', N'LOT-2024-0040', N'SP2024-0040', 250, CAST(3000.00 AS Decimal(18, 2)), CAST(N'2026-12-31T00:00:00.0000000' AS DateTime2), N'CON_HANG', CAST(N'2026-04-30T20:49:43.9466667' AS DateTime2), N'KHO-0001')
 
+-- CaLamViec
+INSERT [dbo].[CaLamViec] VALUES (N'Ca-0001', N'DS-0001', CAST(N'2024-03-01T07:30:00.0000000' AS DateTime2), CAST(N'2024-03-01T17:30:00.0000000' AS DateTime2), CAST(2500000.00 AS Decimal(18,2)), CAST(500000.00 AS Decimal(18,2)), CAST(3000000.00 AS Decimal(18,2)), 1, N'Bình thường')
+INSERT [dbo].[CaLamViec] VALUES (N'Ca-0002', N'DS-0002', CAST(N'2024-03-01T07:30:00.0000000' AS DateTime2), CAST(N'2024-03-01T17:30:00.0000000' AS DateTime2), CAST(1800000.00 AS Decimal(18,2)), CAST(500000.00 AS Decimal(18,2)), CAST(2300000.00 AS Decimal(18,2)), 1, N'Bình thường')
+INSERT [dbo].[CaLamViec] VALUES (N'Ca-0003', N'DS-0003', CAST(N'2024-03-02T07:30:00.0000000' AS DateTime2), CAST(N'2024-03-02T17:30:00.0000000' AS DateTime2), CAST(3200000.00 AS Decimal(18,2)), CAST(500000.00 AS Decimal(18,2)), CAST(3700000.00 AS Decimal(18,2)), 1, N'Bình thường')
+INSERT [dbo].[CaLamViec] VALUES (N'Ca-0004', N'DS-0004', CAST(N'2024-03-02T07:30:00.0000000' AS DateTime2), CAST(N'2024-03-02T17:30:00.0000000' AS DateTime2), CAST(2100000.00 AS Decimal(18,2)), CAST(500000.00 AS Decimal(18,2)), CAST(2600000.00 AS Decimal(18,2)), 1, N'Bình thường')
+INSERT [dbo].[CaLamViec] VALUES (N'Ca-0005', N'DS-0005', CAST(N'2024-03-03T07:30:00.0000000' AS DateTime2), CAST(N'2024-03-03T17:30:00.0000000' AS DateTime2), CAST(1500000.00 AS Decimal(18,2)), CAST(500000.00 AS Decimal(18,2)), CAST(2000000.00 AS Decimal(18,2)), 1, N'Bình thường')
+
 -- DATA HOA DON MOI (THEO DINH DANG HD-YYYY-STT, KHONG CO HD-2024-0001)
+-- HoaDon năm 2024 (từ SQLQuery4)
+INSERT [dbo].[HoaDon] VALUES (N'HD2024-0001', N'BAN_HANG', N'Khách quen, mua thuốc huyết áp định kỳ', CAST(N'2024-03-01T09:15:00.0000000' AS DateTime2), N'DS-0001', N'KH-0001', NULL, N'TIEN_MAT',               NULL)
+INSERT [dbo].[HoaDon] VALUES (N'HD2024-0002', N'BAN_HANG', N'Mua vitamin tổng hợp',                  CAST(N'2024-03-01T10:30:00.0000000' AS DateTime2), N'DS-0001', N'KH-0002', NULL, N'CHUYEN_KHOAN_NGAN_HANG', NULL)
+INSERT [dbo].[HoaDon] VALUES (N'HD2024-0003', N'BAN_HANG', NULL,                                      CAST(N'2024-03-01T11:00:00.0000000' AS DateTime2), N'DS-0002', N'KH-0003', NULL, N'TIEN_MAT',               NULL)
+INSERT [dbo].[HoaDon] VALUES (N'HD2024-0004', N'BAN_HANG', N'Mua thuốc kháng sinh theo toa bác sĩ',  CAST(N'2024-03-02T08:45:00.0000000' AS DateTime2), N'DS-0003', N'KH-0004', NULL, N'TIEN_MAT',               NULL)
+INSERT [dbo].[HoaDon] VALUES (N'HD2024-0005', N'BAN_HANG', N'Mua sản phẩm chăm sóc da',              CAST(N'2024-03-02T14:00:00.0000000' AS DateTime2), N'DS-0003', N'KH-0005', NULL, N'CHUYEN_KHOAN_NGAN_HANG', NULL)
+INSERT [dbo].[HoaDon] VALUES (N'HD2024-0006', N'BAN_HANG', NULL,                                      CAST(N'2024-03-02T15:30:00.0000000' AS DateTime2), N'DS-0003', NULL,       NULL, N'TIEN_MAT',               NULL)
+INSERT [dbo].[HoaDon] VALUES (N'HD2024-0007', N'BAN_HANG', N'Mua bổ sung dinh dưỡng',                CAST(N'2024-03-03T09:00:00.0000000' AS DateTime2), N'DS-0004', N'KH-0006', NULL, N'TIEN_MAT',               NULL)
+INSERT [dbo].[HoaDon] VALUES (N'HD2024-0008', N'BAN_HANG', N'Khách mua lẻ',                          CAST(N'2024-03-03T10:15:00.0000000' AS DateTime2), N'DS-0005', N'KH-0007', NULL, N'TIEN_MAT',               NULL)
+INSERT [dbo].[HoaDon] VALUES (N'HD2024-0009', N'BAN_HANG', N'Mua thuốc điều trị dạ dày',             CAST(N'2024-03-03T11:30:00.0000000' AS DateTime2), N'DS-0005', N'KH-0008', NULL, N'CHUYEN_KHOAN_NGAN_HANG', NULL)
+INSERT [dbo].[HoaDon] VALUES (N'HD2024-0010', N'BAN_HANG', N'Mua đầy đủ thuốc tháng này',            CAST(N'2024-03-03T13:45:00.0000000' AS DateTime2), N'DS-0004', N'KH-0009', NULL, N'TIEN_MAT',               NULL)
+
 -- Hoa don Nam 2025 (Thang 1-12)
 INSERT [dbo].[HoaDon] VALUES (N'HD-2025-1', N'BAN_HANG', N'Khách mua tháng 1', CAST(N'2025-01-15T09:15:00.0000000' AS DateTime2), N'DS-0001', N'KH-0001', NULL, N'TIEN_MAT', NULL)
 INSERT [dbo].[HoaDon] VALUES (N'HD-2025-2', N'BAN_HANG', N'Khách mua tháng 2', CAST(N'2025-02-20T10:30:00.0000000' AS DateTime2), N'DS-0002', N'KH-0002', NULL, N'CHUYEN_KHOAN_NGAN_HANG', NULL)
@@ -487,6 +518,29 @@ INSERT [dbo].[HoaDon] VALUES (N'HD-2026-2', N'BAN_HANG', N'Khách mua tháng 2',
 INSERT [dbo].[HoaDon] VALUES (N'HD-2026-3', N'BAN_HANG', NULL, CAST(N'2026-03-08T11:00:00.0000000' AS DateTime2), N'DS-0005', N'KH-0003', NULL, N'TIEN_MAT', NULL)
 INSERT [dbo].[HoaDon] VALUES (N'HD-2026-4', N'BAN_HANG', N'Mua thuốc dị ứng', CAST(N'2026-04-20T08:45:00.0000000' AS DateTime2), N'DS-0001', N'KH-0004', NULL, N'TIEN_MAT', NULL)
 
+-- ChiTietHoaDon năm 2024 (từ SQLQuery4, bổ sung donGiaThucTe + thanhTien)
+INSERT [dbo].[ChiTietHoaDon] VALUES (N'HD2024-0001', N'DVL-0008', N'SP2024-0004', 2, CAST(40000.00 AS Decimal(18,2)), CAST(80000.00  AS Decimal(18,2)))
+INSERT [dbo].[ChiTietHoaDon] VALUES (N'HD2024-0001', N'DVL-0030', N'SP2024-0016', 1, CAST(52000.00 AS Decimal(18,2)), CAST(52000.00  AS Decimal(18,2)))
+INSERT [dbo].[ChiTietHoaDon] VALUES (N'HD2024-0002', N'DVL-0039', N'SP2024-0021', 1, CAST(220000.00 AS Decimal(18,2)), CAST(220000.00 AS Decimal(18,2)))
+INSERT [dbo].[ChiTietHoaDon] VALUES (N'HD2024-0002', N'DVL-0041', N'SP2024-0022', 1, CAST(280000.00 AS Decimal(18,2)), CAST(280000.00 AS Decimal(18,2)))
+INSERT [dbo].[ChiTietHoaDon] VALUES (N'HD2024-0003', N'DVL-0016', N'SP2024-0009', 2, CAST(4500.00  AS Decimal(18,2)), CAST(9000.00   AS Decimal(18,2)))
+INSERT [dbo].[ChiTietHoaDon] VALUES (N'HD2024-0003', N'DVL-0023', N'SP2024-0012', 1, CAST(18000.00 AS Decimal(18,2)), CAST(18000.00  AS Decimal(18,2)))
+INSERT [dbo].[ChiTietHoaDon] VALUES (N'HD2024-0004', N'DVL-0002', N'SP2024-0001', 1, CAST(55000.00 AS Decimal(18,2)), CAST(55000.00  AS Decimal(18,2)))
+INSERT [dbo].[ChiTietHoaDon] VALUES (N'HD2024-0004', N'DVL-0028', N'SP2024-0015', 1, CAST(40000.00 AS Decimal(18,2)), CAST(40000.00  AS Decimal(18,2)))
+INSERT [dbo].[ChiTietHoaDon] VALUES (N'HD2024-0005', N'DVL-0052', N'SP2024-0028', 1, CAST(650000.00 AS Decimal(18,2)), CAST(650000.00 AS Decimal(18,2)))
+INSERT [dbo].[ChiTietHoaDon] VALUES (N'HD2024-0005', N'DVL-0053', N'SP2024-0029', 1, CAST(580000.00 AS Decimal(18,2)), CAST(580000.00 AS Decimal(18,2)))
+INSERT [dbo].[ChiTietHoaDon] VALUES (N'HD2024-0006', N'DVL-0025', N'SP2024-0013', 1, CAST(90000.00 AS Decimal(18,2)), CAST(90000.00  AS Decimal(18,2)))
+INSERT [dbo].[ChiTietHoaDon] VALUES (N'HD2024-0006', N'DVL-0033', N'SP2024-0018', 1, CAST(220000.00 AS Decimal(18,2)), CAST(220000.00 AS Decimal(18,2)))
+INSERT [dbo].[ChiTietHoaDon] VALUES (N'HD2024-0007', N'DVL-0043', N'SP2024-0023', 2, CAST(85000.00 AS Decimal(18,2)), CAST(170000.00 AS Decimal(18,2)))
+INSERT [dbo].[ChiTietHoaDon] VALUES (N'HD2024-0007', N'DVL-0047', N'SP2024-0025', 1, CAST(280000.00 AS Decimal(18,2)), CAST(280000.00 AS Decimal(18,2)))
+INSERT [dbo].[ChiTietHoaDon] VALUES (N'HD2024-0008', N'DVL-0021', N'SP2024-0011', 1, CAST(65000.00 AS Decimal(18,2)), CAST(65000.00  AS Decimal(18,2)))
+INSERT [dbo].[ChiTietHoaDon] VALUES (N'HD2024-0008', N'DVL-0044', N'SP2024-0024', 5, CAST(15000.00 AS Decimal(18,2)), CAST(75000.00  AS Decimal(18,2)))
+INSERT [dbo].[ChiTietHoaDon] VALUES (N'HD2024-0009', N'DVL-0030', N'SP2024-0016', 2, CAST(52000.00 AS Decimal(18,2)), CAST(104000.00 AS Decimal(18,2)))
+INSERT [dbo].[ChiTietHoaDon] VALUES (N'HD2024-0009', N'DVL-0031', N'SP2024-0017', 1, CAST(55000.00 AS Decimal(18,2)), CAST(55000.00  AS Decimal(18,2)))
+INSERT [dbo].[ChiTietHoaDon] VALUES (N'HD2024-0010', N'DVL-0006', N'SP2024-0003', 1, CAST(75000.00 AS Decimal(18,2)), CAST(75000.00  AS Decimal(18,2)))
+INSERT [dbo].[ChiTietHoaDon] VALUES (N'HD2024-0010', N'DVL-0008', N'SP2024-0004', 1, CAST(40000.00 AS Decimal(18,2)), CAST(40000.00  AS Decimal(18,2)))
+INSERT [dbo].[ChiTietHoaDon] VALUES (N'HD2024-0010', N'DVL-0019', N'SP2024-0010', 1, CAST(18000.00 AS Decimal(18,2)), CAST(18000.00  AS Decimal(18,2)))
+
 -- CHI TIET HOA DON
 INSERT [dbo].[ChiTietHoaDon] VALUES (N'HD-2025-1', N'DVL-0008', N'SP2024-0004', 2, CAST(40000.00 AS Decimal(18, 2)), CAST(80000.00 AS Decimal(18, 2)))
 INSERT [dbo].[ChiTietHoaDon] VALUES (N'HD-2025-2', N'DVL-0030', N'SP2024-0016', 1, CAST(52000.00 AS Decimal(18, 2)), CAST(52000.00 AS Decimal(18, 2)))
@@ -505,6 +559,29 @@ INSERT [dbo].[ChiTietHoaDon] VALUES (N'HD-2026-1', N'DVL-0026', N'SP2024-0014', 
 INSERT [dbo].[ChiTietHoaDon] VALUES (N'HD-2026-2', N'DVL-0030', N'SP2024-0016', 1, CAST(52000.00 AS Decimal(18, 2)), CAST(52000.00 AS Decimal(18, 2)))
 INSERT [dbo].[ChiTietHoaDon] VALUES (N'HD-2026-3', N'DVL-0039', N'SP2024-0021', 1, CAST(220000.00 AS Decimal(18, 2)), CAST(220000.00 AS Decimal(18, 2)))
 INSERT [dbo].[ChiTietHoaDon] VALUES (N'HD-2026-4', N'DVL-0052', N'SP2024-0028', 1, CAST(650000.00 AS Decimal(18, 2)), CAST(650000.00 AS Decimal(18, 2)))
+
+-- PhanBoLoHang năm 2024 (từ SQLQuery4)
+INSERT [dbo].[PhanBoLoHang] VALUES (N'HD2024-0001', N'DVL-0008', N'SP2024-0004', N'LH-0004', 2)
+INSERT [dbo].[PhanBoLoHang] VALUES (N'HD2024-0001', N'DVL-0030', N'SP2024-0016', N'LH-0016', 1)
+INSERT [dbo].[PhanBoLoHang] VALUES (N'HD2024-0002', N'DVL-0039', N'SP2024-0021', N'LH-0021', 1)
+INSERT [dbo].[PhanBoLoHang] VALUES (N'HD2024-0002', N'DVL-0041', N'SP2024-0022', N'LH-0022', 1)
+INSERT [dbo].[PhanBoLoHang] VALUES (N'HD2024-0003', N'DVL-0016', N'SP2024-0009', N'LH-0009', 2)
+INSERT [dbo].[PhanBoLoHang] VALUES (N'HD2024-0003', N'DVL-0023', N'SP2024-0012', N'LH-0012', 1)
+INSERT [dbo].[PhanBoLoHang] VALUES (N'HD2024-0004', N'DVL-0002', N'SP2024-0001', N'LH-0001', 1)
+INSERT [dbo].[PhanBoLoHang] VALUES (N'HD2024-0004', N'DVL-0028', N'SP2024-0015', N'LH-0015', 1)
+INSERT [dbo].[PhanBoLoHang] VALUES (N'HD2024-0005', N'DVL-0052', N'SP2024-0028', N'LH-0028', 1)
+INSERT [dbo].[PhanBoLoHang] VALUES (N'HD2024-0005', N'DVL-0053', N'SP2024-0029', N'LH-0029', 1)
+INSERT [dbo].[PhanBoLoHang] VALUES (N'HD2024-0006', N'DVL-0025', N'SP2024-0013', N'LH-0013', 1)
+INSERT [dbo].[PhanBoLoHang] VALUES (N'HD2024-0006', N'DVL-0033', N'SP2024-0018', N'LH-0018', 1)
+INSERT [dbo].[PhanBoLoHang] VALUES (N'HD2024-0007', N'DVL-0043', N'SP2024-0023', N'LH-0023', 2)
+INSERT [dbo].[PhanBoLoHang] VALUES (N'HD2024-0007', N'DVL-0047', N'SP2024-0025', N'LH-0025', 1)
+INSERT [dbo].[PhanBoLoHang] VALUES (N'HD2024-0008', N'DVL-0021', N'SP2024-0011', N'LH-0011', 1)
+INSERT [dbo].[PhanBoLoHang] VALUES (N'HD2024-0008', N'DVL-0044', N'SP2024-0024', N'LH-0024', 5)
+INSERT [dbo].[PhanBoLoHang] VALUES (N'HD2024-0009', N'DVL-0030', N'SP2024-0016', N'LH-0016', 2)
+INSERT [dbo].[PhanBoLoHang] VALUES (N'HD2024-0009', N'DVL-0031', N'SP2024-0017', N'LH-0017', 1)
+INSERT [dbo].[PhanBoLoHang] VALUES (N'HD2024-0010', N'DVL-0006', N'SP2024-0003', N'LH-0003', 1)
+INSERT [dbo].[PhanBoLoHang] VALUES (N'HD2024-0010', N'DVL-0008', N'SP2024-0004', N'LH-0004', 1)
+INSERT [dbo].[PhanBoLoHang] VALUES (N'HD2024-0010', N'DVL-0019', N'SP2024-0010', N'LH-0010', 1)
 
 -- PHAN BO LO HANG
 INSERT [dbo].[PhanBoLoHang] VALUES (N'HD-2025-1', N'DVL-0008', N'SP2024-0004', N'LH-0004', 2)
@@ -549,4 +626,19 @@ ALTER TABLE [dbo].[LoHang] ADD CONSTRAINT [FK_LoHang_SanPham] FOREIGN KEY([sanPh
 ALTER TABLE [dbo].[PhanBoLoHang] ADD CONSTRAINT [FK_PhanBoLoHang_ChiTietHoaDon] FOREIGN KEY([hoaDonId], [donViDoLuongId], [sanPhamId]) REFERENCES [dbo].[ChiTietHoaDon] ([hoaDonId], [donViDoLuongId], [sanPhamId]) ON DELETE CASCADE
 ALTER TABLE [dbo].[PhanBoLoHang] ADD CONSTRAINT [FK_PhanBoLoHang_LoHang] FOREIGN KEY([loHangId]) REFERENCES [dbo].[LoHang] ([id])
 ALTER TABLE [dbo].[TaiKhoan] ADD CONSTRAINT [FK_TaiKhoan_NhanVien] FOREIGN KEY([nhanVienId]) REFERENCES [dbo].[NhanVien] ([id]) ON UPDATE CASCADE ON DELETE SET NULL
+GO
+
+-- ==============================================================================
+-- CẬP NHẬT giaBan THEO ĐƠN VỊ CƠ BẢN
+-- ==============================================================================
+
+UPDATE sp SET sp.giaBan = dvl.gia
+FROM SanPham sp
+INNER JOIN DonViDoLuong dvl ON dvl.sanPhamId = sp.id AND dvl.ten = sp.donViDoCoBan
+WHERE sp.giaBan != dvl.gia;
+GO
+
+USE [master]
+GO
+ALTER DATABASE [MYCAREPHARMACY] SET READ_WRITE
 GO
