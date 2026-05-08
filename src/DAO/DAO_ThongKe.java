@@ -337,6 +337,222 @@ public class DAO_ThongKe {
         return result;
     }
     
+    // ==================== THỐNG KÊ NGÀY CỤ THỂ ====================
+
+    /**
+     * Thống kê của 1 ngày cụ thể (định dạng yyyy-MM-dd).
+     * Trả về Object[4]: {tongHD(int), tongDT_trieu(double), tongKH(int), tongSPBan(int)}
+     */
+    public Object[] getThongKeNgayCuThe(String dateYMD) {
+        String sql = "SELECT COUNT(DISTINCT hd.id) tongHD, " +
+                     "ISNULL(SUM(ct.soLuong*dvl.gia),0)/1000000.0 tongDT, " +
+                     "COUNT(DISTINCT hd.khachHangId) tongKH, " +
+                     "ISNULL(SUM(ct.soLuong),0) tongSP " +
+                     "FROM HoaDon hd " +
+                     "LEFT JOIN ChiTietHoaDon ct ON ct.hoaDonId=hd.id " +
+                     "LEFT JOIN DonViDoLuong dvl ON dvl.id=ct.donViDoLuongId AND dvl.sanPhamId=ct.sanPhamId " +
+                     "WHERE hd.loaiHD='BAN_HANG' AND CAST(hd.ngayLapHD AS DATE)=?";
+        try (PreparedStatement ps = getConn().prepareStatement(sql)) {
+            ps.setString(1, dateYMD);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) return new Object[]{rs.getInt("tongHD"), rs.getDouble("tongDT"), rs.getInt("tongKH"), rs.getInt("tongSP")};
+        } catch (Exception e) { e.printStackTrace(); }
+        return new Object[]{0, 0.0, 0, 0};
+    }
+
+    /**
+     * Top SP bán nhiều trong 1 ngày cụ thể.
+     * Mỗi Object[3]: {tenSP(String), soLuong(int), doanhThu_trieu(double)}
+     */
+    public List<Object[]> getTopSPTrongNgay(String dateYMD) {
+        List<Object[]> result = new ArrayList<>();
+        String sql = "SELECT TOP 10 sp.ten, SUM(ct.soLuong) sl, ISNULL(SUM(ct.soLuong*dvl.gia),0)/1000000.0 dt " +
+                     "FROM ChiTietHoaDon ct " +
+                     "JOIN HoaDon hd ON hd.id=ct.hoaDonId " +
+                     "JOIN SanPham sp ON sp.id=ct.sanPhamId " +
+                     "JOIN DonViDoLuong dvl ON dvl.sanPhamId=ct.sanPhamId AND dvl.id=ct.donViDoLuongId " +
+                     "WHERE hd.loaiHD='BAN_HANG' AND CAST(hd.ngayLapHD AS DATE)=? " +
+                     "GROUP BY sp.ten ORDER BY sl DESC";
+        try (PreparedStatement ps = getConn().prepareStatement(sql)) {
+            ps.setString(1, dateYMD);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) result.add(new Object[]{rs.getString("ten"), rs.getInt("sl"), rs.getDouble("dt")});
+        } catch (Exception e) { e.printStackTrace(); }
+        return result;
+    }
+
+    /**
+     * Doanh thu theo từng giờ trong ngày (0-23).
+     * Trả về double[24] (triệu đồng)
+     */
+    public double[] getDTTheoGioTrongNgay(String dateYMD) {
+        double[] data = new double[24];
+        String sql = "SELECT DATEPART(HOUR,hd.ngayLapHD) h, ISNULL(SUM(ct.soLuong*dvl.gia),0)/1000000.0 dt " +
+                     "FROM HoaDon hd " +
+                     "JOIN ChiTietHoaDon ct ON ct.hoaDonId=hd.id " +
+                     "JOIN DonViDoLuong dvl ON dvl.id=ct.donViDoLuongId AND dvl.sanPhamId=ct.sanPhamId " +
+                     "WHERE hd.loaiHD='BAN_HANG' AND CAST(hd.ngayLapHD AS DATE)=? " +
+                     "GROUP BY DATEPART(HOUR,hd.ngayLapHD)";
+        try (PreparedStatement ps = getConn().prepareStatement(sql)) {
+            ps.setString(1, dateYMD);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) { int h=rs.getInt("h"); if(h>=0&&h<24) data[h]=rs.getDouble("dt"); }
+        } catch (Exception e) { e.printStackTrace(); }
+        return data;
+    }
+
+    /**
+     * Danh sách NV làm việc và doanh số trong ngày.
+     * Mỗi Object[3]: {hoVaTen(String), soHD(int), doanhThu_trieu(double)}
+     */
+    public List<Object[]> getNVTrongNgay(String dateYMD) {
+        List<Object[]> result = new ArrayList<>();
+        String sql = "SELECT nv.hoVaTen, COUNT(DISTINCT hd.id) soHD, " +
+                     "ISNULL(SUM(ct.soLuong*dvl.gia),0)/1000000.0 dt " +
+                     "FROM HoaDon hd " +
+                     "JOIN NhanVien nv ON nv.id=hd.nhanVienId " +
+                     "LEFT JOIN ChiTietHoaDon ct ON ct.hoaDonId=hd.id " +
+                     "LEFT JOIN DonViDoLuong dvl ON dvl.id=ct.donViDoLuongId AND dvl.sanPhamId=ct.sanPhamId " +
+                     "WHERE hd.loaiHD='BAN_HANG' AND CAST(hd.ngayLapHD AS DATE)=? " +
+                     "GROUP BY nv.hoVaTen ORDER BY dt DESC";
+        try (PreparedStatement ps = getConn().prepareStatement(sql)) {
+            ps.setString(1, dateYMD);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) result.add(new Object[]{rs.getString("hoVaTen"), rs.getInt("soHD"), rs.getDouble("dt")});
+        } catch (Exception e) { e.printStackTrace(); }
+        return result;
+    }
+
+    // ==================== THỐNG KÊ TUẦN ====================
+
+    /**
+     * Dữ liệu doanh thu 7 ngày trong 1 tuần (từ ngày bắt đầu tuần).
+     * Trả về List<Object[]> mỗi Object[3]: {date_ddMMyyyy, soHD, dt_trieu}
+     */
+    public List<Object[]> getThongKeTuan(String weekStartYMD) {
+        List<Object[]> result = new ArrayList<>();
+        String sql = "SELECT CONVERT(NVARCHAR,CAST(hd.ngayLapHD AS DATE),103) d, " +
+                     "COUNT(DISTINCT hd.id) cnt, ISNULL(SUM(ct.soLuong*dvl.gia),0)/1000000.0 dt " +
+                     "FROM HoaDon hd " +
+                     "JOIN ChiTietHoaDon ct ON ct.hoaDonId=hd.id " +
+                     "JOIN DonViDoLuong dvl ON dvl.id=ct.donViDoLuongId AND dvl.sanPhamId=ct.sanPhamId " +
+                     "WHERE hd.loaiHD='BAN_HANG' " +
+                     "AND CAST(hd.ngayLapHD AS DATE) BETWEEN ? AND DATEADD(DAY,6,CAST(? AS DATE)) " +
+                     "GROUP BY CAST(hd.ngayLapHD AS DATE) ORDER BY CAST(hd.ngayLapHD AS DATE)";
+        try (PreparedStatement ps = getConn().prepareStatement(sql)) {
+            ps.setString(1, weekStartYMD); ps.setString(2, weekStartYMD);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) result.add(new Object[]{rs.getString("d"), rs.getInt("cnt"), rs.getDouble("dt")});
+        } catch (Exception e) { e.printStackTrace(); }
+        return result;
+    }
+
+    // ==================== THỐNG KÊ KHÁCH HÀNG ====================
+
+    /** KH mới từng tháng trong năm. Trả về int[12] */
+    public int[] getKHMoiTheoThang(int year) {
+        int[] data = new int[12];
+        String sql = "SELECT MONTH(ngayTao) m, COUNT(*) cnt FROM KhachHang WHERE YEAR(ngayTao)=? GROUP BY MONTH(ngayTao)";
+        try (PreparedStatement ps = getConn().prepareStatement(sql)) {
+            ps.setInt(1, year);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) { int m=rs.getInt("m"); if(m>=1&&m<=12) data[m-1]=rs.getInt("cnt"); }
+        } catch (Exception e) { /* ngayTao có thể null */ }
+        return data;
+    }
+
+    /** Top KH mua nhiều nhất. Mỗi Object[4]: {hoVaTen, soHD, tongDT_trieu, diemTichLuy} */
+    public List<Object[]> getTopKhachHang(int year, String condHD) {
+        List<Object[]> result = new ArrayList<>();
+        String sql = "SELECT TOP 10 kh.hoVaTen, COUNT(DISTINCT hd.id) soHD, " +
+                     "ISNULL(SUM(ct.soLuong*dvl.gia),0)/1000000.0 dt, ISNULL(kh.diemTichLuy,0) diem " +
+                     "FROM KhachHang kh " +
+                     "JOIN HoaDon hd ON hd.khachHangId=kh.id " +
+                     "JOIN ChiTietHoaDon ct ON ct.hoaDonId=hd.id " +
+                     "JOIN DonViDoLuong dvl ON dvl.id=ct.donViDoLuongId AND dvl.sanPhamId=ct.sanPhamId " +
+                     "WHERE hd.loaiHD='BAN_HANG' AND YEAR(hd.ngayLapHD)=?" + condHD +
+                     " GROUP BY kh.hoVaTen, kh.diemTichLuy ORDER BY dt DESC";
+        try (PreparedStatement ps = getConn().prepareStatement(sql)) {
+            ps.setInt(1, year);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) result.add(new Object[]{rs.getString("hoVaTen"), rs.getInt("soHD"), rs.getDouble("dt"), rs.getInt("diem")});
+        } catch (Exception e) { e.printStackTrace(); }
+        return result;
+    }
+
+    /** KPI tổng hợp KH. Object[3]: {tongKH(int), khCoTK(int), tongDiem(int)} */
+    public Object[] getKpiKhachHang() {
+        Object[] result = {0, 0, 0};
+        try (Statement st = getConn().createStatement()) {
+            ResultSet rs = st.executeQuery("SELECT COUNT(*) tongKH, COUNT(taiKhoanId) khCoTK, ISNULL(SUM(diemTichLuy),0) tongDiem FROM KhachHang");
+            if (rs.next()) result = new Object[]{rs.getInt("tongKH"), rs.getInt("khCoTK"), rs.getInt("tongDiem")};
+        } catch (Exception e) { e.printStackTrace(); }
+        return result;
+    }
+
+    // ==================== THỐNG KÊ KHO HÀNG ====================
+
+    /** Tổng giá trị tồn kho (VND). double */
+    public double getTongGiaTriTonKho() {
+        String sql = "SELECT ISNULL(SUM(lh.soLuongLoHang*lh.gia),0) FROM LoHang lh WHERE lh.trangThai='CON_HANG'";
+        try (Statement st = getConn().createStatement(); ResultSet rs = st.executeQuery(sql)) {
+            if (rs.next()) return rs.getDouble(1);
+        } catch (Exception e) { e.printStackTrace(); }
+        return 0;
+    }
+
+    /** Số lô theo trạng thái. Object[3]: {soLoConHang, soLoHetHang, soLoHetHan} */
+    public Object[] getSoLoTheoTrangThai() {
+        Object[] result = {0, 0, 0};
+        try (Statement st = getConn().createStatement()) {
+            ResultSet rs = st.executeQuery(
+                "SELECT " +
+                "SUM(CASE WHEN trangThai='CON_HANG' THEN 1 ELSE 0 END) conHang, " +
+                "SUM(CASE WHEN trangThai='HET_HANG' THEN 1 ELSE 0 END) hetHang, " +
+                "SUM(CASE WHEN trangThai='HET_HAN' THEN 1 ELSE 0 END) hetHan " +
+                "FROM LoHang");
+            if (rs.next()) result = new Object[]{rs.getInt("conHang"), rs.getInt("hetHang"), rs.getInt("hetHan")};
+        } catch (Exception e) { e.printStackTrace(); }
+        return result;
+    }
+
+    /** Phân bổ tồn kho theo kho. Mỗi Object[3]: {maKho, soLuong(int), giaTriTrieu(double)} */
+    public List<Object[]> getTonKhoTheoKho() {
+        List<Object[]> result = new ArrayList<>();
+        String sql = "SELECT kh.id, ISNULL(SUM(lh.soLuongLoHang),0) sl, ISNULL(SUM(lh.soLuongLoHang*lh.gia),0)/1000000.0 gt " +
+                     "FROM KhoHang kh LEFT JOIN LoHang lh ON lh.khoHangId=kh.id AND lh.trangThai='CON_HANG' " +
+                     "GROUP BY kh.id ORDER BY gt DESC";
+        try (Statement st = getConn().createStatement(); ResultSet rs = st.executeQuery(sql)) {
+            while (rs.next()) result.add(new Object[]{rs.getString("id"), rs.getInt("sl"), rs.getDouble("gt")});
+        } catch (Exception e) { e.printStackTrace(); }
+        return result;
+    }
+
+    /** Top SP tồn nhiều nhất. Mỗi Object[3]: {tenSP, soLuongTon(int), giaTriTrieu(double)} */
+    public List<Object[]> getTopSPTonNhieu() {
+        List<Object[]> result = new ArrayList<>();
+        String sql = "SELECT TOP 10 sp.ten, ISNULL(SUM(lh.soLuongLoHang),0) sl, ISNULL(SUM(lh.soLuongLoHang*lh.gia),0)/1000000.0 gt " +
+                     "FROM SanPham sp LEFT JOIN LoHang lh ON sp.id=lh.sanPhamId AND lh.trangThai='CON_HANG' " +
+                     "GROUP BY sp.ten ORDER BY sl DESC";
+        try (Statement st = getConn().createStatement(); ResultSet rs = st.executeQuery(sql)) {
+            while (rs.next()) result.add(new Object[]{rs.getString("ten"), rs.getInt("sl"), rs.getDouble("gt")});
+        } catch (Exception e) { e.printStackTrace(); }
+        return result;
+    }
+
+    /** Xu hướng nhập hàng 12 tháng (triệu đồng). double[12] */
+    public double[] getNhapHang12Thang(int year) {
+        double[] data = new double[12];
+        String sql = "SELECT MONTH(ngayNhap) m, ISNULL(SUM(soLuongLoHang*gia),0)/1000000.0 gt " +
+                     "FROM LoHang WHERE YEAR(ngayNhap)=? GROUP BY MONTH(ngayNhap)";
+        try (PreparedStatement ps = getConn().prepareStatement(sql)) {
+            ps.setInt(1, year);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) { int m=rs.getInt("m"); if(m>=1&&m<=12) data[m-1]=rs.getDouble("gt"); }
+        } catch (Exception e) { e.printStackTrace(); }
+        return data;
+    }
+
     // CÁC HÀM BỔ SUNG CHO MÀN HÌNH CHÍNH (DASHBOARD)
     
     public int getTongSanPham() {
@@ -370,28 +586,44 @@ public class DAO_ThongKe {
     public double getDoanhThuHomNay(String maNV) {
         double dt = 0;
         String cond = (maNV != null && !maNV.isEmpty()) ? " AND hd.nhanVienId='" + maNV + "'" : "";
-        String sql = "SELECT hd.ghiChu, SUM(ct.soLuong * dvl.gia * (1 + ISNULL(sp.thueVAT, 0)/100.0)) as tongGoc " +
+        // FIX: Lấy thêm tongGocKhongVAT để tính doanh thu không bao gồm VAT
+        String sql = "SELECT hd.ghiChu, " +
+                     "SUM(ct.soLuong * dvl.gia * (1 + ISNULL(sp.thueVAT, 0)/100.0)) as tongGoc, " +
+                     "SUM(ct.soLuong * dvl.gia) as tongGocKhongVAT " +
                      "FROM HoaDon hd JOIN ChiTietHoaDon ct ON hd.id=ct.hoaDonId " +
                      "JOIN DonViDoLuong dvl ON ct.donViDoLuongId=dvl.id AND ct.sanPhamId=dvl.sanPhamId " +
                      "JOIN SanPham sp ON ct.sanPhamId = sp.id " +
                      "WHERE CONVERT(DATE,hd.ngayLapHD)=CONVERT(DATE,GETDATE()) AND hd.loaiHD='BAN_HANG'" + cond +
                      " GROUP BY hd.id, hd.ghiChu";
         try (Connection con = getConn(); Statement st = con.createStatement(); ResultSet rs = st.executeQuery(sql)) {
-            while (rs.next()) dt += tinhTienThucTeCuaHoaDon(con, rs.getDouble("tongGoc"), rs.getString("ghiChu"));
+            while (rs.next()) {
+                double coVAT = rs.getDouble("tongGoc");
+                double khongVAT = rs.getDouble("tongGocKhongVAT");
+                double thucTe = tinhTienThucTeCuaHoaDon(con, coVAT, rs.getString("ghiChu"));
+                // Quy đổi về doanh thu chưa VAT theo tỉ lệ
+                dt += (coVAT > 0) ? thucTe * (khongVAT / coVAT) : 0;
+            }
         } catch (Exception e) {} return dt;
     }
 
     public double getDoanhThuTienMatHomNay(String maNV) {
         double dt = 0;
         String cond = (maNV != null && !maNV.isEmpty()) ? " AND hd.nhanVienId='" + maNV + "'" : "";
-        String sql = "SELECT hd.ghiChu, SUM(ct.soLuong * dvl.gia * (1 + ISNULL(sp.thueVAT, 0)/100.0)) as tongGoc " +
+        String sql = "SELECT hd.ghiChu, " +
+                     "SUM(ct.soLuong * dvl.gia * (1 + ISNULL(sp.thueVAT, 0)/100.0)) as tongGoc, " +
+                     "SUM(ct.soLuong * dvl.gia) as tongGocKhongVAT " +
                      "FROM HoaDon hd JOIN ChiTietHoaDon ct ON hd.id=ct.hoaDonId " +
                      "JOIN DonViDoLuong dvl ON ct.donViDoLuongId=dvl.id AND ct.sanPhamId=dvl.sanPhamId " +
                      "JOIN SanPham sp ON ct.sanPhamId = sp.id " +
                      "WHERE hd.phuongThucThanhToan='TIEN_MAT' AND CONVERT(DATE,hd.ngayLapHD)=CONVERT(DATE,GETDATE()) AND hd.loaiHD='BAN_HANG'" + cond +
                      " GROUP BY hd.id, hd.ghiChu";
         try (Connection con = getConn(); Statement st = con.createStatement(); ResultSet rs = st.executeQuery(sql)) {
-            while (rs.next()) dt += tinhTienThucTeCuaHoaDon(con, rs.getDouble("tongGoc"), rs.getString("ghiChu"));
+            while (rs.next()) {
+                double coVAT = rs.getDouble("tongGoc");
+                double khongVAT = rs.getDouble("tongGocKhongVAT");
+                double thucTe = tinhTienThucTeCuaHoaDon(con, coVAT, rs.getString("ghiChu"));
+                dt += (coVAT > 0) ? thucTe * (khongVAT / coVAT) : 0;
+            }
         } catch (Exception e) {} return dt;
     }
 
@@ -399,16 +631,24 @@ public class DAO_ThongKe {
         List<Object[]> list = new ArrayList<>();
         String cond = (maNV != null && !maNV.isEmpty()) ? " AND hd.nhanVienId='" + maNV + "'" : "";
         
-        String sql = "SELECT hd.id, ISNULL(kh.hoVaTen, N'Khách lẻ') AS kh, ISNULL(SUM(ct.soLuong * dvl.gia), 0) AS tong, hd.phuongThucThanhToan AS pttt " +
+        String sql = "SELECT hd.id, ISNULL(kh.hoVaTen, N'Khách lẻ') AS kh, " +
+                     "SUM(ct.soLuong * dvl.gia * (1 + ISNULL(sp.thueVAT, 0)/100.0)) AS tongGocCoVAT, " +
+                     "hd.phuongThucThanhToan AS pttt, hd.ghiChu " +
                      "FROM HoaDon hd " +
                      "LEFT JOIN KhachHang kh ON hd.khachHangId = kh.id " +
-                     "LEFT JOIN ChiTietHoaDon ct ON hd.id = ct.hoaDonId " +
-                     "LEFT JOIN DonViDoLuong dvl ON ct.donViDoLuongId = dvl.id AND ct.sanPhamId = dvl.sanPhamId " +
+                     "JOIN ChiTietHoaDon ct ON hd.id = ct.hoaDonId " +
+                     "JOIN DonViDoLuong dvl ON ct.donViDoLuongId = dvl.id AND ct.sanPhamId = dvl.sanPhamId " +
+                     "JOIN SanPham sp ON ct.sanPhamId = sp.id " +
                      "WHERE hd.loaiHD = 'BAN_HANG' AND CONVERT(DATE, hd.ngayLapHD) = CONVERT(DATE, GETDATE()) " + cond +
-                     " GROUP BY hd.id, kh.hoVaTen, hd.phuongThucThanhToan, hd.ngayLapHD ORDER BY hd.ngayLapHD DESC";
+                     " GROUP BY hd.id, kh.hoVaTen, hd.phuongThucThanhToan, hd.ngayLapHD, hd.ghiChu " +
+                     "ORDER BY hd.ngayLapHD DESC";
                      
-        try (Statement st = getConn().createStatement(); ResultSet rs = st.executeQuery(sql)) {
-            while (rs.next()) list.add(new Object[]{rs.getString("id"), rs.getString("kh"), rs.getDouble("tong"), rs.getString("pttt")});
+        try (Connection con = getConn(); Statement st = con.createStatement(); ResultSet rs = st.executeQuery(sql)) {
+            while (rs.next()) {
+                double tongGocCoVAT = rs.getDouble("tongGocCoVAT");
+                double thucThu = tinhTienThucTeCuaHoaDon(con, tongGocCoVAT, rs.getString("ghiChu"));
+                list.add(new Object[]{rs.getString("id"), rs.getString("kh"), thucThu, rs.getString("pttt")});
+            }
         } catch (Exception e) { e.printStackTrace(); }
         return list;
     }
@@ -451,12 +691,19 @@ public class DAO_ThongKe {
 
     public double getDoanhThu7NgayQua(String maNV) {
         double dt = 0;
-        String sql = "SELECT ISNULL(SUM(CASE WHEN ct.donGiaThucTe > 0 THEN ct.thanhTien ELSE (ct.soLuong*dvl.gia) END),0) FROM HoaDon hd JOIN ChiTietHoaDon ct ON hd.id=ct.hoaDonId JOIN DonViDoLuong dvl ON ct.donViDoLuongId=dvl.id AND ct.sanPhamId=dvl.sanPhamId WHERE hd.ngayLapHD>=DATEADD(DAY,-7,GETDATE()) AND hd.loaiHD='BAN_HANG'"
-            + (maNV != null && !maNV.isEmpty() ? " AND hd.nhanVienId=?" : "");
-        try (PreparedStatement ps = getConn().prepareStatement(sql)) {
+        String sql = "SELECT hd.ghiChu, SUM(ct.soLuong * dvl.gia * (1 + ISNULL(sp.thueVAT, 0)/100.0)) as tongGoc " +
+                     "FROM HoaDon hd JOIN ChiTietHoaDon ct ON hd.id=ct.hoaDonId " +
+                     "JOIN DonViDoLuong dvl ON ct.donViDoLuongId=dvl.id AND ct.sanPhamId=dvl.sanPhamId " +
+                     "JOIN SanPham sp ON ct.sanPhamId = sp.id " +
+                     "WHERE hd.ngayLapHD>=DATEADD(DAY,-7,GETDATE()) AND hd.loaiHD='BAN_HANG'" +
+                     (maNV != null && !maNV.isEmpty() ? " AND hd.nhanVienId=?" : "") +
+                     " GROUP BY hd.id, hd.ghiChu";
+        try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql)) {
             if (maNV != null && !maNV.isEmpty()) ps.setString(1, maNV);
             try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) dt = rs.getDouble(1);
+                while (rs.next()) {
+                    dt += tinhTienThucTeCuaHoaDon(con, rs.getDouble("tongGoc"), rs.getString("ghiChu"));
+                }
             }
         } catch (SQLException e) { e.printStackTrace(); }
         return dt;
@@ -506,20 +753,13 @@ public class DAO_ThongKe {
 
     public double getDoanhThuTheoCa(String maNV, LocalDateTime start) {
         double dt = 0;
-        String sql = "SELECT hd.ghiChu, SUM(ct.soLuong * dvl.gia * (1 + ISNULL(sp.thueVAT, 0)/100.0)) as tongGoc " +
-                     "FROM HoaDon hd JOIN ChiTietHoaDon ct ON hd.id=ct.hoaDonId " +
-                     "JOIN DonViDoLuong dvl ON ct.donViDoLuongId=dvl.id AND ct.sanPhamId=dvl.sanPhamId " +
-                     "JOIN SanPham sp ON ct.sanPhamId = sp.id " +
-                     "WHERE hd.nhanVienId=? AND hd.ngayLapHD>=? AND hd.loaiHD='BAN_HANG' " +
-                     "GROUP BY hd.id, hd.ghiChu";
+        String sql = "SELECT hd.ghiChu, SUM(ct.soLuong * dvl.gia * (1 + ISNULL(sp.thueVAT, 0)/100.0)) as tongGoc FROM HoaDon hd JOIN ChiTietHoaDon ct ON hd.id=ct.hoaDonId JOIN DonViDoLuong dvl ON ct.donViDoLuongId=dvl.id AND ct.sanPhamId=dvl.sanPhamId JOIN SanPham sp ON ct.sanPhamId = sp.id WHERE hd.nhanVienId=? AND hd.ngayLapHD>=? AND hd.loaiHD='BAN_HANG' GROUP BY hd.id, hd.ghiChu";
         try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql)) { 
-            ps.setString(1, maNV); 
-            ps.setTimestamp(2, Timestamp.valueOf(start));
+            ps.setString(1, maNV); ps.setTimestamp(2, Timestamp.valueOf(start));
             try (ResultSet rs = ps.executeQuery()) { 
                 while (rs.next()) dt += tinhTienThucTeCuaHoaDon(con, rs.getDouble("tongGoc"), rs.getString("ghiChu"));
             }
-        } catch (SQLException e) { e.printStackTrace(); }
-        return dt;
+        } catch (SQLException e) { e.printStackTrace(); } return dt;
     }
     private double tinhTienThucTe(Connection con, double tongGocCoVat, String ghiChu) {
         double tongTienGiam = 0;
@@ -555,19 +795,13 @@ public class DAO_ThongKe {
     }
     public double getDoanhThuTienMatTheoCa(String maNV, LocalDateTime start) {
         double dt = 0;
-        String sql = "SELECT hd.ghiChu, SUM(ct.soLuong * dvl.gia * (1 + ISNULL(sp.thueVAT, 0)/100.0)) as tongGoc " +
-                     "FROM HoaDon hd JOIN ChiTietHoaDon ct ON hd.id=ct.hoaDonId " +
-                     "JOIN DonViDoLuong dvl ON ct.donViDoLuongId=dvl.id AND ct.sanPhamId=dvl.sanPhamId " +
-                     "JOIN SanPham sp ON ct.sanPhamId = sp.id " +
-                     "WHERE hd.nhanVienId=? AND hd.phuongThucThanhToan='TIEN_MAT' AND hd.ngayLapHD>=? AND hd.loaiHD='BAN_HANG' " +
-                     "GROUP BY hd.id, hd.ghiChu";
+        String sql = "SELECT hd.ghiChu, SUM(ct.soLuong * dvl.gia * (1 + ISNULL(sp.thueVAT, 0)/100.0)) as tongGoc FROM HoaDon hd JOIN ChiTietHoaDon ct ON hd.id=ct.hoaDonId JOIN DonViDoLuong dvl ON ct.donViDoLuongId=dvl.id AND ct.sanPhamId=dvl.sanPhamId JOIN SanPham sp ON ct.sanPhamId = sp.id WHERE hd.nhanVienId=? AND hd.phuongThucThanhToan='TIEN_MAT' AND hd.ngayLapHD>=? AND hd.loaiHD='BAN_HANG' GROUP BY hd.id, hd.ghiChu";
         try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setString(1, maNV); ps.setTimestamp(2, Timestamp.valueOf(start));
             try (ResultSet rs = ps.executeQuery()) { 
                 while (rs.next()) dt += tinhTienThucTeCuaHoaDon(con, rs.getDouble("tongGoc"), rs.getString("ghiChu"));
             }
-        } catch (SQLException e) { e.printStackTrace(); }
-        return dt;
+        } catch (SQLException e) { e.printStackTrace(); } return dt;
     }
 
     // Lấy danh sách nhân viên thật từ DB cho Combobox
@@ -615,49 +849,39 @@ public class DAO_ThongKe {
         String cond = (maNV != null && !maNV.isEmpty()) ? " AND hd.nhanVienId='" + maNV + "'" : "";
         cond += getCaCondition(ca);
         
+        // Kéo tổng gốc có VAT và chuỗi ghi chú ra để tính toán
         String sql = "SELECT hd.id, ISNULL(kh.hoVaTen, N'Khách lẻ') AS kh, " +
-                     "SUM(CASE WHEN ct.donGiaThucTe > 0 THEN ct.thanhTien ELSE (ct.soLuong * dvl.gia) END) AS tong, hd.phuongThucThanhToan AS pttt " +
+                     "SUM(ct.soLuong * dvl.gia * (1 + ISNULL(sp.thueVAT, 0)/100.0)) AS tongGocCoVAT, " +
+                     "hd.phuongThucThanhToan AS pttt, hd.ghiChu " +
                      "FROM HoaDon hd " +
                      "LEFT JOIN KhachHang kh ON hd.khachHangId = kh.id " +
                      "JOIN ChiTietHoaDon ct ON hd.id = ct.hoaDonId " +
                      "JOIN DonViDoLuong dvl ON ct.donViDoLuongId = dvl.id AND ct.sanPhamId = dvl.sanPhamId " +
+                     "JOIN SanPham sp ON ct.sanPhamId = sp.id " +
                      "WHERE hd.loaiHD = 'BAN_HANG' AND CONVERT(DATE, hd.ngayLapHD) = CONVERT(DATE, GETDATE()) " + cond +
-                     " GROUP BY hd.id, kh.hoVaTen, hd.phuongThucThanhToan, hd.ngayLapHD " +
+                     " GROUP BY hd.id, kh.hoVaTen, hd.phuongThucThanhToan, hd.ngayLapHD, hd.ghiChu " +
                      "ORDER BY hd.ngayLapHD DESC";
                      
-        try (Statement st = getConn().createStatement(); ResultSet rs = st.executeQuery(sql)) {
+        try (Connection con = getConn(); Statement st = con.createStatement(); ResultSet rs = st.executeQuery(sql)) {
             while (rs.next()) {
-                list.add(new Object[]{rs.getString("id"), rs.getString("kh"), rs.getDouble("tong"), rs.getString("pttt")});
+                double tongGocCoVAT = rs.getDouble("tongGocCoVAT");
+                // Cho chạy qua hàm tính tiền thực tế để trừ KM
+                double thucThu = tinhTienThucTeCuaHoaDon(con, tongGocCoVAT, rs.getString("ghiChu"));
+                list.add(new Object[]{rs.getString("id"), rs.getString("kh"), thucThu, rs.getString("pttt")});
             }
         } catch (Exception e) { e.printStackTrace(); }
         return list;
     }
 
-    // 1. Thêm hàm lấy TỔNG TIỀN HÀNG (Giá gốc - Hàm cũ của bạn mình đổi tên lại cho rõ nghĩa)
- // 1. Thêm hàm lấy TỔNG TIỀN HÀNG (Giá gốc)
+    // 1. TỔNG TIỀN HÀNG (Giá gốc chưa giảm, chưa VAT)
     public double getTongTienHangHomNay(String maNV, int ca) {
         double tong = 0;
         String cond = (maNV != null && !maNV.isEmpty()) ? " AND hd.nhanVienId='" + maNV + "'" : "";
-        cond += getCaCondition(ca); // Kế thừa bộ lọc chặn giờ mở ca ở trên
-
-        String sql =
-            "SELECT ISNULL(SUM(ct.soLuong * dvl.gia),0) " +
-            "FROM HoaDon hd " +
-            "JOIN ChiTietHoaDon ct ON hd.id = ct.hoaDonId " +
-            "JOIN DonViDoLuong dvl ON ct.donViDoLuongId = dvl.id " +
-            "AND ct.sanPhamId = dvl.sanPhamId " +
-            "WHERE CONVERT(DATE, hd.ngayLapHD) = CONVERT(DATE, GETDATE()) " +
-            "AND hd.loaiHD = 'BAN_HANG' " + cond;
-
+        cond += getCaCondition(ca);
+        String sql = "SELECT ISNULL(SUM(ct.soLuong * dvl.gia),0) FROM HoaDon hd JOIN ChiTietHoaDon ct ON hd.id = ct.hoaDonId JOIN DonViDoLuong dvl ON ct.donViDoLuongId = dvl.id AND ct.sanPhamId = dvl.sanPhamId WHERE CONVERT(DATE, hd.ngayLapHD) = CONVERT(DATE, GETDATE()) AND hd.loaiHD = 'BAN_HANG' " + cond;
         try (Connection con = getConn(); Statement st = con.createStatement(); ResultSet rs = st.executeQuery(sql)) {
-            if (rs.next()) {
-                tong = rs.getDouble(1);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        return tong;
+            if (rs.next()) tong = rs.getDouble(1);
+        } catch (Exception e) {} return tong;
     }
 
     // 2. Hàm lấy TỔNG KHUYẾN MÃI (Đã Fix: Tính qua chênh lệch giá gốc và thanh toán thực tế)
@@ -666,34 +890,43 @@ public class DAO_ThongKe {
         return getTongTienHangHomNay(maNV, ca) - getDoanhThuHomNay(maNV, ca);
     }
 
+ // 2. TỔNG THỰC THU (TIỀN KHÁCH ĐƯA CÓ VAT - DÙNG ĐỂ ĐỐI CHIẾU & KẾT CA)
     public double getDoanhThuHomNay(String maNV, int ca) {
         double dt = 0;
         String cond = (maNV != null && !maNV.isEmpty()) ? " AND hd.nhanVienId='" + maNV + "'" : "";
         cond += getCaCondition(ca);
-        String sql = "SELECT hd.ghiChu, SUM(ct.soLuong * dvl.gia * (1 + ISNULL(sp.thueVAT, 0)/100.0)) as tongGoc " +
-                     "FROM HoaDon hd JOIN ChiTietHoaDon ct ON hd.id=ct.hoaDonId " +
-                     "JOIN DonViDoLuong dvl ON ct.donViDoLuongId=dvl.id AND ct.sanPhamId=dvl.sanPhamId " +
-                     "JOIN SanPham sp ON ct.sanPhamId = sp.id " +
-                     "WHERE CONVERT(DATE, hd.ngayLapHD) = CONVERT(DATE, GETDATE()) AND hd.loaiHD = 'BAN_HANG'" + cond +
-                     " GROUP BY hd.id, hd.ghiChu";
+        String sql = "SELECT hd.ghiChu, SUM(ct.soLuong * dvl.gia * (1 + ISNULL(sp.thueVAT, 0)/100.0)) as tongGoc FROM HoaDon hd JOIN ChiTietHoaDon ct ON hd.id=ct.hoaDonId JOIN DonViDoLuong dvl ON ct.donViDoLuongId=dvl.id AND ct.sanPhamId=dvl.sanPhamId JOIN SanPham sp ON ct.sanPhamId = sp.id WHERE CONVERT(DATE, hd.ngayLapHD) = CONVERT(DATE, GETDATE()) AND hd.loaiHD = 'BAN_HANG'" + cond + " GROUP BY hd.id, hd.ghiChu";
         try (Connection con = getConn(); Statement st = con.createStatement(); ResultSet rs = st.executeQuery(sql)) {
             while (rs.next()) dt += tinhTienThucTeCuaHoaDon(con, rs.getDouble("tongGoc"), rs.getString("ghiChu"));
         } catch (Exception e) {} return dt;
     }
+ // 3. THỰC THU TIỀN MẶT (DÙNG ĐỂ KẾT CA)
     public double getDoanhThuTienMatHomNay(String maNV, int ca) {
         double dt = 0;
         String cond = (maNV != null && !maNV.isEmpty()) ? " AND hd.nhanVienId='" + maNV + "'" : "";
         cond += getCaCondition(ca);
-        String sql = "SELECT hd.ghiChu, SUM(ct.soLuong * dvl.gia * (1 + ISNULL(sp.thueVAT, 0)/100.0)) as tongGoc " +
-                     "FROM HoaDon hd JOIN ChiTietHoaDon ct ON hd.id=ct.hoaDonId " +
-                     "JOIN DonViDoLuong dvl ON ct.donViDoLuongId=dvl.id AND ct.sanPhamId=dvl.sanPhamId " +
-                     "JOIN SanPham sp ON ct.sanPhamId = sp.id " +
-                     "WHERE hd.phuongThucThanhToan = 'TIEN_MAT' AND CONVERT(DATE, hd.ngayLapHD) = CONVERT(DATE, GETDATE()) AND hd.loaiHD = 'BAN_HANG'" + cond +
-                     " GROUP BY hd.id, hd.ghiChu";
+        String sql = "SELECT hd.ghiChu, SUM(ct.soLuong * dvl.gia * (1 + ISNULL(sp.thueVAT, 0)/100.0)) as tongGoc FROM HoaDon hd JOIN ChiTietHoaDon ct ON hd.id=ct.hoaDonId JOIN DonViDoLuong dvl ON ct.donViDoLuongId=dvl.id AND ct.sanPhamId=dvl.sanPhamId JOIN SanPham sp ON ct.sanPhamId = sp.id WHERE hd.phuongThucThanhToan = 'TIEN_MAT' AND CONVERT(DATE, hd.ngayLapHD) = CONVERT(DATE, GETDATE()) AND hd.loaiHD = 'BAN_HANG'" + cond + " GROUP BY hd.id, hd.ghiChu";
         try (Connection con = getConn(); Statement st = con.createStatement(); ResultSet rs = st.executeQuery(sql)) {
             while (rs.next()) dt += tinhTienThucTeCuaHoaDon(con, rs.getDouble("tongGoc"), rs.getString("ghiChu"));
         } catch (Exception e) {} return dt;
     }
+    
+ // 4. DOANH THU THUẦN (TRỪ VAT - DÙNG CHO CỤC KPI CAM TRÊN DASHBOARD)
+    public double getDoanhThuThuanHomNay(String maNV, int ca) {
+        double tongTienHangGoc = getTongTienHangHomNay(maNV, ca);
+        double tongThucThuCoVAT = getDoanhThuHomNay(maNV, ca);
+        double tongGocCoVAT = 0;
+        String cond = (maNV != null && !maNV.isEmpty()) ? " AND hd.nhanVienId='" + maNV + "'" : "";
+        cond += getCaCondition(ca);
+        String sql = "SELECT ISNULL(SUM(ct.soLuong * dvl.gia * (1 + ISNULL(sp.thueVAT, 0)/100.0)), 0) FROM HoaDon hd JOIN ChiTietHoaDon ct ON hd.id=ct.hoaDonId JOIN DonViDoLuong dvl ON ct.donViDoLuongId=dvl.id AND ct.sanPhamId=dvl.sanPhamId JOIN SanPham sp ON ct.sanPhamId = sp.id WHERE CONVERT(DATE, hd.ngayLapHD) = CONVERT(DATE, GETDATE()) AND hd.loaiHD = 'BAN_HANG'" + cond;
+        try (Connection con = getConn(); Statement st = con.createStatement(); ResultSet rs = st.executeQuery(sql)) {
+            if (rs.next()) tongGocCoVAT = rs.getDouble(1);
+        } catch (Exception e) {}
+        if (tongGocCoVAT == 0) return 0;
+        double tienKhuyenMaiTong = tongGocCoVAT - tongThucThuCoVAT;
+        return Math.max(0, tongTienHangGoc - (tienKhuyenMaiTong * (tongTienHangGoc / tongGocCoVAT))); 
+    }
+    
 
     public double getTienHoanTraTheoCa(String maNV, LocalDateTime start) {
         double tongHoanTra = 0;
