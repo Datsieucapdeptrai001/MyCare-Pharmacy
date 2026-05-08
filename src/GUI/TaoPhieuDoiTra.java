@@ -1149,18 +1149,17 @@ public class TaoPhieuDoiTra extends JDialog {
         if (countSelected == 0) {
             lblBadgeHoanTien.setText("Vui lòng chọn SP"); lblBadgeHoanTien.setForeground(Color.decode("#CA8A04")); lblBadgeHoanTien.setBackground(Color.decode("#FEF9C3"));
             lblSoTienHoan.setText("0đ");
-            if(btnTaoPhieu != null) btnTaoPhieu.setEnabled(false);
+            if(btnTaoPhieu != null) btnTaoPhieu.setEnabled(true); 
             return;
         }
 
         double phanTramHoan = 0.0;
         String thongBaoHoanTien = "";
 
-        // BẮT ĐẦU VÙNG CẬP NHẬT LOGIC
         if (lyDo.contains("Từ chối")) {
             phanTramHoan = 0.0;
             thongBaoHoanTien = "Từ chối (Lỗi KH)";
-        } else if (lyDo.contains("Khách hàng đổi ý")) { // Logic mới thêm vào
+        } else if (lyDo.contains("Khách hàng đổi ý")) { 
             if (soGioDaMua <= 24) {
                 phanTramHoan = 100.0;
                 thongBaoHoanTien = "Hoàn 100% (≤ 24 giờ)";
@@ -1191,22 +1190,20 @@ public class TaoPhieuDoiTra extends JDialog {
                 thongBaoHoanTien = "Từ chối (> 3 ngày)";
             }
         }
-        // KẾT THÚC VÙNG CẬP NHẬT LOGIC
-        
-        if (phanTramHoan == 0.0) {
-            lblBadgeHoanTien.setText(thongBaoHoanTien); lblBadgeHoanTien.setForeground(primaryRed); lblBadgeHoanTien.setBackground(Color.decode("#FEE2E2"));
-            lblSoTienHoan.setText("0đ");
-            if(btnTaoPhieu != null) btnTaoPhieu.setEnabled(false);
-            return;
-        }
 
         double v_qd = busTraHang.xacDinhMucHoanTien(giaTriGoc, phanTramHoan); 
 
         if (isTraHang) {
             lblTextSoTienHoan.setText("Số tiền hoàn");
             lblBadgeHoanTien.setText(thongBaoHoanTien);
-            lblBadgeHoanTien.setForeground(Color.decode("#16A34A")); 
-            lblBadgeHoanTien.setBackground(Color.decode("#DCFCE7"));
+            
+            if (phanTramHoan == 0.0) {
+                lblBadgeHoanTien.setForeground(primaryRed); 
+                lblBadgeHoanTien.setBackground(Color.decode("#FEE2E2"));
+            } else {
+                lblBadgeHoanTien.setForeground(Color.decode("#16A34A")); 
+                lblBadgeHoanTien.setBackground(Color.decode("#DCFCE7"));
+            }
             
             this.soTienThucTeCanXuLy = (long) v_qd;
             lblSoTienHoan.setText(String.format("%,.0fđ", v_qd)); 
@@ -1243,8 +1240,11 @@ public class TaoPhieuDoiTra extends JDialog {
                 
                 lblSoTienHoan.setText(String.format("%,.0fđ", Math.abs(chenhLech)));
                 lblBadgeHoanTien.setText(thongBaoHoanTien); 
+                if (phanTramHoan == 0.0) {
+                    lblBadgeHoanTien.setForeground(primaryRed); 
+                    lblBadgeHoanTien.setBackground(Color.decode("#FEE2E2"));
+                }
                 
-           
                 if (btnTaoPhieu != null) {
                     btnTaoPhieu.setEnabled(true);
                 }
@@ -1254,7 +1254,6 @@ public class TaoPhieuDoiTra extends JDialog {
         if (lblExactValue != null) {
             lblExactValue.setText(String.format("%,dđ", soTienThucTeCanXuLy));
         }
-        
         capNhatTongTienMat(); 
     }
 
@@ -1524,17 +1523,15 @@ public class TaoPhieuDoiTra extends JDialog {
             showCustomNotification("CẢNH BÁO", "Vui lòng tìm kiếm hóa đơn hợp lệ trước khi tạo phiếu!", "WARNING"); return;
         }
 
+        // ĐÃ XÓA LỆNH CHẶN Ở ĐÂY ĐỂ ĐƯỢC PHÉP LƯU PHIẾU TỪ CHỐI/0Đ VÀO HỆ THỐNG
+
         String loai = btnTraHang.getBackground().equals(Color.WHITE) ? "Trả hàng" : "Đổi hàng";
         if (loai.equals("Đổi hàng") && spMoiModel.getRowCount() == 0) {
             showCustomNotification("CẢNH BÁO", "Vui lòng tìm và chọn sản phẩm mới muốn đổi sang!", "WARNING"); return;
         }
 
-        // =========================================================================
-        // ĐÃ FIX: THÊM BẮT LỖI THANH TOÁN (TIỀN MẶT / CHUYỂN KHOẢN) NHƯ BÊN HÓA ĐƠN
-        // =========================================================================
         if (lblTextSoTienHoan != null && lblTextSoTienHoan.getText().contains("Khách bù")) {
             if ("Chuyển khoản".equals(phuongThucDoiTra)) {
-                // Khách chọn CK nhưng NV chưa bấm nút xanh xác nhận
                 if (!isCKXacNhan) {
                     boolean xacNhan = showCustomConfirmDialog(
                         "Xác nhận nhận tiền", 
@@ -1542,14 +1539,12 @@ public class TaoPhieuDoiTra extends JDialog {
                         "Nhân viên vui lòng kiểm tra App Ngân hàng hoặc SMS.<br>" +
                         "Bạn xác nhận <b>ĐÃ NHẬN ĐỦ TIỀN</b> chưa?"
                     );
-                    if (!xacNhan) return; // Nếu bấm Hủy thì dừng tạo phiếu
+                    if (!xacNhan) return; 
                 }
             } else if ("Tiền mặt".equals(phuongThucDoiTra)) {
-                // Khách bù tiền mặt nhưng NV chưa bấm mệnh giá đủ tiền
                 if (tongTienMat < soTienThucTeCanXuLy) {
                     String strCanTra = String.format("%,d", soTienThucTeCanXuLy).replace(',', '.') + "đ";
                     String strKhachDua = String.format("%,d", tongTienMat).replace(',', '.') + "đ";
-                    
                     showCustomNotification(
                         "THIẾU TIỀN MẶT", 
                         "Khách đưa chưa đủ tiền bù hoặc bạn quên nhập mệnh giá!\n\n" +
@@ -1632,7 +1627,7 @@ public class TaoPhieuDoiTra extends JDialog {
             Entity.NhanVien nv = new Entity.NhanVien();
             String maNVHienTai = Utils.UserSession.getInstance().getMaNhanVien();
             if (maNVHienTai == null || maNVHienTai.trim().isEmpty()) {
-                maNVHienTai = "DS-0001"; // Phòng hờ nếu session bị rỗng
+                maNVHienTai = "DS-0001";
             }
             nv.setNhanVien(maNVHienTai);
             hdDoiTra.setNhanVienId(nv);
@@ -1650,15 +1645,10 @@ public class TaoPhieuDoiTra extends JDialog {
                     maPhieu, maHDGoc, khach, loai, lyDoFull, colHoanTien, colChenhLech, "Chờ xử lý", ngayTao, formatGhiChu
                 });
                 
-                // ĐÃ FIX: Không gọi thông báo ở đây nữa.
-                // Thay vào đó, bật cờ tín hiệu để truyền ra ngoài cho ManHinhDoiTra bắt lấy.
                 isTaoThanhCong = true;
                 maPhieuMoi = maPhieu;
-                
-                // Đóng form tạo phiếu ngay lập tức
                 dispose(); 
             } else {
-                // ĐÃ FIX: Thay JOptionPane bằng hàm Custom Notification
                 showCustomNotification("LỖI CƠ SỞ DỮ LIỆU", "Lỗi! Không thể ghi nhận phiếu vào Database.", "ERROR");
             }
         }
