@@ -3555,8 +3555,11 @@ txtSearchProduct.addKeyListener(new java.awt.event.KeyAdapter() {
                     }).start(); // Kích hoạt luồng chạy ngầm
 
                     // Hiển thị thông báo và đóng form như bình thường
-                    showCustomNotification("THÀNH CÔNG", "Đã lưu nháp hóa đơn thành công!\n(Hóa đơn sẽ tự động hủy nếu không thanh toán trong 10 phút tới)", "SUCCESS");
-                    this.dispose(); 
+                    if (!isAutoSave) {
+                        showCustomNotification("THÀNH CÔNG", "Đã lưu nháp hóa đơn thành công!\n(Hóa đơn sẽ tự động hủy nếu không thanh toán trong 10 phút tới)", "SUCCESS");
+                        this.dispose(); 
+                    }
+                    
                 }
             }
     } catch (Exception ex) {
