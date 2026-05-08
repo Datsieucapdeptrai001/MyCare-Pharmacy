@@ -142,31 +142,24 @@ public class DAO_ThongKe {
     // 1. CHI PHÍ 12 THÁNG
     public double[] getChiPhi12Thang(int year, String filter) {
         double[] data = new double[12];
-        String condHD = (filter != null && filter.trim().startsWith("AND")) ? " " + filter : "";
-        
-        // 1. Lấy doanh thu thuần trước để làm căn cứ tính giá vốn dự phòng
-        double[] dtThuan = getDoanhThu12Thang(year, filter);
+        String condHD = (filter != null && !filter.isEmpty()) ? (filter.trim().startsWith("AND") ? filter : " AND hd.nhanVienId='" + filter + "'") : "";
 
-        // 2. Lấy chi phí nhập kho thực tế (Dòng tiền)
-        String sql = "SELECT MONTH(ngayNhap) m, ISNULL(SUM(soLuongLoHang * gia), 0)/1000000.0 cp " +
-                     "FROM LoHang WHERE YEAR(ngayNhap)=? GROUP BY MONTH(ngayNhap)";
+        // JOIN sang PhanBoLoHang để lấy đúng giá nhập 'lh.gia' của sản phẩm đã bán
+        String sql = "SELECT MONTH(hd.ngayLapHD) m, ISNULL(SUM(pb.soLuong * lh.gia), 0)/1000000.0 cpThang " +
+                     "FROM HoaDon hd " +
+                     "JOIN PhanBoLoHang pb ON hd.id = pb.hoaDonId " +
+                     "JOIN LoHang lh ON pb.loHangId = lh.id " +
+                     "WHERE YEAR(hd.ngayLapHD) = ? AND hd.loaiHD = 'BAN_HANG'" + condHD +
+                     " GROUP BY MONTH(hd.ngayLapHD)";
                      
-        try (PreparedStatement ps = getConn().prepareStatement(sql)) {
+        try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setInt(1, year);
             ResultSet rs = ps.executeQuery();
             while (rs.next()) { 
                 int m = rs.getInt("m"); 
-                if (m>=1 && m<=12) data[m-1] = rs.getDouble("cp"); 
+                if (m >= 1 && m <= 12) data[m-1] = rs.getDouble("cpThang"); 
             }
         } catch (Exception e) { e.printStackTrace(); }
-
-        // 3. Xử lý "Lấp đầy khoảng trống": Nếu tháng có bán hàng (DT > 0) mà CP nhập kho = 0
-        // thì tính CP = 70% Doanh thu (Giá vốn mặc định) để biểu đồ trực quan.
-        for (int i = 0; i < 12; i++) {
-            if (dtThuan[i] > 0 && data[i] == 0) {
-                data[i] = dtThuan[i] * 0.7; // Giả sử lãi 30%, vốn 70%
-            }
-        }
         return data;
     }
 
@@ -196,7 +189,6 @@ public class DAO_ThongKe {
         return 0;
     }
 
- // THỐNG KÊ 30 NGÀY (Cập nhật chuẩn Doanh Thu Thuần)
     public List<Object[]> getThongKe30NgayGanNhat(String condHD) {
         List<Object[]> result = new ArrayList<>();
         String sql = "SELECT CONVERT(NVARCHAR,CAST(hd.ngayLapHD AS DATE),103) d, " +
@@ -222,8 +214,8 @@ public class DAO_ThongKe {
                 double dtThuan = (coVAT > 0) ? (thucTe * (khongVAT / coVAT)) : 0;
                 
                 dailyData.putIfAbsent(date, new double[]{0, 0}); 
-                dailyData.get(date)[0] += 1; // Cộng 1 hóa đơn
-                dailyData.get(date)[1] += dtThuan; // Cộng doanh thu thuần
+                dailyData.get(date)[0] += 1; 
+                dailyData.get(date)[1] += dtThuan; 
             }
             for (Map.Entry<String, double[]> entry : dailyData.entrySet()) {
                 result.add(new Object[]{entry.getKey(), (int)entry.getValue()[0], entry.getValue()[1] / 1000000.0});
