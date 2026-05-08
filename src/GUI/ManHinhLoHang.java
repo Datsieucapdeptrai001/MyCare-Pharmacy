@@ -43,6 +43,7 @@ public class ManHinhLoHang extends JPanel {
     private static final Color PRIMARY_BLUE_HOVER = new Color(22, 133, 163);
 
     private static final Color DANGER = new Color(239, 68, 68);
+    private static final Color DANGER_HOVER = new Color(220, 38, 38);
     private static final Color DANGER_SOFT = new Color(254, 242, 242);
     private static final Color WARNING = new Color(249, 115, 22);
     private static final Color WARNING_SOFT = new Color(255, 247, 237);
@@ -159,8 +160,8 @@ public class ManHinhLoHang extends JPanel {
         right.setAlignmentY(Component.CENTER_ALIGNMENT);
 
         JComponent searchField = createSearchField();
-        searchField.setPreferredSize(new Dimension(240, 38));
-        searchField.setMaximumSize(new Dimension(240, 38));
+        searchField.setPreferredSize(new Dimension(220, 38));
+        searchField.setMaximumSize(new Dimension(220, 38));
         searchField.setMinimumSize(new Dimension(80, 38)); 
 
         JButton btnLamMoi = createHoverButton("Làm mới", new Color(248, 250, 252), new Color(226, 232, 240), TEXT_PRIMARY);
@@ -179,6 +180,14 @@ public class ManHinhLoHang extends JPanel {
             loadDataFromDatabase();
             wrapper.requestFocus(); 
         });
+
+        JButton btnLichSu = createHoverButton("Lịch sử", new Color(248, 250, 252), new Color(226, 232, 240), TEXT_PRIMARY);
+        btnLichSu.setIcon(new MenuIcon("LIST"));
+        btnLichSu.setBorder(new RoundedLineBorder(BORDER_COLOR, 1, 8));
+        btnLichSu.setPreferredSize(new Dimension(100, 38));
+        btnLichSu.setMaximumSize(new Dimension(100, 38));
+        btnLichSu.setMinimumSize(new Dimension(40, 38));
+        btnLichSu.addActionListener(e -> moManHinhLichSuXuat());
 
         JButton btnXuatKho = createHoverButton("Xuất / Hủy Kho", WARNING, new Color(234, 88, 12), Color.WHITE);
         btnXuatKho.setIcon(new MenuIcon("MINUS")); 
@@ -199,6 +208,8 @@ public class ManHinhLoHang extends JPanel {
         right.add(searchField);
         right.add(Box.createHorizontalStrut(10));
         right.add(btnLamMoi);
+        right.add(Box.createHorizontalStrut(10));
+        right.add(btnLichSu); 
         right.add(Box.createHorizontalStrut(10));
         right.add(btnXuatKho);
         right.add(Box.createHorizontalStrut(10));
@@ -285,10 +296,7 @@ public class ManHinhLoHang extends JPanel {
             if (e.getStateChange() == ItemEvent.SELECTED) {
                 filter = TrangThaiFilter.GAN_HET_HAN_90;
                 setActiveFilterButton(null);
-                // Nếu đang chọn Hiện lô ẩn thì bỏ tick để chống đá nhau
-                if (chkShowHidden != null && chkShowHidden.isSelected()) {
-                    chkShowHidden.setSelected(false);
-                }
+                if (chkShowHidden != null && chkShowHidden.isSelected()) chkShowHidden.setSelected(false);
             } else {
                 if (filter == TrangThaiFilter.GAN_HET_HAN_90) {
                     filter = TrangThaiFilter.TAT_CA;
@@ -303,7 +311,6 @@ public class ManHinhLoHang extends JPanel {
         chkShowHidden.addItemListener(e -> {
             hienLoAn = e.getStateChange() == ItemEvent.SELECTED;
             if (hienLoAn) {
-                // Đã tích vào xem Lô ẩn thì dẹp hết các Lọc khác để UI không rối
                 filter = TrangThaiFilter.TAT_CA;
                 setActiveFilterButton(btnTatCa);
                 if (chkNear90 != null) chkNear90.setSelected(false);
@@ -458,9 +465,7 @@ public class ManHinhLoHang extends JPanel {
                 
                 if (row >= 0 && col == 9) {
                     if (isStaffRole) {
-                        JOptionPane.showMessageDialog(wrap, 
-                            "Nhân viên Dược sĩ không có quyền Ẩn hoặc Khôi phục lô hàng!", 
-                            "Từ chối quyền truy cập", JOptionPane.WARNING_MESSAGE);
+                        showCustomNotification("Từ chối thao tác", "Nhân viên Dược sĩ không có quyền Ẩn hoặc Khôi phục lô hàng!", "WARNING");
                         return;
                     }
 
@@ -538,7 +543,7 @@ public class ManHinhLoHang extends JPanel {
             refreshTable();
         } catch (Exception e) {
             e.printStackTrace();
-            JOptionPane.showMessageDialog(this, "Lỗi tải dữ liệu lô hàng từ CSDL!");
+            showCustomNotification("Lỗi hệ thống", "Lỗi tải dữ liệu lô hàng từ CSDL!", "ERROR");
         }
     }
 
@@ -581,13 +586,10 @@ public class ManHinhLoHang extends JPanel {
                     || safe(item.maSanPham).toLowerCase().contains(keyword)
                     || safe(item.tenSanPham).toLowerCase().contains(keyword);
 
-            // LOGIC MỚI: Tách biệt hoàn toàn Lô Ẩn và Lô Hiện
             boolean matchFilter;
             if (hienLoAn) {
-                // NẾU BẬT LÔ ẨN: Chỉ hiển thị duy nhất những lô "Đã ẩn"
                 matchFilter = "Đã ẩn".equals(item.trangThai);
             } else {
-                // NẾU TẮT LÔ ẨN: Loại bỏ toàn bộ lô ẩn, sau đó chạy Filter theo nút
                 if ("Đã ẩn".equals(item.trangThai)) {
                     matchFilter = false;
                 } else {
@@ -663,14 +665,22 @@ public class ManHinhLoHang extends JPanel {
     private void moManHinhXuatKho() {
         Window owner = SwingUtilities.getWindowAncestor(this);
         JDialog dialog = new JDialog(owner, "Quy Trình Xuất / Hủy Kho", Dialog.ModalityType.APPLICATION_MODAL);
-        
         ManHinhXuatKho pnlXuatKho = new ManHinhXuatKho();
         dialog.setContentPane(pnlXuatKho);
         dialog.setSize(1100, 650); 
         dialog.setLocationRelativeTo(owner); 
         dialog.setVisible(true);
-
         loadDataFromDatabase();
+    }
+
+    private void moManHinhLichSuXuat() {
+        Window owner = SwingUtilities.getWindowAncestor(this);
+        JDialog dialog = new JDialog(owner, "Nhật Ký Lịch Sử Xuất Kho", Dialog.ModalityType.APPLICATION_MODAL);
+        ManHinhLichSuXuat pnlLichSu = new ManHinhLichSuXuat();
+        dialog.setContentPane(pnlLichSu);
+        dialog.setSize(1000, 600);
+        dialog.setLocationRelativeTo(owner);
+        dialog.setVisible(true);
     }
 
     private BatchItem timBatchTheoSoLo(String soLo) {
@@ -685,62 +695,164 @@ public class ManHinhLoHang extends JPanel {
         if (item == null) return;
 
         if (item.tonKho > 0) {
-            String msg = String.format(
-                "<html><body style='font-family: Segoe UI; font-size: 13px; color: #333;'>" +
-                "<div style='width: 320px;'>" +
-                "Lô hàng <b style='color: #1E3A8A;'>%s</b> hiện vẫn còn tồn <b style='color: #EF4444;'>%,d %s</b>.<br><br>" +
-                "Theo nguyên tắc quản lý kho, bạn <b>không được phép ẩn</b> lô hàng khi giá trị tài sản vẫn còn trên hệ thống.<br><br>" +
-                "<i>Vui lòng click vào nút <b>'Xuất / Hủy Kho'</b> để đưa số lượng về 0 trước khi tiến hành ẩn lô này!</i>" +
-                "</div></body></html>",
-                soLo, item.tonKho, item.donVi
-            );
-            
-            JOptionPane.showMessageDialog(this, msg, "TỪ CHỐI THAO TÁC", JOptionPane.ERROR_MESSAGE);
+            String msg = "Lô hàng " + soLo + " hiện vẫn còn tồn " + String.format("%,d", item.tonKho) + " " + item.donVi + ".\n\n" +
+                         "Theo nguyên tắc quản lý kho, bạn KHÔNG ĐƯỢC PHÉP ẩn lô hàng khi giá trị tài sản vẫn còn trên hệ thống.\n\n" +
+                         "Vui lòng sử dụng chức năng 'Xuất / Hủy Kho' để đưa số lượng về 0 trước khi tiến hành ẩn lô này!";
+            showCustomNotification("TỪ CHỐI THAO TÁC", msg, "ERROR");
             return;
         }
 
-        int confirm = JOptionPane.showConfirmDialog(
-                this, "Bạn có chắc chắn muốn ẩn lô " + soLo + " khỏi danh sách hiển thị không?",
-                "Xác nhận ẩn lô hàng", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE
-        );
+        boolean confirm = showCustomConfirmDialog("XÁC NHẬN ẨN LÔ HÀNG", 
+            "Bạn có chắc chắn muốn ẩn lô <b>" + soLo + "</b> khỏi danh sách hiển thị không?");
         
-        if (confirm == JOptionPane.YES_OPTION) {
+        if (confirm) {
             try {
                 if (busKho.anLoHang(item.id)) {
                     loadDataFromDatabase();
                 } else {
-                    JOptionPane.showMessageDialog(this, "Thao tác ẩn lô thất bại! Vui lòng kiểm tra lại CSDL.", "Lỗi Hệ Thống", JOptionPane.ERROR_MESSAGE);
+                    showCustomNotification("Lỗi hệ thống", "Thao tác ẩn lô thất bại! Vui lòng kiểm tra lại CSDL.", "ERROR");
                 }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+            } catch (Exception e) { e.printStackTrace(); }
         }
     }
 
     private void khoiPhucLoHang(String soLo) {
-        int confirm = JOptionPane.showConfirmDialog(
-                this, "Bạn có chắc muốn khôi phục lô " + soLo + " không?",
-                "Xác nhận khôi phục", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE
-        );
-        if (confirm == JOptionPane.YES_OPTION) {
+        boolean confirm = showCustomConfirmDialog("XÁC NHẬN KHÔI PHỤC", 
+            "Bạn có chắc muốn khôi phục lô <b>" + soLo + "</b> không?");
+            
+        if (confirm) {
             try {
                 BatchItem item = timBatchTheoSoLo(soLo);
-                if (item != null && busKho.khoiPhucLoHang(item.id)) loadDataFromDatabase();
-                else JOptionPane.showMessageDialog(this, "Khôi phục lô thất bại!");
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+                if (item != null && busKho.khoiPhucLoHang(item.id)) {
+                    loadDataFromDatabase();
+                } else {
+                    showCustomNotification("Lỗi", "Khôi phục lô thất bại!", "ERROR");
+                }
+            } catch (Exception e) { e.printStackTrace(); }
         }
     }
 
+    // =========================================================================
+    // HỆ THỐNG DIALOG HIỆN ĐẠI (Đồng bộ từ màn hình Xuất Kho)
+    // =========================================================================
+    
+    private boolean showCustomConfirmDialog(String titleText, String message) {
+        final boolean[] result = {false};
+        Window owner = SwingUtilities.getWindowAncestor(this);
+        JDialog dialog = new JDialog(owner, Dialog.ModalityType.APPLICATION_MODAL);
+        dialog.setUndecorated(true);
+        dialog.setBackground(new Color(0, 0, 0, 0));
+
+        JPanel pnlMain = new JPanel(new BorderLayout());
+        pnlMain.setBorder(BorderFactory.createLineBorder(PRIMARY_BLUE, 2));
+        pnlMain.setBackground(Color.WHITE);
+
+        JPanel pnlHeader = new JPanel(new BorderLayout());
+        pnlHeader.setBackground(PRIMARY_BLUE);
+        pnlHeader.setPreferredSize(new Dimension(0, 45));
+        JLabel lblTitle = new JLabel(titleText.toUpperCase(), SwingConstants.CENTER);
+        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        lblTitle.setForeground(Color.WHITE);
+        pnlHeader.add(lblTitle, BorderLayout.CENTER);
+
+        JPanel pnlBody = new JPanel(new BorderLayout());
+        pnlBody.setBackground(Color.WHITE);
+        pnlBody.setBorder(new EmptyBorder(20, 25, 15, 25));
+        
+        JLabel msg = new JLabel("<html><center style='color:#333333; font-family:Segoe UI; font-size:14px;'>" + message + "</center></html>", SwingConstants.CENTER);
+        msg.setVerticalAlignment(SwingConstants.CENTER);
+        pnlBody.add(msg, BorderLayout.CENTER);
+
+        JPanel pnlFooter = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 20));
+        pnlFooter.setBackground(Color.WHITE);
+        JButton btnYes = createHoverButton("Xác nhận", DANGER, DANGER_HOVER, Color.WHITE);
+        btnYes.setPreferredSize(new Dimension(130, 40));
+        btnYes.addActionListener(e -> { result[0] = true; dialog.dispose(); });
+        JButton btnNo = createHoverButton("Hủy bỏ", TEXT_SECONDARY, new Color(71, 85, 105), Color.WHITE);
+        btnNo.setPreferredSize(new Dimension(130, 40));
+        btnNo.addActionListener(e -> dialog.dispose());
+        pnlFooter.add(btnYes); pnlFooter.add(btnNo);
+
+        pnlMain.add(pnlHeader, BorderLayout.NORTH);
+        pnlMain.add(pnlBody, BorderLayout.CENTER);
+        pnlMain.add(pnlFooter, BorderLayout.SOUTH);
+
+        dialog.add(pnlMain);
+        dialog.setSize(450, 250);
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+        return result[0];
+    }
+
+    private void showCustomNotification(String titleText, String message, String type) {
+        Window owner = SwingUtilities.getWindowAncestor(this);
+        JDialog dialog = new JDialog(owner, Dialog.ModalityType.APPLICATION_MODAL);
+        dialog.setUndecorated(true);
+        dialog.setBackground(new Color(0, 0, 0, 0));
+
+        JPanel pnlMain = new JPanel(new BorderLayout());
+        pnlMain.setBorder(BorderFactory.createLineBorder(PRIMARY_BLUE, 2));
+        pnlMain.setBackground(Color.WHITE);
+
+        JPanel pnlHeader = new JPanel(new BorderLayout());
+        pnlHeader.setBackground(PRIMARY_BLUE);
+        pnlHeader.setPreferredSize(new Dimension(0, 45));
+        JLabel lblTitle = new JLabel(titleText.toUpperCase(), SwingConstants.CENTER);
+        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        lblTitle.setForeground(Color.WHITE);
+        pnlHeader.add(lblTitle, BorderLayout.CENTER);
+
+        JPanel pnlBody = new JPanel(null);
+        pnlBody.setBackground(Color.WHITE);
+        pnlBody.setPreferredSize(new Dimension(420, 170)); // Tăng height một xíu để vừa dòng chữ dài
+
+        JPanel pnlIcon = new JPanel() {
+            @Override protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                Color c = type.equals("ERROR") ? DANGER : (type.equals("SUCCESS") ? SUCCESS : new Color(245, 158, 11));
+                g2.setColor(type.equals("ERROR") ? new Color(254, 242, 242) : (type.equals("SUCCESS") ? new Color(209, 250, 229) : new Color(254, 243, 199)));
+                g2.fillOval(0, 0, 50, 50); g2.setColor(c); g2.setStroke(new BasicStroke(3f)); g2.drawOval(0, 0, 50, 50);
+                g2.setFont(new Font("Segoe UI", Font.BOLD, 26));
+                String s = type.equals("ERROR") ? "X" : (type.equals("SUCCESS") ? "V" : "!");
+                g2.drawString(s, (50 - g2.getFontMetrics().stringWidth(s)) / 2, 35); g2.dispose();
+            }
+        };
+        pnlIcon.setBounds(25, 30, 50, 50); pnlIcon.setOpaque(false);
+
+        JTextArea msgArea = new JTextArea(message);
+        msgArea.setFont(new Font("Segoe UI", Font.PLAIN, 15));
+        msgArea.setWrapStyleWord(true); msgArea.setLineWrap(true);
+        msgArea.setOpaque(false); msgArea.setEditable(false);
+        
+        JScrollPane scroll = new JScrollPane(msgArea);
+        scroll.setBounds(95, 20, 305, 140); scroll.setBorder(null);
+        scroll.setOpaque(false); scroll.getViewport().setOpaque(false);
+        
+        pnlBody.add(pnlIcon); pnlBody.add(scroll);
+
+        JPanel pnlFooter = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 15));
+        pnlFooter.setBackground(Color.WHITE);
+        JButton btnClose = createHoverButton("Đóng", PRIMARY_BLUE, PRIMARY_BLUE_HOVER, Color.WHITE);
+        btnClose.setPreferredSize(new Dimension(110, 38));
+        btnClose.addActionListener(e -> dialog.dispose());
+        pnlFooter.add(btnClose);
+
+        pnlMain.add(pnlHeader, BorderLayout.NORTH);
+        pnlMain.add(pnlBody, BorderLayout.CENTER);
+        pnlMain.add(pnlFooter, BorderLayout.SOUTH);
+
+        dialog.add(pnlMain); dialog.pack(); dialog.setLocationRelativeTo(this);
+        if (type.equals("SUCCESS")) { new Timer(1500, e -> dialog.dispose()).start(); }
+        dialog.setVisible(true); 
+    }
+
+    // =========================================================================
+
     private void switchFilter(TrangThaiFilter newFilter, JButton source) {
         if (chkNear90 != null) chkNear90.setSelected(false);
-        
-        // Nếu bấm nút Lọc khác thì lập tức tắt Hiện lô ẩn đi
-        if (chkShowHidden != null && chkShowHidden.isSelected()) {
-            chkShowHidden.setSelected(false); 
-        }
-        
+        if (chkShowHidden != null && chkShowHidden.isSelected()) chkShowHidden.setSelected(false); 
         filter = newFilter;
         setActiveFilterButton(source);
         refreshTable();
@@ -757,9 +869,7 @@ public class ManHinhLoHang extends JPanel {
             active.setBackground(Color.WHITE); 
             active.setForeground(PRIMARY_BLUE);
         }
-        for (JButton b : list) {
-            if (b != null) b.repaint();
-        }
+        for (JButton b : list) { if (b != null) b.repaint(); }
     }
 
     private JButton createFilterButton(String text, String iconName) {
@@ -1077,7 +1187,7 @@ public class ManHinhLoHang extends JPanel {
         this.isStaffRole = readOnly;
         
         if (!readOnly) return;
-        disableButtonsByText(this, "Thêm mới", "Nhập lô hàng", "Xuất / Hủy Kho", "Nhập Excel", "Thêm", "Xóa", "Sửa", "Lưu");
+        disableButtonsByText(this, "Thêm mới", "Nhập lô hàng", "Xuất / Hủy Kho", "Lịch sử", "Nhập Excel", "Thêm", "Xóa", "Sửa", "Lưu");
         
         if (table != null) {
             javax.swing.table.TableColumn columnThaoTac = table.getColumnModel().getColumn(9);
