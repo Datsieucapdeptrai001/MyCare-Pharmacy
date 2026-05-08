@@ -1930,9 +1930,9 @@ public class TaoHoaDon extends JDialog {
         ));
         
         txt.addFocusListener(new java.awt.event.FocusAdapter() {
-            public void focusGained(java.awt.event.FocusEvent e) {
-                // Chỉ cần text chứa chữ nổi là tự động dọn dẹp sạch sẽ
-                if (txt.getText().contains(placeholder) || placeholder.contains(txt.getText().trim())) {
+        	public void focusGained(java.awt.event.FocusEvent e) {
+                // ĐÃ SỬA: Bỏ vế điều kiện ngược để không bị nuốt chữ cái của khách hàng
+                if (txt.getText().contains(placeholder)) {
                     txt.setText(""); 
                     txt.setForeground(Color.BLACK);
                 }
