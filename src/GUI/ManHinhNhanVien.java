@@ -94,7 +94,7 @@ public class ManHinhNhanVien extends JPanel {
         btnAdd = createActionBtn("+ Thêm NV", "#DC2626", null);
         btnAdd.addActionListener(e -> {
             Window p = SwingUtilities.getWindowAncestor(this);
-            DialogThemNhanVien dialog = new DialogThemNhanVien((Frame) p, this, -1, null, null, null, null, null, null, null, null);
+            DialogThemNhanVien dialog = new DialogThemNhanVien((Frame) p, this, -1, null, null, null, null, null, null, null, null, null);
             dialog.setVisible(true);
         });
         
@@ -122,7 +122,8 @@ public class ManHinhNhanVien extends JPanel {
         JPanel pnlCenter = new JPanel(new BorderLayout(20, 0)); 
         pnlCenter.setOpaque(false);
 
-        String[] cols = {"Mã NV", "Họ tên", "Số CCHN", "Điện thoại", "Email", "Chức vụ", "Trạng thái", "Thao tác"};
+        // Đã thêm cột Địa chỉ vào đây
+        String[] cols = {"Mã NV", "Họ tên", "Số CCHN", "Điện thoại", "Email", "Địa chỉ", "Chức vụ", "Trạng thái", "Thao tác"};
         model = new DefaultTableModel(cols, 0) { public boolean isCellEditable(int r, int c) { return false; } };
         table = new JTable(model);
         sorter = new TableRowSorter<>(model);
@@ -146,8 +147,9 @@ public class ManHinhNhanVien extends JPanel {
 
         table.getColumnModel().getColumn(0).setPreferredWidth(80);
         table.getColumnModel().getColumn(1).setPreferredWidth(160);
-        table.getColumnModel().getColumn(4).setPreferredWidth(180); 
-        table.getColumnModel().getColumn(7).setPreferredWidth(60);
+        table.getColumnModel().getColumn(4).setPreferredWidth(160); 
+        table.getColumnModel().getColumn(5).setPreferredWidth(180); // Cột Địa chỉ
+        table.getColumnModel().getColumn(8).setPreferredWidth(60);
 
         JScrollPane sp = new JScrollPane(table);
         sp.setBorder(BorderFactory.createLineBorder(Color.decode("#DFE3E8")));
@@ -190,8 +192,9 @@ public class ManHinhNhanVien extends JPanel {
                 String cchn = model.getValueAt(modelRow, 2).toString();
                 String sdt = model.getValueAt(modelRow, 3).toString();
                 String email = model.getValueAt(modelRow, 4).toString();
-                String chucVu = model.getValueAt(modelRow, 5).toString();
-                String trangThai = model.getValueAt(modelRow, 6).toString();
+                String diaChi = model.getValueAt(modelRow, 5).toString(); // Lấy địa chỉ
+                String chucVu = model.getValueAt(modelRow, 6).toString();
+                String trangThai = model.getValueAt(modelRow, 7).toString();
                 
                 // Trích xuất thông tin tài khoản từ BUS
                 TaiKhoan tk = busNhanVien.layTaiKhoanTheoMaNV(maNV);
@@ -199,7 +202,7 @@ public class ManHinhNhanVien extends JPanel {
                 String matKhau = (tk != null && tk.getMatKhau() != null) ? tk.getMatKhau() : "";
 
                 Window p = SwingUtilities.getWindowAncestor(this);
-                DialogThemNhanVien dialog = new DialogThemNhanVien((Frame) p, this, modelRow, hoten, cchn, sdt, email, chucVu, trangThai, tenDangNhap, matKhau);
+                DialogThemNhanVien dialog = new DialogThemNhanVien((Frame) p, this, modelRow, hoten, cchn, sdt, email, diaChi, chucVu, trangThai, tenDangNhap, matKhau);
                 dialog.setVisible(true);
             }
         });
@@ -242,6 +245,7 @@ public class ManHinhNhanVien extends JPanel {
                     nv.getSoChungChiHanhNghe() == null ? "" : nv.getSoChungChiHanhNghe(), 
                     nv.getSdt(), 
                     nv.getEmail() == null ? "" : nv.getEmail(), 
+                    nv.getDiaChi() == null ? "" : nv.getDiaChi(), // Hiển thị địa chỉ
                     chucVuUI, 
                     trangThaiUI, 
                     ""
@@ -257,7 +261,7 @@ public class ManHinhNhanVien extends JPanel {
         if (lblDangLamViec != null) {
             int count = 0;
             for (int i = 0; i < model.getRowCount(); i++) {
-                if (model.getValueAt(i, 6).toString().equalsIgnoreCase("Đang làm việc")) count++;
+                if (model.getValueAt(i, 7).toString().equalsIgnoreCase("Đang làm việc")) count++;
             }
             lblDangLamViec.setText(String.valueOf(count));
         }
@@ -458,8 +462,9 @@ public class ManHinhNhanVien extends JPanel {
         String cchn = model.getValueAt(modelRow, 2).toString();
         String phone = model.getValueAt(modelRow, 3).toString();
         String email = model.getValueAt(modelRow, 4).toString();
-        String role = model.getValueAt(modelRow, 5).toString();
-        String status = model.getValueAt(modelRow, 6).toString();
+        String diaChi = model.getValueAt(modelRow, 5).toString(); // Đọc địa chỉ từ model
+        String role = model.getValueAt(modelRow, 6).toString();
+        String status = model.getValueAt(modelRow, 7).toString();
 
         lblDetAvatar.setText(name.substring(0, 1).toUpperCase()); 
         lblDetName.setText(name);
@@ -467,6 +472,7 @@ public class ManHinhNhanVien extends JPanel {
 
         lblDetPhone.setText(" " + phone);
         lblDetEmail.setText(" " + (email.isEmpty() ? "Chưa cập nhật" : email));
+        lblDetAddress.setText(" " + (diaChi.isEmpty() ? "Chưa cập nhật" : diaChi)); // Cập nhật nhãn địa chỉ
 
         lblDetRole.setText(role);
         lblDetCCHN.setText(cchn.isEmpty() ? "---" : cchn);
@@ -504,7 +510,9 @@ public class ManHinhNhanVien extends JPanel {
     class NhanVienTableRenderer extends DefaultTableCellRenderer {
         public Component getTableCellRendererComponent(JTable t, Object v, boolean isSel, boolean hasF, int r, int c) {
             JLabel lbl = (JLabel) super.getTableCellRendererComponent(t, v, isSel, hasF, r, c);
-            if (c == 5 || c == 6 || c == 7) lbl.setHorizontalAlignment(CENTER);
+            
+            // Cập nhật lại chỉ số cột canh giữa do đã thêm cột Địa chỉ
+            if (c == 6 || c == 7 || c == 8) lbl.setHorizontalAlignment(CENTER);
             else lbl.setHorizontalAlignment(LEFT);
 
             lbl.setOpaque(true);
@@ -516,15 +524,15 @@ public class ManHinhNhanVien extends JPanel {
 
             if (c == 0) lbl.setForeground(Color.decode("#1967D2")); 
             if (c == 1) lbl.setFont(new Font("Segoe UI", Font.BOLD, 14)); 
-            if (c == 5) { lbl.setForeground(Color.decode("#9333EA")); lbl.setFont(new Font("Segoe UI", Font.BOLD, 14)); }
-            if (c == 6) { 
+            if (c == 6) { lbl.setForeground(Color.decode("#9333EA")); lbl.setFont(new Font("Segoe UI", Font.BOLD, 14)); }
+            if (c == 7) { 
                 String st = lbl.getText();
                 lbl.setFont(new Font("Segoe UI", Font.BOLD, 14));
                 if(st.equals("Đang làm việc")) lbl.setForeground(Color.decode("#16A34A"));
                 else if(st.equals("Nghỉ phép")) lbl.setForeground(Color.decode("#D97706"));
                 else lbl.setForeground(Color.decode("#DC2626"));
             }
-            if (c == 7) { 
+            if (c == 8) { 
                 lbl.setText(""); 
                 lbl.setIcon(new MenuIcon("EDIT")); 
                 lbl.setCursor(new Cursor(Cursor.HAND_CURSOR));
@@ -586,10 +594,10 @@ public class ManHinhNhanVien extends JPanel {
 // ====================================================================================
 class DialogThemNhanVien extends JDialog {
 
-    private JTextField txtHoTen, txtCCHN, txtSdt, txtEmail;
+    private JTextField txtHoTen, txtCCHN, txtSdt, txtEmail, txtDiaChi; // Thêm biến txtDiaChi
     private JTextField txtTenDangNhap, txtMatKhau;
     private JComboBox<String> cboTrangThai;
-    private JLabel lblErrHoTen, lblErrSdt, lblErrEmail, lblErrCCHN, lblErrTenDangNhap, lblErrMatKhau;
+    private JLabel lblErrHoTen, lblErrSdt, lblErrEmail, lblErrCCHN, lblErrDiaChi, lblErrTenDangNhap, lblErrMatKhau; // Thêm lblErrDiaChi
     private ManHinhNhanVien parentScreen;
     
     private JLabel lblTitle;
@@ -597,7 +605,8 @@ class DialogThemNhanVien extends JDialog {
     private int editRow; 
     private String currentChucVu = "Dược sĩ";
 
-    public DialogThemNhanVien(Frame parent, ManHinhNhanVien parentScreen, int editRow, String hoten, String cchn, String sdt, String email, String chucVu, String trangThai, String tenDangNhap, String matKhau) {
+    // Cập nhật constructor để nhận thêm biến diaChi
+    public DialogThemNhanVien(Frame parent, ManHinhNhanVien parentScreen, int editRow, String hoten, String cchn, String sdt, String email, String diaChi, String chucVu, String trangThai, String tenDangNhap, String matKhau) {
         super(parent, editRow == -1 ? "Thêm nhân viên mới" : "Chỉnh sửa nhân viên", true);
         this.parentScreen = parentScreen;
         this.editRow = editRow;
@@ -627,6 +636,11 @@ class DialogThemNhanVien extends JDialog {
             if (email != null && !email.trim().isEmpty() && !email.equals("Chưa cập nhật") && !email.equals("email@mycare.vn")) { 
                 txtEmail.setText(email); 
                 txtEmail.setForeground(Color.BLACK); 
+            }
+            // Điền địa chỉ cũ vào TextField khi Edit
+            if (diaChi != null && !diaChi.trim().isEmpty() && !diaChi.equals("Nhập địa chỉ")) { 
+                txtDiaChi.setText(diaChi); 
+                txtDiaChi.setForeground(Color.BLACK); 
             }
             
             if (tenDangNhap != null && !tenDangNhap.trim().isEmpty()) {
@@ -687,6 +701,7 @@ class DialogThemNhanVien extends JDialog {
         lblErrSdt = createErrorLabel();
         lblErrEmail = createErrorLabel();
         lblErrCCHN = createErrorLabel();
+        lblErrDiaChi = createErrorLabel(); // Khởi tạo lỗi cho Địa chỉ
         lblErrTenDangNhap = createErrorLabel();
         lblErrMatKhau = createErrorLabel();
 
@@ -723,16 +738,27 @@ class DialogThemNhanVien extends JDialog {
         gbc.gridx = 1;
         pnlBody.add(lblErrEmail, gbc);
 
-        // Dòng 3: Số CCHN (Xóa trường chức vụ)
-        gbc.gridx = 0; gbc.gridy = 6; gbc.gridwidth = 2;
+        // Dòng 3: Số CCHN và Địa chỉ
+        gbc.gridwidth = 1;
+        gbc.gridx = 0; gbc.gridy = 6;
         pnlBody.add(createLabel("Số CCHN", false), gbc);
+        
+        gbc.gridx = 1;
+        pnlBody.add(createLabel("Địa chỉ", true), gbc); // Địa chỉ bắt buộc
 
-        gbc.gridy = 7;
+        gbc.gridx = 0; gbc.gridy = 7;
         txtCCHN = createTextField("CCHN-xxxx");
         pnlBody.add(txtCCHN, gbc);
         
-        gbc.gridy = 8;
+        gbc.gridx = 1;
+        txtDiaChi = createTextField("Nhập địa chỉ");
+        pnlBody.add(txtDiaChi, gbc);
+        
+        gbc.gridx = 0; gbc.gridy = 8;
         pnlBody.add(lblErrCCHN, gbc);
+        
+        gbc.gridx = 1;
+        pnlBody.add(lblErrDiaChi, gbc);
 
         // Dòng 4: Thông tin Đăng nhập
         gbc.gridwidth = 1;
@@ -804,6 +830,7 @@ class DialogThemNhanVien extends JDialog {
             String cchn = txtCCHN.getText().trim();
             String sdt = txtSdt.getText().trim();
             String email = txtEmail.getText().trim();
+            String diaChi = txtDiaChi.getText().trim(); // Lấy dữ liệu địa chỉ
             String trangThaiUI = cboTrangThai.getSelectedItem().toString();
             
             String tenDangNhap = txtTenDangNhap.getText().trim();
@@ -814,6 +841,7 @@ class DialogThemNhanVien extends JDialog {
             if(sdt.equals("0912345678")) sdt = "";
             if(email.equals("email@mycare.vn")) email = "";
             if(cchn.equals("CCHN-xxxx")) cchn = "";
+            if(diaChi.equals("Nhập địa chỉ")) diaChi = "";
             if(tenDangNhap.equals("Tên đăng nhập (viết liền)")) tenDangNhap = "";
             if(matKhau.equals("Nhập mật khẩu")) matKhau = "";
 
@@ -822,6 +850,7 @@ class DialogThemNhanVien extends JDialog {
             resetError(txtSdt, lblErrSdt);
             resetError(txtEmail, lblErrEmail);
             resetError(txtCCHN, lblErrCCHN);
+            resetError(txtDiaChi, lblErrDiaChi);
             resetError(txtTenDangNhap, lblErrTenDangNhap);
             resetError(txtMatKhau, lblErrMatKhau);
 
@@ -840,6 +869,10 @@ class DialogThemNhanVien extends JDialog {
             }
             if (!email.isEmpty() && !email.matches("^[A-Za-z0-9+_.-]+@(.+)$")) {
                 setError(txtEmail, lblErrEmail, "* Email không đúng định dạng");
+                hasError = true;
+            }
+            if (diaChi.isEmpty()) { // Kiểm tra rỗng cho địa chỉ
+                setError(txtDiaChi, lblErrDiaChi, "* Vui lòng nhập địa chỉ");
                 hasError = true;
             }
             if (tenDangNhap.isEmpty()) {
@@ -878,7 +911,8 @@ class DialogThemNhanVien extends JDialog {
             if (editRow != -1) {
                 // Thực thi quy trình Cập nhật
                 String id = mainModel.getValueAt(editRow, 0).toString();
-                NhanVien nv = new NhanVien(id, hoten, cchn, sdt, email, chucVuEnum, trangThaiEnum);
+                // BẮT BUỘC Entity.NhanVien phải có thuộc tính diaChi trong Constructor
+                NhanVien nv = new NhanVien(id, hoten, cchn, sdt, email, diaChi, chucVuEnum, trangThaiEnum); 
                 
                 String ketQua = busNV.capNhatNhanVienVaTaiKhoan(nv, tenDangNhap, matKhau);
                 
@@ -887,8 +921,9 @@ class DialogThemNhanVien extends JDialog {
                     mainModel.setValueAt(cchn, editRow, 2);
                     mainModel.setValueAt(sdt, editRow, 3);
                     mainModel.setValueAt(email, editRow, 4);
-                    mainModel.setValueAt(chucVuUI, editRow, 5);
-                    mainModel.setValueAt(trangThaiUI, editRow, 6);
+                    mainModel.setValueAt(diaChi, editRow, 5); // Cập nhật lại UI địa chỉ
+                    mainModel.setValueAt(chucVuUI, editRow, 6);
+                    mainModel.setValueAt(trangThaiUI, editRow, 7);
                     
                     parentScreen.updateStats();
                     parentScreen.refreshSidebarIfVisible(editRow);
@@ -935,12 +970,13 @@ class DialogThemNhanVien extends JDialog {
                 // Tạo ID mới tự động tăng 4 chữ số
                 String idMoi = prefixId + String.format("%04d", maxIdNum + 1); 
                 
-                NhanVien nv = new NhanVien(idMoi, hoten, cchn, sdt, email, chucVuEnum, trangThaiEnum);
+                // BẮT BUỘC Entity.NhanVien phải có thuộc tính diaChi trong Constructor
+                NhanVien nv = new NhanVien(idMoi, hoten, cchn, sdt, email, diaChi, chucVuEnum, trangThaiEnum); 
                 
                 String ketQua = busNV.themNhanVienVaTaiKhoan(nv, tenDangNhap, matKhau);
                 
                 if (ketQua.equals("SUCCESS")) {
-                    mainModel.addRow(new Object[]{ idMoi, hoten, cchn, sdt, email, chucVuUI, trangThaiUI, "" });
+                    mainModel.addRow(new Object[]{ idMoi, hoten, cchn, sdt, email, diaChi, chucVuUI, trangThaiUI, "" });
                     parentScreen.updateStats();
                     showNotification("Thành công", "Thêm nhân viên và tạo tài khoản thành công!<br>Mã tự tạo: <b>" + idMoi + "</b>", "success");
                     dispose();

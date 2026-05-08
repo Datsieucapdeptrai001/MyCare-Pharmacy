@@ -25,7 +25,8 @@ public class DAO_NhanVien {
     }
 
     public boolean themNhanVien(NhanVien nv) {
-        String sql = "INSERT INTO NhanVien (id, hoVaTen, soChungChiHanhNghe, sdt, email, chucVu, trangThaiLamViec) VALUES (?,?,?,?,?,?,?)";
+        // Cập nhật câu lệnh INSERT: thêm trường diaChi (8 tham số)
+        String sql = "INSERT INTO NhanVien (id, hoVaTen, soChungChiHanhNghe, sdt, email, diaChi, chucVu, trangThaiLamViec) VALUES (?,?,?,?,?,?,?,?)";
         Connection con = ConnectDB.getInstance().getConnection();
         try (PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setString(1, nv.getNhanVien()); 
@@ -33,23 +34,26 @@ public class DAO_NhanVien {
             ps.setString(3, nv.getSoChungChiHanhNghe());
             ps.setString(4, nv.getSdt());
             ps.setString(5, nv.getEmail());
-            ps.setString(6, nv.getChucVu().name());
-            ps.setString(7, nv.getTrangThaiLamViec().name());
+            ps.setString(6, nv.getDiaChi()); // Truyền giá trị địa chỉ
+            ps.setString(7, nv.getChucVu().name());
+            ps.setString(8, nv.getTrangThaiLamViec().name());
             return ps.executeUpdate() > 0;
         } catch (SQLException e) { e.printStackTrace(); return false; }
     }
 
     public boolean capNhatNhanVien(NhanVien nv) {
-        String sql = "UPDATE NhanVien SET hoVaTen=?,soChungChiHanhNghe=?,sdt=?,email=?,chucVu=?,trangThaiLamViec=? WHERE id=?";
+        // Cập nhật câu lệnh UPDATE: thêm trường diaChi
+        String sql = "UPDATE NhanVien SET hoVaTen=?,soChungChiHanhNghe=?,sdt=?,email=?,diaChi=?,chucVu=?,trangThaiLamViec=? WHERE id=?";
         Connection con = ConnectDB.getInstance().getConnection();
         try (PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setString(1, nv.getHoVaTen());
             ps.setString(2, nv.getSoChungChiHanhNghe());
             ps.setString(3, nv.getSdt());
             ps.setString(4, nv.getEmail());
-            ps.setString(5, nv.getChucVu().name());
-            ps.setString(6, nv.getTrangThaiLamViec().name());
-            ps.setString(7, nv.getNhanVien()); 
+            ps.setString(5, nv.getDiaChi()); // Truyền giá trị địa chỉ
+            ps.setString(6, nv.getChucVu().name());
+            ps.setString(7, nv.getTrangThaiLamViec().name());
+            ps.setString(8, nv.getNhanVien()); 
             return ps.executeUpdate() > 0;
         } catch (SQLException e) { e.printStackTrace(); return false; }
     }
@@ -72,6 +76,7 @@ public class DAO_NhanVien {
         nv.setSoChungChiHanhNghe(rs.getString("soChungChiHanhNghe"));
         nv.setSdt(rs.getString("sdt"));
         nv.setEmail(rs.getString("email"));
+        nv.setDiaChi(rs.getString("diaChi")); // Đọc giá trị địa chỉ từ CSDL
         try { nv.setChucVu(ChucVu.valueOf(rs.getString("chucVu"))); } catch (Exception ignored) {}
         try { nv.setTrangThaiLamViec(TrangThaiLamViec.valueOf(rs.getString("trangThaiLamViec"))); } catch (Exception ignored) {}
         return nv;
