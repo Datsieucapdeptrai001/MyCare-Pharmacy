@@ -728,7 +728,15 @@ public class TaoHoaDon extends JDialog {
                     }
                     int tongSoLuongCoBan = (int) (soLuong * tiLeQuyDoi);
                     
-                    busKho.xuLyXuatKhoFEFO(maSP, tongSoLuongCoBan); 
+                    // --- BẮT ĐẦU SỬA LỖI TRỪ 101 VIÊN ---
+                    // Trigger Database đã tự trừ đi số lượng thô (1 hộp -> DB tự trừ 1)
+                    // Do đó trên Java, ta chỉ cần gọi hàm trừ kho phần chênh lệch (100 - 1 = 99 viên)
+                    int soLuongCanTruBu = tongSoLuongCoBan - soLuong;
+                    
+                    if (soLuongCanTruBu > 0) {
+                        busKho.xuLyXuatKhoFEFO(maSP, soLuongCanTruBu); 
+                    }
+                    // --- KẾT THÚC SỬA LỖI ---
                 }
 
                 BUS.BUS_HoaDon busHD = new BUS.BUS_HoaDon();
@@ -1923,13 +1931,16 @@ public class TaoHoaDon extends JDialog {
         
         txt.addFocusListener(new java.awt.event.FocusAdapter() {
             public void focusGained(java.awt.event.FocusEvent e) {
-                if (txt.getText().equals(placeholder)) {
-                    txt.setText(""); txt.setForeground(Color.BLACK);
+                // Chỉ cần text chứa chữ nổi là tự động dọn dẹp sạch sẽ
+                if (txt.getText().contains(placeholder) || placeholder.contains(txt.getText().trim())) {
+                    txt.setText(""); 
+                    txt.setForeground(Color.BLACK);
                 }
             }
             public void focusLost(java.awt.event.FocusEvent e) {
-                if (txt.getText().isEmpty()) {
-                    txt.setForeground(Color.GRAY); txt.setText(placeholder);
+                if (txt.getText().trim().isEmpty()) {
+                    txt.setForeground(Color.GRAY); 
+                    txt.setText(placeholder);
                 }
             }
         });
@@ -1962,7 +1973,8 @@ public class TaoHoaDon extends JDialog {
 
         txtSearchProduct.addFocusListener(new java.awt.event.FocusAdapter() {
             public void focusGained(java.awt.event.FocusEvent e) {
-                if (txtSearchProduct.getText().equals(placeholderText)) {
+                // Đổi .equals thành .contains để bắt lỗi an toàn hơn
+                if (txtSearchProduct.getText().contains("Tìm tên sản phẩm")) {
                     txtSearchProduct.setText("");
                     txtSearchProduct.setForeground(Color.BLACK);
                     lblSearchIcon.setForeground(Color.decode("#1967D2")); 
@@ -1972,6 +1984,7 @@ public class TaoHoaDon extends JDialog {
                     ));
                 }
             }
+            // ... (giữ nguyên focusLost)
             public void focusLost(java.awt.event.FocusEvent e) {
                 if (txtSearchProduct.getText().trim().isEmpty()) {
                     txtSearchProduct.setForeground(Color.GRAY);
@@ -2475,7 +2488,8 @@ public class TaoHoaDon extends JDialog {
         javax.swing.Timer searchTimer = new javax.swing.Timer(300, e -> {
             String text = txtSearchProduct.getText().trim();
 
-            if (text.isEmpty() || text.equals(placeholderText.toLowerCase()) || text.equals(placeholderText)) {
+            // Thêm .contains để chặn hệ thống mang chữ nổi đi tìm kiếm
+            if (text.isEmpty() || text.contains("Tìm tên sản phẩm")) {
                 suggestionPopup.setVisible(false);
                 return;
             }
