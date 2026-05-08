@@ -1308,7 +1308,7 @@ public class ManHinhSanPham extends JPanel {
             Sheet sheet = workbook.createSheet("Danh Sach San Pham");
             
             Row headerRow = sheet.createRow(0);
-            String[] headers = {"id", "danhMuc", "dang", "ten", "tenVietTat", "nhaSanXuat", "hoatChat", "thueVAT", "hamLuong", "moTa", "donViDoCoBan", "giaBan", "ngayTao"};
+            String[] headers = {"id", "danhMuc", "dang", "ten", "tenVietTat", "nhaSanXuat", "hoatChat", "thueVAT", "hamLuong", "moTa", "donViDoCoBan", "ngayTao", "trangThai", "giaBan"};
             
             CellStyle headerStyle = workbook.createCellStyle();
             headerStyle.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
@@ -1338,8 +1338,9 @@ public class ManHinhSanPham extends JPanel {
                 row.createCell(8).setCellValue((sp.getHamLuong() != null && !sp.getHamLuong().isEmpty()) ? sp.getHamLuong() : "NULL");
                 row.createCell(9).setCellValue((sp.getMoTa() != null && !sp.getMoTa().isEmpty()) ? sp.getMoTa() : "NULL");
                 row.createCell(10).setCellValue(sp.getDonViDoCoBan() != null ? sp.getDonViDoCoBan() : "");
-                row.createCell(11).setCellValue(sp.getGiaBan());
-                row.createCell(12).setCellValue(sp.getNgayTao() != null ? sp.getNgayTao().format(dtf) : "");
+                row.createCell(11).setCellValue(sp.getNgayTao() != null ? sp.getNgayTao().format(dtf) : "");
+                row.createCell(12).setCellValue("HOAT_DONG");
+                row.createCell(13).setCellValue(sp.getGiaBan());
             }
             
             for (int i = 0; i < headers.length; i++) {
@@ -1441,7 +1442,7 @@ public class ManHinhSanPham extends JPanel {
                             } else {
                             	double giaBanMoi = 0;
                                 try {
-                                    String giaBanStr = formatter.formatCellValue(row.getCell(11))
+                                    String giaBanStr = formatter.formatCellValue(row.getCell(13))
                                                                 .replace(",", "").replace(".", "").trim();
                                     if (!giaBanStr.isEmpty() && !giaBanStr.equals("NULL"))
                                         giaBanMoi = Double.parseDouble(giaBanStr);
