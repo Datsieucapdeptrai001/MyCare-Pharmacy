@@ -1,3 +1,4 @@
+﻿@@ -0,0 +1,647 @@
 ﻿USE [master];
 GO
 
@@ -166,17 +167,6 @@ CREATE TABLE [dbo].[PhieuXuatKho] (
 )
 GO
 
-CREATE TABLE [dbo].[LogLoHang](
-    [id]        [int]           IDENTITY(1,1) NOT NULL PRIMARY KEY,
-    [hanhDong]  [nvarchar](50)  NULL,
-    [loHangId]  [nvarchar](50)  NULL,
-    [soLoHang]  [nvarchar](100) NULL,
-    [soLuongCu] [int]           NULL,
-    [soLuongMoi][int]           NULL,
-    [ghiChu]    [nvarchar](max) NULL,
-    [ngayTao]   [datetime2](7)  DEFAULT GETDATE()
-)
-GO
 
 CREATE TABLE [dbo].[NhanVien](
 	[id] [nvarchar](50) NOT NULL PRIMARY KEY,
@@ -645,3 +635,4 @@ USE [master]
 GO
 ALTER DATABASE [MYCAREPHARMACY] SET READ_WRITE
 GO
+No newline at end of file
