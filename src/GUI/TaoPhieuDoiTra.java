@@ -1,5 +1,7 @@
 package GUI;
-
+import java.awt.KeyEventDispatcher;
+import java.awt.KeyboardFocusManager;
+import java.awt.event.KeyEvent;
 import javax.swing.*;
 import Entity.*;
 import javax.swing.border.*;
@@ -63,8 +65,11 @@ public class TaoPhieuDoiTra extends JDialog {
     private final Color primaryBlue = Color.decode("#2563EB");
     private final Color borderGray = Color.decode("#E2E8F0");
     private final Color textDark = Color.decode("#212B36");
-    
-    private String maHDDangXuLy = "";   // Lưu mã để hủy nếu hết giờ
+    private Timer scannerTimer;
+    private String maHDDangXuLy = "";
+    private StringBuilder scanBuffer = new StringBuilder();
+    private long lastKeyTime = 0;
+    private KeyEventDispatcher scannerDispatcher;// Lưu mã để hủy nếu hết giờ
     public TaoPhieuDoiTra(Frame parent, DefaultTableModel model) {
         super(parent, "Tạo phiếu đổi / trả hàng", true);
         this.mainModel = model;
@@ -82,6 +87,9 @@ public class TaoPhieuDoiTra extends JDialog {
         initUI();
         setSize(850, 330); 
         setLocationRelativeTo(parent);
+        
+        // GỌI HÀM CÀI ĐẶT MÁY QUÉT SAU KHI KHỞI TẠO XONG UI
+        setupGlobalBarcodeScanner(); 
     }
 
     private void initUI() {
@@ -1113,7 +1121,85 @@ public class TaoPhieuDoiTra extends JDialog {
             }
         }
     }
+    private void setupGlobalBarcodeScanner() {
+        // Khởi tạo Timer: Tự động "nhấn Enter" sau khi máy quét dừng truyền chữ 200ms
+        scannerTimer = new Timer(200, e -> {
+            if (scanBuffer.length() > 0) {
+                String ketQuaQuet = scanBuffer.toString().trim();
+                if (ketQuaQuet.startsWith("HD-")) {
+                    isSelectingInvoice = true; // Khóa popup gợi ý để không bị che mất giao diện
+                    txtSearch.setText(ketQuaQuet);
+                    txtSearch.setForeground(Color.BLACK);
+                    isSelectingInvoice = false;
+                    
+                    scanBuffer.setLength(0);
+                    SwingUtilities.invokeLater(() -> xuLyTimKiemHD()); // Tự động chạy lệnh tìm kiếm
+                } else {
+                    scanBuffer.setLength(0);
+                }
+            }
+        });
+        scannerTimer.setRepeats(false); // Chỉ đếm 1 lần rồi dừng
 
+        scannerDispatcher = new KeyEventDispatcher() {
+            @Override
+            public boolean dispatchKeyEvent(KeyEvent e) {
+                if (!TaoPhieuDoiTra.this.isShowing() || !TaoPhieuDoiTra.this.isActive()) {
+                    return false;
+                }
+
+                if (e.getID() == KeyEvent.KEY_PRESSED) {
+                    long currentTime = System.currentTimeMillis();
+                    
+                    // Nếu thời gian gõ tay > 100ms -> Là người đang gõ bàn phím -> Xóa bộ đệm
+                    if (currentTime - lastKeyTime > 100) {
+                        scanBuffer.setLength(0);
+                    }
+                    lastKeyTime = currentTime;
+
+                    // Nếu app điện thoại có gửi phím Enter
+                    if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+                        scannerTimer.stop(); // Hủy đồng hồ chờ tự động
+                        if (scanBuffer.length() > 0) {
+                            String ketQuaQuet = scanBuffer.toString().trim();
+                            if (ketQuaQuet.startsWith("HD-")) {
+                                isSelectingInvoice = true;
+                                txtSearch.setText(ketQuaQuet);
+                                txtSearch.setForeground(Color.BLACK);
+                                isSelectingInvoice = false;
+                                
+                                scanBuffer.setLength(0);
+                                SwingUtilities.invokeLater(() -> xuLyTimKiemHD()); // Tự động tìm kiếm
+                                return true; // Chặn phím Enter để không bấm nhầm nút khác trên Form
+                            }
+                            scanBuffer.setLength(0);
+                        }
+                    } else {
+                        char c = e.getKeyChar();
+                        // Chỉ lưu các ký tự là chữ, số hoặc dấu gạch ngang
+                        if (Character.isLetterOrDigit(c) || c == '-') {
+                            scanBuffer.append(c);
+                            scannerTimer.restart(); // Mỗi lần quét 1 chữ, gia hạn thêm 200ms. Hết 200ms tự search!
+                        }
+                    }
+                }
+                return false;
+            }
+        };
+
+        KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(scannerDispatcher);
+
+        // Hủy bộ lắng nghe và Timer khi đóng Form để giải phóng RAM
+        this.addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowClosed(java.awt.event.WindowEvent e) {
+                KeyboardFocusManager.getCurrentKeyboardFocusManager().removeKeyEventDispatcher(scannerDispatcher);
+                if (scannerTimer != null) {
+                    scannerTimer.stop();
+                }
+            }
+        });
+    }
     private void capNhatDieuKienDoiTra() {
         if (lblSoTienHoan == null || cboLyDo == null || ngayHoaDonGoc == null) return;
 
