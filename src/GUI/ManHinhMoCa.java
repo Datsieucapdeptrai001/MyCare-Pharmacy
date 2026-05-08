@@ -15,7 +15,7 @@ import java.util.Date;
  * Dialog Mở Ca – hiện ra sau khi Nhân Viên (STAFF) đăng nhập thành công.
  * Thiết kế theo mẫu Figma: chọn loại ca → kiểm đếm tiền đầu ca → xác nhận.
  */
-public class DialogMoCa extends JDialog {
+public class ManHinhMoCa extends JDialog {
 
     // ======================== CONSTANTS ========================
     private static final Color COLOR_GREEN   = Color.decode("#00A76F");
@@ -68,7 +68,7 @@ public class DialogMoCa extends JDialog {
     private JPanel     footerSwitcher;
 
     // ======================== CONSTRUCTOR ========================
-    public DialogMoCa(Frame parent) {
+    public ManHinhMoCa(Frame parent) {
         super(parent, "Mở ca làm việc", true);
         setUndecorated(true);
         setSize(680, 680);

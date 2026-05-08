@@ -104,9 +104,7 @@ public class BUS_Kho {
 
         if (loCu == null) {
             loHang.setTrangThai(suyRaTrangThai(loHang.getSoLuongLoHang(), loHang.getNgayHetHan()));
-            boolean ok = daoLoHang.themLoHang(loHang);
-
-            return ok;
+            return daoLoHang.themLoHang(loHang);
         }
 
         if (loCu.getTrangThai() != TrangThaiLoHang.AN) {
@@ -116,9 +114,7 @@ public class BUS_Kho {
         loHang.setId(loCu.getId());
         loHang.setTrangThai(suyRaTrangThai(loHang.getSoLuongLoHang(), loHang.getNgayHetHan()));
 
-        boolean ok = daoLoHang.khoiPhucVaCapNhatLoHang(loHang);
-
-        return ok;
+        return daoLoHang.khoiPhucVaCapNhatLoHang(loHang);
     }
 
     public boolean anLoHang(String maLoHang) {
@@ -128,9 +124,7 @@ public class BUS_Kho {
         if (lo == null) return false;
         if (lo.getTrangThai() == TrangThaiLoHang.AN) return true;
 
-        boolean ok = daoLoHang.anLoHang(maLoHang);
-
-        return ok;
+        return daoLoHang.anLoHang(maLoHang);
     }
 
     public boolean khoiPhucLoHang(String maLoHang) {
@@ -146,9 +140,7 @@ public class BUS_Kho {
             }
         }
 
-        boolean ok = daoLoHang.khoiPhucLoHang(maLoHang);
-
-        return ok;
+        return daoLoHang.khoiPhucLoHang(maLoHang);
     }
 
     public boolean capNhatSoLuongTon(String maLoHang, int soLuongMoi) {
@@ -158,9 +150,7 @@ public class BUS_Kho {
         LoHang lo = daoLoHang.getLoHangTheoId(maLoHang);
         if (lo == null) return false;
 
-        boolean ok = daoLoHang.capNhatSoLuongVaTrangThaiLo(maLoHang, soLuongMoi);
-
-        return ok;
+        return daoLoHang.capNhatSoLuongVaTrangThaiLo(maLoHang, soLuongMoi);
     }
 
     public boolean capNhatTrangThaiLo(String maLoHang, TrangThaiLoHang trangThaiMoi) {
@@ -174,11 +164,7 @@ public class BUS_Kho {
         LoHang lo = daoLoHang.getLoHangTheoId(maLoHang);
         if (lo == null || lo.getTrangThai() == TrangThaiLoHang.AN) return false;
 
-        boolean ok = daoLoHang.capNhatSoLuongVaTrangThaiLo(maLoHang, 0);
-
-       
-
-        return ok;
+        return daoLoHang.capNhatSoLuongVaTrangThaiLo(maLoHang, 0);
     }
 
     public boolean tonTaiMaLoDangHoatDong(String soLoHang) {
@@ -209,5 +195,18 @@ public class BUS_Kho {
 
     private boolean isBlank(String s) {
         return s == null || s.trim().isEmpty();
+    }
+
+    // =========================================================
+    // HÀM GỌI XUỐNG DAO ĐỂ XUẤT HỦY KHO
+    // =========================================================
+    public boolean xuatHuyKho(List<Object[]> danhSachXuat) {
+        // Kiểm tra an toàn: Nếu danh sách rỗng thì từ chối luôn
+        if (danhSachXuat == null || danhSachXuat.isEmpty()) {
+            return false;
+        }
+        
+        // Ném nguyên cục danh sách xuống DAO để nó tự chạy Transaction
+        return daoLoHang.thucThiXuatHuyKhoBangTransaction(danhSachXuat);
     }
 }

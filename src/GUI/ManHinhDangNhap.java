@@ -45,7 +45,7 @@ public class ManHinhDangNhap extends JFrame {
 
         // ĐẶT LOGO CHO CỬA SỔ (TASKBAR ICON)
         try {
-            String imagePath = "data/logo.png";
+            String imagePath = "D:\\MYCARE\\MyCare-Pharmacy\\data\\logo.png";
             File file = new File(imagePath);
             if (file.exists()) {
                 Image appIcon = ImageIO.read(file);
@@ -111,7 +111,7 @@ public class ManHinhDangNhap extends JFrame {
         pnlLogo.setBounds(215, 20, 70, 70);
         pnlLogo.setHorizontalAlignment(SwingConstants.CENTER);
         try {
-            File fileLogo = new File("data/logo.png");
+            File fileLogo = new File("D:\\Github\\MyCare-Pharmacy\\data\\logo.png");
             if (fileLogo.exists()) {
                 Image img = ImageIO.read(fileLogo);
                 pnlLogo.setIcon(new ImageIcon(img.getScaledInstance(70, 70, Image.SCALE_SMOOTH)));
@@ -379,7 +379,7 @@ public class ManHinhDangNhap extends JFrame {
                                     UserSession.getInstance().setLoaiCa(caDangMo.getLoaiCa());
                                     
                                 } else {
-                                    DialogMoCa dlg = new DialogMoCa(ManHinhDangNhap.this);
+                                    ManHinhMoCa dlg = new ManHinhMoCa(ManHinhDangNhap.this);
                                     dlg.setVisible(true);
                                     
                                     if (!dlg.isConfirmed()) {

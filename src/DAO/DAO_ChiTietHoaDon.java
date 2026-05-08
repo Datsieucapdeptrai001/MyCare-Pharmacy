@@ -18,10 +18,9 @@ public class DAO_ChiTietHoaDon {
     public DAO_ChiTietHoaDon() {}
 
     public boolean themChiTietDoiTra(String maHD, String tenSP, int soLuong, String ghiChu) {
-        // SỬA LỖI 1: Tên cột là 'ten' chứ không phải 'tenSanPham'
-        // SỬA LỖI 2: Lấy luôn donViDoLuongId để tránh bị null làm tàng hình sản phẩm
-        String sql = "INSERT INTO ChiTietHoaDon (hoaDonId, sanPhamId, donViDoLuongId, soLuong, ghiChu) " +
-                     "SELECT TOP 1 ?, sp.id, dv.id, ?, ? " +
+        // ĐÃ FIX: Thêm donGiaThucTe và thanhTien = 0 để chống lỗi ràng buộc NOT NULL của DB
+        String sql = "INSERT INTO ChiTietHoaDon (hoaDonId, sanPhamId, donViDoLuongId, soLuong, donGiaThucTe, thanhTien, ghiChu) " +
+                     "SELECT TOP 1 ?, sp.id, dv.id, ?, 0, 0, ? " +
                      "FROM SanPham sp " +
                      "LEFT JOIN DonViDoLuong dv ON sp.id = dv.sanPhamId " +
                      "WHERE sp.ten = ?";
@@ -31,7 +30,7 @@ public class DAO_ChiTietHoaDon {
             pst.setString(1, maHD);
             pst.setInt(2, soLuong);
             pst.setString(3, ghiChu);
-            pst.setString(4, tenSP); // Tìm theo cột 'ten'
+            pst.setString(4, tenSP); 
             
             return pst.executeUpdate() > 0;
         } catch (Exception e) {
@@ -91,17 +90,21 @@ public class DAO_ChiTietHoaDon {
         return list;
     }
 
+ // HÀM 1:
     public boolean themCTHD(ChiTietHoaDon cthd) {
         if (cthd == null || cthd.getHoaDonId() == null || cthd.getDonViDoLuongId() == null || cthd.getSanPhamId() == null) {
             return false;
         }
-        String sql = "INSERT INTO ChiTietHoaDon (hoaDonId, donViDoLuongId, sanPhamId, soLuong) VALUES (?, ?, ?, ?)";
+        // ĐÃ FIX: Thêm donGiaThucTe và thanhTien
+        String sql = "INSERT INTO ChiTietHoaDon (hoaDonId, donViDoLuongId, sanPhamId, soLuong, donGiaThucTe, thanhTien) VALUES (?, ?, ?, ?, ?, ?)";
         try (Connection con = ConnectDB.getInstance().getConnection();
              PreparedStatement pst = con.prepareStatement(sql)) {
             pst.setString(1, cthd.getHoaDonId().getId());
             pst.setString(2, cthd.getDonViDoLuongId().getId());
             pst.setString(3, cthd.getSanPhamId().getId());
             pst.setInt(4, cthd.getSoLuong());
+            pst.setDouble(5, cthd.getDonGiaThucTe()); // Truyền giá gốc
+            pst.setDouble(6, cthd.getThanhTien());    // Truyền giá thực tế đã trừ KM
             return pst.executeUpdate() > 0;
         } catch (SQLException e) {
             e.printStackTrace();
@@ -109,16 +112,20 @@ public class DAO_ChiTietHoaDon {
         return false;
     }
     
+    // HÀM 2:
     public boolean themCTHD(Connection con, ChiTietHoaDon cthd) throws SQLException {
         if (cthd == null || cthd.getHoaDonId() == null || cthd.getDonViDoLuongId() == null || cthd.getSanPhamId() == null) {
             return false;
         }
-        String sql = "INSERT INTO ChiTietHoaDon (hoaDonId, donViDoLuongId, sanPhamId, soLuong) VALUES (?, ?, ?, ?)";
+        // ĐÃ FIX: Thêm donGiaThucTe và thanhTien
+        String sql = "INSERT INTO ChiTietHoaDon (hoaDonId, donViDoLuongId, sanPhamId, soLuong, donGiaThucTe, thanhTien) VALUES (?, ?, ?, ?, ?, ?)";
         try (PreparedStatement pst = con.prepareStatement(sql)) {
             pst.setString(1, cthd.getHoaDonId().getId());
             pst.setString(2, cthd.getDonViDoLuongId().getId());
             pst.setString(3, cthd.getSanPhamId().getId());
             pst.setInt(4, cthd.getSoLuong());
+            pst.setDouble(5, cthd.getDonGiaThucTe()); // Truyền giá gốc
+            pst.setDouble(6, cthd.getThanhTien());    // Truyền giá thực tế đã trừ KM
             return pst.executeUpdate() > 0;
         }
     }

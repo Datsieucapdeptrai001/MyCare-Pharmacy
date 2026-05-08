@@ -13,7 +13,15 @@ public class BUS_ThongKe {
     }
 
     // LEGACY METHODS
-
+    public double getTongTienHangHomNay(String maNV, int ca) { 
+        return dao.getTongTienHangHomNay(maNV, ca); 
+    }
+    public double getTienHoanTraTheoCa(String maNV, LocalDateTime start) { 
+        return dao.getTienHoanTraTheoCa(maNV, start); 
+    }
+    public double getTongKhuyenMaiHomNay(String maNV, int ca) { 
+        return dao.getTongKhuyenMaiHomNay(maNV, ca); 
+    }
     private boolean kiemTraThoiGianHople(LocalDateTime tuNgay, LocalDateTime denNgay) {
         if (tuNgay == null || denNgay == null) return false;
         if (tuNgay.isAfter(denNgay)) return false;
@@ -167,8 +175,8 @@ public class BUS_ThongKe {
     public int getSoLoHangSapHetHanKhoang(int days) { return dao.getSoLoHangSapHetHanKhoang(days); }
     public List<Object[]> getLoHangSapHetHanNhanh(int days) { return dao.getLoHangSapHetHanNhanh(days); }
     
-    public double getDoanhThu7NgayQua() { return dao.getDoanhThu7NgayQua(); }
-    public int getSoHoaDon7NgayQua() { return dao.getSoHoaDon7NgayQua(); }
+    public double getDoanhThu7NgayQua(String maNV) { return dao.getDoanhThu7NgayQua(maNV); }
+    public int getSoHoaDon7NgayQua(String maNV) { return dao.getSoHoaDon7NgayQua(maNV); }
     public int getTongPhieuDoiTra() { return dao.getTongPhieuDoiTra(); }
     public int getPhieuDoiTraChoXuLy() { return dao.getPhieuDoiTraChoXuLy(); }
     

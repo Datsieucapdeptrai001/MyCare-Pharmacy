@@ -10,7 +10,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;  
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -383,7 +383,6 @@ public class DAO_LoHang {
         }
     }
 
-
     private LoHang mapLoHang(ResultSet rs) throws SQLException {
         LoHang lh = new LoHang();
 
@@ -418,7 +417,7 @@ public class DAO_LoHang {
 
         return lh;
     }
- // DAO_LoHang.java — thêm method này
+
     public int xuatKhoFEFO(String maSP, int soLuongCanXuat) {
         Connection con = null;
         int soLuongBanDau = soLuongCanXuat;
@@ -427,7 +426,7 @@ public class DAO_LoHang {
             con = ConnectDB.getInstance().getConnection();
             con.setAutoCommit(false);
 
-            List<LoHang> dsLo = layLoTheoSP(con, maSP);   // gọi overload nội bộ
+            List<LoHang> dsLo = layLoTheoSP(con, maSP);   
             int soLuongConThieu = soLuongCanXuat;
 
             for (LoHang lh : dsLo) {
@@ -438,7 +437,7 @@ public class DAO_LoHang {
                 int soLuongXuat = Math.min(lh.getSoLuongLoHang(), soLuongConThieu);
                 int soLuongMoi = lh.getSoLuongLoHang() - soLuongXuat;
 
-                boolean ok = capNhatSoLuongVaTrangThaiLo(con, lh.getId(), soLuongMoi);  // overload nội bộ
+                boolean ok = capNhatSoLuongVaTrangThaiLo(con, lh.getId(), soLuongMoi);  
                 if (!ok) throw new SQLException("Không cập nhật được lô: " + lh.getId());
 
                 soLuongConThieu -= soLuongXuat;
@@ -456,6 +455,82 @@ public class DAO_LoHang {
             return soLuongBanDau;
         } finally {
             try { if (con != null) con.setAutoCommit(true); } catch (SQLException e) { e.printStackTrace(); }
+        }
+    }
+
+    // =========================================================
+    // CÁC HÀM XỬ LÝ XUẤT HỦY KHO TỪ MANHINHXUATKHO
+    // =========================================================
+    
+    public boolean thucThiXuatHuyKhoBangTransaction(List<Object[]> danhSachXuat) {
+        Connection con = ConnectDB.getInstance().getConnection();
+        if (con == null) return false;
+
+        try {
+            // DAO tự quản lý Transaction (Tắt AutoCommit)
+            con.setAutoCommit(false);
+
+            for (Object[] item : danhSachXuat) {
+                String maLo = item[0].toString();
+                int slXuat = Integer.parseInt(item[1].toString());
+                String lyDo = item[2].toString();
+
+                // 1. Trừ số lượng tồn kho (Đã bổ sung LTRIM, RTRIM gọt khoảng trắng)
+                if (!truTonKhoInternal(maLo, slXuat, con)) {
+                    con.rollback(); 
+                    return false;
+                }
+
+                // 2. Ghi nhận vào sổ lịch sử xuất hủy
+                if (!ghiNhanLichSuXuatHuyInternal(maLo, slXuat, lyDo, con)) {
+                    con.rollback(); 
+                    return false;
+                }
+            }
+
+            // Nếu mọi thứ trơn tru -> Chốt sổ lưu vào DB
+            con.commit();
+            return true;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            try {
+                con.rollback(); // Có lỗi bất ngờ -> Hoàn tác toàn bộ
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+            return false;
+        } finally {
+            try {
+                con.setAutoCommit(true); // Trả kết nối về trạng thái ban đầu
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    // --- Các hàm phụ trợ (chỉ chạy nội bộ trong Transaction) ---
+    
+    private boolean truTonKhoInternal(String soLo, int soLuongXuat, Connection con) throws SQLException {
+        // [FIX LỖI TH2]: Dùng UPPER(LTRIM(RTRIM())) để gọt sạch khoảng trắng thừa trong DB
+        String sql = "UPDATE LoHang SET soLuongLoHang = soLuongLoHang - ? " +
+                     "WHERE UPPER(LTRIM(RTRIM(soLoHang))) = UPPER(LTRIM(RTRIM(?))) AND soLuongLoHang >= ?";
+        try (PreparedStatement stmt = con.prepareStatement(sql)) {
+            stmt.setInt(1, soLuongXuat);
+            stmt.setString(2, soLo);
+            stmt.setInt(3, soLuongXuat); 
+            return stmt.executeUpdate() > 0;
+        }
+    }
+
+    private boolean ghiNhanLichSuXuatHuyInternal(String soLo, int soLuongXuat, String lyDo, Connection con) throws SQLException {
+        // Lưu lịch sử vào bảng PhieuXuatKho
+        String sql = "INSERT INTO PhieuXuatKho (SoLoHang, SoLuongXuat, LyDoXuat, NgayXuat) VALUES (?, ?, ?, CURRENT_TIMESTAMP)";
+        try (PreparedStatement stmt = con.prepareStatement(sql)) {
+            stmt.setString(1, soLo.trim()); // Trim an toàn
+            stmt.setInt(2, soLuongXuat);
+            stmt.setString(3, lyDo);
+            return stmt.executeUpdate() > 0;
         }
     }
 }

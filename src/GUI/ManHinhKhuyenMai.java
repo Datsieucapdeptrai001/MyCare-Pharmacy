@@ -1461,14 +1461,25 @@ public class ManHinhKhuyenMai extends JPanel {
                             public void mousePressed(MouseEvent e) {
                                 if (SwingUtilities.isLeftMouseButton(e)) {
                                     isSelecting = true; 
-                                    getTextField().setText(word);
-                                    getTextField().setCaretPosition(word.length());
-                                    getTextField().setForeground(COLOR_TEXT_MAIN);
-                                    popupMenu.setVisible(false);
-                                    // Thêm delay nhỏ để tránh Event Listener của Java kích hoạt lặp
-                                    Timer timer = new Timer(50, evt -> isSelecting = false);
-                                    timer.setRepeats(false);
-                                    timer.start();
+                                    
+                                    // BƯỚC 1: Ép kết thúc bộ gõ tiếng Việt (Unikey/EVKey) ngay lập tức
+                                    // Nếu không gọi hàm này, chữ đang gõ dở sẽ bị rớt vào ô text SAU KHI gọi setText.
+                                    if (getTextField().getInputContext() != null) {
+                                        getTextField().getInputContext().endComposition();
+                                    }
+
+                                    // BƯỚC 2: Bọc setText vào invokeLater để đảm bảo nó chạy sau khi bộ gõ đã xả chữ cũ ra
+                                    SwingUtilities.invokeLater(() -> {
+                                        getTextField().setText(word);
+                                        getTextField().setCaretPosition(word.length());
+                                        getTextField().setForeground(COLOR_TEXT_MAIN);
+                                        popupMenu.setVisible(false);
+                                        
+                                        // Thêm delay nhỏ để tránh Event Listener của Java kích hoạt lặp
+                                        Timer timer = new Timer(50, evt -> isSelecting = false);
+                                        timer.setRepeats(false);
+                                        timer.start();
+                                    });
                                 }
                             }
                         });

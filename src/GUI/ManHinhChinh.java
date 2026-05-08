@@ -457,26 +457,42 @@ public class ManHinhChinh extends JPanel {
 
         boolean isAdmin = UserSession.getInstance().isAdmin();
 
+        // --- BẮT ĐẦU PHẦN ĐƯỢC FIX ---
         int soHD = busThongKe.getHoaDonHomNay(filterMaNV, filterCa);
-        double tHang = busThongKe.getDoanhThuHomNay(filterMaNV, filterCa);
+        
+        // 1. Lấy riêng Tiền hàng (chưa trừ khuyến mãi) và Tiền khuyến mãi
+        double tHang = busThongKe.getTongTienHangHomNay(filterMaNV, filterCa); 
+        double tKhuyenMai = busThongKe.getTongKhuyenMaiHomNay(filterMaNV, filterCa); 
+        
+        // 2. Lấy Tổng thanh toán (Tiền thực thu sau khi đã trừ khuyến mãi)
+        double tThanhToan = busThongKe.getDoanhThuHomNay(filterMaNV, filterCa); 
+        
+        // 3. Tính toán Tiền mặt và Chuyển khoản dựa trên Tổng Thanh Toán (thực thu)
         double tMat = busThongKe.getDoanhThuTienMatHomNay(filterMaNV, filterCa);
-        double ck = tHang - tMat;
+        double ck = tThanhToan - tMat; 
+        // --- KẾT THÚC PHẦN ĐƯỢC FIX ---
 
         JPanel body = new JPanel(new GridLayout(1, 3, 12, 0)); body.setBackground(BG);
 
         JPanel c1 = wCard(); c1.setLayout(new BoxLayout(c1, BoxLayout.Y_AXIS));
         addLine(c1, "CHART", "KẾT QUẢ ĐÃ LỌC", null, BLUE, true);
         addLine(c1, "Số hóa đơn:", String.valueOf(soHD), Color.BLACK, false);
+        
+        // --- BẮT ĐẦU PHẦN FIX UI ---
         addLine(c1, "Tiền hàng:", formatMoney((long)tHang), Color.BLACK, false);
-        addLine(c1, "Khuyến mãi:", "-0đ", GREEN, false);
+        addLine(c1, "Khuyến mãi:", "-" + formatMoney((long)tKhuyenMai), GREEN, false); // Bỏ hardcode -0đ
         c1.add(new JSeparator() {{ setMaximumSize(new Dimension(Integer.MAX_VALUE, 1)); }});
-        addLine(c1, "Tổng thanh toán:", formatMoney((long)tHang), BLUE, true);
+        addLine(c1, "Tổng thanh toán:", formatMoney((long)tThanhToan), BLUE, true); // Hiển thị số tiền thực thu
+        
         c1.add(box(8));
+        
         addLine(c1, "ĐỐI CHIẾU THU CHI", null, Color.GRAY, false);
         addLine(c1, "⇄ Tiền mặt thực thu", formatMoney((long)tMat), Color.BLACK, false);
-        addLine(c1, "↔ Chuyển khoản", formatMoney((long)ck), Color.BLACK, false);
+        addLine(c1, "↔ Chuyển khoản", formatMoney((long)ck), Color.BLACK, false); // Chuyển khoản đã tính lại chuẩn xác
         c1.add(new JSeparator() {{ setMaximumSize(new Dimension(Integer.MAX_VALUE, 1)); }});
-        addLine(c1, "Tổng thực thu", formatMoney((long)tHang), BLUE, true);
+        addLine(c1, "Tổng thực thu", formatMoney((long)tThanhToan), BLUE, true); // Hiển thị số tiền thực thu
+        // --- KẾT THÚC PHẦN FIX UI ---
+        
         body.add(c1);
 
         JPanel c2 = wCard(); c2.setLayout(new BoxLayout(c2, BoxLayout.Y_AXIS));
@@ -487,8 +503,8 @@ public class ManHinhChinh extends JPanel {
             lk.setFont(new Font("Segoe UI", Font.PLAIN, 11)); lk.setForeground(Color.GRAY); lk.setAlignmentX(CENTER_ALIGNMENT);
             c2.add(Box.createVerticalGlue()); c2.add(lk); c2.add(Box.createVerticalGlue());
         } else {
-            double dt7 = busThongKe.getDoanhThu7NgayQua();
-            int hd7 = busThongKe.getSoHoaDon7NgayQua();
+            double dt7 = busThongKe.getDoanhThu7NgayQua(filterMaNV);
+            int hd7 = busThongKe.getSoHoaDon7NgayQua(filterMaNV);
             addLine(c2, "Số hóa đơn:", String.valueOf(hd7), Color.BLACK, false);
             addLine(c2, "Doanh thu:", formatMoney((long)dt7), GREEN, true);
         }
@@ -517,8 +533,8 @@ public class ManHinhChinh extends JPanel {
         double dtCa = busThongKe.getDoanhThuTheoCa(maNV, ca.getThoiGianBatDau());
         double tmBanHang = busThongKe.getDoanhThuTienMatTheoCa(maNV, ca.getThoiGianBatDau()); 
         
-        // TODO: Hàm này Pột nhớ bổ sung trong BUS nha (Chưa có thì tạm lấy số 0 chạy thử)
-        double tmHoanTra = 0; 
+        // ĐÃ FIX: Tính tiền hoàn trả từ Database thay vì gán bằng 0
+        double tmHoanTra = busThongKe.getTienHoanTraTheoCa(maNV, ca.getThoiGianBatDau()); 
 
         Window pw = SwingUtilities.getWindowAncestor(this);
         hienThiPhieuXacNhanCuoi((Frame) pw, ca, maNV, dtCa, tmBanHang, tmHoanTra);

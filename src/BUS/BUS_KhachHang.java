@@ -17,100 +17,72 @@ public class BUS_KhachHang {
     public List<KhachHang> getDSKhachHang() {
         return daoKhachHang.getDSKhachHang();
     }
+    
     public KhachHang getKhachHangTheoSDT(String sdt) {
         if (sdt == null || sdt.trim().isEmpty()) {
             return null;
         }
         return daoKhachHang.getKhachHangTheoSDT(sdt);
     }
+    
     public boolean validateThongTin(KhachHang kh) {
-        if (kh.getId() == null || kh.getId().trim().isEmpty()) {
-            System.out.println("Lỗi: Mã khách hàng không được để trống.");
-            return false;
-        }
-
-        if (kh.getHoVaTen() == null || kh.getHoVaTen().trim().isEmpty()) {
-            System.out.println("Lỗi: Tên khách hàng không được để trống.");
-            return false;
-        }
-
+        if (kh.getId() == null || kh.getId().trim().isEmpty()) return false;
+        if (kh.getHoVaTen() == null || kh.getHoVaTen().trim().isEmpty()) return false;
         String sdtRegex = "^0\\d{9}$";
-        if (kh.getSdt() == null || !Pattern.matches(sdtRegex, kh.getSdt())) {
-            System.out.println("Lỗi: Số điện thoại không hợp lệ.");
-            return false;
-        }
-
+        if (kh.getSdt() == null || !Pattern.matches(sdtRegex, kh.getSdt())) return false;
         return true;
     }
 
     public boolean themKhachHang(KhachHang kh) {
         if (validateThongTin(kh)) {
-            if (daoKhachHang.getKhachHangTheoSDT(kh.getSdt()) != null) {
-                System.out.println("Lỗi: Số điện thoại này đã được đăng ký cho khách hàng khác.");
-                return false;
-            }
-
-            if (kh.getNgayTao() == null) {
-                kh.setNgayTao(LocalDateTime.now());
-            }
-
+            if (daoKhachHang.getKhachHangTheoSDT(kh.getSdt()) != null) return false;
+            if (kh.getNgayTao() == null) kh.setNgayTao(LocalDateTime.now());
             return daoKhachHang.themKhachHang(kh);
         }
-
         return false;
     }
+    
     public KhachHang timKhachHangTheoMa(String id) {
         return daoKhachHang.timKhachHangTheoMa(id);
     }
+    
     public List<KhachHang> traCuuKhachHang(String tuKhoa) {
         List<KhachHang> dsToanBo = daoKhachHang.getDSKhachHang();
         List<KhachHang> dsKetQua = new ArrayList<>();
-
-        if (tuKhoa == null || tuKhoa.trim().isEmpty()) {
-            return dsToanBo;
-        }
-
+        if (tuKhoa == null || tuKhoa.trim().isEmpty()) return dsToanBo;
         tuKhoa = tuKhoa.trim().toLowerCase();
-
         for (KhachHang kh : dsToanBo) {
-            if (kh == null) {
-                continue;
-            }
-
+            if (kh == null) continue;
             String sdt = kh.getSdt();
             String hoTen = kh.getHoVaTen();
-
             boolean trungSdt = sdt != null && sdt.contains(tuKhoa);
             boolean trungHoTen = hoTen != null && hoTen.toLowerCase().contains(tuKhoa);
-
-            if (trungSdt || trungHoTen) {
-                dsKetQua.add(kh);
-            }
+            if (trungSdt || trungHoTen) dsKetQua.add(kh);
         }
-
         return dsKetQua;
     }
-    // Nghiệp vụ: Tích điểm khi khách mua hàng 
-    // Tôi bổ sung tham số 'soTienThanhToan' vì phải biết
+    
     public boolean tichDiem(String sdtKhachHang, double soTienThanhToan) {
         KhachHang kh = daoKhachHang.getKhachHangTheoSDT(sdtKhachHang);
-
-        if (kh == null) {
-            return false;
-        }
-
+        if (kh == null) return false;
         int diemHienTai = kh.getDiemTichLuy();
         int diemCongThem = (int) (soTienThanhToan / 1000);
         int diemMoi = diemHienTai + diemCongThem;
-
         kh.setDiemTichLuy(diemMoi);
+        return daoKhachHang.capNhatDiemTichLuy(kh.getId(), diemMoi);
+    }
 
-        boolean ketQua = daoKhachHang.capNhatDiemTichLuy(kh.getId(), diemMoi);
-
-        if (ketQua) {
-            System.out.println("Đã tích thêm " + diemCongThem + " điểm cho khách hàng " + kh.getHoVaTen());
+    // ========================================================
+    // FIX: 2 HÀM BỔ SUNG ĐỂ CHO PHÉP THÊM / SỬA KHÁCH HÀNG 
+    // ========================================================
+    public boolean capNhatKhachHang(KhachHang kh) {
+        if (validateThongTin(kh)) {
+            return daoKhachHang.capNhatKhachHang(kh);
         }
+        return false;
+    }
 
-        return ketQua;
+    public String phatSinhMaKHTiepTheo() {
+        return daoKhachHang.phatSinhMaKHTiepTheo();
     }
 }

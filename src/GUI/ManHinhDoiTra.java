@@ -10,8 +10,14 @@ import java.util.ArrayList;
 import java.util.List;
 import BUS.*;
 import Utils.UserSession;
+import javax.swing.Timer;
+import java.time.LocalDateTime;
+import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
 public class ManHinhDoiTra extends JPanel {
-    
+	private Timer autoCancelTimer;
+	private java.util.Map<String, java.time.LocalDateTime> mapThoiGianTao = new java.util.HashMap<>();
     private JTable table;
     private DefaultTableModel model;
     private TableRowSorter<DefaultTableModel> sorter;
@@ -20,25 +26,36 @@ public class ManHinhDoiTra extends JPanel {
     private JTextField txtSearch;
     private BUS_HoaDon busHD = new BUS_HoaDon();
     private BUS_ChiTietHoaDon busCTHD = new BUS_ChiTietHoaDon();
- // --- CÁC BIẾN CHO KHUNG CHI TIẾT SỔ XUỐNG ---
     private JPanel pnlDetail, pnlRightWrapper; // Bổ sung pnlRightWrapper
     private JLabel lblDetailTitle, lblDetailDate, lblDetailEmp;
     private JPanel pnlDetailProducts;
     private String expandedMaPhieu = ""; 
     private final int ROW_HEIGHT_NORMAL = 55;
     private int currentDetailHeight = 220;
+    private JLabel lblDetailTimer;
     public ManHinhDoiTra() {
         initUI();
         loadDataToTable();
         
-        // --- THÊM ĐOẠN NÀY ĐỂ TỰ ĐỘNG LÀM MỚI BẢNG ĐỔI TRẢ KHI MỞ TAB ---
+        // Kích hoạt đồng hồ đếm ngược trên bảng
+        khoiDongBoDemNguoc(); 
+        
         this.addComponentListener(new java.awt.event.ComponentAdapter() {
             @Override
             public void componentShown(java.awt.event.ComponentEvent e) {
                 loadDataToTable(); 
             }
         });
-        // ---------------------------------------------------------------
+        this.addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override
+            public void componentShown(java.awt.event.ComponentEvent e) {
+                if (txtSearch != null) {
+                    txtSearch.setText("Mã phiếu, mã HĐ gốc...");
+                    txtSearch.setForeground(Color.GRAY);
+                }
+                loadDataToTable(); // Gọi lại hàm load dữ liệu
+            }
+        });
     }
 
     private void initUI() {
@@ -355,94 +372,106 @@ public class ManHinhDoiTra extends JPanel {
         }
         table.repaint();
     }
-
+    private long layTienTrucTiepTuDB(String maPhieu, String loaiGhiChu) {
+        long tong = 0;
+        String sql = "SELECT ISNULL(SUM(ct.soLuong * dvl.gia), 0) FROM ChiTietHoaDon ct " +
+                     "JOIN DonViDoLuong dvl ON ct.donViDoLuongId = dvl.id AND ct.sanPhamId = dvl.sanPhamId " +
+                     "WHERE ct.hoaDonId = ?";
+        if (loaiGhiChu != null) sql += " AND ct.ghiChu = '" + loaiGhiChu + "'";
+        try (java.sql.Connection con = ConnectDB.ConnectDB.getInstance().getConnection();
+             java.sql.PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, maPhieu);
+            try (java.sql.ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) tong = (long) rs.getDouble(1);
+            }
+        } catch (Exception e) {}
+        return tong;
+    }
     private void loadDataToTable() {
         model.setRowCount(0);
-        BUS_TraHang busTra = new BUS_TraHang();
+        mapThoiGianTao.clear();
         DAO.DAO_HoaDon daoHD = new DAO.DAO_HoaDon();
-
-        // Phân quyền: ADMIN thấy tất cả, STAFF chỉ thấy phiếu của mình hôm nay
         Utils.UserSession session = Utils.UserSession.getInstance();
-        List<Object[]> ds;
-        if (session.isAdmin()) {
-            ds = busTra.layDanhSachPhieu();
-        } else {
-            String maNV = session.getMaNhanVien();
-            List<Object[]> staffDs = busTra.layDanhSachPhieuCuaNhanVien(maNV);
-            // Nếu maNV rỗng (session chưa load đủ) → fallback toàn bộ
-            ds = (staffDs != null) ? staffDs : busTra.layDanhSachPhieu();
-        }
-        
-        if (ds != null) {
-            for (Object[] row : ds) {
-                String maPhieu = row[0].toString();
-                String hoaDonGoc = row[1] != null ? row[1].toString() : "";
-                String loaiPhieu = row[3] != null ? row[3].toString() : "";
 
-                long tongTienTra = 0;
-                List<Object[]> dsTra = busTra.layChiTietPhieu(maPhieu);
-                if (dsTra != null) {
-                    for (Object[] sp : dsTra) {
-                        int sl = 1; try { sl = Integer.parseInt(sp[1].toString().replaceAll("[^0-9]", "")); } catch(Exception e){}
-                        long gia = 0; try { gia = Long.parseLong(sp[3].toString().replaceAll(",00$|\\.00$|,0$|\\.0$", "").replaceAll("[^0-9]", "")); } catch(Exception e){}
-                        if (gia <= 1) {
+        // 1. Lấy toàn bộ danh sách phiếu
+        List<Object[]> ds = daoHD.layDanhSachPhieuDoiTra();
+        if (ds == null) ds = new java.util.ArrayList<>();
+
+        // 2. Lấy giờ bắt đầu ca (nếu là nhân viên)
+        java.time.LocalDateTime shiftStart = null;
+        if (!session.isAdmin() && session.getCaHienTai() != null) {
+            shiftStart = session.getCaHienTai().getThoiGianBatDau();
+        }
+
+        for (Object[] dbRow : ds) {
+            String maPhieu = dbRow[0] != null ? dbRow[0].toString() : "";
+            String hoaDonGoc = dbRow[1] != null ? dbRow[1].toString() : "";
+            String khachHang = dbRow[2] != null ? dbRow[2].toString() : "Khách lẻ";
+            String loaiPhieu = dbRow[3] != null ? dbRow[3].toString() : "";
+            String ghiChuDB = dbRow[4] != null ? dbRow[4].toString() : "";
+            String ngayStr = dbRow[5] != null ? dbRow[5].toString() : "";
+
+            // ========================================================
+            // BỘ LỌC THEO CA LÀM VIỆC (ĐÃ BỔ SUNG ĐỌC NGÀY KHÔNG CÓ GIỜ)
+            // ========================================================
+            if (shiftStart != null && ngayStr != null && !ngayStr.trim().isEmpty()) {
+                java.time.LocalDateTime hdTime = null;
+                try {
+                    java.time.format.DateTimeFormatter formatter1 = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+                    hdTime = java.time.LocalDateTime.parse(ngayStr.trim(), formatter1);
+                } catch (Exception e1) {
+                    try {
+                        java.time.format.DateTimeFormatter formatter2 = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
+                        hdTime = java.time.LocalDateTime.parse(ngayStr.trim(), formatter2);
+                    } catch (Exception e2) {
+                        try {
+                            java.time.format.DateTimeFormatter formatter3 = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss[.S]");
+                            hdTime = java.time.LocalDateTime.parse(ngayStr.trim(), formatter3);
+                        } catch (Exception e3) {
                             try {
-                                Object[] info = daoHD.layThongTinGiaTuHDGoc(hoaDonGoc, sp[0].toString());
-                                // ĐÃ FIX: Ép kiểu chuẩn Double để không bị nhân 10 lần giá trị (.0)
-                                if (info != null && info[1] != null) gia = (long) Double.parseDouble(info[1].toString());
-                            } catch(Exception e){}
+                                // Thử format 4: CHỈ CÓ NGÀY (Khớp với dữ liệu thực tế DB của bạn)
+                                java.time.format.DateTimeFormatter formatter4 = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy");
+                                java.time.LocalDate dateOnly = java.time.LocalDate.parse(ngayStr.trim(), formatter4);
+                                // Ép thời gian về cuối ngày (23:59:59) để phiếu trong ngày không bị bộ lọc ca (shiftStart) loại bỏ
+                                hdTime = dateOnly.atTime(23, 59, 59);
+                            } catch (Exception e4) {
+                                System.err.println("Lỗi format ngày tại Đổi Trả! Chuỗi từ DB: [" + ngayStr + "]");
+                            }
                         }
-                        tongTienTra += gia * sl;
                     }
                 }
 
-                if (loaiPhieu.equalsIgnoreCase("Đổi hàng")) {
-                    long tongTienDoi = 0;
-                    List<Object[]> dsDoi = busTra.layDanhSachSanPhamDoi(maPhieu);
-                    if (dsDoi != null) {
-                        for (Object[] sp : dsDoi) {
-                            int sl = 1; try { sl = Integer.parseInt(sp[1].toString().replaceAll("[^0-9]", "")); } catch(Exception e){}
-                            long gia = 0; try { gia = Long.parseLong(sp[3].toString().replaceAll(",00$|\\.00$|,0$|\\.0$", "").replaceAll("[^0-9]", "")); } catch(Exception e){}
-                            if (gia <= 1) {
-                                try {
-                                    Object[] info = daoHD.layThongTinGiaTuHDGoc(maPhieu, sp[0].toString());
-                                    // ĐÃ FIX: Ép kiểu chuẩn Double
-                                    if (info != null && info[1] != null) gia = (long) Double.parseDouble(info[1].toString());
-                                } catch(Exception e){}
-                            }
-                            tongTienDoi += gia * sl;
-                        }
-                    }
-
-                    long diff = tongTienDoi - tongTienTra;
-
-                    // Sửa lỗi Database ghi nhầm chữ "Bù" thành "Hoàn"
-                    if (tongTienDoi == 0 && dsDoi != null && !dsDoi.isEmpty()) {
-                         long dbChenhLech = 0;
-                         try { if (row[6] != null) dbChenhLech = Long.parseLong(row[6].toString().replaceAll("[^0-9]", "")); } catch(Exception e){}
-                         
-                         long giaTriThoiLai = tongTienTra - dbChenhLech; 
-                         if (giaTriThoiLai > 0 && dbChenhLech > 0 && row[6].toString().contains("Bù")) {
-                             diff = -dbChenhLech; 
-                         } else {
-                             diff = row[6].toString().contains("Hoàn") ? -dbChenhLech : dbChenhLech;
-                         }
-                    }
-
-                    if (diff < 0) {
-                        row[6] = "Hoàn: " + String.format("%,dđ", Math.abs(diff)).replace(',', '.');
-                    } else if (diff > 0) {
-                        row[6] = "Bù: " + String.format("%,dđ", Math.abs(diff)).replace(',', '.');
-                    } else {
-                        row[6] = "0đ";
+                // Logic lọc:
+                if (hdTime != null) {
+                    if (hdTime.isBefore(shiftStart)) {
+                        continue; // Bỏ qua hóa đơn vì tạo trước khi mở ca
                     }
                 } else {
-                    row[5] = String.format("%,dđ", tongTienTra).replace(',', '.');
-                    row[6] = "0đ";
+                    continue; // Lỗi format quá nặng, bỏ qua để an toàn
                 }
-                
-                model.addRow(row);
             }
+            // ========================================================
+
+            // --- FIX TIỀN: Lấy trực tiếp từ chuỗi Ghi chú của Hóa đơn ---
+            String trangThai = "Chờ xử lý";
+            String loi = "";
+            String tienHoanStr = "0đ";
+            String chenhLechStr = "0đ";
+
+            if (ghiChuDB.contains("|")) {
+                String[] parts = ghiChuDB.split("\\|");
+                if (parts.length >= 1) trangThai = parts[0].trim();
+                if (parts.length >= 2) loi = parts[1].trim();
+                if (parts.length >= 3) tienHoanStr = parts[2].trim(); 
+                if (parts.length >= 4) chenhLechStr = parts[3].trim(); 
+            }
+
+            Object[] finalRow = new Object[]{
+                maPhieu, hoaDonGoc, khachHang, loaiPhieu, loi, 
+                tienHoanStr, 
+                chenhLechStr, trangThai, ngayStr, ""
+            };
+            model.addRow(finalRow);
         }
     }
 
@@ -537,10 +566,25 @@ public class ManHinhDoiTra extends JPanel {
                 lbl.setFont(new Font("Segoe UI", Font.BOLD, 14)); lbl.setForeground(Color.decode("#DC2626"));
             }
             if (c == 7) { 
-                if (v.equals("Hoàn thành")) { lbl.setBackground(Color.decode("#DCFCE7")); lbl.setForeground(Color.decode("#10B981")); }
-                else if (v.equals("Chờ xử lý")) { lbl.setBackground(Color.decode("#FEF3C7")); lbl.setForeground(Color.decode("#D97706")); } 
-                else if (v.equals("Từ chối")) { lbl.setBackground(Color.decode("#FEE2E2")); lbl.setForeground(Color.decode("#EF4444")); } 
-                else { lbl.setBackground(Color.decode("#F3F4F6")); lbl.setForeground(Color.decode("#6B7280")); }
+                String statusStr = (v != null) ? v.toString() : "";
+                lbl.setText(statusStr); // Chỉ hiển thị trạng thái gốc từ Database/Model
+                
+                if (statusStr.equals("Hoàn thành")) { 
+                    lbl.setBackground(Color.decode("#DCFCE7")); 
+                    lbl.setForeground(Color.decode("#10B981")); 
+                }
+                else if (statusStr.equals("Chờ xử lý")) { 
+                    lbl.setBackground(Color.decode("#FEF3C7")); 
+                    lbl.setForeground(Color.decode("#D97706")); 
+                } 
+                else if (statusStr.equals("Từ chối")) { 
+                    lbl.setBackground(Color.decode("#FEE2E2")); 
+                    lbl.setForeground(Color.decode("#EF4444")); 
+                } 
+                else { 
+                    lbl.setBackground(Color.decode("#F3F4F6")); 
+                    lbl.setForeground(Color.decode("#6B7280")); 
+                }
             }
             return lbl;
         }
@@ -568,8 +612,16 @@ public class ManHinhDoiTra extends JPanel {
         lblDetailTitle.setFont(new Font("Segoe UI", Font.BOLD, 15));
         lblDetailDate = new JLabel("Ngày tạo: --/--/----");
         lblDetailDate.setForeground(Color.GRAY);
+        
+        // --- THÊM KHỐI CODE SAU ĐÂY VÀO ---
+        lblDetailTimer = new JLabel("");
+        lblDetailTimer.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        lblDetailTimer.setForeground(Color.decode("#E11D48")); // Màu đỏ nổi bật
+        lblDetailTimer.setBorder(new EmptyBorder(0, 15, 0, 0));
+        
         pnlLeftTitle.add(lblDetailTitle);
         pnlLeftTitle.add(lblDetailDate);
+        pnlLeftTitle.add(lblDetailTimer); // Add thêm label đếm ngược vào giao diện
 
         lblDetailEmp = new JLabel("Nhân viên: Hệ thống"); 
         lblDetailEmp.setFont(new Font("Segoe UI", Font.BOLD, 13));
@@ -682,7 +734,7 @@ public class ManHinhDoiTra extends JPanel {
     private int showDetailPanel(String maPhieu, String ngayTao) {
         lblDetailTitle.setText("Chi tiết phiếu " + maPhieu);
         lblDetailDate.setText("Ngày tạo: " + ngayTao);
-        
+        lblDetailTimer.setText("");
         String tenNV = "Hệ thống";
         try { if (Utils.UserSession.getInstance() != null) tenNV = Utils.UserSession.getInstance().getTenHienThi(); } catch (Exception e) {}
         lblDetailEmp.setText("Nhân viên: " + tenNV);
@@ -1066,5 +1118,90 @@ public class ManHinhDoiTra extends JPanel {
 
         dialog.add(pnlMain); dialog.setSize(440, 260); dialog.setLocationRelativeTo(this); dialog.setVisible(true);
         return result[0];
+    }
+    private void khoiDongBoDemNguoc() {
+        if (autoCancelTimer != null) autoCancelTimer.stop();
+        
+        autoCancelTimer = new Timer(1000, e -> {
+            for (int i = 0; i < model.getRowCount(); i++) {
+                String trangThai = model.getValueAt(i, 7) != null ? model.getValueAt(i, 7).toString() : "";
+                
+                // Chỉ xử lý nếu đúng là "Chờ xử lý"
+                if (trangThai.trim().equals("Chờ xử lý")) {
+                    String maPhieu = model.getValueAt(i, 0).toString();
+                    java.time.LocalDateTime thoiGianTao = mapThoiGianTao.get(maPhieu);
+                    
+                    if (thoiGianTao == null) {
+                        thoiGianTao = layThoiGianTaoTuDB(maPhieu);
+                        if (thoiGianTao != null) {
+                            mapThoiGianTao.put(maPhieu, thoiGianTao);
+                        } else {
+                            // Nếu DB trả về null (Không tìm thấy giờ), gán giờ mặc định quá hạn để hủy luôn
+                            mapThoiGianTao.put(maPhieu, java.time.LocalDateTime.now().minusMinutes(10));
+                            continue; // Bỏ qua giây này, chờ giây sau xử lý
+                        }
+                    }
+                    
+                    long giayDaQua = java.time.Duration.between(thoiGianTao, java.time.LocalDateTime.now()).getSeconds();
+                    long giayConLai = 600 - giayDaQua; 
+                    
+                    if (giayConLai <= 0) {
+                        // 1. GỌI DB HỦY PHIẾU
+                        huyPhieuTuDong(maPhieu);
+                        
+                        // 2. [QUAN TRỌNG] ĐỔI TRẠNG THÁI NGAY TRÊN MODEL ĐỂ DỪNG VÒNG LẶP KẸT LAG
+                        model.setValueAt("Từ chối", i, 7); 
+                        
+                        // 3. THÔNG BÁO HẾT GIỜ (Không đóng sập Detail Panel của người dùng)
+                        if (pnlDetail.isVisible() && maPhieu.equals(expandedMaPhieu)) {
+                            lblDetailTimer.setText("(Đã hủy tự động do quá hạn)");
+                            lblDetailTimer.setForeground(Color.decode("#EF4444")); // Màu đỏ
+                        }
+                        
+                    } else {
+                        // 4. NẾU CHƯA HẾT GIỜ VÀ PANEL ĐANG MỞ -> HIỂN THỊ THỜI GIAN
+                        if (pnlDetail.isVisible() && maPhieu.equals(expandedMaPhieu)) {
+                            long m = giayConLai / 60;
+                            long s = giayConLai % 60;
+                            lblDetailTimer.setText(String.format("(Tự hủy sau: %02d:%02d)", m, s));
+                            lblDetailTimer.setForeground(Color.decode("#E11D48")); 
+                        }
+                    }
+                }
+            }
+        });
+        autoCancelTimer.start();
+    }
+
+    // 2. Lấy thời gian gốc tạo hóa đơn
+    private java.time.LocalDateTime layThoiGianTaoTuDB(String maPhieu) {
+        try (java.sql.Connection con = ConnectDB.ConnectDB.getInstance().getConnection()) {
+            String sql = "SELECT ngayLapHD FROM HoaDon WHERE id = ?";
+            try (java.sql.PreparedStatement pst = con.prepareStatement(sql)) {
+                pst.setString(1, maPhieu);
+                try (java.sql.ResultSet rs = pst.executeQuery()) {
+                    if (rs.next()) {
+                        java.sql.Timestamp ts = rs.getTimestamp("ngayLapHD");
+                        if (ts != null) return ts.toLocalDateTime();
+                    }
+                }
+            }
+        } catch (Exception ex) {}
+        return null;
+    }
+
+    // 3. ĐÃ FIX LỖI SQL: Hủy phiếu tự động (Không dùng cột trangThai)
+    private void huyPhieuTuDong(String maPhieu) {
+        try (java.sql.Connection con = ConnectDB.ConnectDB.getInstance().getConnection()) {
+            // Cập nhật vào cột ghiChu thay vì cột trangThai không tồn tại
+            String sql = "UPDATE HoaDon SET ghiChu = CONCAT(ghiChu, N' | Đã hủy (Tự động quá hạn 10p)') WHERE id = ?";
+            try (java.sql.PreparedStatement pst = con.prepareStatement(sql)) {
+                pst.setString(1, maPhieu);
+                pst.executeUpdate();
+                mapThoiGianTao.remove(maPhieu); 
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
     }
 }

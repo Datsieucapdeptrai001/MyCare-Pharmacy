@@ -11,6 +11,7 @@ public class NhanVien {
 	private String soChungChiHanhNghe;
 	private String sdt;
 	private String email;
+	private String diaChi; // Đã thêm thuộc tính địa chỉ
 	private ChucVu chucVu;
 	private TrangThaiLamViec trangThaiLamViec;
 	
@@ -24,8 +25,8 @@ public class NhanVien {
 	    this.nhanVien = nhanVien;
 	}
 	
-	// 3. Hàm khởi tạo đầy đủ tham số
-	public NhanVien(String nhanVien, String hoVaTen, String soChungChiHanhNghe, String sdt, String email, ChucVu chucVu,
+	// 3. Hàm khởi tạo đầy đủ tham số (Cập nhật thêm diaChi)
+	public NhanVien(String nhanVien, String hoVaTen, String soChungChiHanhNghe, String sdt, String email, String diaChi, ChucVu chucVu,
 			TrangThaiLamViec trangThaiLamViec) {
 		super();
 		this.nhanVien = nhanVien;
@@ -33,6 +34,7 @@ public class NhanVien {
 		this.soChungChiHanhNghe = soChungChiHanhNghe;
 		this.sdt = sdt;
 		this.email = email;
+		this.diaChi = diaChi;
 		this.chucVu = chucVu;
 		this.trangThaiLamViec = trangThaiLamViec;
 	}
@@ -67,6 +69,12 @@ public class NhanVien {
 	public void setEmail(String email) {
 		this.email = email;
 	}
+	public String getDiaChi() {
+		return diaChi;
+	}
+	public void setDiaChi(String diaChi) {
+		this.diaChi = diaChi;
+	}
 	public ChucVu getChucVu() {
 		return chucVu;
 	}
@@ -82,7 +90,7 @@ public class NhanVien {
 
 	@Override
 	public int hashCode() {
-		return Objects.hash(chucVu, email, hoVaTen, nhanVien, sdt, soChungChiHanhNghe, trangThaiLamViec);
+		return Objects.hash(chucVu, diaChi, email, hoVaTen, nhanVien, sdt, soChungChiHanhNghe, trangThaiLamViec);
 	}
 
 	@Override
@@ -94,16 +102,16 @@ public class NhanVien {
 		if (getClass() != obj.getClass())
 			return false;
 		NhanVien other = (NhanVien) obj;
-		return chucVu == other.chucVu && Objects.equals(email, other.email) && Objects.equals(hoVaTen, other.hoVaTen)
-				&& Objects.equals(nhanVien, other.nhanVien) && Objects.equals(sdt, other.sdt)
-				&& Objects.equals(soChungChiHanhNghe, other.soChungChiHanhNghe)
+		return chucVu == other.chucVu && Objects.equals(diaChi, other.diaChi) && Objects.equals(email, other.email) 
+				&& Objects.equals(hoVaTen, other.hoVaTen) && Objects.equals(nhanVien, other.nhanVien) 
+				&& Objects.equals(sdt, other.sdt) && Objects.equals(soChungChiHanhNghe, other.soChungChiHanhNghe)
 				&& trangThaiLamViec == other.trangThaiLamViec;
 	}
 
 	@Override
 	public String toString() {
 		return "NhanVien [nhanVien=" + nhanVien + ", hoVaTen=" + hoVaTen + ", soChungChiHanhNghe=" + soChungChiHanhNghe
-				+ ", sdt=" + sdt + ", email=" + email + ", chucVu=" + chucVu + ", trangThaiLamViec=" + trangThaiLamViec
+				+ ", sdt=" + sdt + ", email=" + email + ", diaChi=" + diaChi + ", chucVu=" + chucVu + ", trangThaiLamViec=" + trangThaiLamViec
 				+ "]";
 	}
 }

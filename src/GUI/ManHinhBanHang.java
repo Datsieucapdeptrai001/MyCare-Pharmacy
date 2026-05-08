@@ -31,9 +31,19 @@ public class ManHinhBanHang extends JPanel {
     
 
     public ManHinhBanHang() {
-    	busHoaDon = new BUS_HoaDon();
+        busHoaDon = new BUS_HoaDon();
         initUI();
         loadData();
+        
+        // THÊM ĐOẠN NÀY ĐỂ TỰ ĐỘNG RESET BẢNG KHI ĐỔI TÀI KHOẢN HOẶC MỞ LẠI TAB
+        this.addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override
+            public void componentShown(java.awt.event.ComponentEvent e) {
+                txtSearch.setText("Mã HD, khách hàng, SĐT...");
+                txtSearch.setForeground(Color.GRAY);
+                loadData();
+            }
+        });
     }
 
     private void initUI() {
@@ -356,20 +366,61 @@ public class ManHinhBanHang extends JPanel {
 
         List<Object[]> ds;
         if (session.isAdmin()) {
-            // ADMIN/Quản lý: thấy tất cả hóa đơn
             ds = busHoaDon.layDanhSachHoaDonChoBang();
         } else {
-            // STAFF/Nhân viên: chỉ thấy hóa đơn của mình hôm nay
             String maNV = session.getMaNhanVien();
             List<Object[]> staffDs = busHoaDon.layDanhSachHoaDonTheoNVHomNay(maNV);
-            // Nếu maNV rỗng (session chưa load đủ) → fallback toàn bộ để không bị trống
             ds = (staffDs != null) ? staffDs : busHoaDon.layDanhSachHoaDonChoBang();
         }
 
+        // --- ĐÃ FIX: LỌC THEO GIỜ MỞ CA BỎ QUA SỐ GIÂY ---
+        java.time.LocalDateTime shiftStart = null;
+        if (!session.isAdmin() && session.getCaHienTai() != null) {
+            // Cắt bỏ phần giây để so sánh công bằng với CSDL
+            shiftStart = session.getCaHienTai().getThoiGianBatDau().truncatedTo(java.time.temporal.ChronoUnit.MINUTES);
+        }
+
         for (Object[] row : ds) {
-            String trangThai = row[6].toString();
-            // CHỈ HIỂN THỊ: Hoàn thành, Đang xử lý, Đã hủy (Loại bỏ Đổi trả)
-            if (!trangThai.equals("Đổi trả")) {
+            String trangThai = row[6] != null ? row[6].toString() : "";
+            if (trangThai.equals("Đổi trả")) continue; // Bỏ qua hóa đơn đổi trả
+
+            boolean hopLeChoCaNay = true;
+            if (shiftStart != null && row[1] != null && !row[1].toString().trim().isEmpty()) {
+                String ngayStr = row[1].toString().trim();
+                java.time.LocalDateTime hdTime = null;
+                
+                // Cơ chế đọc ngày thông minh chống lỗi crash
+                try {
+                    hdTime = java.time.LocalDateTime.parse(ngayStr, java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss"));
+                } catch (Exception e1) {
+                    try {
+                        hdTime = java.time.LocalDateTime.parse(ngayStr, java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
+                    } catch (Exception e2) {
+                        try {
+                            hdTime = java.time.LocalDateTime.parse(ngayStr, java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss[.S]"));
+                        } catch (Exception e3) {
+                            try {
+                                java.time.LocalDate dateOnly = java.time.LocalDate.parse(ngayStr, java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+                                hdTime = dateOnly.atTime(23, 59, 59);
+                            } catch (Exception e4) {
+                                System.err.println("Lỗi format ngày tại Hóa Đơn: [" + ngayStr + "]");
+                            }
+                        }
+                    }
+                }
+
+                if (hdTime != null) {
+                    // Ép giờ hóa đơn về tròn phút để so sánh
+                    hdTime = hdTime.truncatedTo(java.time.temporal.ChronoUnit.MINUTES);
+                    if (hdTime.isBefore(shiftStart)) {
+                        hopLeChoCaNay = false;
+                    }
+                } else {
+                    hopLeChoCaNay = false; // Lỗi format quá nặng, loại bỏ để an toàn
+                }
+            }
+            
+            if (hopLeChoCaNay) {
                 model.addRow(row);
             }
         }

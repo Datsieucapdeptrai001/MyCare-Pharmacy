@@ -44,7 +44,11 @@ public class ChiTietPhieuDoiTra extends JDialog {
         } else {
             this.nhanVien = nhanVienTruyenVao; 
         }
-
+        if (nhanVienTruyenVao != null && !nhanVienTruyenVao.trim().isEmpty()) {
+            this.nhanVien = nhanVienTruyenVao;
+        } else {
+            this.nhanVien = "Nhân viên hệ thống";
+        }
         initUI();
     }
 

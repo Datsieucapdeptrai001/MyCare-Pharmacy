@@ -16,6 +16,15 @@ import java.awt.event.*;
 import java.awt.geom.*;
 import java.util.*;
 
+import org.apache.poi.ss.usermodel.BorderStyle;
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.FillPatternType;
+import org.apache.poi.ss.usermodel.IndexedColors;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+
 public class ManHinhThongKe extends JPanel {
 
     // BUS LAYER
@@ -401,33 +410,41 @@ public class ManHinhThongKe extends JPanel {
         left.setOpaque(false);
         left.add(title); left.add(lblYearBadge);
 
-        JButton btnXuat = new JButton("📥Xuất báo cáo ▼");
-        btnXuat.setBackground(Color.decode("#152A4B"));
-        btnXuat.setForeground(Color.WHITE);
-        btnXuat.setFocusPainted(false);
-        btnXuat.setBorder(new EmptyBorder(8, 16, 8, 16));
-        btnXuat.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        JPopupMenu menu = new JPopupMenu();
-        JMenuItem miExcel = new JMenuItem("Xuất Excel (.csv)");
-        miExcel.addActionListener(ev -> xuatExcel());
-        JMenuItem miPDF = new JMenuItem("Xuất PDF (HTML)");
-        miPDF.addActionListener(ev -> xuatPDF());
-        menu.add(miExcel); menu.add(miPDF);
-        btnXuat.addActionListener(e -> menu.show(btnXuat, 0, btnXuat.getHeight()));
+        // NÚT XUẤT EXCEL DUY NHẤT (Đã bỏ JPopupMenu)
+        JButton btnXuatExcel = new JButton("📥 Xuất báo cáo Excel (.xlsx)");
+        btnXuatExcel.setBackground(Color.decode("#152A4B")); // Màu xanh đậm chuẩn MyCare
+        btnXuatExcel.setForeground(Color.WHITE);
+        btnXuatExcel.setFocusPainted(false);
+        btnXuatExcel.setBorder(new EmptyBorder(8, 16, 8, 16));
+        btnXuatExcel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        
+        btnXuatExcel.addActionListener(e -> xuatExcel());
 
         p.add(left, BorderLayout.WEST);
-        p.add(btnXuat, BorderLayout.EAST);
+        p.add(btnXuatExcel, BorderLayout.EAST);
         return p;
     }
 
-    // FILTER BAR
+ // FILTER BAR - ĐÃ NÂNG CẤP CHỐNG LẸM UI
     private JPanel buildFilterBar() {
-        JPanel p = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 8));
+        // 1. Panel chính dùng BoxLayout xếp dọc để chia thành nhiều dòng
+        JPanel p = new JPanel();
+        p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
         p.setBackground(Color.WHITE);
 
+        JPanel pnlTab = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 8));
+        pnlTab.setBackground(Color.WHITE);
+        
         btnDT = makeTabBtn(" Doanh thu & SP", true);
         btnDT.setIcon(new MenuIcon("TAB_CHART"));
         btnNV = makeTabBtn("👥 Nhân viên", false);
+        
+        pnlTab.add(btnDT); 
+        pnlTab.add(btnNV);
+
+        JPanel pnlFilter = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 4));
+        pnlFilter.setBackground(Color.WHITE);
+        pnlFilter.setBorder(new EmptyBorder(0, 0, 8, 0)); // Căn lề dưới cho thoáng
 
         // Group Toggle
         JPanel pnlToggle = new JPanel(new GridLayout(1, 3));
@@ -443,7 +460,7 @@ public class ManHinhThongKe extends JPanel {
         btnTuyChinh.setBackground(inactiveBg); btnTuyChinh.setForeground(inactiveFg);
         pnlToggle.add(btnThang); pnlToggle.add(btnQuy); pnlToggle.add(btnTuyChinh);
 
-        // CÁC Ô TÙY CHỌN THỜI GIAN
+        // Các ô tùy chọn thời gian
         JPanel pnlTimeOptions = new JPanel(new CardLayout());
         pnlTimeOptions.setOpaque(false);
 
@@ -456,7 +473,6 @@ public class ManHinhThongKe extends JPanel {
         txtTuNgay = new JTextField("dd/mm/yyyy", 8); txtTuNgay.setEditable(false); txtTuNgay.setBackground(Color.WHITE);
         txtDenNgay = new JTextField("dd/mm/yyyy", 8); txtDenNgay.setEditable(false); txtDenNgay.setBackground(Color.WHITE);
         
-        // GẮN SỰ KIỆN MỞ LỊCH CHO 2 Ô TEXTFIELD
         MouseAdapter openCal = new MouseAdapter() {
             @Override public void mouseClicked(MouseEvent e) {
                 JTextField txt = (JTextField) e.getSource();
@@ -473,23 +489,19 @@ public class ManHinhThongKe extends JPanel {
         pnlTimeOptions.add(cboQuy, "QUY");
         pnlTimeOptions.add(pnlCustomDate, "TUYCHINH");
 
-        // SỰ KIỆN ĐỔI TAB (THÁNG / QUÝ / TÙY CHỈNH)
         CardLayout cl = (CardLayout) pnlTimeOptions.getLayout();
         btnThang.addActionListener(e -> { modeLocThoiGian="THANG"; cl.show(pnlTimeOptions, "THANG"); btnThang.setBackground(activeBg); btnThang.setForeground(activeFg); btnQuy.setBackground(inactiveBg); btnQuy.setForeground(inactiveFg); btnTuyChinh.setBackground(inactiveBg); btnTuyChinh.setForeground(inactiveFg); onFilterChanged(); });
         btnQuy.addActionListener(e -> { modeLocThoiGian="QUY"; cl.show(pnlTimeOptions, "QUY"); btnQuy.setBackground(activeBg); btnQuy.setForeground(activeFg); btnThang.setBackground(inactiveBg); btnThang.setForeground(inactiveFg); btnTuyChinh.setBackground(inactiveBg); btnTuyChinh.setForeground(inactiveFg); onFilterChanged(); });
         btnTuyChinh.addActionListener(e -> { modeLocThoiGian="TUYCHINH"; cl.show(pnlTimeOptions, "TUYCHINH"); btnTuyChinh.setBackground(activeBg); btnTuyChinh.setForeground(activeFg); btnThang.setBackground(inactiveBg); btnThang.setForeground(inactiveFg); btnQuy.setBackground(inactiveBg); btnQuy.setForeground(inactiveFg); });
 
-        // SỰ KIỆN CHỌN COMBOBOX
         cboThang.addActionListener(e -> onFilterChanged());
         cboQuy.addActionListener(e -> onFilterChanged());
         cboKyLoc = cboThang; 
 
-        // GẮN SỰ KIỆN CHO NÚT NĂM
         btnNamPicker = new JButton(" " + currentYear + " ▼");
         btnNamPicker.setIcon(new MenuIcon("CALENDAR"));
         btnNamPicker.addActionListener(e -> showYearCalendarPopup(btnNamPicker)); 
         
-        // GẮN SỰ KIỆN DƯỢC SĨ
         cboNhanVien = new JComboBox<>(new String[]{"Tất cả"});
         styleCombo(cboNhanVien);
         cboNhanVien.addActionListener(e -> applyNVFilter());
@@ -499,8 +511,14 @@ public class ManHinhThongKe extends JPanel {
         pnlFilterDuocSi.add(new JLabel("| Dược sĩ:")); pnlFilterDuocSi.add(cboNhanVien);
         pnlFilterDuocSi.setVisible(false); 
 
-        p.add(btnDT); p.add(btnNV); p.add(new JLabel(" | "));
-        p.add(pnlToggle); p.add(pnlTimeOptions); p.add(btnNamPicker); p.add(pnlFilterDuocSi);
+        // Ráp các thành phần lọc vào dòng 2
+        pnlFilter.add(pnlToggle); 
+        pnlFilter.add(pnlTimeOptions); 
+        pnlFilter.add(btnNamPicker); 
+        pnlFilter.add(pnlFilterDuocSi);
+
+        p.add(pnlTab);
+        p.add(pnlFilter);
 
         return p;
     }
@@ -819,7 +837,7 @@ public class ManHinhThongKe extends JPanel {
         btnNV.setForeground(!isDT ? Color.decode("#9C27B0") : Color.decode("#444444"));
     }
 
- // BIỂU ĐỒ CỘT CHÍNH (DT-CP-LN)
+ // BIỂU ĐỒ CỘT CHÍNH (DT-CP-LN) - ĐÃ FIX HIỂN THỊ ĐẾ CHỜ
     class BarChartMain extends JPanel {
         private int   hoverIdx  = -1;
         private Point tooltipPt = null;
@@ -830,16 +848,23 @@ public class ManHinhThongKe extends JPanel {
             addMouseMotionListener(new MouseAdapter() {
                 @Override public void mouseMoved(MouseEvent e) {
                     hoverIdx = -1; tooltipPt = null;
-                    int barW = 20, gap = 4; // Tăng độ rộng cột cho mập mạp
-                    int groupW = barW * 3 + gap * 2 + 18;
                     int startX = 50, maxH = getHeight() - 60;
+                    int w = getWidth();
+                    int availW = w - startX - 10;
+                    int groupW = Math.max(10, availW / 12); 
+                    int gap = 2;
+                    int barW = Math.max(2, (groupW - gap * 2 - 4) / 3);
+
                     double maxVal = calcMaxVal();
                     for (int i = 0; i < 12; i++) {
-                        int gx = startX + i * groupW;
+                        int offset = (groupW - (barW * 3 + gap * 2)) / 2;
+                        int gx = startX + i * groupW + offset;
                         for (int b = 0; b < 3; b++) {
                             int bx  = gx + b * (barW + gap);
                             double val = (b==0)?DT_DATA[i]:(b==1)?CP_DATA[i]:Math.max(0, DT_DATA[i]-CP_DATA[i]);
                             int bh  = maxVal>0 ? (int)(val/maxVal*maxH) : 0;
+                            // Đảm bảo cột có vùng tương tác tối thiểu 2px
+                            bh = Math.max(2, bh);
                             int by  = getHeight() - 35 - bh;
                             if (e.getX()>=bx && e.getX()<=bx+barW && e.getY()>=by && e.getY()<=by+bh) {
                                 hoverIdx = i; tooltipPt = e.getPoint(); break;
@@ -855,10 +880,9 @@ public class ManHinhThongKe extends JPanel {
 
         private double calcMaxVal() {
             double max = 10.0;
-            // FIX LỖI THỦNG NÓC: Phải dò cả mảng Chi Phí xem có ai vượt Doanh thu không
             for (double v : DT_DATA) if (v > max) max = v;
             for (double v : CP_DATA) if (v > max) max = v; 
-            return max * 1.2;
+            return max * 1.2; 
         }
 
         @Override protected void paintComponent(Graphics g) {
@@ -866,29 +890,37 @@ public class ManHinhThongKe extends JPanel {
             Graphics2D g2 = (Graphics2D)g;
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             int w = getWidth(), h = getHeight();
-            int barW = 20, gap = 4, groupW = barW*3 + gap*2 + 18; 
-            int startX = 50, baseY = h-35, maxH = h-60;
+            int startX = 50, baseY = h - 35, maxH = h - 60;
+            
+            int availW = w - startX - 10;
+            int groupW = Math.max(10, availW / 12);
+            int gap = 2;
+            int barW = Math.max(2, (groupW - gap * 2 - 4) / 3); 
+
             double maxVal = calcMaxVal();
             Color[] barColors = {Color.decode("#1A73E8"), Color.decode("#FFAB00"), Color.decode("#00A76F")};
 
-            // Ve cac duong ke ngang (Grid lines)
+            // Vẽ lưới ngang
             g2.setStroke(new BasicStroke(0.5f));
             for (double v = 0; v <= maxVal; v += Math.max(1.0, maxVal/5.0)) {
                 int y = baseY - (int)(v/maxVal*maxH);
                 g2.setColor(Color.decode("#F0F0F0")); g2.drawLine(startX, y, w-10, y);
                 g2.setColor(Color.decode("#AAAAAA")); g2.setFont(new Font("Segoe UI", Font.PLAIN, 10));
-                
-                // Dong bo chu M/K o truc Y
                 String axisLabel = formatM(v).replace(" đ", "").replace("đ", "");
                 g2.drawString(axisLabel, 4, y+4);
             }
 
+            // Vẽ cột
             for (int i = 0; i < 12; i++) {
-                int gx = startX + i*groupW;
+                int offset = (groupW - (barW * 3 + gap * 2)) / 2; 
+                int gx = startX + i * groupW + offset;
+                
                 double[] vals = {DT_DATA[i], CP_DATA[i], Math.max(0, DT_DATA[i]-CP_DATA[i])};
                 for (int b = 0; b < 3; b++) {
-                    int bh = maxVal>0 ? (int)(vals[b]/maxVal*maxH) : 0;
-                    if (bh <= 0) continue;
+                    int rawBh = maxVal>0 ? (int)(vals[b]/maxVal*maxH) : 0;
+                    // BÍ QUYẾT: Luôn giữ min-height = 2px để xếp đủ 3 cột
+                    int bh = Math.max(2, rawBh); 
+                    
                     int bx = gx + b*(barW+gap);
                     int by = baseY - bh;
                     Color c = barColors[b];
@@ -897,21 +929,28 @@ public class ManHinhThongKe extends JPanel {
                         float[] hsb = Color.RGBtoHSB(c.getRed(), c.getGreen(), c.getBlue(), null);
                         c = Color.getHSBColor(hsb[0], hsb[1], Math.min(1f, hsb[2]*1.2f));
                     }
-                    g2.setColor(c);
                     
-                    // Bo góc 8px ở trên cùng cho xịn
-                    g2.fillRoundRect(bx, by, barW, bh, 8, 8);
-                    
-                    // Che phần bo góc ở dưới đáy để cột cắm thẳng xuống mốc 0
-                    if (bh > 4) {
-                        g2.fillRect(bx, by + 4, barW, bh - 4);
+                    // NẾU GIÁ TRỊ = 0: Vẽ mờ đi (Alpha = 80) để báo hiệu
+                    if (rawBh <= 0 && i != hoverIdx) {
+                        g2.setColor(new Color(c.getRed(), c.getGreen(), c.getBlue(), 80));
+                    } else {
+                        g2.setColor(c);
                     }
+                    
+                    int radius = Math.min(8, barW); // Chống lỗi bo góc khi cột quá nhỏ
+                    g2.fillRoundRect(bx, by, barW, bh, radius, radius);
+                    if (bh > 4) g2.fillRect(bx, by + 4, barW, bh - 4);
                 }
-                g2.setColor(Color.decode("#888888")); g2.setFont(new Font("Segoe UI", Font.BOLD, 10));
-                g2.drawString(THANG[i], gx+12, h-16);
+                
+                // Trục X (T1, T2...)
+                if (groupW > 20) {
+                    g2.setColor(Color.decode("#888888")); g2.setFont(new Font("Segoe UI", Font.BOLD, 10));
+                    int lblW = g2.getFontMetrics().stringWidth(THANG[i]);
+                    g2.drawString(THANG[i], startX + i * groupW + (groupW - lblW)/2, h - 16);
+                }
             }
 
-            // Legend (chú thích màu)
+            // Legend 
             String[] legends = {"Doanh thu","Chi phí","Lợi nhuận"};
             int lx = startX;
             for (int b = 0; b < 3; b++) {
@@ -921,7 +960,7 @@ public class ManHinhThongKe extends JPanel {
                 lx += 90;
             }
 
-         // Tooltip (hien thi khi re chuot)
+            // Tooltip
             if (hoverIdx >= 0 && tooltipPt != null) {
                 int i = hoverIdx;
                 String txt = String.format("Tháng %d  |  DT: %s  |  CP: %s  |  LN: %s", 
@@ -930,7 +969,6 @@ public class ManHinhThongKe extends JPanel {
             }
         }
     }
-
     // BIỂU ĐỒ ĐƯỜNG (DAILY) - ĐÃ FIX TRỤC X HIỂN THỊ ĐÚNG NGÀY THÁNG THỰC TẾ
     class LineChartDaily extends JPanel {
         private final double[] vals;
@@ -1027,7 +1065,7 @@ public class ManHinhThongKe extends JPanel {
         }
     }
 
-    // BIỂU ĐỒ DONUT
+ // BIỂU ĐỒ DONUT
     class DonutChart extends JPanel {
         private int   hoverIdx  = -1;
         private Point tooltipPt = null;
@@ -1036,10 +1074,17 @@ public class ManHinhThongKe extends JPanel {
             setBackground(Color.WHITE);
             addMouseMotionListener(new MouseAdapter() {
                 @Override public void mouseMoved(MouseEvent e) {
-                    double cx = getWidth()/2.0, cy = getHeight()/2.0;
-                    double dist = Math.hypot(e.getX()-cx, e.getY()-cy);
-                    int r = Math.min(getWidth(),getHeight())/2-10, inner = r-50;
                     hoverIdx = -1; tooltipPt = null;
+                    int w = getWidth(), h = getHeight();
+                    int legendSpace = 40; // Dành 40px chiều cao cho chú thích
+                    int size = Math.min(w, h - legendSpace) - 20;
+                    if (size < 10) return;
+
+                    double cx = w / 2.0, cy = (h - legendSpace) / 2.0;
+                    double dist = Math.hypot(e.getX() - cx, e.getY() - cy);
+                    double r = size / 2.0;
+                    double inner = r * 0.55; // Khoét rỗng 55% bán kính
+
                     if (dist >= inner && dist <= r) {
                         double angle = Math.toDegrees(Math.atan2(-(e.getY()-cy), e.getX()-cx));
                         if (angle < 0) angle += 360;
@@ -1062,41 +1107,59 @@ public class ManHinhThongKe extends JPanel {
             Graphics2D g2 = (Graphics2D)g;
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             int w = getWidth(), h = getHeight();
-            int size = Math.min(w,h)-40, x=(w-size)/2, y=(h-size)/2;
+            int legendSpace = 40; // Dành chỗ cho Legend
+            int size = Math.min(w, h - legendSpace) - 20;
+            if (size < 10) return;
+
+            int x = (w - size) / 2;
+            int y = (h - legendSpace - size) / 2;
+
             double total = 0; for (int v : DONUT_VALS) total += v;
             int startAngle = 0;
+            double radius = size / 2.0;
+            double labelRadius = radius * 0.65; // Đặt chữ % ở 65% bán kính
+
             for (int i = 0; i < DONUT_VALS.length; i++) {
                 int sweep = (int)Math.round(DONUT_VALS[i]/total*360);
                 Color c = DONUT_COLORS[i];
                 if (i == hoverIdx) {
                     float[] hsb = Color.RGBtoHSB(c.getRed(),c.getGreen(),c.getBlue(),null);
                     c = Color.getHSBColor(hsb[0], hsb[1], Math.min(1f, hsb[2]*1.15f));
-                    g2.setColor(c); g2.fillArc(x-5,y-5,size+10,size+10,startAngle,sweep);
+                    g2.setColor(c); g2.fillArc(x-5, y-5, size+10, size+10, startAngle, sweep);
                 } else {
-                    g2.setColor(c); g2.fillArc(x,y,size,size,startAngle,sweep);
+                    g2.setColor(c); g2.fillArc(x, y, size, size, startAngle, sweep);
                 }
+                // Vẽ % linh động theo bán kính hiện tại
                 double mid = Math.toRadians(startAngle + sweep/2.0);
-                int lx = (int)(x+size/2.0+(size/2.0-35)*Math.cos(mid));
-                int ly = (int)(y+size/2.0-(size/2.0-35)*Math.sin(mid));
-                g2.setColor(Color.WHITE); g2.setFont(new Font("Segoe UI",Font.BOLD,11));
-                g2.drawString((int)Math.round(DONUT_VALS[i]/total*100)+"%", lx-10, ly+4);
+                int lx = (int)(x + radius + labelRadius * Math.cos(mid));
+                int ly = (int)(y + radius - labelRadius * Math.sin(mid));
+
+                g2.setColor(Color.WHITE); g2.setFont(new Font("Segoe UI", Font.BOLD, 11));
+                int pct = (int)Math.round(DONUT_VALS[i]/total*100);
+                g2.drawString(pct + "%", lx - 10, ly + 4);
                 startAngle += sweep;
             }
+
+            // Khoét lỗ (Dùng tỷ lệ 55% thay vì trừ số cứng)
             g2.setColor(Color.WHITE);
-            int hole = size-100;
-            g2.fillOval(x+50, y+50, hole, hole);
+            int holeSize = (int)(size * 0.55);
+            int holeX = x + (size - holeSize) / 2;
+            int holeY = y + (size - holeSize) / 2;
+            g2.fillOval(holeX, holeY, holeSize, holeSize);
             
-            int ly2 = y + size + 8;
-            g2.setFont(new Font("Segoe UI",Font.PLAIN,10));
-            int lx2 = x;
+            // Vẽ Legend tự động căn giữa và xuống dòng
+            int ly2 = h - legendSpace + 10;
+            g2.setFont(new Font("Segoe UI", Font.PLAIN, 10));
+            int lx2 = Math.max(10, (w - (4 * 70)) / 2); // Căn giữa
             for (int i = 0; i < 4; i++) {
-                if (lx2 + 80 > w) { lx2 = x; ly2 += 16; }
-                g2.setColor(DONUT_COLORS[i]); g2.fillRoundRect(lx2,ly2,10,10,3,3);
-                g2.setColor(Color.decode("#555555")); g2.drawString(DONUT_LABELS[i], lx2+14, ly2+10);
-                lx2 += 90;
+                if (lx2 + 70 > w) { lx2 = 10; ly2 += 16; } // Wrap nều hẹp
+                g2.setColor(DONUT_COLORS[i]); g2.fillRoundRect(lx2, ly2, 10, 10, 3, 3);
+                g2.setColor(Color.decode("#555555")); g2.drawString(DONUT_LABELS[i], lx2 + 14, ly2 + 10);
+                lx2 += 80;
             }
+
             if (hoverIdx >= 0 && tooltipPt != null) {
-                drawTooltip(g2, tooltipPt.x+8, tooltipPt.y-28,
+                drawTooltip(g2, Math.min(tooltipPt.x + 8, w - 100), tooltipPt.y - 28,
                     DONUT_LABELS[hoverIdx] + ": " + (int)Math.round(DONUT_VALS[hoverIdx]/total*100) + "%");
             }
         }
@@ -1709,83 +1772,176 @@ public class ManHinhThongKe extends JPanel {
         return b;
     }
 
-    // XUẤT BÁO CÁO (Đã fix double formatter)
+    // XUẤT BÁO CÁO EXCEL 
     private void xuatExcel() {
-        JFileChooser fc = new JFileChooser();
-        fc.setDialogTitle("Lưu báo cáo Excel (CSV)");
-        fc.setSelectedFile(new File("BaoCaoThongKe_" + currentYear + "_" +
-            new java.text.SimpleDateFormat("yyyyMMdd").format(new java.util.Date()) + ".csv"));
-        fc.setFileFilter(new FileNameExtensionFilter("CSV Files (*.csv)", "csv"));
-        if (fc.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) return;
-        File file = fc.getSelectedFile();
-        if (!file.getName().toLowerCase().endsWith(".csv"))
-            file = new File(file.getAbsolutePath()+".csv");
-        try (java.io.PrintWriter pw = new java.io.PrintWriter(
-                new java.io.OutputStreamWriter(new java.io.FileOutputStream(file), "UTF-8"))) {
-            pw.print('\uFEFF');
-            pw.println("BÁO CÁO THỐNG KÊ - MYCARE PHARMACY");
-            pw.println("Ngày xuất:," + new java.text.SimpleDateFormat("dd/MM/yyyy HH:mm").format(new java.util.Date()));
-            pw.println("Năm:," + currentYear);
-            pw.println();
-            pw.println("DOANH THU THEO THÁNG");
-            pw.println("Tháng,Doanh thu (triệu đ),Chi phí (triệu đ),Lợi nhuận (triệu đ)");
-            for (int i = 0; i < 12; i++) {
-                double dt=DT_DATA[i], cp=CP_DATA[i];
-                pw.println(THANG[i]+","+String.format("%.1f",dt)+","+String.format("%.1f",cp)+","+String.format("%.1f",dt-cp));
+        Window owner = SwingUtilities.getWindowAncestor(this);
+        Frame parentFrame = (owner instanceof Frame) ? (Frame) owner : null;
+        
+        java.awt.FileDialog fd = new java.awt.FileDialog(parentFrame, "Lưu báo cáo Excel", java.awt.FileDialog.SAVE);
+        fd.setFile("BaoCaoThongKe_" + currentYear + ".xlsx");
+        fd.setVisible(true);
+        
+        String dir = fd.getDirectory();
+        String file = fd.getFile();
+        
+        if (dir != null && file != null) {
+            String filePath = dir + file;
+            if (!filePath.toLowerCase().endsWith(".xlsx")) filePath += ".xlsx";
+            
+            setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+            
+            try (Workbook workbook = new XSSFWorkbook()) {
+                CellStyle headerStyle = workbook.createCellStyle();
+                headerStyle.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
+                headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+                headerStyle.setBorderBottom(BorderStyle.THIN);
+                org.apache.poi.ss.usermodel.Font headerFont = workbook.createFont();
+                headerFont.setBold(true);
+                headerStyle.setFont(headerFont);
+
+                CellStyle currencyStyle = workbook.createCellStyle();
+                short format = workbook.createDataFormat().getFormat("#,##0");
+                currencyStyle.setDataFormat(format);
+
+                Sheet sheetDT = workbook.createSheet("Doanh Thu 12 Tháng");
+                Row rowHeaderDT = sheetDT.createRow(0);
+                String[] headersDT = {"Tháng", "Doanh thu (VNĐ)", "Chi phí (VNĐ)", "Lợi nhuận (VNĐ)"};
+                for (int i = 0; i < headersDT.length; i++) {
+                    org.apache.poi.ss.usermodel.Cell c = rowHeaderDT.createCell(i);
+                    c.setCellValue(headersDT[i]); c.setCellStyle(headerStyle);
+                }
+                double tDT = 0, tCP = 0;
+                for (int i = 0; i < 12; i++) {
+                    Row r = sheetDT.createRow(i + 1);
+                    r.createCell(0).setCellValue(THANG[i]);
+                    
+                    org.apache.poi.ss.usermodel.Cell c1 = r.createCell(1);
+                    c1.setCellValue(DT_DATA[i] * 1_000_000); c1.setCellStyle(currencyStyle);
+                    
+                    org.apache.poi.ss.usermodel.Cell c2 = r.createCell(2);
+                    c2.setCellValue(CP_DATA[i] * 1_000_000); c2.setCellStyle(currencyStyle);
+                    
+                    org.apache.poi.ss.usermodel.Cell c3 = r.createCell(3);
+                    c3.setCellValue((DT_DATA[i] - CP_DATA[i]) * 1_000_000); c3.setCellStyle(currencyStyle);
+
+                    tDT += DT_DATA[i]; tCP += CP_DATA[i];
+                }
+                Row rTotal = sheetDT.createRow(13);
+                rTotal.createCell(0).setCellValue("TỔNG");
+                org.apache.poi.ss.usermodel.Cell ct1 = rTotal.createCell(1); ct1.setCellValue(tDT * 1_000_000); ct1.setCellStyle(currencyStyle);
+                org.apache.poi.ss.usermodel.Cell ct2 = rTotal.createCell(2); ct2.setCellValue(tCP * 1_000_000); ct2.setCellStyle(currencyStyle);
+                org.apache.poi.ss.usermodel.Cell ct3 = rTotal.createCell(3); ct3.setCellValue((tDT - tCP) * 1_000_000); ct3.setCellStyle(currencyStyle);
+                for(int i=0; i<4; i++) sheetDT.autoSizeColumn(i);
+
+                Sheet sheetNV = workbook.createSheet("Thống Kê Dược Sĩ");
+                Row rowHeaderNV = sheetNV.createRow(0);
+                String[] headersNV = {"Tên Dược sĩ", "Chức vụ", "HĐ Sáng", "DT Sáng", "HĐ Chiều", "DT Chiều", "HĐ Tối", "DT Tối", "Tổng HĐ", "Tổng DT"};
+                for (int i = 0; i < headersNV.length; i++) {
+                    org.apache.poi.ss.usermodel.Cell c = rowHeaderNV.createCell(i);
+                    c.setCellValue(headersNV[i]); c.setCellStyle(headerStyle);
+                }
+                for (int i = 0; i < NV_NAMES.length; i++) {
+                    Row r = sheetNV.createRow(i + 1);
+                    r.createCell(0).setCellValue(NV_NAMES[i]); r.createCell(1).setCellValue(NV_ROLES[i]);
+                    r.createCell(2).setCellValue(NV_HD_S[i]);
+                    org.apache.poi.ss.usermodel.Cell cs = r.createCell(3); cs.setCellValue(NV_DT_S[i] * 1_000_000); cs.setCellStyle(currencyStyle);
+                    r.createCell(4).setCellValue(NV_HD_C[i]);
+                    org.apache.poi.ss.usermodel.Cell cc = r.createCell(5); cc.setCellValue(NV_DT_C[i] * 1_000_000); cc.setCellStyle(currencyStyle);
+                    
+                    int hdT = i < NV_HD_T.length ? NV_HD_T[i] : 0;
+                    double dtT = i < NV_DT_T.length ? NV_DT_T[i] : 0;
+                    r.createCell(6).setCellValue(hdT);
+                    org.apache.poi.ss.usermodel.Cell ct = r.createCell(7); ct.setCellValue(dtT * 1_000_000); ct.setCellStyle(currencyStyle);
+                    
+                    r.createCell(8).setCellValue(NV_HD_S[i] + NV_HD_C[i] + hdT);
+                    org.apache.poi.ss.usermodel.Cell cTot = r.createCell(9); cTot.setCellValue((NV_DT_S[i] + NV_DT_C[i] + dtT) * 1_000_000); cTot.setCellStyle(currencyStyle);
+                }
+                for(int i=0; i<10; i++) sheetNV.autoSizeColumn(i);
+
+                Sheet sheetTop = workbook.createSheet("Top Sản Phẩm");
+                Row rowHeaderTop = sheetTop.createRow(0);
+                String[] headersTop = {"Hạng", "Sản phẩm", "Loại", "Số lượng", "Doanh thu (VNĐ)"};
+                for (int i = 0; i < headersTop.length; i++) {
+                    org.apache.poi.ss.usermodel.Cell c = rowHeaderTop.createCell(i);
+                    c.setCellValue(headersTop[i]); c.setCellStyle(headerStyle);
+                }
+                if (modelTopSP != null) {
+                    for (int i = 0; i < modelTopSP.getRowCount(); i++) {
+                        Row r = sheetTop.createRow(i + 1);
+                        r.createCell(0).setCellValue(modelTopSP.getValueAt(i, 0).toString());
+                        r.createCell(1).setCellValue(modelTopSP.getValueAt(i, 1).toString());
+                        r.createCell(2).setCellValue(modelTopSP.getValueAt(i, 2).toString());
+                        try { r.createCell(3).setCellValue(Double.parseDouble(modelTopSP.getValueAt(i, 3).toString().replace(",", ""))); } catch(Exception e){}
+                        
+                        double dt = 0;
+                        try { dt = Double.parseDouble(modelTopSP.getValueAt(i, 4).toString().replaceAll("[^\\d]", "")); } catch(Exception e){}
+                        org.apache.poi.ss.usermodel.Cell cDt = r.createCell(4);
+                        cDt.setCellValue(dt); cDt.setCellStyle(currencyStyle);
+                    }
+                }
+                for(int i=0; i<5; i++) sheetTop.autoSizeColumn(i);
+
+                Sheet sheetVAT = workbook.createSheet("Báo Cáo VAT");
+                Row rowHeaderVAT = sheetVAT.createRow(0);
+                String[] headersVAT = {"Mã SP", "Tên sản phẩm", "Kê đơn", "VAT (%)", "Tiền thuế (VNĐ)"};
+                for (int i = 0; i < headersVAT.length; i++) {
+                    org.apache.poi.ss.usermodel.Cell c = rowHeaderVAT.createCell(i);
+                    c.setCellValue(headersVAT[i]); c.setCellStyle(headerStyle);
+                }
+                if (modelVAT != null) {
+                    for (int i = 0; i < modelVAT.getRowCount(); i++) {
+                        Row r = sheetVAT.createRow(i + 1);
+                        r.createCell(0).setCellValue(modelVAT.getValueAt(i, 0).toString());
+                        r.createCell(1).setCellValue(modelVAT.getValueAt(i, 1).toString());
+                        r.createCell(2).setCellValue(modelVAT.getValueAt(i, 2).toString());
+                        r.createCell(3).setCellValue(modelVAT.getValueAt(i, 3).toString());
+                        
+                        double thue = 0;
+                        try { thue = Double.parseDouble(modelVAT.getValueAt(i, 4).toString().replaceAll("[^\\d]", "")); } catch(Exception e){}
+                        org.apache.poi.ss.usermodel.Cell cThue = r.createCell(4);
+                        cThue.setCellValue(thue); cThue.setCellStyle(currencyStyle);
+                    }
+                }
+                for(int i=0; i<5; i++) sheetVAT.autoSizeColumn(i);
+
+                Sheet sheetExp = workbook.createSheet("Sắp Hết Hạn");
+                Row rowHeaderExp = sheetExp.createRow(0);
+                String[] headersExp = {"Mã Lô", "Tên SP", "Kho", "SL Tồn", "Ngày hết hạn"};
+                for (int i = 0; i < headersExp.length; i++) {
+                    org.apache.poi.ss.usermodel.Cell c = rowHeaderExp.createCell(i);
+                    c.setCellValue(headersExp[i]); c.setCellStyle(headerStyle);
+                }
+                java.util.List<Object[]> listHH = busThongKe.getSpSapHetHan();
+                if (listHH != null) {
+                    for (int i = 0; i < listHH.size(); i++) {
+                        Row r = sheetExp.createRow(i + 1);
+                        r.createCell(0).setCellValue(listHH.get(i)[0].toString());
+                        r.createCell(1).setCellValue(listHH.get(i)[1].toString());
+                        r.createCell(2).setCellValue(listHH.get(i)[2].toString());
+                        try { r.createCell(3).setCellValue(Double.parseDouble(listHH.get(i)[3].toString())); } catch(Exception e){}
+                        r.createCell(4).setCellValue(listHH.get(i)[4].toString());
+                    }
+                }
+                for(int i=0; i<5; i++) sheetExp.autoSizeColumn(i);
+
+                try (java.io.FileOutputStream out = new java.io.FileOutputStream(filePath)) {
+                    workbook.write(out);
+                }
+                
+                try { java.awt.Desktop.getDesktop().open(new File(filePath)); } catch (Exception ignored) {}
+                showCustomDialog("Xuất báo cáo Excel thành công!\n" + filePath, "SUCCESS");
+                
+            } catch (java.io.FileNotFoundException ex) {
+                showCustomDialog("File Excel này ĐANG ĐƯỢC MỞ!\nVui lòng đóng file trước khi xuất.", "ERROR");
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                showCustomDialog("Lỗi xuất file: " + ex.getMessage(), "ERROR");
+            } finally {
+                setCursor(Cursor.getDefaultCursor());
             }
-            pw.println();
-            pw.println("THỐNG KÊ NHÂN VIÊN");
-            pw.println("Tên,Chức vụ,HĐ Ca Sáng,HĐ Ca Chiều,DT Sáng (M đ),DT Chiều (M đ),Tổng DT (M đ)");
-            for (int i = 0; i < NV_NAMES.length; i++) {
-                pw.println(NV_NAMES[i]+","+NV_ROLES[i]+","+NV_HD_S[i]+","+NV_HD_C[i]+","+
-                    String.format("%.1f",NV_DT_S[i])+","+String.format("%.1f",NV_DT_C[i])+","+
-                    String.format("%.1f",NV_DT_S[i]+NV_DT_C[i]));
-            }
-            showCustomDialog("Xuất CSV thành công!\n" + file.getAbsolutePath(), "SUCCESS");
-        } catch (Exception ex) {
-            showCustomDialog("Lỗi xuất file: " + ex.getMessage(), "ERROR");
         }
     }
-
-    private void xuatPDF() {
-        JFileChooser fc = new JFileChooser();
-        fc.setDialogTitle("Lưu báo cáo (HTML)");
-        fc.setSelectedFile(new File("BaoCaoThongKe_" + currentYear + "_" +
-            new java.text.SimpleDateFormat("yyyyMMdd").format(new java.util.Date()) + ".html"));
-        fc.setFileFilter(new FileNameExtensionFilter("HTML Files (*.html)", "html"));
-        if (fc.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) return;
-        File file = fc.getSelectedFile();
-        if (!file.getName().toLowerCase().endsWith(".html"))
-            file = new File(file.getAbsolutePath()+".html");
-        try (java.io.PrintWriter pw = new java.io.PrintWriter(
-                new java.io.OutputStreamWriter(new java.io.FileOutputStream(file), "UTF-8"))) {
-            pw.println("<!DOCTYPE html><html><head><meta charset='UTF-8'>");
-            pw.println("<title>Báo cáo thống kê " + currentYear + " - MYCARE PHARMACY</title>");
-            pw.println("<style>body{font-family:Arial,sans-serif;margin:30px;} h1{color:#152A4B;} h2{color:#1A73E8;} table{border-collapse:collapse;width:100%;margin:10px 0;} th{background:#152A4B;color:white;padding:8px;} td{border:1px solid #ddd;padding:6px;text-align:right;} td:first-child{text-align:left;} .green{color:#00A76F;font-weight:bold;} @media print{button{display:none;}}</style>");
-            pw.println("</head><body>");
-            pw.println("<h1>🏥 BÁO CÁO THỐNG KÊ - MYCARE PHARMACY</h1>");
-            pw.println("<p><b>Ngày xuất:</b> "+new java.text.SimpleDateFormat("dd/MM/yyyy HH:mm").format(new java.util.Date())+" &nbsp;|&nbsp; <b>Năm:</b> "+currentYear+"</p>");
-            pw.println("<button onclick='window.print()' style='background:#1A73E8;color:white;padding:8px 16px;border:none;cursor:pointer;border-radius:4px;'>🖨 In / Lưu PDF</button>");
-            pw.println("<h2>Doanh thu theo tháng</h2>");
-            pw.println("<table><tr><th>Tháng</th><th>Doanh thu (M đ)</th><th>Chi phí (M đ)</th><th>Lợi nhuận (M đ)</th></tr>");
-            double tDT=0, tCP=0;
-            for (int i=0;i<12;i++) { 
-                tDT+=DT_DATA[i]; tCP+=CP_DATA[i]; 
-                pw.println("<tr><td>"+THANG[i]+"</td><td>"+String.format("%.1f",DT_DATA[i])+"</td><td>"+String.format("%.1f",CP_DATA[i])+"</td><td class='green'>"+String.format("%.1f",DT_DATA[i]-CP_DATA[i])+"</td></tr>"); 
-            }
-            pw.println("<tr style='background:#f5f5f5;font-weight:bold;'><td>TỔNG</td><td>"+String.format("%.1f",tDT)+"</td><td>"+String.format("%.1f",tCP)+"</td><td class='green'>"+String.format("%.1f",tDT-tCP)+"</td></tr></table>");
-            pw.println("<h2>Thống kê nhân viên</h2>");
-            pw.println("<table><tr><th>Tên</th><th>Chức vụ</th><th>HĐ Sáng</th><th>HĐ Chiều</th><th>DT Sáng</th><th>DT Chiều</th><th>Tổng</th></tr>");
-            for (int i=0;i<NV_NAMES.length;i++) pw.println("<tr><td>"+NV_NAMES[i]+"</td><td>"+NV_ROLES[i]+"</td><td>"+NV_HD_S[i]+"</td><td>"+NV_HD_C[i]+"</td><td>"+String.format("%.1f",NV_DT_S[i])+"M</td><td>"+String.format("%.1f",NV_DT_C[i])+"M</td><td class='green'>"+String.format("%.1f",NV_DT_S[i]+NV_DT_C[i])+"M</td></tr>");
-            pw.println("</table></body></html>");
-            try { java.awt.Desktop.getDesktop().open(file); } catch (Exception ignored) {}
-            showCustomDialog("Đã tạo báo cáo HTML!\nMở trình duyệt → Ctrl+P để in/lưu PDF.\n" + file.getAbsolutePath(), "SUCCESS");
-        } catch (Exception ex) {
-            showCustomDialog("Lỗi: " + ex.getMessage(), "ERROR");
-        }
-    }
-
-    // DIALOG THÔNG BÁO TÙY CHỈNH (thay thế JOptionPane)
+    
     // type = "SUCCESS" | "ERROR"
     private void showCustomDialog(String message, String type) {
         boolean isSuccess = "SUCCESS".equals(type);
