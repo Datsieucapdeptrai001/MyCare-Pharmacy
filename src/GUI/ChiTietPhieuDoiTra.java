@@ -258,8 +258,31 @@ public class ChiTietPhieuDoiTra extends JDialog {
             dsDoi = busTraHang.layDanhSachSanPhamDoi(maPhieu); 
         }
 
-        // Khởi tạo DAO để dự phòng lấy giá trực tiếp từ Database nếu chuỗi ghi chú bị lỗi
         DAO.DAO_HoaDon daoHD = new DAO.DAO_HoaDon();
+
+        // ==========================================================
+        // BƯỚC 1: TÍNH PHẦN TRĂM HOÀN TIỀN DỰA VÀO LÝ DO VÀ THỜI GIAN
+        // ==========================================================
+        double phanTramHoan = 1.0;
+        if (lyDo.contains("Từ chối")) {
+            phanTramHoan = 0.0;
+        } else if (lyDo.contains("Khách hàng đổi ý") || lyDo.contains("Hỗ trợ 100%")) {
+            long soGioDaMua = 0;
+            try {
+                BUS.BUS_HoaDon busHD = new BUS.BUS_HoaDon();
+                Entity.HoaDon hdG = busHD.getHoaDonTheoMa(hoaDonGoc);
+                Entity.HoaDon hdDT = busHD.getHoaDonTheoMa(maPhieu);
+                if (hdG != null && hdDT != null) {
+                    soGioDaMua = java.time.Duration.between(hdG.getNgayLapHD(), hdDT.getNgayLapHD()).toHours();
+                }
+            } catch(Exception e){}
+            
+            if (soGioDaMua <= 24) phanTramHoan = 1.0;
+            else if (soGioDaMua > 24 && soGioDaMua <= 72) phanTramHoan = 0.8;
+            else phanTramHoan = 0.0;
+        } else if (lyDo.contains("Hỗ trợ 80%")) {
+            phanTramHoan = 0.8;
+        }
 
         // ==========================================
         // 1. ĐỔ DỮ LIỆU SẢN PHẨM KHÁCH TRẢ LẠI
@@ -285,7 +308,7 @@ public class ChiTietPhieuDoiTra extends JDialog {
                     }
                 } catch(Exception e){}
                 
-                // LỚP BẢO VỆ 2: Truy vấn thẳng vào Hóa Đơn Gốc nếu giá <= 1 (Đã Fix)
+                // LỚP BẢO VỆ 2: Truy vấn thẳng vào Hóa Đơn Gốc nếu giá <= 1
                 if (gia <= 1) {
                     try {
                         Object[] info = daoHD.layThongTinGiaTuHDGoc(hoaDonGoc, ten);
@@ -299,7 +322,8 @@ public class ChiTietPhieuDoiTra extends JDialog {
                     } catch(Exception ex){}
                 }
 
-                long thanhTien = gia * sl;
+                // NHÂN PHẦN TRĂM HOÀN VÀO THÀNH TIỀN ĐỂ ÉP VỀ 0 HOẶC TRỪ %
+                long thanhTien = (long) (gia * sl * phanTramHoan);
                 tongTienTra += thanhTien;
                 
                 model.addRow(new Object[]{
@@ -325,18 +349,14 @@ public class ChiTietPhieuDoiTra extends JDialog {
                 String dvt = "Hộp";
                 long gia = 0;
                 
-                // LỚP BẢO VỆ 1: Lọc sạch chuỗi, chỉ lấy số
                 try { 
                     if (sp[3] != null) {
-                        // ĐÃ FIX: Thêm bộ lọc thập phân vào Lớp bảo vệ 1 của Sản phẩm Đổi
                         String giaStr = sp[3].toString().replaceAll(",00$|\\.00$|,0$|\\.0$", "");
                         giaStr = giaStr.replaceAll("[^0-9]", "");
                         if (!giaStr.isEmpty()) gia = Long.parseLong(giaStr);
                     }
                 } catch(Exception e){}
                 
-                // LỚP BẢO VỆ 2: Truy vấn thẳng vào Phiếu Đổi hiện tại
-                // ĐÃ FIX: Sửa điều kiện thành gia <= 1 và thêm bộ lọc thập phân
                 if (gia <= 1) {
                     try {
                         Object[] info = daoHD.layThongTinGiaTuHDGoc(maPhieu, ten);
@@ -395,13 +415,14 @@ public class ChiTietPhieuDoiTra extends JDialog {
         
         if (loaiPhieu.equalsIgnoreCase("Trả hàng")) {
             pnlSummary.add(createTotalRow("Tổng tiền SP trả:", String.format("%,dđ", tongTienTra).replace(',', '.'), Color.GRAY, 12));
-            pnlSummary.add(createTotalRow("Số tiền hoàn lại:", String.format("%,dđ", tongTienTra).replace(',', '.'), primaryRed, 16));
+            
+            String soTienHoan = (tienHoanThucTe != null && !tienHoanThucTe.trim().isEmpty()) ? tienHoanThucTe : "0đ";
+            pnlSummary.add(createTotalRow("Số tiền hoàn lại:", soTienHoan, primaryRed, 16));
         } else {
             pnlSummary.add(createTotalRow("Giá trị SP Mới / Trả:", 
                 String.format("%,dđ", tongTienDoi).replace(',', '.') + " / " + String.format("%,dđ", tongTienTra).replace(',', '.'), 
                 Color.GRAY, 12));
                 
-            // ĐÃ FIX: Tự động tính lại độc lập, bỏ qua chuỗi bị lưu lỗi trong Database cũ
             long chenhLech = tongTienDoi - tongTienTra;
             boolean isKhachBu = (chenhLech > 0); 
             
