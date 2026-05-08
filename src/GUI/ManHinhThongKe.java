@@ -181,9 +181,7 @@ public class ManHinhThongKe extends JPanel {
         tbl.getModel().addTableModelListener(e -> SwingUtilities.invokeLater(adjust));
     }
 
-    // LOAD DỮ LIỆU TỪ DATABASE (tham số year)
     private void loadDataFromDB(int year) {
-        // BƯỚC 1: XÂY DỰNG ĐIỀU KIỆN LỌC
         String condHD = "";
         String condPN = "";
 
@@ -208,97 +206,96 @@ public class ManHinhThongKe extends JPanel {
                     String to   = den.split("/")[2] + "-" + den.split("/")[1] + "-" + den.split("/")[0];
                     condHD = " AND CAST(hd.ngayLapHD AS DATE) BETWEEN '" + from + "' AND '" + to + "'";
                     condPN = " AND CAST(ngayNhap AS DATE) BETWEEN '" + from + "' AND '" + to + "'";
-                } catch (Exception e) { /* định dạng chưa đủ, bỏ qua */ }
+                } catch (Exception e) { }
             }
         }
 
         final String fCondHD = condHD;
         final String fCondPN = condPN;
 
-        // BƯỚC 2: LOAD DATA QUA BUS TRÊN THREAD RIÊNG
+        // BƯỚC 2: LOAD DATA QUA BUS TRÊN THREAD RIÊNG DÙNG BIẾN TẠM (Chống văng App)
         new Thread(() -> {
             try {
-                // 1. Danh sách dược sĩ
                 java.util.List<String[]> nvList = busThongKe.getDuocSiList();
                 int n = nvList.size();
 
-                NV_NAMES  = new String[n]; NV_IDS   = new String[n];
-                NV_ROLES  = new String[n]; NV_SHORT = new String[n];
-                NV_COLORS = new Color[n];
-                NV_HD_S   = new int[n];    NV_HD_C  = new int[n];    NV_HD_T = new int[n];
-                NV_DT_S   = new double[n]; NV_DT_C  = new double[n]; NV_DT_T = new double[n];
+                String[] tmp_NV_NAMES  = new String[n]; 
+                String[] tmp_NV_IDS    = new String[n];
+                String[] tmp_NV_ROLES  = new String[n]; 
+                String[] tmp_NV_SHORT  = new String[n];
+                Color[]  tmp_NV_COLORS = new Color[n];
+                int[]    tmp_NV_HD_S   = new int[n];    
+                int[]    tmp_NV_HD_C   = new int[n];    
+                int[]    tmp_NV_HD_T   = new int[n];
+                double[] tmp_NV_DT_S   = new double[n]; 
+                double[] tmp_NV_DT_C   = new double[n]; 
+                double[] tmp_NV_DT_T   = new double[n];
 
                 for (int i = 0; i < n; i++) {
-                    NV_IDS[i]   = nvList.get(i)[0];
-                    NV_NAMES[i] = nvList.get(i)[1];
-                    NV_ROLES[i] = nvList.get(i)[2] != null ? nvList.get(i)[2] : "Dược sĩ";
-                    String[] parts = NV_NAMES[i].trim().split("\\s+");
-                    NV_SHORT[i] = parts[parts.length - 1];
-                    NV_COLORS[i] = PALETTE[i % PALETTE.length];
+                    tmp_NV_IDS[i]   = nvList.get(i)[0];
+                    tmp_NV_NAMES[i] = nvList.get(i)[1];
+                    tmp_NV_ROLES[i] = nvList.get(i)[2] != null ? nvList.get(i)[2] : "Dược sĩ";
+                    String[] parts = tmp_NV_NAMES[i].trim().split("\\s+");
+                    tmp_NV_SHORT[i] = parts[parts.length - 1];
+                    tmp_NV_COLORS[i] = PALETTE[i % PALETTE.length];
                 }
 
-                // 2. Doanh thu & chi phí 12 tháng
-                DT_DATA = busThongKe.getDoanhThu12Thang(year, fCondHD);
-                CP_DATA = busThongKe.getChiPhi12Thang(year, fCondHD);
+                double[] tmp_DT_DATA = busThongKe.getDoanhThu12Thang(year, fCondHD);
+                // FIX LOGIC: Truyền fCondPN để lấy tiền nhập kho
+                double[] tmp_CP_DATA = busThongKe.getChiPhi12Thang(year, fCondPN); 
 
-                // 3. Donut phân loại SP
-                DONUT_VALS = busThongKe.getSoLuongTheoLoaiSP(year, fCondHD);
+                int[] tmp_DONUT_VALS = busThongKe.getSoLuongTheoLoaiSP(year, fCondHD);
 
-                // 4. 10 ngày gần nhất & dữ liệu daily của từng NV
                 java.util.List<String> dateList = busThongKe.get10NgayGanNhat(year, fCondHD);
-                DATES_10 = dateList.toArray(new String[0]);
-                int days = DATES_10.length;
-                NV_DAILY = new int[n][days];
+                String[] tmp_DATES_10 = dateList.toArray(new String[0]);
+                int days = tmp_DATES_10.length;
+                int[][] tmp_NV_DAILY = new int[n][days];
                 for (int i = 0; i < n; i++)
                     for (int j = 0; j < days; j++)
-                        NV_DAILY[i][j] = busThongKe.getDailyHDCuaNV(NV_IDS[i], DATES_10[j], fCondHD);
+                        tmp_NV_DAILY[i][j] = busThongKe.getDailyHDCuaNV(tmp_NV_IDS[i], tmp_DATES_10[j], fCondHD);
 
-                // 4b. 30 ngày gần nhất (SỬA CHỖ NÀY ĐỂ ĐÚNG TRỤC X)
-                java.util.Arrays.fill(DAILY_30_DT, 0);
-                java.util.Arrays.fill(DAILY_30_HD, 0);
+                double[] tmp_DAILY_30_DT    = new double[30];
+                int[]    tmp_DAILY_30_HD    = new int[30];
+                String[] tmp_DAILY_30_DATES = new String[30];
                 
-                // Trải đều 30 ngày từ hôm nay lùi về quá khứ
                 java.time.LocalDate today = java.time.LocalDate.now();
                 java.time.format.DateTimeFormatter dtf = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy");
                 for (int i = 0; i < 30; i++) {
-                    DAILY_30_DATES[29 - i] = today.minusDays(i).format(dtf);
+                    tmp_DAILY_30_DATES[29 - i] = today.minusDays(i).format(dtf);
                 }
                 
-                // Map dữ liệu DB vào đúng ngày
                 java.util.List<Object[]> daily30 = busThongKe.getThongKe30NgayGanNhat(fCondHD);
                 for (Object[] row : daily30) {
                     String d = (String) row[0];
                     int hd = (int) row[1];
                     double dt = (double) row[2];
                     for (int i = 0; i < 30; i++) {
-                        if (DAILY_30_DATES[i].equals(d)) {
-                            DAILY_30_HD[i] = hd;
-                            DAILY_30_DT[i] = dt;
+                        if (tmp_DAILY_30_DATES[i].equals(d)) {
+                            tmp_DAILY_30_HD[i] = hd;
+                            tmp_DAILY_30_DT[i] = dt;
                             break;
                         }
                     }
                 }
 
-                // 4c. Kết quả ca sáng/chiều/tối từng NV
                 for (int i = 0; i < n; i++) {
-                    double[] sang  = busThongKe.getKetQuaCaSang(NV_IDS[i], year, fCondHD);
-                    double[] chieu = busThongKe.getKetQuaCaChieu(NV_IDS[i], year, fCondHD);
-                    double[] toi   = busThongKe.getKetQuaCaToi(NV_IDS[i], year, fCondHD);
-                    NV_HD_S[i] = (int) sang[0];  NV_DT_S[i] = sang[1];
-                    NV_HD_C[i] = (int) chieu[0]; NV_DT_C[i] = chieu[1];
-                    NV_HD_T[i] = (int) toi[0];   NV_DT_T[i] = toi[1];
+                    double[] sang  = busThongKe.getKetQuaCaSang(tmp_NV_IDS[i], year, fCondHD);
+                    double[] chieu = busThongKe.getKetQuaCaChieu(tmp_NV_IDS[i], year, fCondHD);
+                    double[] toi   = busThongKe.getKetQuaCaToi(tmp_NV_IDS[i], year, fCondHD);
+                    tmp_NV_HD_S[i] = (int) sang[0];  tmp_NV_DT_S[i] = sang[1];
+                    tmp_NV_HD_C[i] = (int) chieu[0]; tmp_NV_DT_C[i] = chieu[1];
+                    tmp_NV_HD_T[i] = (int) toi[0];   tmp_NV_DT_T[i] = toi[1];
                 }
 
-                // 5. KPI tổng hợp
                 double totalDT = 0, totalCP = 0;
-                for (double v : DT_DATA) totalDT += v;
-                for (double v : CP_DATA) totalCP += v;
+                for (double v : tmp_DT_DATA) totalDT += v;
+                for (double v : tmp_CP_DATA) totalCP += v;
                 long totalHD     = busThongKe.getTongHoaDon(year, fCondHD);
                 double loiNhuan  = totalDT - totalCP;
                 double lnPct     = totalDT > 0 ? loiNhuan / totalDT * 100 : 0;
                 double giaTriTBDon = totalHD > 0 ? (totalDT * 1_000_000.0 / totalHD) : 0;
                 int peakMonth = 0;
-                for (int i = 1; i < 12; i++) if (DT_DATA[i] > DT_DATA[peakMonth]) peakMonth = i;
+                for (int i = 1; i < 12; i++) if (tmp_DT_DATA[i] > tmp_DT_DATA[peakMonth]) peakMonth = i;
 
                 final long   fHD   = totalHD;
                 final double fDT   = totalDT, fLN = loiNhuan, fLNPct = lnPct, fTB = giaTriTBDon;
@@ -306,8 +303,17 @@ public class ManHinhThongKe extends JPanel {
                 final String kyStr = getKyString();
                 final int    fYear = year;
 
-                // BƯỚC 3: CẬP NHẬT GIAO DIỆN TRÊN EDT
+                // BƯỚC 3: CẬP NHẬT GIAO DIỆN TRÊN EDT VỚI DỮ LIỆU ĐÃ CHỐT SỔ
                 SwingUtilities.invokeLater(() -> {
+                    NV_NAMES = tmp_NV_NAMES; NV_IDS = tmp_NV_IDS; NV_ROLES = tmp_NV_ROLES; 
+                    NV_SHORT = tmp_NV_SHORT; NV_COLORS = tmp_NV_COLORS;
+                    NV_HD_S = tmp_NV_HD_S; NV_HD_C = tmp_NV_HD_C; NV_HD_T = tmp_NV_HD_T;
+                    NV_DT_S = tmp_NV_DT_S; NV_DT_C = tmp_NV_DT_C; NV_DT_T = tmp_NV_DT_T;
+                    DATES_10 = tmp_DATES_10; NV_DAILY = tmp_NV_DAILY;
+                    DT_DATA = tmp_DT_DATA; CP_DATA = tmp_CP_DATA;
+                    DONUT_VALS = tmp_DONUT_VALS;
+                    DAILY_30_DT = tmp_DAILY_30_DT; DAILY_30_HD = tmp_DAILY_30_HD; DAILY_30_DATES = tmp_DAILY_30_DATES;
+
                     if (kpiDTVal != null) { kpiDTVal.setText(formatM(fDT)); kpiDTSub.setText(kyStr + " " + fYear); }
                     if (kpiHDVal != null) { kpiHDVal.setText(String.format("%,d", fHD)); kpiHDSub.setText("TB mỗi kỳ: " + (fHD/12) + " đơn"); }
                     if (kpiLNVal != null) { kpiLNVal.setText(formatM(fLN)); kpiLNSub.setText(String.format("Tỷ lệ: %.1f%%", fLNPct)); }
