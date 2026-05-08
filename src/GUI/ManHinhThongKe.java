@@ -239,7 +239,7 @@ public class ManHinhThongKe extends JPanel {
 
                 // 2. Doanh thu & chi phí 12 tháng
                 DT_DATA = busThongKe.getDoanhThu12Thang(year, fCondHD);
-                CP_DATA = busThongKe.getChiPhi12Thang(year, fCondPN);
+                CP_DATA = busThongKe.getChiPhi12Thang(year, fCondHD);
 
                 // 3. Donut phân loại SP
                 DONUT_VALS = busThongKe.getSoLuongTheoLoaiSP(year, fCondHD);
@@ -910,7 +910,7 @@ public class ManHinhThongKe extends JPanel {
                 g2.drawString(axisLabel, 4, y+4);
             }
 
-            // Vẽ cột
+         // Vẽ cột
             for (int i = 0; i < 12; i++) {
                 int offset = (groupW - (barW * 3 + gap * 2)) / 2; 
                 int gx = startX + i * groupW + offset;
@@ -918,8 +918,9 @@ public class ManHinhThongKe extends JPanel {
                 double[] vals = {DT_DATA[i], CP_DATA[i], Math.max(0, DT_DATA[i]-CP_DATA[i])};
                 for (int b = 0; b < 3; b++) {
                     int rawBh = maxVal>0 ? (int)(vals[b]/maxVal*maxH) : 0;
-                    // BÍ QUYẾT: Luôn giữ min-height = 2px để xếp đủ 3 cột
-                    int bh = Math.max(2, rawBh); 
+                    
+                    // FIX: Không cào bằng 2px nữa. Nếu có số thì cho tối thiểu 1px để phân biệt
+                    int bh = (vals[b] > 0) ? Math.max(1, rawBh) : 0; 
                     
                     int bx = gx + b*(barW+gap);
                     int by = baseY - bh;
@@ -930,14 +931,14 @@ public class ManHinhThongKe extends JPanel {
                         c = Color.getHSBColor(hsb[0], hsb[1], Math.min(1f, hsb[2]*1.2f));
                     }
                     
-                    // NẾU GIÁ TRỊ = 0: Vẽ mờ đi (Alpha = 80) để báo hiệu
-                    if (rawBh <= 0 && i != hoverIdx) {
+                    // NẾU GIÁ TRỊ = 0: Vẽ mờ đi (Alpha = 80)
+                    if (bh == 0 && i != hoverIdx) {
                         g2.setColor(new Color(c.getRed(), c.getGreen(), c.getBlue(), 80));
                     } else {
                         g2.setColor(c);
                     }
                     
-                    int radius = Math.min(8, barW); // Chống lỗi bo góc khi cột quá nhỏ
+                    int radius = Math.min(8, barW);
                     g2.fillRoundRect(bx, by, barW, bh, radius, radius);
                     if (bh > 4) g2.fillRect(bx, by + 4, barW, bh - 4);
                 }
@@ -949,7 +950,6 @@ public class ManHinhThongKe extends JPanel {
                     g2.drawString(THANG[i], startX + i * groupW + (groupW - lblW)/2, h - 16);
                 }
             }
-
             // Legend 
             String[] legends = {"Doanh thu","Chi phí","Lợi nhuận"};
             int lx = startX;

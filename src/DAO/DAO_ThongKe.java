@@ -74,26 +74,37 @@ public class DAO_ThongKe {
         return list;
     }
 
-    // DOANH THU & CHI PHÍ 12 THÁNG
     public double[] getDoanhThu12Thang(int year, String filter) {
         double[] data = new double[12];
         String condHD = "";
-        // Tự động nhận diện đây là mã NV hay là chuỗi lọc Tháng/Quý
         if (filter != null && !filter.isEmpty()) {
             if (filter.trim().startsWith("AND")) condHD = " " + filter;
             else condHD = " AND hd.nhanVienId='" + filter + "'";
         }
         
-        String sql = "SELECT MONTH(hd.ngayLapHD) m, ISNULL(SUM(CASE WHEN ct.donGiaThucTe > 0 THEN ct.thanhTien ELSE (ct.soLuong*dvl.gia) END),0)/1000000.0 dt " +
+        String sql = "SELECT MONTH(hd.ngayLapHD) m, " +
+                     "SUM(ct.soLuong * dvl.gia * (1 + ISNULL(sp.thueVAT, 0)/100.0)) as tongGocCoVAT, " +
+                     "SUM(ct.soLuong * dvl.gia) as tongGocKhongVAT, " +
+                     "hd.ghiChu " +
                      "FROM HoaDon hd " +
                      "JOIN ChiTietHoaDon ct ON hd.id=ct.hoaDonId " +
                      "JOIN DonViDoLuong dvl ON ct.donViDoLuongId=dvl.id AND ct.sanPhamId=dvl.sanPhamId " +
+                     "JOIN SanPham sp ON ct.sanPhamId = sp.id " +
                      "WHERE YEAR(hd.ngayLapHD)=? AND hd.loaiHD='BAN_HANG'" + condHD +
-                     " GROUP BY MONTH(hd.ngayLapHD)";
-        try (PreparedStatement ps = getConn().prepareStatement(sql)) {
+                     " GROUP BY MONTH(hd.ngayLapHD), hd.id, hd.ghiChu";
+                     
+        try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setInt(1, year);
             ResultSet rs = ps.executeQuery();
-            while (rs.next()) { int m = rs.getInt("m"); if (m>=1&&m<=12) data[m-1]=rs.getDouble("dt"); }
+            while (rs.next()) { 
+                int m = rs.getInt("m"); 
+                if (m>=1&&m<=12) {
+                    double coVAT = rs.getDouble("tongGocCoVAT");
+                    double khongVAT = rs.getDouble("tongGocKhongVAT");
+                    double thucTe = tinhTienThucTeCuaHoaDon(con, coVAT, rs.getString("ghiChu"));
+                    data[m-1] += ((coVAT > 0) ? (thucTe * (khongVAT / coVAT)) : 0) / 1000000.0;
+                }
+            }
         } catch (Exception e) { e.printStackTrace(); }
         return data;
     }
@@ -129,15 +140,29 @@ public class DAO_ThongKe {
     }
     
     /** Chi phí nhập hàng 12 tháng (triệu đồng). condPN: điều kiện SQL thêm vào query LoHang */
-    public double[] getChiPhi12Thang(int year, String condPN) {
+    public double[] getChiPhi12Thang(int year, String filter) {
         double[] data = new double[12];
-        String sql = "SELECT MONTH(ngayNhap) m, ISNULL(SUM(soLuongLoHang*gia),0)/1000000.0 cp " +
-                     "FROM LoHang WHERE YEAR(ngayNhap)=?" + condPN + " GROUP BY MONTH(ngayNhap)";
+        String condHD = "";
+        if (filter != null && !filter.isEmpty()) {
+            if (filter.trim().startsWith("AND")) condHD = " " + filter;
+            else condHD = " AND hd.nhanVienId='" + filter + "'";
+        }
+        
+        String sql = "SELECT MONTH(hd.ngayLapHD) m, ISNULL(SUM(pb.soLuong * lh.gia), 0)/1000000.0 cp " +
+                     "FROM HoaDon hd " +
+                     "JOIN PhanBoLoHang pb ON hd.id = pb.hoaDonId " +
+                     "JOIN LoHang lh ON pb.loHangId = lh.id " +
+                     "WHERE YEAR(hd.ngayLapHD)=? AND hd.loaiHD='BAN_HANG'" + condHD +
+                     " GROUP BY MONTH(hd.ngayLapHD)";
+                     
         try (PreparedStatement ps = getConn().prepareStatement(sql)) {
             ps.setInt(1, year);
             ResultSet rs = ps.executeQuery();
-            while (rs.next()) { int m = rs.getInt("m"); if (m>=1&&m<=12) data[m-1]=rs.getDouble("cp"); }
-        } catch (Exception e) { /* Không có dữ liệu chi phí là hợp lệ */ }
+            while (rs.next()) { 
+                int m = rs.getInt("m"); 
+                if (m>=1&&m<=12) data[m-1] += rs.getDouble("cp"); 
+            }
+        } catch (Exception e) { e.printStackTrace(); }
         return data;
     }
 
