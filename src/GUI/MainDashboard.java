@@ -51,7 +51,7 @@ public class MainDashboard extends JFrame {
         setLayout(new BorderLayout());
         
         try {
-            String imagePath = "D:\\MYCARE\\MyCare-Pharmacy\\data\\logo.png"; // Cập nhật đúng đường dẫn
+            String imagePath = "D:\\MyCare-Pharmacy\\MyCare-Pharmacy\\data\\logo.png"; // Cập nhật đúng đường dẫn
             File file = new File(imagePath);
             
             if (file.exists()) {
