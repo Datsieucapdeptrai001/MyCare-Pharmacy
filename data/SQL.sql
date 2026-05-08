@@ -1,4 +1,3 @@
-﻿@@ -0,0 +1,647 @@
 ﻿USE [master];
 GO
 
@@ -635,4 +634,4 @@ USE [master]
 GO
 ALTER DATABASE [MYCAREPHARMACY] SET READ_WRITE
 GO
-No newline at end of file
+
