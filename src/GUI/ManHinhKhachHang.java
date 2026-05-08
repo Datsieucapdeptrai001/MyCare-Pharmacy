@@ -323,7 +323,8 @@ public class ManHinhKhachHang extends JPanel {
         pnlInfo.setLayout(new BoxLayout(pnlInfo, BoxLayout.Y_AXIS));
         pnlInfo.setBackground(Color.WHITE);
 
-        JPanel pnlInfoList = new JPanel(new GridLayout(4, 1, 0, 10));
+        // Sử dụng GridLayout(0, 1) để tự động co giãn. 
+        JPanel pnlInfoList = new JPanel(new GridLayout(0, 1, 0, 10));
         pnlInfoList.setBackground(Color.WHITE);
         pnlInfoList.setBorder(new EmptyBorder(15, 15, 15, 15));
         pnlInfoList.setAlignmentX(Component.LEFT_ALIGNMENT); 
@@ -333,12 +334,15 @@ public class ManHinhKhachHang extends JPanel {
         lblDetNgayTao.setIcon(new MenuIcon("CALENDAR")); 
         lblDetPhone = new JLabel(" 0910000000");
         lblDetPhone.setIcon(new MenuIcon("PHONE"));
+        
+        // Vẫn giữ khởi tạo Email và Address để không vi phạm nguyên tắc "không xóa code cũ" và không lỗi Null
         lblDetEmail = new JLabel(" khachhang@email.com");
         lblDetEmail.setIcon(new MenuIcon("MAIL"));
         lblDetAddress = new JLabel(" TP. Hồ Chí Minh");
         lblDetAddress.setIcon(new MenuIcon("LOCATION"));
 
-        for(JLabel l : new JLabel[]{lblDetNgayTao, lblDetPhone, lblDetEmail, lblDetAddress}) {
+        // FIX LỖI KHOẢNG TRẮNG: Chỉ add đúng 2 Label đang thực sự hiển thị vào khung
+        for(JLabel l : new JLabel[]{lblDetNgayTao, lblDetPhone}) {
             l.setFont(new Font("Segoe UI", Font.PLAIN, 13));
             l.setForeground(Color.decode("#4B5563"));
             l.setIconTextGap(10);
@@ -400,9 +404,15 @@ public class ManHinhKhachHang extends JPanel {
         pnlInfo.add(pnlStats);
         pnlInfo.add(pnlSpend);
         
-        JScrollPane spInfo = new JScrollPane(pnlInfo);
+        // Đã bọc pnlInfo vào BorderLayout.NORTH để chống lỗi JScrollPane tự động kéo giãn nội dung
+        JPanel pnlInfoWrapper = new JPanel(new BorderLayout());
+        pnlInfoWrapper.setBackground(Color.WHITE);
+        pnlInfoWrapper.add(pnlInfo, BorderLayout.NORTH);
+
+        JScrollPane spInfo = new JScrollPane(pnlInfoWrapper);
         spInfo.setBorder(null);
         spInfo.getVerticalScrollBar().setUI(new Utils.ModernScrollBarUI());
+        
         // 2. Giao diện LỊCH SỬ ĐIỂM
         JPanel pnlHistoryWrapper = new JPanel(new BorderLayout());
         pnlHistoryWrapper.setBackground(Color.WHITE);
@@ -426,7 +436,12 @@ public class ManHinhKhachHang extends JPanel {
         pnlHistoryList.setBackground(Color.WHITE);
         pnlHistoryList.setBorder(new EmptyBorder(5, 15, 10, 15));
         
-        JScrollPane spHistory = new JScrollPane(pnlHistoryList);
+        // Đã bọc pnlHistoryList vào BorderLayout.NORTH để chống lỗi JScrollPane tự động kéo giãn nội dung
+        JPanel pnlHistoryListWrapper = new JPanel(new BorderLayout());
+        pnlHistoryListWrapper.setBackground(Color.WHITE);
+        pnlHistoryListWrapper.add(pnlHistoryList, BorderLayout.NORTH);
+
+        JScrollPane spHistory = new JScrollPane(pnlHistoryListWrapper);
         spHistory.setBorder(null);
         spHistory.getVerticalScrollBar().setUI(new Utils.ModernScrollBarUI());
         pnlHistoryWrapper.add(pnlHisHeader, BorderLayout.NORTH);
