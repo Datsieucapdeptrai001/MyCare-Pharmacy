@@ -43,6 +43,10 @@ public class ManHinhDoiTra extends JPanel {
         this.addComponentListener(new java.awt.event.ComponentAdapter() {
             @Override
             public void componentShown(java.awt.event.ComponentEvent e) {
+                if (txtSearch != null) {
+                    txtSearch.setText("Mã phiếu, hóa đơn..."); // <-- Đã sửa cho khớp placeholder
+                    txtSearch.setForeground(Color.GRAY);
+                }
                 loadDataToTable(); 
             }
         });
