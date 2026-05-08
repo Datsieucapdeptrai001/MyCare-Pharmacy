@@ -242,7 +242,7 @@ public class ManHinhThongKe extends JPanel {
 
                 double[] tmp_DT_DATA = busThongKe.getDoanhThu12Thang(year, fCondHD);
                 // FIX LOGIC: Truyền fCondPN để lấy tiền nhập kho
-                double[] tmp_CP_DATA = busThongKe.getChiPhi12Thang(year, fCondPN); 
+                double[] tmp_CP_DATA = busThongKe.getChiPhi12Thang(year, fCondHD); 
 
                 int[] tmp_DONUT_VALS = busThongKe.getSoLuongTheoLoaiSP(year, fCondHD);
 
