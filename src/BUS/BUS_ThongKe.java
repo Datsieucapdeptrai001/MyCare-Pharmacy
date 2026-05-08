@@ -296,4 +296,7 @@ public class BUS_ThongKe {
     public double getDoanhThuThuanHomNay(String maNV, int ca) { 
         return dao.getDoanhThuThuanHomNay(maNV, ca); 
     }
+    public double getDoanhThuThuan7NgayQua(String maNV) { 
+        return dao.getDoanhThuThuan7NgayQua(maNV); 
+    }
 }
