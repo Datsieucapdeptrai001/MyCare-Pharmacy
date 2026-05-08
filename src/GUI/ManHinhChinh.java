@@ -291,12 +291,12 @@ public class ManHinhChinh extends JPanel {
 
         int sp = busThongKe.getTongSanPham();
         int hd = busThongKe.getHoaDonHomNay(filterMaNV, filterCa);
-        double dt = busThongKe.getDoanhThuHomNay(filterMaNV, filterCa);
+        double dt = busThongKe.getDoanhThuThuanHomNay(filterMaNV, filterCa);
         int kh = busThongKe.getTongKhachHang();
 
         row.add(kpiCard("Tổng sản phẩm", String.valueOf(sp), "Cửa hàng", "#EEF2FF", "#3D52A0", "PILL"));
         row.add(kpiCard("Hóa đơn", String.valueOf(hd), "Đã lọc", "#ECFDF5", "#00A76F", "DOCUMENT"));
-        row.add(kpiCard("Doanh thu", compactMoney(dt), "đ VND", "#FFF7ED", "#FF6B00", "TAB_DOLLAR"));
+        row.add(kpiCard("Doanh thu", formatMoney((long) dt), "VNĐ", "#FFF7ED", "#FF6B00", "TAB_DOLLAR"));
         row.add(kpiCard("Tổng khách hàng", String.valueOf(kh), "Cửa hàng", "#FFF0F0", "#FF5630", "USERS"));
         return row;
     }

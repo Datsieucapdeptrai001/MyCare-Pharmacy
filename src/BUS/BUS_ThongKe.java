@@ -188,4 +188,112 @@ public class BUS_ThongKe {
     public double getDoanhThuHomNay(String maNV, int ca) { return dao.getDoanhThuHomNay(maNV, ca); }
     public double getDoanhThuTienMatHomNay(String maNV, int ca) { return dao.getDoanhThuTienMatHomNay(maNV, ca); }
     public List<Object[]> getHoaDonGanDayTrongCa(String maNV, int ca) { return dao.getHoaDonGanDayTrongCa(maNV, ca); }
+
+    // ==================== THỐNG KÊ NGÀY CỤ THỂ ====================
+
+    /**
+     * KPI tổng hợp của 1 ngày cụ thể (định dạng yyyy-MM-dd).
+     * Object[4]: {tongHD(int), tongDT_trieu(double), tongKH(int), tongSPBan(int)}
+     */
+    public Object[] getThongKeNgayCuThe(String dateYMD) {
+        if (dateYMD == null || dateYMD.isEmpty()) return new Object[]{0, 0.0, 0, 0};
+        return dao.getThongKeNgayCuThe(dateYMD);
+    }
+
+    /**
+     * Top 10 SP bán nhiều trong 1 ngày cụ thể.
+     * Mỗi Object[3]: {tenSP(String), soLuong(int), doanhThu_trieu(double)}
+     */
+    public List<Object[]> getTopSPTrongNgay(String dateYMD) {
+        if (dateYMD == null || dateYMD.isEmpty()) return new java.util.ArrayList<>();
+        return dao.getTopSPTrongNgay(dateYMD);
+    }
+
+    /**
+     * Doanh thu theo từng giờ trong ngày (0–23).
+     * Trả về double[24] (đơn vị: triệu đồng)
+     */
+    public double[] getDTTheoGioTrongNgay(String dateYMD) {
+        if (dateYMD == null || dateYMD.isEmpty()) return new double[24];
+        return dao.getDTTheoGioTrongNgay(dateYMD);
+    }
+
+    /**
+     * Danh sách NV làm việc và doanh số trong ngày.
+     * Mỗi Object[3]: {hoVaTen(String), soHD(int), doanhThu_trieu(double)}
+     */
+    public List<Object[]> getNVTrongNgay(String dateYMD) {
+        if (dateYMD == null || dateYMD.isEmpty()) return new java.util.ArrayList<>();
+        return dao.getNVTrongNgay(dateYMD);
+    }
+
+    // ==================== THỐNG KÊ KHÁCH HÀNG ====================
+
+    /**
+     * KH mới từng tháng trong năm.
+     * Trả về int[12]
+     */
+    public int[] getKHMoiTheoThang(int year) {
+        if (year <= 0) return new int[12];
+        return dao.getKHMoiTheoThang(year);
+    }
+
+    /**
+     * Top 10 KH mua nhiều nhất trong năm.
+     * Mỗi Object[4]: {hoVaTen, soHD(int), tongDT_trieu(double), diemTichLuy(int)}
+     */
+    public List<Object[]> getTopKhachHang(int year, String condHD) {
+        return dao.getTopKhachHang(year, condHD != null ? condHD : "");
+    }
+
+    /**
+     * KPI tổng hợp khách hàng.
+     * Object[3]: {tongKH(int), khCoTK(int), tongDiem(int)}
+     */
+    public Object[] getKpiKhachHang() {
+        return dao.getKpiKhachHang();
+    }
+
+    // ==================== THỐNG KÊ KHO HÀNG ====================
+
+    /** Tổng giá trị tồn kho (đơn vị: VND) */
+    public double getTongGiaTriTonKho() {
+        return dao.getTongGiaTriTonKho();
+    }
+
+    /**
+     * Số lô theo trạng thái.
+     * Object[3]: {soLoConHang(int), soLoHetHang(int), soLoHetHan(int)}
+     */
+    public Object[] getSoLoTheoTrangThai() {
+        return dao.getSoLoTheoTrangThai();
+    }
+
+    /**
+     * Phân bổ tồn kho theo từng kho.
+     * Mỗi Object[3]: {maKho(String), soLuong(int), giaTriTrieu(double)}
+     */
+    public List<Object[]> getTonKhoTheoKho() {
+        return dao.getTonKhoTheoKho();
+    }
+
+    /**
+     * Top 10 SP tồn kho nhiều nhất.
+     * Mỗi Object[3]: {tenSP(String), soLuongTon(int), giaTriTrieu(double)}
+     */
+    public List<Object[]> getTopSPTonNhieu() {
+        return dao.getTopSPTonNhieu();
+    }
+
+    /**
+     * Giá trị nhập hàng 12 tháng (triệu đồng).
+     * Trả về double[12]
+     */
+    public double[] getNhapHang12Thang(int year) {
+        if (year <= 0) return new double[12];
+        return dao.getNhapHang12Thang(year);
+    }
+    public double getDoanhThuThuanHomNay(String maNV, int ca) { 
+        return dao.getDoanhThuThuanHomNay(maNV, ca); 
+    }
 }
