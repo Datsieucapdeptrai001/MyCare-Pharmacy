@@ -1023,5 +1023,36 @@ public class DAO_ThongKe {
         }
         return Math.max(0, tongGocCoVat - tongTienGiam);
     }
-    
+ // DOANH THU THUẦN 7 NGÀY QUA (DÙNG CHO DASHBOARD ADMIN)
+    public double getDoanhThuThuan7NgayQua(String maNV) {
+        double tongTienHangGoc = 0;
+        double tongThucThuCoVAT = getDoanhThu7NgayQua(maNV);
+        double tongGocCoVAT = 0;
+        
+        String cond = (maNV != null && !maNV.isEmpty()) ? " AND hd.nhanVienId='" + maNV + "'" : "";
+        
+        // 1. Tính tổng tiền hàng gốc
+        String sqlGoc = "SELECT ISNULL(SUM(ct.soLuong * dvl.gia),0) " +
+                        "FROM HoaDon hd JOIN ChiTietHoaDon ct ON hd.id=ct.hoaDonId " +
+                        "JOIN DonViDoLuong dvl ON ct.donViDoLuongId=dvl.id AND ct.sanPhamId=dvl.sanPhamId " +
+                        "WHERE hd.ngayLapHD>=DATEADD(DAY,-7,GETDATE()) AND hd.loaiHD='BAN_HANG'" + cond;
+        try (Connection con = getConn(); Statement st = con.createStatement(); ResultSet rs = st.executeQuery(sqlGoc)) {
+            if (rs.next()) tongTienHangGoc = rs.getDouble(1);
+        } catch (Exception e) {}
+
+        // 2. Tính tổng tiền gốc có VAT
+        String sqlGocCoVAT = "SELECT ISNULL(SUM(ct.soLuong * dvl.gia * (1 + ISNULL(sp.thueVAT, 0)/100.0)), 0) " +
+                             "FROM HoaDon hd JOIN ChiTietHoaDon ct ON hd.id=ct.hoaDonId " +
+                             "JOIN DonViDoLuong dvl ON ct.donViDoLuongId=dvl.id AND ct.sanPhamId=dvl.sanPhamId " +
+                             "JOIN SanPham sp ON ct.sanPhamId = sp.id " +
+                             "WHERE hd.ngayLapHD>=DATEADD(DAY,-7,GETDATE()) AND hd.loaiHD='BAN_HANG'" + cond;
+        try (Connection con = getConn(); Statement st = con.createStatement(); ResultSet rs = st.executeQuery(sqlGocCoVAT)) {
+            if (rs.next()) tongGocCoVAT = rs.getDouble(1);
+        } catch (Exception e) {}
+
+        if (tongGocCoVAT == 0) return 0;
+        
+        double tienKhuyenMaiTong = tongGocCoVAT - tongThucThuCoVAT;
+        return Math.max(0, tongTienHangGoc - (tienKhuyenMaiTong * (tongTienHangGoc / tongGocCoVAT)));
+    }
 }
