@@ -12,15 +12,54 @@ public class BUS_ThongKe {
         this.dao = new DAO_ThongKe();
     }
 
-    // LEGACY METHODS
+    // LEGACY METHODS — Giữ để không break code cũ
     public double getTongTienHangHomNay(String maNV, int ca) { 
         return dao.getTongTienHangHomNay(maNV, ca); 
     }
     public double getTienHoanTraTheoCa(String maNV, LocalDateTime start) { 
         return dao.getTienHoanTraTheoCa(maNV, start); 
     }
+    /** @deprecated Dùng getKpiDoiChieu() thay thế — BUS tự tính KM từ chênh lệch. */
+    @Deprecated
     public double getTongKhuyenMaiHomNay(String maNV, int ca) { 
         return dao.getTongKhuyenMaiHomNay(maNV, ca); 
+    }
+
+    // ================================================================
+    // NGHIỆP VỤ TỔNG HỢP — Logic tính toán tập trung tại BUS
+    // ================================================================
+
+    /**
+     * KPI tổng hợp cho màn hình Đối chiếu doanh thu.
+     * GUI chỉ gọi 1 lần, nhận đủ dữ liệu hiển thị.
+     *
+     * Trả về double[6]:
+     *   [0] soHD         – số hóa đơn
+     *   [1] tHang        – tiền hàng gốc (chưa giảm)
+     *   [2] tKhuyenMai   – tổng khuyến mãi đã giảm  (BUS tính = tHang - tThanhToan)
+     *   [3] tThanhToan   – tổng thực thu (sau KM, có VAT)
+     *   [4] tMat         – tiền mặt thực thu
+     *   [5] tCK          – chuyển khoản thực thu    (BUS tính = tThanhToan - tMat)
+     */
+    public double[] getKpiDoiChieu(String maNV, int ca) {
+        int    soHD       = dao.getHoaDonHomNay(maNV, ca);
+        double tHang      = dao.getTongTienHangHomNay(maNV, ca);
+        double tThanhToan = dao.getDoanhThuHomNay(maNV, ca);
+        double tMat       = dao.getDoanhThuTienMatHomNay(maNV, ca);
+        // BUS tính — không để GUI hay DAO làm
+        double tKhuyenMai = Math.max(0, tHang - tThanhToan);
+        double tCK        = Math.max(0, tThanhToan - tMat);
+        return new double[]{soHD, tHang, tKhuyenMai, tThanhToan, tMat, tCK};
+    }
+
+    /**
+     * Tiền chuyển khoản = Tổng thanh toán - Tiền mặt.
+     * Logic này được chuyển từ GUI về BUS.
+     */
+    public double getTienChuyenKhoan(String maNV, int ca) {
+        double tThanhToan = dao.getDoanhThuHomNay(maNV, ca);
+        double tMat       = dao.getDoanhThuTienMatHomNay(maNV, ca);
+        return Math.max(0, tThanhToan - tMat);
     }
     private boolean kiemTraThoiGianHople(LocalDateTime tuNgay, LocalDateTime denNgay) {
         if (tuNgay == null || denNgay == null) return false;
@@ -68,9 +107,9 @@ public class BUS_ThongKe {
      * Chi phí nhập hàng 12 tháng (triệu đồng).
      * condPN: điều kiện SQL bổ sung cho bảng LoHang
      */
-    public double[] getChiPhi12Thang(int year, String condPN) {
+    public double[] getChiPhi12Thang(int year, String condHD) {
         if (year <= 0) return new double[12];
-        return dao.getChiPhi12Thang(year, condPN);
+        return dao.getChiPhi12Thang(year, condHD != null ? condHD : "");
     }
 
     // DONUT - PHÂN LOẠI SẢN PHẨM
@@ -298,5 +337,47 @@ public class BUS_ThongKe {
     }
     public double getDoanhThuThuan7NgayQua(String maNV) { 
         return dao.getDoanhThuThuan7NgayQua(maNV); 
+    }
+
+    /**
+     * Lợi nhuận 12 tháng chính xác.
+     * Công thức: Doanh thu bán hàng - COGS (PhanBoLoHang × soLuongQuyDoi × giá vốn).
+     * Logic tính được thực hiện tại BUS, DAO chỉ cung cấp raw data từng mảng.
+     */
+    public double[] getLoiNhuan12Thang(int year, String condHD) {
+        if (year <= 0) return new double[12];
+        String cond = condHD != null ? condHD : "";
+        double[] dt = dao.getDoanhThu12Thang(year, cond);
+        double[] cp = dao.getChiPhi12Thang(year, cond);
+        double[] ln = new double[12];
+        for (int i = 0; i < 12; i++) {
+            ln[i] = dt[i] - cp[i]; // đơn vị: triệu đồng
+        }
+        return ln;
+    }
+
+    /** Gợi ý khuyến mãi thông minh dựa trên phân tích top sản phẩm.
+     *  Object[10]: {tenSP, danhMuc, soLuongBan, doanhThu_trieu,
+     *               giaVon, bienLN_pct, coKM, goiYLoai, lyDo, mucGiam} */
+    public List<Object[]> getGoiYKhuyenMai(int year) {
+        return dao.getGoiYKhuyenMai(year);
+    }
+
+    /**
+     * Danh sách hóa đơn gần nhất trong ngày — dùng cho Live Activity Feed.
+     * Trả về List<Object[]>: {maHD[0], tenKH[1], thanhTien[2], gio[3]}
+     */
+    public List<Object[]> getHoaDonGanNhat(String maNV, int ca, int limit) {
+        return dao.getHoaDonGanNhat(maNV, ca, limit);
+    }
+
+    /** Hóa đơn giá trị cao (> 1 triệu) hôm nay — dùng cho ticker */
+    public List<Object[]> getHoaDonGiaTriCaoHomNay(int limit) {
+        return dao.getHoaDonGiaTriCaoHomNay(limit);
+    }
+
+    /** Khách hàng VIP (điểm >= 500) mua hàng hôm nay — dùng cho ticker */
+    public List<Object[]> getKhachHangVIPMuaHomNay(int limit) {
+        return dao.getKhachHangVIPMuaHomNay(limit);
     }
 }

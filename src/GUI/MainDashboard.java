@@ -124,6 +124,32 @@ public class MainDashboard extends JFrame {
         }
     }
     
+    public void switchTabAndFilter(String tabName, String keyword) {
+        cardLayout.show(cardPanel, tabName);
+        for (JButton btn : menuButtons) {
+            if (btn.getText().equals(tabName)) {
+                setActiveButton(btn);
+                break;
+            }
+        }
+        
+        for (Component c : cardPanel.getComponents()) {
+            if (c instanceof ManHinhLoHang && tabName.equals("Lô hàng")) {
+                ((ManHinhLoHang) c).filterData(keyword);
+            }
+        }
+    }
+
+    public void chuyenSangTabNhapLoHangMoiVaFill(String tenSP) {
+        switchTabAndFilter("Lô hàng", "");
+        for (Component c : cardPanel.getComponents()) {
+            if (c instanceof ManHinhLoHang) {
+                ((ManHinhLoHang) c).moManHinhNhapLoMoi(tenSP);
+                break;
+            }
+        }
+    }
+    
     // ── TOP HEADER ──────────────────────────────────────────────
     private JPanel createTopHeader() {
         JPanel header = new JPanel(new BorderLayout());

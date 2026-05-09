@@ -99,6 +99,14 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         registerKeyboardActions();
     }
 
+    public void setSanPhamAutoFill(String tenSP) {
+        if (txtTimSanPham != null) {
+            txtTimSanPham.setText(tenSP);
+            txtTimSanPham.requestFocus();
+            txtTimSanPham.setCaretPosition(txtTimSanPham.getText().length());
+        }
+    }
+
     private JPanel createMainUI() {
         JPanel root = new JPanel(new BorderLayout());
         root.setBackground(CARD_BG);

@@ -636,6 +636,13 @@ public class ManHinhLoHang extends JPanel {
         lblTotal.setText("Hiển thị " + filtered.size() + " / " + dsTatCa.size() + " lô");
     }
 
+    public void filterData(String keyword) {
+        if (txtSearch != null) {
+            txtSearch.setText(keyword);
+            txtSearch.requestFocus();
+        }
+    }
+
     private int getPriority(BatchItem item) {
         if ("Đã ẩn".equals(item.trangThai)) return 5;
         String conLai = item.getConLai();
@@ -656,10 +663,17 @@ public class ManHinhLoHang extends JPanel {
         }
     }
 
-    private void moManHinhNhapLoMoi() {
+    public void moManHinhNhapLoMoi(String tenSP) {
         Window owner = SwingUtilities.getWindowAncestor(this);
         ManHinhNhapLoHangMoi dialog = new ManHinhNhapLoHangMoi(owner, this::loadDataFromDatabase);
+        if (tenSP != null && !tenSP.isEmpty()) {
+            dialog.setSanPhamAutoFill(tenSP);
+        }
         dialog.setVisible(true);
+    }
+
+    private void moManHinhNhapLoMoi() {
+        moManHinhNhapLoMoi(null);
     }
 
     private void moManHinhXuatKho() {
