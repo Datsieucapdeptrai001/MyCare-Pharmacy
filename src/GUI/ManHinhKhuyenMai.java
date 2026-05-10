@@ -79,6 +79,9 @@ public class ManHinhKhuyenMai extends JPanel {
     private RoundedButton btnDetailEdit, btnDetailToggle;
 
     private JTextField txtTienMua, txtDiemThuong, txtTienDoi, txtDiemToiThieu;
+    
+    // ĐÃ KHẮC PHỤC: Khai báo Panel chứa Card Gợi ý thành biến toàn cục để có thể làm mới
+    private JPanel pnlSuggestionCards; 
 
     public ManHinhKhuyenMai() {
         System.setProperty("awt.useSystemAAFontSettings", "on");
@@ -172,8 +175,11 @@ public class ManHinhKhuyenMai extends JPanel {
             }
             if (rowSorter != null)
                 rowSorter.setRowFilter(null);
+            
+            // ĐÃ KHẮC PHỤC: Gọi hàm làm mới danh sách gợi ý khi bấm nút Làm mới
             loadDataFromDatabase();
             updateKPI();
+            updateSuggestions();
         });
 
         RoundedButton btnAdd = new RoundedButton("Thêm mới", COLOR_INFO, Color.WHITE);
@@ -1437,7 +1443,6 @@ public class ManHinhKhuyenMai extends JPanel {
                 }
             }
 
-            // ĐÃ KHẮC PHỤC: Sử dụng JScrollPane để cuộn nội dung, chống tràn màn hình
             JScrollPane scrollBody = new JScrollPane(pnlBody);
             scrollBody.setBorder(null);
             scrollBody.getViewport().setBackground(Color.WHITE);
@@ -1580,6 +1585,9 @@ public class ManHinhKhuyenMai extends JPanel {
                         dialog.dispose();
                         loadDataFromDatabase();
 
+                        // ĐÃ KHẮC PHỤC: Cập nhật lại thẻ gợi ý nếu tạo KM thành công
+                        updateSuggestions();
+
                         if (isEditMode && pnlDetail.isVisible() && lblDetId.getText().equals(finalId)) {
                             SwingUtilities.invokeLater(() -> {
                                 for (int i = 0; i < tableModel.getRowCount(); i++) {
@@ -1615,7 +1623,6 @@ public class ManHinhKhuyenMai extends JPanel {
             Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
             int maxHeight = screenSize.height - 50; 
             
-            // ĐÃ KHẮC PHỤC: Thuật toán nhận diện màn hình để form không bị tràn
             if (targetHeight > maxHeight) {
                 dialog.setSize(850, maxHeight);
             } else {
@@ -1753,6 +1760,27 @@ public class ManHinhKhuyenMai extends JPanel {
         public void showDialog() { dialog.setVisible(true); }
     }
 
+    // ĐÃ KHẮC PHỤC: Rút logic kết xuất panel gợi ý ra một hàm riêng để cập nhật thời gian thực
+    private void updateSuggestions() {
+        if (pnlSuggestionCards == null) return;
+        pnlSuggestionCards.removeAll();
+
+        List<Map<String, Object>> goiyList = busKhuyenMai.layDanhSachGoiYKhuyenMaiVoiLogic();
+        if (goiyList != null && !goiyList.isEmpty()) {
+            for (Map<String, Object> item : goiyList) {
+                pnlSuggestionCards.add(createSuggestionCard(item));
+            }
+        } else {
+            JLabel lblEmpty = new JLabel("Không có gợi ý nào lúc này.");
+            lblEmpty.setFont(FONT_REGULAR);
+            lblEmpty.setForeground(COLOR_TEXT_MUTED);
+            pnlSuggestionCards.add(lblEmpty);
+        }
+
+        pnlSuggestionCards.revalidate();
+        pnlSuggestionCards.repaint();
+    }
+
     private JPanel createSuggestionSection() {
         JPanel pnlWrap = new JPanel(new BorderLayout(0, 10));
         pnlWrap.setOpaque(false);
@@ -1763,22 +1791,12 @@ public class ManHinhKhuyenMai extends JPanel {
         lblTitle.setForeground(COLOR_TEXT_MAIN);
         lblTitle.setIcon(new MenuIcon("LIGHTBULB"));
 
-        JPanel pnlCards = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 0));
-        pnlCards.setOpaque(false);
+        pnlSuggestionCards = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 0));
+        pnlSuggestionCards.setOpaque(false);
+        
+        updateSuggestions(); // Nạp dữ liệu gợi ý lần đầu
 
-        List<Map<String, Object>> goiyList = busKhuyenMai.layDanhSachGoiYKhuyenMaiVoiLogic();
-        if (goiyList != null && !goiyList.isEmpty()) {
-            for (Map<String, Object> item : goiyList) {
-                pnlCards.add(createSuggestionCard(item));
-            }
-        } else {
-            JLabel lblEmpty = new JLabel("Không có gợi ý nào lúc này.");
-            lblEmpty.setFont(FONT_REGULAR);
-            lblEmpty.setForeground(COLOR_TEXT_MUTED);
-            pnlCards.add(lblEmpty);
-        }
-
-        JScrollPane scroll = new JScrollPane(pnlCards);
+        JScrollPane scroll = new JScrollPane(pnlSuggestionCards);
         scroll.setBorder(null);
         scroll.setOpaque(false);
         scroll.getViewport().setOpaque(false);
