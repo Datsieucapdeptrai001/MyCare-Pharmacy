@@ -227,7 +227,6 @@ public class MainDashboard extends JFrame {
         
         boolean coTaiKhoanKhac = false;
         for (NhanVien nhanVien : tatCaNhanVien) {
-            // ĐÃ KHẮC PHỤC: Lọc tuyệt đối tài khoản hiện tại, chống phân biệt hoa thường
             if (nhanVien.getNhanVien() != null && !nhanVien.getNhanVien().trim().equalsIgnoreCase(maNhanVienHienTai)) {
                 JMenuItem item = new JMenuItem(nhanVien.getNhanVien() + " - " + nhanVien.getHoVaTen());
                 item.setFont(new Font("Segoe UI", Font.BOLD, 13));
@@ -237,7 +236,12 @@ public class MainDashboard extends JFrame {
                 item.setCursor(new Cursor(Cursor.HAND_CURSOR));
                 item.setPreferredSize(new Dimension(240, 35));
                 
-                item.addActionListener(e -> xulyChuyenTaiKhoan(nhanVien));
+                // ĐÃ KHẮC PHỤC LỖI CRASH EDT: 
+                // Bọc lệnh chuyển tài khoản trong SwingUtilities.invokeLater để tách biệt luồng xử lý giao diện
+                item.addActionListener(e -> {
+                    SwingUtilities.invokeLater(() -> xulyChuyenTaiKhoan(nhanVien));
+                });
+                
                 menuTaiKhoan.add(item);
                 coTaiKhoanKhac = true;
             }
@@ -398,7 +402,7 @@ public class MainDashboard extends JFrame {
     }
 
     // =================================================================================
-    // FORM NHẬP MẬT KHẨU - ĐÃ SỬA LỖI LẸM CHỮ (Sử dụng BorderLayout + pack)
+    // FORM NHẬP MẬT KHẨU
     // =================================================================================
     private String hienThiDialogNhapMatKhau(TaiKhoan taiKhoanDich) {
         JDialog dialog = new JDialog(this, "Xác thực tài khoản", true);
@@ -415,7 +419,6 @@ public class MainDashboard extends JFrame {
         lblTitle.setForeground(Color.decode("#1A73E8"));
         pnlHeader.add(lblTitle, BorderLayout.WEST);
 
-        // ĐÃ KHẮC PHỤC: Chuyển sang BorderLayout để tránh FlowLayout cắt xén các thành phần
         JPanel pnlBody = new JPanel(new BorderLayout(0, 15));
         pnlBody.setOpaque(false);
         pnlBody.setBorder(new EmptyBorder(15, 20, 25, 20));
@@ -425,7 +428,7 @@ public class MainDashboard extends JFrame {
         lMsg.setForeground(Color.decode("#333333"));
         pnlBody.add(lMsg, BorderLayout.NORTH);
         
-        JPanel pnlPassWrapper = new JPanel(new BorderLayout()) {
+        JPanel pnlPassWrapper = new JPanel(new GridBagLayout()) {
             @Override protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
@@ -439,20 +442,20 @@ public class MainDashboard extends JFrame {
         };
         pnlPassWrapper.setOpaque(false);
         pnlPassWrapper.setPreferredSize(new Dimension(320, 45));
-        
-        // ĐÃ KHẮC PHỤC: Margin = 0 dọc để JPasswordField bung hết 45px và tự canh giữa Text
-        pnlPassWrapper.setBorder(new EmptyBorder(0, 15, 0, 15));
 
-        JPasswordField txtPass = new JPasswordField();
-        txtPass.setFont(new Font("Segoe UI", Font.BOLD, 18)); // Font to rõ ràng
-        txtPass.setEchoChar('•'); // Dấu chấm tiêu chuẩn
-        txtPass.setBorder(null); // Gỡ bỏ triệt để viền hệ điều hành
+        JPasswordField txtPass = new JPasswordField(20);
+        txtPass.setFont(new Font("Segoe UI", Font.BOLD, 16)); 
+        txtPass.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
+        txtPass.setMargin(new Insets(0, 0, 0, 0)); 
         txtPass.setOpaque(false);
         txtPass.setBackground(new Color(0,0,0,0));
         
-        pnlPassWrapper.add(txtPass, BorderLayout.CENTER);
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.weightx = 1.0;
+        gbc.insets = new Insets(0, 15, 0, 15);
+        pnlPassWrapper.add(txtPass, gbc);
         
-        // Bọc Wrapper lại bằng FlowLayout để nó giữ nguyên kích thước 320x45 ở chính giữa
         JPanel centerWrap = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
         centerWrap.setOpaque(false);
         centerWrap.add(pnlPassWrapper);
@@ -499,7 +502,6 @@ public class MainDashboard extends JFrame {
             }
         });
         
-        // ĐÃ KHẮC PHỤC: Sử dụng pack() để tính toán chính xác chiều cao không bao giờ bị cắt xén
         dialog.pack();
         dialog.setSize(420, dialog.getHeight());
         dialog.setLocationRelativeTo(this);
@@ -513,7 +515,7 @@ public class MainDashboard extends JFrame {
     }
 
     // =================================================================================
-    // FORM ĐĂNG XUẤT - NÂNG CẤP BO GÓC MƯỢT MÀ
+    // FORM ĐĂNG XUẤT 
     // =================================================================================
     private void hienThiThongBaoDangXuat() {
         JDialog dialog = new JDialog(this, "Xác nhận", true);
