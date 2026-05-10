@@ -11,7 +11,29 @@ import java.util.List;
 public class DAO_CaLamViec {
 
     public DAO_CaLamViec() {}
-
+    public Entity.CaLamViec layCaChuaDongCuaNhanVien(String maNV) {
+        Entity.CaLamViec ca = null;
+        
+        String sql = "SELECT * FROM CaLamViec WHERE nhanVienId = ? AND thoiGianKetThuc IS NULL";
+        
+        try (Connection con = ConnectDB.getInstance().getConnection();
+             PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setString(1, maNV);
+            ResultSet rs = pst.executeQuery();
+            if (rs.next()) {
+                ca = new Entity.CaLamViec();
+                ca.setId(rs.getString("id"));
+               
+                ca.setThoiGianBatDau(rs.getTimestamp("thoiGianBatDau").toLocalDateTime());
+                ca.setTienDauCa(rs.getFloat("tienDauCa"));
+                ca.setLoaiCa(rs.getInt("loaiCa"));
+               
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return ca;
+    }
     public boolean themCa(CaLamViec ca) {
         String sql = "INSERT INTO CaLamViec (id, nhanVienId, thoiGianBatDau, thoiGianKetThuc, " +
                      "tienHeThongGhiNhan, tienDauCa, tienKetCa, loaiCa, ghiChuKetCa) " +

@@ -12,6 +12,10 @@ public class BUS_CaLamViec {
     public BUS_CaLamViec() {
         this.daoCaLamViec = new DAO_CaLamViec();
     }
+ 
+    public CaLamViec layCaDangMo(String maNV) {
+        return daoCaLamViec.getCaHienTai(maNV); 
+    }
     public boolean themCa(CaLamViec ca) {
         if (ca == null || ca.getNhanVienId() == null) return false;
         return moCa(ca);

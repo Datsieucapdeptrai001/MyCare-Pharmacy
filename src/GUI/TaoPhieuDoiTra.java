@@ -2260,4 +2260,39 @@ public class TaoPhieuDoiTra extends JDialog {
 
         return result[0];
     }
+    private long layTienMatTrongKetHienTai() {
+        Utils.UserSession session = Utils.UserSession.getInstance();
+        if (session.getCaHienTai() == null) return Long.MAX_VALUE; // Bypass nếu chạy test không ca
+        
+        long tienDauCa = (long) session.getCaHienTai().getTienDauCa();
+        long doanhThuTienMat = 0;
+        
+        // Cần truy vấn DB để lấy TỔNG TIỀN MẶT thu được từ đầu ca tới giờ
+        try (java.sql.Connection con = ConnectDB.ConnectDB.getInstance().getConnection()) {
+            // Lấy TỔNG THU (Bán hàng - Tiền mặt) trừ đi TỔNG CHI (Đổi trả hoàn tiền mặt)
+            String sql = "SELECT " +
+                         "ISNULL(SUM(CASE WHEN hd.loaiHD = 0 THEN ct.soLuong * dv.gia ELSE 0 END), 0) - " + // Cộng tiền Hóa Đơn Bán (loaiHD = 0)
+                         "ISNULL(SUM(CASE WHEN hd.loaiHD = 1 THEN ct.soLuong * dv.gia ELSE 0 END), 0) " +   // Trừ tiền Phiếu Trả (loaiHD = 1)
+                         "FROM ChiTietHoaDon ct " +
+                         "JOIN HoaDon hd ON ct.hoaDonId = hd.id " +
+                         "JOIN DonViDoLuong dv ON ct.donViDoLuongId = dv.id " +
+                         "WHERE hd.nhanVienId = ? " +
+                         "AND hd.phuongThucThanhToan = 0 " + // 0 = Tiền mặt
+                         "AND hd.ngayLapHD >= ?";            // Tính từ lúc mở ca
+            
+            try (java.sql.PreparedStatement pst = con.prepareStatement(sql)) {
+            	pst.setString(1, session.getMaNhanVien());
+                pst.setTimestamp(2, java.sql.Timestamp.valueOf(session.getCaHienTai().getThoiGianBatDau()));
+                try (java.sql.ResultSet rs = pst.executeQuery()) {
+                    if (rs.next()) {
+                        doanhThuTienMat = (long) rs.getDouble(1);
+                    }
+                }
+            }
+        } catch (Exception ex) {
+            System.err.println("Lỗi tính tiền trong két: " + ex.getMessage());
+        }
+        
+        return tienDauCa + doanhThuTienMat;
+    }
 }

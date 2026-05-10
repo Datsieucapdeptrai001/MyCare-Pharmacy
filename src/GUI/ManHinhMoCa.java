@@ -111,7 +111,7 @@ public class ManHinhMoCa extends JDialog {
         root.add(footerSwitcher, BorderLayout.SOUTH);
     }
 
-    // ─── HEADER ──────────────────────────────────────────────
+ // ─── HEADER ──────────────────────────────────────────────
     private JPanel buildHeader() {
         JPanel hdr = new JPanel(new BorderLayout()) {
             @Override protected void paintComponent(Graphics g) {
@@ -126,9 +126,9 @@ public class ManHinhMoCa extends JDialog {
         };
         hdr.setOpaque(false);
         hdr.setPreferredSize(new Dimension(0, 70));
-        hdr.setBorder(new EmptyBorder(0, 20, 0, 20));
+        hdr.setBorder(new EmptyBorder(0, 20, 0, 15)); // Giảm nhẹ lề phải để nút X cân đối
 
-        // Logo + title
+        // Logo + title (Giữ nguyên)
         JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 0));
         left.setOpaque(false);
 
@@ -158,7 +158,7 @@ public class ManHinhMoCa extends JDialog {
         left.add(logoBox);
         left.add(lblName);
 
-        // User badge
+        // User badge (Giữ nguyên)
         String initials  = UserSession.getInstance().getInitials();
         String tenNV     = UserSession.getInstance().getTenHienThi();
         String chucVu    = UserSession.getInstance().getChucVuHienThi();
@@ -187,8 +187,31 @@ public class ManHinhMoCa extends JDialog {
         userBadge.add(avatar);
         userBadge.add(lblUser);
 
+        // --- ĐÃ FIX: TẠO KHUNG BÊN PHẢI CHỨA CẢ USER INFO VÀ NÚT X ---
+        JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 6));
+        rightPanel.setOpaque(false);
+        rightPanel.add(userBadge);
+
+        JButton btnClose = new JButton("✕");
+        btnClose.setFont(new Font("Segoe UI", Font.BOLD, 20));
+        btnClose.setForeground(Color.WHITE);
+        btnClose.setContentAreaFilled(false);
+        btnClose.setBorderPainted(false);
+        btnClose.setFocusPainted(false);
+        btnClose.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnClose.setPreferredSize(new Dimension(40, 40));
+        
+        // Sự kiện khi bấm nút X
+        btnClose.addActionListener(e -> {
+            confirmed = false; // Đánh dấu là từ chối mở ca
+            dispose();         // Tắt hộp thoại
+        });
+        
+        rightPanel.add(btnClose);
+
+        // Add 2 khối vào Header
         hdr.add(left, BorderLayout.WEST);
-        hdr.add(userBadge, BorderLayout.EAST);
+        hdr.add(rightPanel, BorderLayout.EAST);
 
         JPanel wrapper = new JPanel(new BorderLayout());
         wrapper.setOpaque(false);
