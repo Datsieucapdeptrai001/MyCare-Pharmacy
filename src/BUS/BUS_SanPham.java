@@ -15,7 +15,10 @@ public class BUS_SanPham {
     public List<SanPham> traCuuSanPham(String tuKhoa) {
         return daoSanPham.timKiemSanPhamDoiTra(tuKhoa);
     }
-
+    public List<Object[]> timKiemSanPhamBan(String text) {
+        if (isBlank(text)) return new ArrayList<>();
+        return daoSanPham.timKiemSanPhamBan(text.trim());
+    }
     public boolean kiemTraThongTinSP(SanPham sp) {
         if (sp == null) return false;
         if (isBlank(sp.getId())) return false;
