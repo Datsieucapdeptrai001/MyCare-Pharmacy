@@ -144,7 +144,7 @@ public class ManHinhChinh extends JPanel {
         btnNapTien.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnNapTien.addActionListener(e -> showNapTienDialog());
 
-        if (UserSession.getInstance().isAdmin()) {
+        if (UserSession.getInstance().getCaHienTai() == null) {
             lblOn.setVisible(false);
             btnNapTien.setVisible(false);
             btnKet.setVisible(false);
@@ -298,7 +298,7 @@ public class ManHinhChinh extends JPanel {
         body.setLayout(new BoxLayout(body, BoxLayout.Y_AXIS));
         body.setBackground(BG);
 
-        if (!UserSession.getInstance().isAdmin() && UserSession.getInstance().daMoCa()) {
+        if (UserSession.getInstance().getCaHienTai() != null) { 
             body.add(buildTienDauCaBanner());
             body.add(box(12));
         }
@@ -331,7 +331,8 @@ public class ManHinhChinh extends JPanel {
                 new EmptyBorder(10, 16, 10, 16)));
         p.setMaximumSize(new Dimension(Integer.MAX_VALUE, 78));
         CaLamViec ca = UserSession.getInstance().getCaHienTai();
-        long tienDau = UserSession.getInstance().getTienDauCa();
+        long tienDau = ca != null ? (long) ca.getTienDauCa() : 0;
+        
         String caLabel = ca != null ? (ca.getLoaiCa() == 0 ? "Ca Sáng" : ca.getLoaiCa() == 1 ? "Ca Chiều" : "Ca Tối")
                 : "";
         String thoiGian = ca != null

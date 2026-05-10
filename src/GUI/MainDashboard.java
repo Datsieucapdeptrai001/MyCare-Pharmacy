@@ -43,7 +43,33 @@ public class MainDashboard extends JFrame {
         "Khuyến mại", "Nhân viên", "Khách hàng", "Hướng dẫn"
     };
     private String[] menuItems;
-
+    public void lamMoiManHinhChinh() {
+        if (mhChinh != null) {
+            
+            cardPanel.remove(mhChinh);
+        }
+        
+      
+        mhChinh = new ManHinhChinh();
+        cardPanel.add(mhChinh, "Màn hình chính");
+        cardPanel.revalidate();
+        cardPanel.repaint();
+    }
+    private void xuLyDangXuat() {
+       
+        if (UserSession.getInstance().getCaHienTai() != null) {
+            Utils.ThongBao.show(this, "CHƯA KẾT CA", 
+                "Bạn đang trong ca làm việc. Vui lòng thực hiện KẾT CA để bàn giao tiền trước khi rời khỏi hệ thống!", 
+                "WARNING");
+            return; 
+        }
+        int check = JOptionPane.showConfirmDialog(this, "Xác nhận đăng xuất?", "Xác nhận", JOptionPane.YES_NO_OPTION);
+        if (check == JOptionPane.YES_OPTION) {
+            UserSession.getInstance().logout();
+            this.dispose();
+            new ManHinhDangNhap().setVisible(true);
+        }
+    }
     public MainDashboard() {
         boolean isAdmin = UserSession.getInstance().isAdmin();
         menuItems = isAdmin ? ALL_MENU_ITEMS : STAFF_MENU_ITEMS;

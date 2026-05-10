@@ -153,6 +153,7 @@ public class ManHinhBanHang extends JPanel {
 
         JButton btnCreate = createActionBtn("Tạo hóa đơn", "#E11D48");
         btnCreate.addActionListener(e -> {
+        	if (!kiemTraMoCaChoQuanLy()) return;
             Window p = SwingUtilities.getWindowAncestor(this);
             TaoHoaDon dialogTaoHoaDon = new TaoHoaDon((Frame) p, model); 
             dialogTaoHoaDon.setVisible(true);
@@ -188,11 +189,13 @@ public class ManHinhBanHang extends JPanel {
                 
                 SwingUtilities.invokeLater(() -> {
                     try {
+                    	if (!kiemTraMoCaChoQuanLy()) return;
                         if (maHD.equals("NEW_INVOICE")) {
                             Window p = SwingUtilities.getWindowAncestor(ManHinhBanHang.this);
                             TaoHoaDon dialogTaoHoaDon = new TaoHoaDon((Frame) p, model); 
                             dialogTaoHoaDon.setVisible(true);
                         } else {
+                        	if (!kiemTraMoCaChoQuanLy()) return;
                             moLaiHoaDonNhap(maHD);
                         }
                     } finally {
@@ -279,6 +282,7 @@ public class ManHinhBanHang extends JPanel {
                     String tenNhanVienHienTai = "";
 
                     if (status.equals("Đang xử lý")) {
+                    	if (!kiemTraMoCaChoQuanLy()) return;
                         TaoHoaDon dialogSua = new TaoHoaDon((Frame) p, model, modelRow, maHoaDon, khach, sdt); 
                         dialogSua.setVisible(true);
                         loadData();
@@ -425,7 +429,64 @@ public class ManHinhBanHang extends JPanel {
             }
         }
     }
+    private boolean kiemTraMoCaChoQuanLy() {
+        Utils.UserSession session = Utils.UserSession.getInstance();
+        
+        // Nếu là Quản lý và hiện tại CHƯA mở ca
+        if (session.isAdmin() && session.getCaHienTai() == null) {
+            Window p = SwingUtilities.getWindowAncestor(this);
+            ManHinhMoCa dialogMoCa = new ManHinhMoCa((Frame) p);
+            dialogMoCa.setVisible(true); 
+            
+            if (dialogMoCa.isConfirmed()) {
+                try {
+                    Entity.CaLamViec caMoi = new Entity.CaLamViec();
+                    caMoi.setId("Ca-" + System.currentTimeMillis());
+                    
+                    // Lấy đối tượng nhân viên từ tài khoản đang đăng nhập
+                    Entity.NhanVien nv = session.getTaiKhoan().getNhanVienId();
+                    caMoi.setNhanVienId(nv); 
+                    
+                    caMoi.setThoiGianBatDau(java.time.LocalDateTime.now());
+                    caMoi.setTienDauCa(dialogMoCa.getTongTienDauCa());
+                    caMoi.setTienHeThongGhiNhan(0);
+                    caMoi.setTienKetCa(0);
+                    caMoi.setLoaiCa(dialogMoCa.getSelectedCa());
+                    
+                    // Lưu ca làm việc vào Database qua lớp BUS
+                    BUS.BUS_CaLamViec busCa = new BUS.BUS_CaLamViec();
+                    busCa.themCa(caMoi); 
+                    
+                    // Cập nhật ca vào Session để các màn hình khác sử dụng
+                    session.setCaHienTai(caMoi); 
+                    session.setTienDauCa(dialogMoCa.getTongTienDauCa());
+                    // Làm mới Dashboard để hiển thị tiền đầu ca và biểu đồ
+                    Window parentWin = SwingUtilities.getWindowAncestor(this);
+                    if (parentWin instanceof MainDashboard) {
+                        ((MainDashboard) parentWin).lamMoiManHinhChinh();
+                    }
+                    
+                    // Hiển thị thông báo thành công bằng Utils của bạn
+                    Utils.ThongBao.show(this, "VÀO CA THÀNH CÔNG", 
+                        "Hệ thống đã ghi nhận ca làm việc của bạn.\nThông tin tại Màn hình chính đã được cập nhật!", "SUCCESS");
 
+                    return true; // Cho phép tiếp tục tạo hóa đơn
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                    Utils.ThongBao.show(this, "LỖI HỆ THỐNG", "Không thể lưu ca làm việc vào cơ sở dữ liệu!", "ERROR");
+                    return false;
+                }
+            } else {
+                // Trường hợp Quản lý bấm dấu X hoặc nút Hủy ở màn hình mở ca
+                Utils.ThongBao.show(this, "YÊU CẦU MỞ CA", 
+                    "Bạn cần phải xác nhận mở ca để hệ thống ghi nhận doanh thu!", "WARNING");
+                return false; // Chặn lại, không cho mở màn hình tạo hóa đơn
+            }
+        }
+        
+        // Nếu là Nhân viên (đã mở ca từ login) hoặc Quản lý đã có ca -> Cho phép đi tiếp
+        return true; 
+    }
     private JButton createActionBtn(String txt, String hex) {
         JButton btn = new JButton(txt) {
             public Dimension getPreferredSize() { Dimension size = super.getPreferredSize(); size.height = 45; return size; }

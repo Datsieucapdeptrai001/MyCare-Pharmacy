@@ -834,6 +834,26 @@ public class TaoHoaDon extends JDialog {
                         "WARNING"
                     );
                     return; 
+                } else {
+                    // --- THÊM CHỐT CHẶN TIỀN THỐI KHÁCH Ở ĐÂY ---
+                    long tienThua = tongTienMat - tongHoaDon;
+                    if (tienThua > 0) {
+                        long tienDangCo = layTienMatTrongKetHienTai();
+                        
+                        // Nếu số tiền phải thối vượt quá số tiền có sẵn trong két
+                        if (tienThua > tienDangCo) {
+                            showCustomNotification(
+                                "KÉT KHÔNG ĐỦ TIỀN MẶT", 
+                                "Tiền trong két không đủ để thối lại cho khách!\n\n" +
+                                "• Két hiện có: " + String.format("%,d", tienDangCo).replace(',', '.') + "đ\n" +
+                                "• Cần thối lại: " + String.format("%,d", tienThua).replace(',', '.') + "đ\n\n" +
+                                "Gợi ý: Yêu cầu khách đổi sang thẻ/chuyển khoản hoặc đưa mệnh giá nhỏ hơn.", 
+                                "ERROR"
+                            );
+                            return; // Chặn quá trình thanh toán
+                        }
+                    }
+                    // ----------------------------------------------
                 }
             }
             if (pnlDonThuoc.isVisible()) {
@@ -4550,6 +4570,40 @@ txtSearchProduct.addKeyListener(new java.awt.event.KeyAdapter() {
         btn.setPreferredSize(new Dimension(130, 40));
         btn.setFocusPainted(false);
         btn.setBorderPainted(false);
+    }
+    private long layTienMatTrongKetHienTai() {
+        Utils.UserSession session = Utils.UserSession.getInstance();
+        if (session.getCaHienTai() == null) return Long.MAX_VALUE; // Cho phép đi qua nếu Quản lý không có ca
+        
+        long tienDauCa = (long) session.getCaHienTai().getTienDauCa();
+        long doanhThuTienMat = 0;
+        
+        try (java.sql.Connection con = ConnectDB.getInstance().getConnection()) {
+            String sql = "SELECT " +
+                         "ISNULL(SUM(CASE WHEN hd.loaiHD = 0 THEN ct.soLuong * dv.gia ELSE 0 END), 0) - " + 
+                         "ISNULL(SUM(CASE WHEN hd.loaiHD = 1 THEN ct.soLuong * dv.gia ELSE 0 END), 0) " +   
+                         "FROM ChiTietHoaDon ct " +
+                         "JOIN HoaDon hd ON ct.hoaDonId = hd.id " +
+                         "JOIN DonViDoLuong dv ON ct.donViDoLuongId = dv.id " +
+                         "WHERE hd.nhanVienId = ? " +
+                         "AND hd.phuongThucThanhToan = 0 " + // 0 = Tiền mặt
+                         "AND hd.ngayLapHD >= ?";            
+            
+            try (java.sql.PreparedStatement pst = con.prepareStatement(sql)) {
+                // ĐÃ FIX LỖI: Lấy trực tiếp mã nhân viên bằng getMaNhanVien()
+                pst.setString(1, session.getMaNhanVien());
+                pst.setTimestamp(2, java.sql.Timestamp.valueOf(session.getCaHienTai().getThoiGianBatDau()));
+                try (java.sql.ResultSet rs = pst.executeQuery()) {
+                    if (rs.next()) {
+                        doanhThuTienMat = (long) rs.getDouble(1);
+                    }
+                }
+            }
+        } catch (Exception ex) {
+            System.err.println("Lỗi tính tiền trong két: " + ex.getMessage());
+        }
+        
+        return tienDauCa + doanhThuTienMat;
     }
     
 }
