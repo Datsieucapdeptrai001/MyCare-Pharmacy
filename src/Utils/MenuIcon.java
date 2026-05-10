@@ -8,6 +8,51 @@ public class MenuIcon implements Icon {
     private int size = 22;
     private Color customColor = null;
 
+    // =========================================================
+    // STATIC CONSTANTS — GUI chỉ gọi các hằng này, tránh rải
+    // rác "new MenuIcon(...)" khắp nơi. Thêm ở đây nếu cần.
+    // =========================================================
+
+    // --- Dùng trong ManHinhChinh ---
+    public static final MenuIcon IC_TAB_CHART  = new MenuIcon("TAB_CHART");
+    public static final MenuIcon IC_TAB_DOLLAR = new MenuIcon("TAB_DOLLAR");
+    public static final MenuIcon IC_DOT_FILL   = new MenuIcon("DOT_FILL");
+    public static final MenuIcon IC_STOP       = new MenuIcon("STOP");
+    public static final MenuIcon IC_ADD        = new MenuIcon("ADD");
+    public static final MenuIcon IC_CLOSE      = new MenuIcon("CLOSE");
+    public static final MenuIcon IC_LOCK       = new MenuIcon("LOCK");
+    public static final MenuIcon IC_RETURN     = new MenuIcon("RETURN");
+    public static final MenuIcon IC_WARNING    = new MenuIcon("WARNING");
+
+    // --- Dùng trong ManHinhThongKe ---
+    public static final MenuIcon IC_CHART      = new MenuIcon("CHART");
+    public static final MenuIcon IC_CALENDAR   = new MenuIcon("CALENDAR");
+    public static final MenuIcon IC_CART       = new MenuIcon("CART");
+    public static final MenuIcon IC_GIFT       = new MenuIcon("GIFT");
+    public static final MenuIcon IC_PILL       = new MenuIcon("PILL");
+    public static final MenuIcon IC_DOCUMENT   = new MenuIcon("DOCUMENT");
+    public static final MenuIcon IC_USERS      = new MenuIcon("USERS");
+
+    // --- Dùng trong SmartTickerPanel ---
+    public static final MenuIcon IC_FIRE       = new MenuIcon("FIRE");
+    public static final MenuIcon IC_ALERT      = new MenuIcon("ALERT");
+    public static final MenuIcon IC_CLOCK_WARN = new MenuIcon("CLOCK_WARN");
+    public static final MenuIcon IC_MONEY_BAG  = new MenuIcon("MONEY_BAG");
+    public static final MenuIcon IC_STAR_FILL  = new MenuIcon("STAR_FILL");
+    public static final MenuIcon IC_CHECK_OK   = new MenuIcon("CHECK_OK");
+    /**
+     * Factory: tạo icon với size tùy chỉnh.
+     * Dùng khi cần kích thước khác mặc định (22px).
+     */
+    public static MenuIcon of(String type, int size) {
+        return new MenuIcon(type, size);
+    }
+
+    /** Factory: tạo icon với size + màu tùy chỉnh (ví dụ LEGEND_DOT). */
+    public static MenuIcon of(String type, int size, Color color) {
+        return new MenuIcon(type, size, color);
+    }
+
     public MenuIcon(String type) {
         this.type = type;
     }
@@ -26,12 +71,12 @@ public class MenuIcon implements Icon {
 
     @Override
     public int getIconWidth() {
-        return size;
+        return Math.max(size, 16); // bảo vệ: tối thiểu 16px
     }
 
     @Override
     public int getIconHeight() {
-        return size;
+        return Math.max(size, 16);
     }
 
     @Override
@@ -39,11 +84,12 @@ public class MenuIcon implements Icon {
         Graphics2D g2d = (Graphics2D) g.create();
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-        // Lấy màu vẽ (ưu tiên màu custom, sau đó đến màu của Component, cuối cùng là xám mặc định)
+        // Lấy màu vẽ (uu tiên: custom → foreground Component → xám đậm)
         if (customColor != null) {
             g2d.setColor(customColor);
-        } else if (c != null) {
-            g2d.setColor(c.getForeground()); 
+        } else if (c != null && c.getForeground() != null
+                && !c.getForeground().equals(Color.WHITE)) {
+            g2d.setColor(c.getForeground());
         } else {
             g2d.setColor(Color.GRAY);
         }
@@ -445,6 +491,62 @@ public class MenuIcon implements Icon {
                 break;
             case "CHEVRON_RIGHT":
                 g2d.drawPolyline(new int[]{x + 9, x + 14, x + 9}, new int[]{y + 6, y + 11, y + 16}, 3);
+                break;
+
+            // ================= ICON TICKER THÔNG MINH =================
+            case "FIRE":
+                // Ngọn lửa 🔥
+                g2d.setColor(customColor != null ? customColor : new Color(255, 107, 0));
+                g2d.fillOval(x + 6, y + 8, 10, 12);
+                g2d.setColor(customColor != null ? customColor.brighter() : new Color(255, 193, 7));
+                g2d.fillOval(x + 8, y + 11, 6, 8);
+                g2d.setColor(customColor != null ? customColor : new Color(255, 107, 0));
+                int[] flameX = {x + 11, x + 7, x + 9, x + 11, x + 13, x + 15, x + 11};
+                int[] flameY = {y + 2, y + 10, y + 8, y + 5, y + 8, y + 10, y + 2};
+                g2d.fillPolygon(flameX, flameY, 7);
+                break;
+            case "ALERT":
+                // Tam giác cảnh báo ⚠
+                g2d.setColor(customColor != null ? customColor : new Color(255, 152, 0));
+                g2d.fillPolygon(new int[]{x + 11, x + 20, x + 2}, new int[]{y + 3, y + 19, y + 19}, 3);
+                g2d.setColor(Color.WHITE);
+                g2d.setStroke(new BasicStroke(2.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                g2d.drawLine(x + 11, y + 9, x + 11, y + 14);
+                g2d.fillOval(x + 10, y + 16, 3, 3);
+                break;
+            case "CLOCK_WARN":
+                // Đồng hồ cảnh báo ⏰
+                g2d.setColor(customColor != null ? customColor : new Color(225, 29, 72));
+                g2d.drawOval(x + 3, y + 3, 16, 16);
+                g2d.setStroke(new BasicStroke(2.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                g2d.drawLine(x + 11, y + 6, x + 11, y + 11);
+                g2d.drawLine(x + 11, y + 11, x + 15, y + 14);
+                // Dấu chấm than nhỏ
+                g2d.fillOval(x + 17, y + 2, 4, 4);
+                break;
+            case "MONEY_BAG":
+                // Túi tiền 💰
+                g2d.setColor(customColor != null ? customColor : new Color(106, 27, 154));
+                g2d.fillOval(x + 4, y + 8, 14, 12);
+                g2d.drawArc(x + 7, y + 3, 8, 8, 0, 180);
+                g2d.setColor(Color.WHITE);
+                g2d.setFont(new Font("Segoe UI", Font.BOLD, 10));
+                g2d.drawString("$", x + 8, y + 17);
+                break;
+            case "STAR_FILL":
+                // Ngôi sao ⭐
+                g2d.setColor(customColor != null ? customColor : new Color(26, 115, 232));
+                int[] starX = {x+11, x+13, x+19, x+14, x+16, x+11, x+6, x+8, x+3, x+9};
+                int[] starY = {y+2, y+8, y+8, y+12, y+18, y+15, y+18, y+12, y+8, y+8};
+                g2d.fillPolygon(starX, starY, 10);
+                break;
+            case "CHECK_OK":
+                // Dấu check tròn ✅
+                g2d.setColor(customColor != null ? customColor : new Color(0, 167, 111));
+                g2d.fillOval(x + 2, y + 2, 18, 18);
+                g2d.setColor(Color.WHITE);
+                g2d.setStroke(new BasicStroke(2.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                g2d.drawPolyline(new int[]{x + 6, x + 10, x + 16}, new int[]{y + 11, y + 15, y + 7}, 3);
                 break;
         }
         g2d.dispose();

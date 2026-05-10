@@ -17,5 +17,6 @@
 	<classpathentry exported="true" kind="lib" path="libs/poi-ooxml-lite-5.0.0.jar"/>
 	<classpathentry kind="lib" path="libs/javax.activation-1.2.0.jar"/>
 	<classpathentry kind="lib" path="libs/javax.mail-1.6.2.jar"/>
+	<classpathentry kind="lib" path="libs/core-3.5.3.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

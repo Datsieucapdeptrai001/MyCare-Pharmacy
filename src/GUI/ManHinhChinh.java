@@ -26,8 +26,9 @@ public class ManHinhChinh extends JPanel {
     private JPanel cardPanel;
     private JButton btnTongQuan, btnDoiChieu;
     private int[] soLuongTien = new int[9];
-    private final long[] MENH_GIA = {500000, 200000, 100000, 50000, 20000, 10000, 5000, 2000, 1000};
-    private final String[] MENH_GIA_STR = {"500.000đ", "200.000đ", "100.000đ", "50.000đ", "20.000đ", "10.000đ", "5.000đ", "2.000đ", "1.000đ"};
+    private final long[] MENH_GIA = { 500000, 200000, 100000, 50000, 20000, 10000, 5000, 2000, 1000 };
+    private final String[] MENH_GIA_STR = { "500.000đ", "200.000đ", "100.000đ", "50.000đ", "20.000đ", "10.000đ",
+            "5.000đ", "2.000đ", "1.000đ" };
 
     private static final Color GREEN = Color.decode("#00A76F");
     private static final Color BLUE = Color.decode("#1A73E8");
@@ -38,7 +39,7 @@ public class ManHinhChinh extends JPanel {
     private final BUS_ThongKe busThongKe;
     private final BUS_CaLamViec busCaLamViec;
 
-    private int filterCa = 0; 
+    private int filterCa = 0;
     private String filterMaNV = "";
     private JButton[] caButtons = new JButton[4];
     private JComboBox<String> cbxNhanVien;
@@ -59,7 +60,7 @@ public class ManHinhChinh extends JPanel {
         headerWrapper.setLayout(new BoxLayout(headerWrapper, BoxLayout.Y_AXIS));
         headerWrapper.add(createTopHeader());
         if (UserSession.getInstance().isAdmin()) {
-            headerWrapper.add(buildAdminFilterBar()); 
+            headerWrapper.add(buildAdminFilterBar());
         }
         add(headerWrapper, BorderLayout.NORTH);
 
@@ -67,7 +68,7 @@ public class ManHinhChinh extends JPanel {
         cardPanel = new JPanel(cardLayout);
         cardPanel.setBackground(BG);
 
-        loadCardPanels(); 
+        loadCardPanels();
 
         add(cardPanel, BorderLayout.CENTER);
     }
@@ -94,51 +95,66 @@ public class ManHinhChinh extends JPanel {
 
         JPanel tabs = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
         tabs.setBackground(Color.WHITE);
-        btnTongQuan = makeTabBtn("Tổng quan", true, "TAB_CHART");
-        btnDoiChieu = makeTabBtn("Đối chiếu doanh thu", false, "TAB_DOLLAR");
-        btnTongQuan.addActionListener(e -> { setActiveTab(btnTongQuan, btnDoiChieu); cardLayout.show(cardPanel, "TongQuan"); });
-        btnDoiChieu.addActionListener(e -> { setActiveTab(btnDoiChieu, btnTongQuan); cardLayout.show(cardPanel, "DoiChieu"); });
-        tabs.add(btnTongQuan); tabs.add(btnDoiChieu);
+        btnTongQuan = makeTabBtn("Tổng quan", true, MenuIcon.IC_TAB_CHART);
+        btnDoiChieu = makeTabBtn("Đối chiếu doanh thu", false, MenuIcon.IC_TAB_DOLLAR);
+        btnTongQuan.addActionListener(e -> {
+            setActiveTab(btnTongQuan, btnDoiChieu);
+            cardLayout.show(cardPanel, "TongQuan");
+        });
+        btnDoiChieu.addActionListener(e -> {
+            setActiveTab(btnDoiChieu, btnTongQuan);
+            cardLayout.show(cardPanel, "DoiChieu");
+        });
+        tabs.add(btnTongQuan);
+        tabs.add(btnDoiChieu);
 
         JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 8));
         right.setBackground(Color.WHITE);
 
         String ten = UserSession.getInstance().getTenHienThi();
         JLabel lblOn = new JLabel("Ca đang mở — " + ten);
-        lblOn.setIcon(new MenuIcon("DOT_FILL")); lblOn.setIconTextGap(6);
-        lblOn.setFont(new Font("Segoe UI", Font.BOLD, 11)); lblOn.setForeground(GREEN);
-        lblOn.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(GREEN, 1), new EmptyBorder(4, 10, 4, 10)));
+        lblOn.setIcon(MenuIcon.IC_DOT_FILL);
+        lblOn.setIconTextGap(6);
+        lblOn.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        lblOn.setForeground(GREEN);
+        lblOn.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(GREEN, 1),
+                new EmptyBorder(4, 10, 4, 10)));
 
         JButton btnKet = new JButton("Kết ca");
-        btnKet.setIcon(new MenuIcon("STOP")); btnKet.setIconTextGap(6);
-        btnKet.setFont(new Font("Segoe UI", Font.BOLD, 11)); btnKet.setForeground(RED);
-        btnKet.setBackground(Color.WHITE); btnKet.setFocusPainted(false);
-        btnKet.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(RED, 1), new EmptyBorder(4, 10, 4, 10)));
+        btnKet.setIcon(MenuIcon.IC_STOP);
+        btnKet.setIconTextGap(6);
+        btnKet.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        btnKet.setForeground(RED);
+        btnKet.setBackground(Color.WHITE);
+        btnKet.setFocusPainted(false);
+        btnKet.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(RED, 1),
+                new EmptyBorder(4, 10, 4, 10)));
         btnKet.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnKet.addActionListener(e -> openKetCaDialog());
 
         JButton btnNapTien = new JButton("Nạp quỹ");
-        btnNapTien.setIcon(new MenuIcon("ADD")); 
+        btnNapTien.setIcon(MenuIcon.IC_ADD);
         btnNapTien.setIconTextGap(6);
-        btnNapTien.setFont(new Font("Segoe UI", Font.BOLD, 11)); 
+        btnNapTien.setFont(new Font("Segoe UI", Font.BOLD, 11));
         btnNapTien.setForeground(BLUE);
-        btnNapTien.setBackground(Color.WHITE); 
+        btnNapTien.setBackground(Color.WHITE);
         btnNapTien.setFocusPainted(false);
-        btnNapTien.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(BLUE, 1), new EmptyBorder(4, 10, 4, 10)));
+        btnNapTien.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(BLUE, 1),
+                new EmptyBorder(4, 10, 4, 10)));
         btnNapTien.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnNapTien.addActionListener(e -> showNapTienDialog());
 
-        if (UserSession.getInstance().isAdmin()) {
-            lblOn.setVisible(false); 
-            btnNapTien.setVisible(false); 
+        if (UserSession.getInstance().getCaHienTai() == null) {
+            lblOn.setVisible(false);
+            btnNapTien.setVisible(false);
             btnKet.setVisible(false);
         }
-        
-        right.add(lblOn); 
-        right.add(btnNapTien); 
+
+        right.add(lblOn);
+        right.add(btnNapTien);
         right.add(btnKet);
-        
-        hdr.add(tabs, BorderLayout.WEST); 
+
+        hdr.add(tabs, BorderLayout.WEST);
         hdr.add(right, BorderLayout.EAST);
         return hdr;
     }
@@ -146,11 +162,13 @@ public class ManHinhChinh extends JPanel {
     private JPanel buildAdminFilterBar() {
         JPanel bar = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 8));
         bar.setBackground(Color.WHITE);
-        bar.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, Color.decode("#DFE3E8")), new EmptyBorder(2, 10, 2, 10)));
+        bar.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 1, 0, Color.decode("#DFE3E8")), new EmptyBorder(2, 10, 2, 10)));
         bar.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
 
         JLabel lblTitle = new JLabel("Lọc dữ liệu:");
-        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 12)); lblTitle.setForeground(Color.decode("#637381"));
+        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        lblTitle.setForeground(Color.decode("#637381"));
 
         caButtons[0] = makeFilterBtn("Toàn thời gian");
         caButtons[1] = makeFilterBtn("Ca Sáng (06-14h)");
@@ -162,18 +180,19 @@ public class ManHinhChinh extends JPanel {
             caButtons[i].addActionListener(e -> {
                 filterCa = caIndex;
                 updateCaButtonsUI();
-                loadCardPanels(); 
+                loadCardPanels();
             });
             bar.add(caButtons[i]);
         }
         updateCaButtonsUI();
 
         cbxNhanVien = new JComboBox<>();
-        cbxNhanVien.setFont(new Font("Segoe UI", Font.PLAIN, 12)); cbxNhanVien.setBackground(Color.WHITE);
-        
+        cbxNhanVien.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        cbxNhanVien.setBackground(Color.WHITE);
+
         cbxNhanVien.addItem("Tất cả nhân viên");
         listMaNV.add("");
-        
+
         List<String[]> nvs = busThongKe.getDanhSachNhanVien();
         if (nvs != null) {
             for (String[] nv : nvs) {
@@ -186,7 +205,7 @@ public class ManHinhChinh extends JPanel {
             int idx = cbxNhanVien.getSelectedIndex();
             if (idx >= 0) {
                 filterMaNV = listMaNV.get(idx);
-                loadCardPanels(); 
+                loadCardPanels();
             }
         });
 
@@ -198,9 +217,37 @@ public class ManHinhChinh extends JPanel {
 
     private JButton makeFilterBtn(String text) {
         JButton b = new JButton(text);
-        b.setFont(new Font("Segoe UI", Font.BOLD, 11)); b.setBackground(Color.WHITE);
-        b.setForeground(Color.GRAY); b.setFocusPainted(false); b.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        b.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        b.setBackground(Color.WHITE);
+        b.setForeground(Color.GRAY);
+        b.setFocusPainted(false);
+        b.setCursor(new Cursor(Cursor.HAND_CURSOR));
         return b;
+    }
+
+    /**
+     * Xây dựng cột điều kiện SQL cho HoaDon dựa trên filterMaNV và filterCa.
+     * Đồng bộ với cách ManHinhThongKe.buildCondHD() hoạt động.
+     */
+    private String buildCondHD() {
+        StringBuilder sb = new StringBuilder();
+        if (filterMaNV != null && !filterMaNV.isEmpty()) {
+            sb.append(" AND hd.nhanVienId='").append(filterMaNV).append("'");
+        }
+        switch (filterCa) {
+            case 1:
+                sb.append(" AND DATEPART(HOUR, hd.ngayLapHD) BETWEEN 6 AND 13");
+                break;
+            case 2:
+                sb.append(" AND DATEPART(HOUR, hd.ngayLapHD) BETWEEN 14 AND 21");
+                break;
+            case 3:
+                sb.append(" AND (DATEPART(HOUR, hd.ngayLapHD) >= 22 OR DATEPART(HOUR, hd.ngayLapHD) < 6)");
+                break;
+            default:
+                break; // case 0: Toàn thời gian — không thêm điều kiện
+        }
+        return sb.toString();
     }
 
     private void updateCaButtonsUI() {
@@ -215,12 +262,15 @@ public class ManHinhChinh extends JPanel {
         }
     }
 
-    private JButton makeTabBtn(String text, boolean active, String icon) {
+    private JButton makeTabBtn(String text, boolean active, Icon icon) {
         JButton b = new JButton(text);
-        b.setIcon(new MenuIcon(icon)); b.setIconTextGap(8);
+        b.setIcon(icon);
+        b.setIconTextGap(8);
         b.setPreferredSize(new Dimension(200, 44));
         b.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        b.setFocusPainted(false); b.setContentAreaFilled(false); b.setOpaque(true);
+        b.setFocusPainted(false);
+        b.setContentAreaFilled(false);
+        b.setOpaque(true);
         b.setBackground(Color.WHITE);
         b.setBorder(BorderFactory.createMatteBorder(0, 0, active ? 3 : 0, 0, BLUE));
         b.setForeground(active ? BLUE : Color.GRAY);
@@ -228,217 +278,847 @@ public class ManHinhChinh extends JPanel {
     }
 
     private void setActiveTab(JButton a, JButton b) {
-        a.setForeground(BLUE); a.setBorder(BorderFactory.createMatteBorder(0, 0, 3, 0, BLUE));
-        b.setForeground(Color.GRAY); b.setBorder(BorderFactory.createEmptyBorder());
+        a.setForeground(BLUE);
+        a.setBorder(BorderFactory.createMatteBorder(0, 0, 3, 0, BLUE));
+        b.setForeground(Color.GRAY);
+        b.setBorder(BorderFactory.createEmptyBorder());
     }
 
     private JPanel createTongQuanPanel() {
         JPanel root = new JPanel(new BorderLayout(0, 14));
-        root.setBackground(BG); root.setBorder(new EmptyBorder(14, 20, 14, 20));
+        root.setBackground(BG);
+        root.setBorder(new EmptyBorder(14, 20, 14, 20));
         String titleCa = filterCa == 0 ? "Hôm nay" : ("Ca " + filterCa);
-        JLabel title = new JLabel("<html><b style='font-size:15px;'>MÀN HÌNH CHÍNH</b><br><span style='color:gray;font-size:11px;'>Tổng quan hoạt động — " + titleCa + "</span></html>");
+        JLabel title = new JLabel(
+                "<html><b style='font-size:15px;'>MÀN HÌNH CHÍNH</b><br><span style='color:gray;font-size:11px;'>Tổng quan hoạt động — "
+                        + titleCa + "</span></html>");
         root.add(title, BorderLayout.NORTH);
 
-        JPanel body = new JPanel(); body.setLayout(new BoxLayout(body, BoxLayout.Y_AXIS)); body.setBackground(BG);
+        JPanel body = new JPanel();
+        body.setLayout(new BoxLayout(body, BoxLayout.Y_AXIS));
+        body.setBackground(BG);
 
-        if (!UserSession.getInstance().isAdmin() && UserSession.getInstance().daMoCa()) {
-            body.add(buildTienDauCaBanner()); body.add(box(12));
+        if (UserSession.getInstance().getCaHienTai() != null) {
+            body.add(buildTienDauCaBanner());
+            body.add(box(12));
         }
 
-        body.add(buildKPIRow());   body.add(box(14));
-        body.add(buildChartRow()); body.add(box(14));
-        body.add(buildBottomRow()); body.add(box(14));
+        body.add(buildTickerPanel());
+        body.add(box(8));
+        body.add(buildKPIRow());
+        body.add(box(12));
+        body.add(buildChartRow());
+        body.add(box(14));
+        body.add(buildBottomRow());
+        body.add(box(14));
         body.add(buildExpiringPanel());
 
-        JScrollPane sc = new JScrollPane(body); 
-        sc.setBorder(null); 
+        JScrollPane sc = new JScrollPane(body);
+        sc.setBorder(null);
         sc.getVerticalScrollBar().setUnitIncrement(14);
-        
+
         sc.getVerticalScrollBar().setUI(new Utils.ModernScrollBarUI());
         sc.getVerticalScrollBar().setPreferredSize(new Dimension(8, 0));
-        
-        root.add(sc, BorderLayout.CENTER); 
+
+        root.add(sc, BorderLayout.CENTER);
         return root;
     }
 
     private JPanel buildTienDauCaBanner() {
-        JPanel p = new JPanel(new BorderLayout()); p.setBackground(Color.decode("#E6F7F2"));
-        p.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(Color.decode("#B2DFDB")), new EmptyBorder(10, 16, 10, 16)));
+        JPanel p = new JPanel(new BorderLayout());
+        p.setBackground(Color.decode("#E6F7F2"));
+        p.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(Color.decode("#B2DFDB")),
+                new EmptyBorder(10, 16, 10, 16)));
         p.setMaximumSize(new Dimension(Integer.MAX_VALUE, 78));
         CaLamViec ca = UserSession.getInstance().getCaHienTai();
-        long tienDau = UserSession.getInstance().getTienDauCa();
-        String caLabel = ca != null ? (ca.getLoaiCa() == 0 ? "Ca Sáng" : ca.getLoaiCa() == 1 ? "Ca Chiều" : "Ca Tối") : "";
-        String thoiGian = ca != null ? new SimpleDateFormat("dd/MM/yyyy HH:mm").format(Timestamp.valueOf(ca.getThoiGianBatDau())) : new SimpleDateFormat("dd/MM/yyyy HH:mm").format(new Date());
+        long tienDau = ca != null ? (long) ca.getTienDauCa() : 0;
 
-        JPanel left = new JPanel(); left.setOpaque(false); left.setLayout(new BoxLayout(left, BoxLayout.Y_AXIS));
+        String caLabel = ca != null ? (ca.getLoaiCa() == 0 ? "Ca Sáng" : ca.getLoaiCa() == 1 ? "Ca Chiều" : "Ca Tối")
+                : "";
+        String thoiGian = ca != null
+                ? new SimpleDateFormat("dd/MM/yyyy HH:mm").format(Timestamp.valueOf(ca.getThoiGianBatDau()))
+                : new SimpleDateFormat("dd/MM/yyyy HH:mm").format(new Date());
+
+        JPanel left = new JPanel();
+        left.setOpaque(false);
+        left.setLayout(new BoxLayout(left, BoxLayout.Y_AXIS));
         JLabel l1 = new JLabel("TIỀN ĐẦU CA  " + thoiGian + "  ·  " + UserSession.getInstance().getTenHienThi());
-        l1.setFont(new Font("Segoe UI", Font.BOLD, 11)); l1.setForeground(Color.decode("#006250"));
-        JLabel l2 = new JLabel(formatMoney(tienDau) + " × 1   (" + caLabel + ")"); l2.setFont(new Font("Segoe UI", Font.PLAIN, 11)); l2.setForeground(Color.decode("#637381"));
-        left.add(l1); left.add(box(3)); left.add(l2);
+        l1.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        l1.setForeground(Color.decode("#006250"));
+        JLabel l2 = new JLabel(formatMoney(tienDau) + " × 1   (" + caLabel + ")");
+        l2.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        l2.setForeground(Color.decode("#637381"));
+        left.add(l1);
+        left.add(box(3));
+        left.add(l2);
 
-        JPanel right = new JPanel(); right.setOpaque(false); right.setLayout(new BoxLayout(right, BoxLayout.Y_AXIS));
-        JLabel lTl = new JLabel("Tổng tiền đầu ca", SwingConstants.RIGHT); lTl.setFont(new Font("Segoe UI", Font.PLAIN, 10)); lTl.setForeground(Color.GRAY); lTl.setAlignmentX(RIGHT_ALIGNMENT);
-        JLabel lAm = new JLabel(formatMoney(tienDau), SwingConstants.RIGHT); lAm.setFont(new Font("Segoe UI", Font.BOLD, 20)); lAm.setForeground(Color.decode("#006250")); lAm.setAlignmentX(RIGHT_ALIGNMENT);
-        right.add(lTl); right.add(lAm);
+        JPanel right = new JPanel();
+        right.setOpaque(false);
+        right.setLayout(new BoxLayout(right, BoxLayout.Y_AXIS));
+        JLabel lTl = new JLabel("Tổng tiền đầu ca", SwingConstants.RIGHT);
+        lTl.setFont(new Font("Segoe UI", Font.PLAIN, 10));
+        lTl.setForeground(Color.GRAY);
+        lTl.setAlignmentX(RIGHT_ALIGNMENT);
+        JLabel lAm = new JLabel(formatMoney(tienDau), SwingConstants.RIGHT);
+        lAm.setFont(new Font("Segoe UI", Font.BOLD, 20));
+        lAm.setForeground(Color.decode("#006250"));
+        lAm.setAlignmentX(RIGHT_ALIGNMENT);
+        right.add(lTl);
+        right.add(lAm);
 
-        p.add(left, BorderLayout.WEST); p.add(right, BorderLayout.EAST); return p;
+        p.add(left, BorderLayout.WEST);
+        p.add(right, BorderLayout.EAST);
+        return p;
     }
 
     private JPanel buildKPIRow() {
         JPanel row = new JPanel(new GridLayout(1, 4, 12, 0));
-        row.setOpaque(false); 
+        row.setOpaque(false);
         row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 130));
+
+        // FIX v2-1: Dược sĩ chỉ lấy dữ liệu CA HIỆN TẠI (qua filterMaNV + filterCa)
+        boolean isAdminKPI = UserSession.getInstance().isAdmin();
+        // Dùng filterMaNV (đã set theo session) thay vì kpiMaNV riêng
+        String caFilterNV = filterMaNV;
+        String kpiLabel = isAdminKPI ? "Toàn cửa hàng" : "Ca hiện tại";
 
         int sp = busThongKe.getTongSanPham();
         int hd = busThongKe.getHoaDonHomNay(filterMaNV, filterCa);
         double dt = busThongKe.getDoanhThuThuanHomNay(filterMaNV, filterCa);
         int kh = busThongKe.getTongKhachHang();
 
-        row.add(kpiCard("Tổng sản phẩm", String.valueOf(sp), "Cửa hàng", "#EEF2FF", "#3D52A0", "PILL"));
-        row.add(kpiCard("Hóa đơn", String.valueOf(hd), "Đã lọc", "#ECFDF5", "#00A76F", "DOCUMENT"));
-        row.add(kpiCard("Doanh thu", formatMoney((long) dt), "VNĐ", "#FFF7ED", "#FF6B00", "TAB_DOLLAR"));
-        row.add(kpiCard("Tổng khách hàng", String.valueOf(kh), "Cửa hàng", "#FFF0F0", "#FF5630", "USERS"));
+        // KPI 1: Top SP — lọc theo ca/NV
+        row.add(kpiCard("Top sản phẩm bán chạy trong ngày", String.valueOf(sp), kpiLabel, "#EEF2FF", "#3D52A0", "PILL",
+                () -> {
+                    DefaultTableModel model = new DefaultTableModel(
+                            new String[] { "Sản phẩm", "Số lượng", "Doanh thu" }, 0) {
+                        public boolean isCellEditable(int r, int c) {
+                            return false;
+                        }
+                    };
+                    List<Object[]> list = busThongKe.getTopSPTrongNgay(java.time.LocalDate.now().toString(),
+                            caFilterNV);
+                    if (list != null)
+                        for (Object[] obj : list)
+                            model.addRow(new Object[] { obj[0], obj[1],
+                                    formatMoney(Math.round((double) obj[2] * 1_000_000)) });
+                    showKpiPopup(isAdminKPI ? "TOP SẢN PHẨM — TOÀN CỬA HÀNG" : "TOP SẢN PHẨM — CA CỦA BẠN", model);
+                }));
+
+        // KPI 2: Hóa đơn — lọc theo ca/NV
+        row.add(kpiCard("Hóa đơn hôm nay", String.valueOf(hd), "Đã lọc theo ca/NV", "#ECFDF5", "#00A76F", "DOCUMENT",
+                () -> {
+                    DefaultTableModel model = new DefaultTableModel(
+                            new String[] { "Mã HĐ", "Khách hàng", "Thực thu", "Giờ lập" }, 0) {
+                        public boolean isCellEditable(int r, int c) {
+                            return false;
+                        }
+                    };
+                    List<Object[]> hdList = busThongKe.getHoaDonGanNhat(filterMaNV, filterCa, 100);
+                    if (hdList != null)
+                        for (Object[] o : hdList)
+                            model.addRow(
+                                    new Object[] { o[0], o[1], formatMoney(Math.round((double) o[2] / 1.1)), o[3] });
+                    showKpiPopup("DANH SÁCH HÓA ĐƠN", model);
+                }));
+
+        // KPI 3: Doanh thu — lọc theo ca/NV
+        String dtLabel = isAdminKPI ? "Toàn cửa hàng (VNĐ)" : "Ca hiện tại (VNĐ)";
+        row.add(kpiCard("Doanh thu", formatMoney(Math.round(dt)), dtLabel, "#FFF7ED", "#FF6B00", "TAB_DOLLAR",
+                () -> {
+                    DefaultTableModel model = new DefaultTableModel(new String[] { "Giờ", "Doanh thu" }, 0) {
+                        public boolean isCellEditable(int r, int c) {
+                            return false;
+                        }
+                    };
+                    double[] dts = busThongKe.getDTTheoGioTrongNgay(java.time.LocalDate.now().toString(), caFilterNV);
+                    double total = 0;
+                    if (dts != null) {
+                        for (int i = 0; i < dts.length; i++)
+                            if (dts[i] > 0) {
+                                model.addRow(new Object[] { i + ":00 - " + (i + 1) + ":00",
+                                        formatMoney(Math.round(dts[i] * 1_000_000)) });
+                                total += dts[i];
+                            }
+                        model.addRow(new Object[] { "TỔNG CỘNG", formatMoney(Math.round(total * 1_000_000)) });
+                    }
+                    showKpiPopup(isAdminKPI ? "DOANH THU THEO GIỜ — TOÀN CỬA HÀNG" : "DOANH THU THEO GIỜ — CA CỦA BẠN",
+                            model);
+                }));
+
+        // KPI 4: Top KH — FIX v2-2: TOP 5 + ORDER BY diemTichLuy DESC
+        row.add(kpiCard("Tổng khách hàng", String.valueOf(kh), "Cửa hàng", "#FFF0F0", "#FF5630", "USERS", () -> {
+            DefaultTableModel model = new DefaultTableModel(
+                    new String[] { "Tên khách hàng", "SĐT", "Số HĐ", "Doanh thu", "Điểm tích lũy" }, 0) {
+                public boolean isCellEditable(int r, int c) {
+                    return false;
+                }
+            };
+            List<Object[]> list = busThongKe.getTopKhachHangTheoDiem(5);
+            if (list != null)
+                for (Object[] obj : list)
+                    model.addRow(new Object[] { obj[0], obj[1], obj[2],
+                            formatMoney(Math.round((double) obj[3] * 1_000_000)), obj[4] });
+            showKpiPopup("TOP 5 KHÁCH HÀNG (Theo điểm tích lũy)", model);
+        }));
         return row;
     }
 
-    private JPanel kpiCard(String ttl, String val, String sub, String bg, String fg, String iconType) {
-        JPanel p = new JPanel(new BorderLayout(6, 6)); 
-        p.setBackground(Color.WHITE); 
-        p.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(Color.decode("#EEF2F6")), new EmptyBorder(12, 14, 12, 14)));
-        
-        JPanel top = new JPanel(new BorderLayout()); top.setOpaque(false);
-        JLabel lT = new JLabel(ttl); lT.setFont(new Font("Segoe UI", Font.PLAIN, 12)); lT.setForeground(Color.GRAY);
-        JLabel ico = new JLabel("", SwingConstants.CENTER);
-        ico.setIcon(new MenuIcon(iconType) {
-            @Override public int getIconWidth()  { return 20; }
-            @Override public int getIconHeight() { return 20; }
+    private void showKpiPopup(String title, DefaultTableModel model) {
+        Window pw = SwingUtilities.getWindowAncestor(this);
+        JDialog dlg = new JDialog((Frame) pw, true);
+        dlg.setUndecorated(true);
+        dlg.setSize(600, 400);
+        dlg.setLocationRelativeTo(pw);
+
+        // FIX v2-3: Nâng cấp giao diện popup KPI chuyên nghiệp
+        JPanel root = new JPanel(new BorderLayout()) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                for (int i = 0; i < 5; i++) {
+                    g2.setColor(new Color(0, 0, 0, 10 - i * 2));
+                    g2.fillRoundRect(i, i, getWidth() - i * 2, getHeight() - i * 2, 16, 16);
+                }
+                g2.setColor(Color.WHITE);
+                g2.fillRoundRect(4, 4, getWidth() - 8, getHeight() - 8, 12, 12);
+                g2.dispose();
+            }
+        };
+        root.setOpaque(false);
+        root.setBorder(new EmptyBorder(4, 4, 4, 4));
+
+        // Header với gradient
+        JPanel hdr = new JPanel(new BorderLayout()) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setPaint(new GradientPaint(0, 0, Color.decode("#152A4B"), getWidth(), 0, Color.decode("#1A73E8")));
+                g2.fillRoundRect(0, 0, getWidth(), getHeight() + 8, 12, 12);
+                g2.dispose();
+            }
+        };
+        hdr.setOpaque(false);
+        hdr.setBorder(new EmptyBorder(14, 20, 14, 15));
+        JLabel lblTitle = new JLabel(title, SwingConstants.LEFT);
+        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        lblTitle.setForeground(Color.WHITE);
+        lblTitle.setIcon(MenuIcon.of("CHART", 18, Color.WHITE));
+        lblTitle.setIconTextGap(10);
+
+        JButton btnClose = new JButton(MenuIcon.of("CLOSE", 14, new Color(255, 255, 255, 180)));
+        btnClose.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        btnClose.setForeground(new Color(255, 255, 255, 180));
+        btnClose.setContentAreaFilled(false);
+        btnClose.setBorderPainted(false);
+        btnClose.setFocusPainted(false);
+        btnClose.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnClose.addActionListener(e -> dlg.dispose());
+        btnClose.addMouseListener(new MouseAdapter() {
+            public void mouseEntered(MouseEvent e) {
+                btnClose.setForeground(Color.WHITE);
+            }
+
+            public void mouseExited(MouseEvent e) {
+                btnClose.setForeground(new Color(255, 255, 255, 180));
+            }
         });
-        ico.setOpaque(true); ico.setBackground(Color.decode(bg)); ico.setForeground(Color.decode(fg));
+        hdr.add(lblTitle, BorderLayout.CENTER);
+        hdr.add(btnClose, BorderLayout.EAST);
+
+        // Table chuyên nghiệp
+        JTable table = new JTable(model);
+        table.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        table.setRowHeight(34);
+        table.setShowGrid(false);
+        table.setShowHorizontalLines(true);
+        table.setGridColor(Color.decode("#F1F3F5"));
+        table.setSelectionBackground(Color.decode("#EBF5FF"));
+        table.setIntercellSpacing(new Dimension(0, 0));
+
+        // Header bảng đậm
+        javax.swing.table.JTableHeader tHeader = table.getTableHeader();
+        tHeader.setPreferredSize(new Dimension(0, 38));
+        tHeader.setBackground(Color.decode("#F4F6F8"));
+        tHeader.setForeground(Color.decode("#637381"));
+        tHeader.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        tHeader.setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, Color.decode("#DFE3E8")));
+
+        // Renderer: Alternating rows + căn phải cột số tiền/điểm
+        table.setDefaultRenderer(Object.class, (tbl, val, sel, foc, r, c) -> {
+            JLabel l = new JLabel(val != null ? val.toString() : "", SwingConstants.LEFT);
+            l.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+            l.setBorder(new EmptyBorder(4, 12, 4, 12));
+            l.setOpaque(true);
+            l.setBackground(sel ? Color.decode("#EBF5FF") : (r % 2 == 0 ? Color.WHITE : Color.decode("#FAFBFC")));
+            l.setForeground(Color.decode("#212B36"));
+            // Căn phải cột Doanh thu, Điểm, Số lượng, Thực thu
+            String colName = tbl.getColumnName(c).toLowerCase();
+            if (colName.contains("doanh thu") || colName.contains("điểm") || colName.contains("thực thu")) {
+                l.setHorizontalAlignment(SwingConstants.RIGHT);
+                l.setForeground(Color.decode("#1A73E8"));
+                l.setFont(new Font("Segoe UI", Font.BOLD, 13));
+            }
+            if (colName.contains("số") && !colName.contains("sđt")) {
+                l.setHorizontalAlignment(SwingConstants.CENTER);
+            }
+            // Bold dòng tổng cộng
+            if (val != null && val.toString().startsWith("TỔNG")) {
+                l.setFont(new Font("Segoe UI", Font.BOLD, 13));
+                l.setForeground(Color.decode("#152A4B"));
+                l.setBackground(Color.decode("#EEF2FF"));
+            }
+            return l;
+        });
+
+        JScrollPane scroll = new JScrollPane(table);
+        scroll.setBorder(new EmptyBorder(0, 8, 8, 8));
+        scroll.getViewport().setBackground(Color.WHITE);
+        scroll.getVerticalScrollBar().setUI(new Utils.ModernScrollBarUI());
+
+        // Footer với info
+        JPanel footer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 8));
+        footer.setBackground(Color.decode("#F9FAFB"));
+        footer.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, Color.decode("#EEF2F6")));
+        JLabel lblCount = new JLabel(model.getRowCount() + " bản ghi");
+        lblCount.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        lblCount.setForeground(Color.GRAY);
+        footer.add(lblCount);
+
+        root.add(hdr, BorderLayout.NORTH);
+        root.add(scroll, BorderLayout.CENTER);
+        root.add(footer, BorderLayout.SOUTH);
+
+        dlg.setContentPane(root);
+        dlg.setVisible(true);
+    }
+
+    // ── TICKER THÔNG MINH (dùng MenuIcon) ────────────────────────────
+    private static class TickerItem {
+        final String iconType, text, navTab, navKey;
+        final Color color;
+
+        TickerItem(String iconType, String text, Color color, String navTab, String navKey) {
+            this.iconType = iconType;
+            this.text = text;
+            this.color = color;
+            this.navTab = navTab;
+            this.navKey = navKey;
+        }
+    }
+
+    private List<TickerItem> loadTickerData() {
+        List<TickerItem> items = new ArrayList<>();
+        try {
+            List<Object[]> topSP = busThongKe.getTopSPTrongNgay(java.time.LocalDate.now().toString());
+            if (topSP != null)
+                for (int i = 0; i < Math.min(3, topSP.size()); i++) {
+                    Object[] o = topSP.get(i);
+                    items.add(new TickerItem("FIRE", o[0] + " bán chạy — " + o[1] + " hộp hôm nay",
+                            Color.decode("#00A76F"), "Thống kê", ""));
+                }
+            List<Object[]> hetHang = busThongKe.getTop4SanPhamSapHetHang();
+            if (hetHang != null)
+                for (Object[] o : hetHang)
+                    items.add(new TickerItem("ALERT", o[0] + " sắp hết — còn " + o[1] + " hộp", Color.decode("#FF6B00"),
+                            "Lô hàng", String.valueOf(o[0])));
+            List<Object[]> hetHan = busThongKe.getLoHangSapHetHanNhanh(30);
+            if (hetHan != null) {
+                java.text.SimpleDateFormat sdf2 = new java.text.SimpleDateFormat("dd/MM/yyyy");
+                for (int i = 0; i < Math.min(3, hetHan.size()); i++) {
+                    Object[] o = hetHan.get(i);
+                    String hsd = (o[3] instanceof java.sql.Timestamp) ? sdf2.format((java.sql.Timestamp) o[3])
+                            : String.valueOf(o[3]);
+                    items.add(new TickerItem("CLOCK_WARN", o[0] + " hết hạn ngày " + hsd, Color.decode("#E11D48"),
+                            "Lô hàng", String.valueOf(o[0])));
+                }
+            }
+            // Phân quyền ticker — Dược sĩ chỉ thấy HĐ do mình tạo
+            boolean isAdminTicker = UserSession.getInstance().isAdmin();
+            String tickerMaNV = isAdminTicker ? null : UserSession.getInstance().getMaNhanVien();
+            List<Object[]> hdCao = busThongKe.getHoaDonGiaTriCaoHomNay(3, tickerMaNV);
+            // FIX v2-4: Gán navKey = mã HĐ để ticker click mở đúng hóa đơn
+            if (hdCao != null)
+                for (Object[] o : hdCao)
+                    items.add(new TickerItem("MONEY_BAG",
+                            "HĐ #" + o[0] + " trị giá " + formatMoney(Math.round((double) o[2])),
+                            Color.decode("#6A1B9A"), "Bán hàng & Đổi trả", String.valueOf(o[0])));
+            List<Object[]> vip = busThongKe.getKhachHangVIPMuaHomNay(3);
+            if (vip != null)
+                for (Object[] o : vip)
+                    items.add(new TickerItem("STAR_FILL", "VIP " + o[0] + " mua " + o[2] + " SP",
+                            Color.decode("#1A73E8"), "Khách hàng", ""));
+        } catch (Exception ignored) {
+        }
+        if (items.isEmpty())
+            items.add(new TickerItem("CHECK_OK", "Mọi thứ đều ổn định", Color.decode("#00A76F"), "", ""));
+        return items;
+    }
+
+    class SmartTickerPanel extends JPanel {
+        private static final int IC_SZ = 18, IC_GAP = 6, IT_GAP = 40;
+        private List<TickerItem> items;
+        private int scrollX = 0, hoveredIdx = -1;
+
+        SmartTickerPanel() {
+            setOpaque(false);
+            setPreferredSize(new Dimension(0, 28));
+            items = loadTickerData();
+            setCursor(new Cursor(Cursor.HAND_CURSOR));
+            addMouseMotionListener(new MouseAdapter() {
+                @Override
+                public void mouseMoved(MouseEvent e) {
+                    int n = hitTest(e.getX());
+                    if (n != hoveredIdx) {
+                        hoveredIdx = n;
+                        repaint();
+                    }
+                }
+            });
+            addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseExited(MouseEvent e) {
+                    hoveredIdx = -1;
+                    repaint();
+                }
+
+                @Override
+                public void mouseClicked(MouseEvent e) {
+                    int idx = hitTest(e.getX());
+                    if (idx < 0 || idx >= items.size())
+                        return;
+                    TickerItem item = items.get(idx);
+                    if (item.navTab == null || item.navTab.isEmpty())
+                        return;
+
+                    Window pw = SwingUtilities.getWindowAncestor(ManHinhChinh.this);
+                    if (!(pw instanceof MainDashboard))
+                        return;
+                    MainDashboard md = (MainDashboard) pw;
+
+                    // FIX v2-4: Điều hướng HĐ giá trị lớn → tab Bán hàng + auto mở chi tiết
+                    if (item.navTab.equals("Bán hàng & Đổi trả") && item.navKey != null && !item.navKey.isEmpty()) {
+                        // Gán pending ID để ManHinhBanHang tự động mở popup chi tiết
+                        ManHinhBanHang.pendingDraftIdToOpen = item.navKey;
+                        md.switchTabAndFilter("Bán hàng & Đổi trả", "");
+                        return;
+                    }
+                    // FIX v2-4: Lô hàng → chuyển tab + auto điền tìm kiếm
+                    if (item.navTab.equals("Lô hàng") && item.navKey != null && !item.navKey.isEmpty()) {
+                        md.switchTabAndFilter("Lô hàng", item.navKey);
+                        return;
+                    }
+                    // Mặc định: chuyển tab
+                    md.switchTabAndFilter(item.navTab, item.navKey != null ? item.navKey : "");
+                }
+            });
+            new javax.swing.Timer(30, e -> {
+                scrollX -= 2;
+                repaint();
+            }).start();
+            javax.swing.Timer rt = new javax.swing.Timer(60_000, e -> {
+                items = loadTickerData();
+                repaint();
+            });
+            rt.setRepeats(true);
+            rt.start();
+        }
+
+        private int iw(FontMetrics fm, TickerItem it) {
+            return IC_SZ + IC_GAP + fm.stringWidth(it.text) + IT_GAP;
+        }
+
+        private int tw(FontMetrics fm) {
+            int w = 0;
+            for (TickerItem it : items)
+                w += iw(fm, it);
+            return Math.max(w, 1);
+        }
+
+        private int hitTest(int mx) {
+            Graphics2D g2 = (Graphics2D) getGraphics();
+            if (g2 == null || items.isEmpty())
+                return -1;
+            g2.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+            FontMetrics fm = g2.getFontMetrics();
+            int tw = tw(fm), sx = scrollX % tw;
+            if (sx > 0)
+                sx -= tw;
+            int x = sx;
+            while (x < getWidth()) {
+                for (int i = 0; i < items.size(); i++) {
+                    int w = iw(fm, items.get(i));
+                    if (mx >= x && mx < x + w) {
+                        g2.dispose();
+                        return i;
+                    }
+                    x += w;
+                }
+            }
+            g2.dispose();
+            return -1;
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            super.paintComponent(g);
+            if (items.isEmpty())
+                return;
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+            FontMetrics fm = g2.getFontMetrics();
+            int tw = tw(fm), sx = scrollX % tw;
+            if (sx > 0)
+                sx -= tw;
+            int x = sx;
+            int textY = getHeight() / 2 + fm.getAscent() / 2 - 1;
+            int iconY = (getHeight() - IC_SZ) / 2;
+            while (x < getWidth() + tw) {
+                for (int i = 0; i < items.size(); i++) {
+                    TickerItem it = items.get(i);
+                    int w = iw(fm, it);
+                    if (x + w > 0 && x < getWidth()) {
+                        Color c = hoveredIdx == i ? it.color.darker() : it.color;
+                        MenuIcon.of(it.iconType, IC_SZ, c).paintIcon(this, g2, x, iconY);
+                        g2.setFont(new Font("Segoe UI", hoveredIdx == i ? Font.BOLD : Font.PLAIN, 12));
+                        g2.setColor(c);
+                        g2.drawString(it.text, x + IC_SZ + IC_GAP, textY);
+                        g2.setColor(new Color(200, 200, 200));
+                        g2.fillOval(x + w - 14, getHeight() / 2 - 2, 4, 4);
+                    }
+                    x += w;
+                }
+            }
+            g2.dispose();
+        }
+    }
+
+    private JPanel buildTickerPanel() {
+        JPanel p = new JPanel(new BorderLayout(8, 0));
+        p.setBackground(Color.decode("#FFF1E6"));
+        p.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 2, 0, Color.decode("#FF6B00")),
+                new EmptyBorder(3, 14, 3, 14)));
+        p.setMaximumSize(new Dimension(Integer.MAX_VALUE, 35));
+        JLabel tag = new JLabel("  LIVE ");
+        tag.setIcon(MenuIcon.of("FIRE", 14, Color.WHITE));
+        tag.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        tag.setForeground(Color.WHITE);
+        tag.setOpaque(true);
+        tag.setBackground(Color.decode("#FF6B00"));
+        tag.setBorder(new EmptyBorder(3, 6, 3, 8));
+        p.add(tag, BorderLayout.WEST);
+        p.add(new SmartTickerPanel(), BorderLayout.CENTER);
+        return p;
+    }
+
+    private JPanel kpiCard(String ttl, String val, String sub, String bg, String fg, String iconType,
+            Runnable onClick) {
+
+        Color fgColor = Color.decode(fg);
+        JPanel p = new JPanel(new BorderLayout(6, 6));
+        p.setBackground(Color.WHITE);
+        p.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(Color.decode("#EEF2F6")),
+                new EmptyBorder(12, 14, 12, 14)));
+        p.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseEntered(java.awt.event.MouseEvent e) {
+                p.setBorder(BorderFactory.createCompoundBorder(
+                        BorderFactory.createLineBorder(fgColor, 2),
+                        new EmptyBorder(12, 14, 12, 14)));
+                p.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            }
+
+            public void mouseExited(java.awt.event.MouseEvent e) {
+                p.setBorder(BorderFactory.createCompoundBorder(
+                        BorderFactory.createLineBorder(Color.decode("#EEF2F6")),
+                        new EmptyBorder(12, 14, 12, 14)));
+                p.setCursor(Cursor.getDefaultCursor());
+            }
+
+            public void mouseClicked(java.awt.event.MouseEvent e) {
+                // Flash effect khi click
+                Color orig = p.getBackground();
+                p.setBackground(Color.decode("#EEF2F6"));
+                new javax.swing.Timer(180, ev -> {
+                    p.setBackground(orig);
+                    ((javax.swing.Timer) ev.getSource()).stop();
+                }).start();
+                if (onClick != null)
+                    onClick.run();
+            }
+        });
+
+        JPanel top = new JPanel(new BorderLayout());
+        top.setOpaque(false);
+        JLabel lT = new JLabel(ttl);
+        lT.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        lT.setForeground(Color.GRAY);
+        JLabel ico = new JLabel("", SwingConstants.CENTER);
+        ico.setIcon(MenuIcon.of(iconType, 20));
+        ico.setOpaque(true);
+        ico.setBackground(Color.decode(bg));
+        ico.setForeground(fgColor);
         ico.setPreferredSize(new Dimension(36, 36));
-        top.add(lT, BorderLayout.CENTER); top.add(ico, BorderLayout.EAST);
-        
-        JLabel lV = new JLabel(val); lV.setFont(new Font("Segoe UI", Font.BOLD, 24)); lV.setForeground(Color.decode(fg));
-        JLabel lS = new JLabel(sub); lS.setFont(new Font("Segoe UI", Font.PLAIN, 11)); lS.setForeground(Color.GRAY);
-        
-        p.add(top, BorderLayout.NORTH); p.add(lV, BorderLayout.CENTER); p.add(lS, BorderLayout.SOUTH); 
+        top.add(lT, BorderLayout.CENTER);
+        top.add(ico, BorderLayout.EAST);
+
+        JLabel lV = new JLabel(val);
+        lV.setFont(new Font("Segoe UI", Font.BOLD, 24));
+        lV.setForeground(fgColor);
+        JLabel lS = new JLabel(sub);
+        lS.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        lS.setForeground(Color.GRAY);
+
+        p.add(top, BorderLayout.NORTH);
+        p.add(lV, BorderLayout.CENTER);
+        p.add(lS, BorderLayout.SOUTH);
         return p;
     }
 
     private JPanel buildChartRow() {
         JPanel row = new JPanel(new GridLayout(1, 2, 12, 0));
-        row.setOpaque(false); row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 230));
+        row.setOpaque(false);
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 230));
 
         int currentYear = java.time.Year.now().getValue();
-        double[] monthly = busThongKe.getDoanhThu12Thang(currentYear, filterMaNV);
-        if (monthly == null) monthly = new double[12];
-        for(int i = 0; i < monthly.length; i++) monthly[i] = monthly[i] * 1_000_000;
-        
-        int[] cats = busThongKe.getSoLuongTheoLoaiSP(currentYear, filterMaNV);
-        if (cats == null) cats = new int[]{0, 0, 0, 0};
+        // condHD: xây từ filterMaNV và filterCa, đồng bộ với các hàm khác
+        String condHD = buildCondHD();
+        double[] monthly = busThongKe.getDoanhThu12Thang(currentYear, condHD);
+        if (monthly == null)
+            monthly = new double[12];
+        for (int i = 0; i < monthly.length; i++)
+            monthly[i] = monthly[i] * 1_000_000;
+
+        int[] cats = busThongKe.getSoLuongTheoLoaiSP(currentYear, condHD);
+        if (cats == null)
+            cats = new int[] { 0, 0, 0, 0 };
 
         row.add(barChart("Doanh thu theo tháng (" + currentYear + ")", monthly));
-        row.add(donutChart("Phân loại sản phẩm", cats, new String[]{"Thuốc kê đơn", "Thuốc không kê đơn", "TPCN", "Mỹ phẩm"}, new Color[]{RED, BLUE, GREEN, ORANGE}));
+        row.add(donutChart("Phân loại sản phẩm", cats,
+                new String[] { "Thuốc kê đơn", "Thuốc không kê đơn", "TPCN", "Mỹ phẩm" },
+                new Color[] { RED, BLUE, GREEN, ORANGE }));
         return row;
     }
 
     private JPanel buildBottomRow() {
         JPanel row = new JPanel(new GridLayout(1, 2, 12, 0));
-        row.setOpaque(false); row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 220));
+        row.setOpaque(false);
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 220));
 
-        JPanel inv = wCard(); inv.setLayout(new BorderLayout(0, 8));
-        JLabel lbI = new JLabel("Hóa đơn đã lọc theo Ca/NV"); lbI.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        JPanel inv = wCard();
+        inv.setLayout(new BorderLayout(0, 8));
+        JLabel lbI = new JLabel("Hóa đơn đã lọc theo Ca/NV");
+        lbI.setFont(new Font("Segoe UI", Font.BOLD, 12));
         inv.add(lbI, BorderLayout.NORTH);
 
-        DefaultTableModel mInv = new DefaultTableModel(new String[]{"Mã HĐ", "Khách hàng", "Tiền", "Thanh toán"}, 0) { public boolean isCellEditable(int r, int c) { return false; } };
-        JTable tInv = new JTable(mInv); tInv.setFont(new Font("Segoe UI", Font.PLAIN, 11)); tInv.setRowHeight(26); tInv.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 11));
+        DefaultTableModel mInv = new DefaultTableModel(new String[] { "Mã HĐ", "Khách hàng", "Tiền", "Thanh toán" },
+                0) {
+            public boolean isCellEditable(int r, int c) {
+                return false;
+            }
+        };
+        JTable tInv = new JTable(mInv);
+        tInv.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        tInv.setRowHeight(26);
+        tInv.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 11));
+        tInv.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        tInv.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                int r = tInv.getSelectedRow();
+                if (r >= 0 && !tInv.getValueAt(r, 0).equals("—")) {
+                    String maHD = tInv.getValueAt(r, 0).toString();
+                    BUS.BUS_HoaDon busHD = new BUS.BUS_HoaDon();
+                    Entity.HoaDon hd = busHD.layHoaDonTheoMa(maHD);
+                    if (hd != null) {
+                        String ngay = hd.getNgayLapHD()
+                                .format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss"));
+                        String khach = hd.getKhachHangId() != null ? hd.getKhachHangId().getHoVaTen() : "Khách lẻ";
+                        String sdt = hd.getKhachHangId() != null ? hd.getKhachHangId().getSdt() : "";
+                        String pt = tInv.getValueAt(r, 3).toString();
+                        String tenNV = hd.getNhanVienId() != null ? hd.getNhanVienId().getHoVaTen() : "";
+                        BUS.BUS_ChiTietHoaDon busCTHD = new BUS.BUS_ChiTietHoaDon();
+                        List<Object[]> lsSP = busCTHD.layDanhSachSanPhamTheoMaHD(maHD);
+                        Window pw = SwingUtilities.getWindowAncestor(ManHinhChinh.this);
+                        ChiTietHoaDon dlg = new ChiTietHoaDon((Frame) pw, maHD, ngay, khach, sdt, pt, "0", tenNV, lsSP);
+                        dlg.setVisible(true);
+                    }
+                }
+            }
+        });
 
         List<Object[]> hdList = busThongKe.getHoaDonGanDayTrongCa(filterMaNV, filterCa);
         if (hdList != null && !hdList.isEmpty()) {
             for (Object[] o : hdList) {
-                // Giả sử o[3] đang chứa giá trị "TIEN_MAT" hoặc "CHUYEN_KHOAN_NGAN_HANG" từ Database
-                String ptThanhToan = (String) o[3]; 
+                String ptThanhToan = (String) o[3];
                 String hienThiTT = "Khác";
-                
                 if ("TIEN_MAT".equalsIgnoreCase(ptThanhToan)) {
                     hienThiTT = "Tiền mặt";
-                } else if ("CHUYEN_KHOAN_NGAN_HANG".equalsIgnoreCase(ptThanhToan) || "CHUYEN_KHOAN".equalsIgnoreCase(ptThanhToan)) {
+                } else if ("CHUYEN_KHOAN_NGAN_HANG".equalsIgnoreCase(ptThanhToan)
+                        || "CHUYEN_KHOAN".equalsIgnoreCase(ptThanhToan)) {
                     hienThiTT = "Chuyển khoản";
                 }
-                
-                mInv.addRow(new Object[]{o[0], o[1], formatMoney((long)((double)o[2])), hienThiTT});
+                mInv.addRow(new Object[] { o[0], o[1], formatMoney(Math.round((double) o[2])), hienThiTT });
             }
         } else {
-            mInv.addRow(new Object[]{"—", "Không có hóa đơn", "—", "—"});
+            mInv.addRow(new Object[] { "—", "Không có hóa đơn", "—", "—" });
         }
-        
+
         JScrollPane scrollHoaDon = new JScrollPane(tInv);
         scrollHoaDon.getVerticalScrollBar().setUI(new Utils.ModernScrollBarUI());
         scrollHoaDon.getVerticalScrollBar().setPreferredSize(new Dimension(8, 0));
         inv.add(scrollHoaDon, BorderLayout.CENTER);
         row.add(inv);
 
-        JPanel stk = wCard(); stk.setLayout(new BorderLayout(0, 8));
-        JLabel lbS = new JLabel("Sản phẩm sắp hết hàng"); lbS.setIcon(new MenuIcon("WARNING")); lbS.setIconTextGap(6);
-        lbS.setFont(new Font("Segoe UI", Font.BOLD, 12)); lbS.setForeground(ORANGE);
+        JPanel stk = wCard();
+        stk.setLayout(new BorderLayout(0, 8));
+        JLabel lbS = new JLabel("Sản phẩm sắp hết hàng");
+        lbS.setIcon(MenuIcon.IC_WARNING);
+        lbS.setIconTextGap(6);
+        lbS.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        lbS.setForeground(ORANGE);
         stk.add(lbS, BorderLayout.NORTH);
-        JPanel listS = new JPanel(); listS.setLayout(new BoxLayout(listS, BoxLayout.Y_AXIS)); listS.setBackground(Color.WHITE);
+        JPanel listS = new JPanel();
+        listS.setLayout(new BoxLayout(listS, BoxLayout.Y_AXIS));
+        listS.setBackground(Color.WHITE);
 
         List<Object[]> ls = busThongKe.getTop4SanPhamSapHetHang();
         int sizeLS = ls != null ? ls.size() : 0;
         if (ls != null) {
             for (Object[] it : ls) {
-                String nm = (String)it[0]; int tn = (int)it[1];
-                JPanel r2 = new JPanel(new BorderLayout(0, 2)); r2.setOpaque(false); r2.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
-                JPanel t2 = new JPanel(new BorderLayout()); t2.setOpaque(false);
-                JLabel ln = new JLabel(nm.length() > 32 ? nm.substring(0, 32) + "…" : nm); ln.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-                JLabel lv = new JLabel(tn + " Hộp", SwingConstants.RIGHT); lv.setFont(new Font("Segoe UI", Font.BOLD, 11)); lv.setForeground(RED);
-                t2.add(ln, BorderLayout.WEST); t2.add(lv, BorderLayout.EAST);
-                JProgressBar pb = new JProgressBar(0, 50); pb.setValue(Math.min(tn, 50)); pb.setBackground(Color.decode("#FFF0E0")); pb.setForeground(ORANGE); pb.setPreferredSize(new Dimension(0, 5));
-                r2.add(t2, BorderLayout.NORTH); r2.add(pb, BorderLayout.SOUTH); listS.add(r2); listS.add(box(5));
+                String nm = (String) it[0];
+                int tn = (int) it[1];
+                JPanel r2 = new JPanel(new BorderLayout(0, 2));
+                r2.setOpaque(false);
+                r2.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
+                JPanel t2 = new JPanel(new BorderLayout());
+                t2.setOpaque(false);
+                JLabel ln = new JLabel(nm.length() > 32 ? nm.substring(0, 32) + "…" : nm);
+                ln.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+                JLabel lv = new JLabel(tn + " Hộp", SwingConstants.RIGHT);
+                lv.setFont(new Font("Segoe UI", Font.BOLD, 11));
+                lv.setForeground(RED);
+                t2.add(ln, BorderLayout.WEST);
+                t2.add(lv, BorderLayout.EAST);
+                JProgressBar pb = new JProgressBar(0, 50);
+                pb.setValue(Math.min(tn, 50));
+                pb.setBackground(Color.decode("#FFF0E0"));
+                pb.setForeground(ORANGE);
+                pb.setPreferredSize(new Dimension(0, 5));
+                r2.add(t2, BorderLayout.NORTH);
+                r2.add(pb, BorderLayout.SOUTH);
+
+                r2.setCursor(new Cursor(Cursor.HAND_CURSOR));
+                r2.addMouseListener(new MouseAdapter() {
+                    @Override
+                    public void mouseClicked(MouseEvent e) {
+                        Window pw = SwingUtilities.getWindowAncestor(ManHinhChinh.this);
+                        if (pw instanceof MainDashboard) {
+                            ((MainDashboard) pw).chuyenSangTabNhapLoHangMoiVaFill(nm);
+                        }
+                    }
+                });
+
+                listS.add(r2);
+                listS.add(box(5));
             }
         }
         int duTon = busThongKe.getSoSanPhamDuTon();
-        JLabel lSum = new JLabel("<html><span style='color:#00A76F;'>✓ " + duTon + " sản phẩm đủ tồn</span>  <span style='color:#FF5630;'>⏰ " + sizeLS + " cần nhập</span></html>");
-        lSum.setFont(new Font("Segoe UI", Font.PLAIN, 10)); listS.add(lSum);
-        
+        JLabel lSum = new JLabel("<html><span style='color:#00A76F;'>✓ " + duTon
+                + " sản phẩm đủ tồn</span>  <span style='color:#FF5630;'>⏰ " + sizeLS + " cần nhập</span></html>");
+        lSum.setFont(new Font("Segoe UI", Font.PLAIN, 10));
+        listS.add(lSum);
+
         JScrollPane scrollSpHet = new JScrollPane(listS);
         scrollSpHet.setBorder(null);
         scrollSpHet.getVerticalScrollBar().setUI(new Utils.ModernScrollBarUI());
         scrollSpHet.getVerticalScrollBar().setPreferredSize(new Dimension(8, 0));
         stk.add(scrollSpHet, BorderLayout.CENTER);
-        
-        row.add(stk); return row;
+        row.add(stk);
+
+        return row;
     }
 
     private JPanel buildExpiringPanel() {
-        JPanel p = wCard(); p.setLayout(new BorderLayout(0, 8)); p.setMaximumSize(new Dimension(Integer.MAX_VALUE, 270));
+        JPanel p = wCard();
+        p.setLayout(new BorderLayout(0, 8));
+        p.setMaximumSize(new Dimension(Integer.MAX_VALUE, 270));
         int cnt = busThongKe.getSoLoHangSapHetHanKhoang(90);
-        JPanel h2 = new JPanel(new BorderLayout()); h2.setOpaque(false);
-        JLabel lbT = new JLabel("Lô hàng sắp hết hạn (trong 90 ngày)"); lbT.setIcon(new MenuIcon("WARNING")); lbT.setIconTextGap(6);
-        lbT.setFont(new Font("Segoe UI", Font.BOLD, 12)); lbT.setForeground(ORANGE);
-        JLabel badge = new JLabel(" " + cnt + " lô ", SwingConstants.CENTER); badge.setOpaque(true); badge.setBackground(ORANGE); badge.setForeground(Color.WHITE); badge.setFont(new Font("Segoe UI", Font.BOLD, 10));
-        h2.add(lbT, BorderLayout.WEST); h2.add(badge, BorderLayout.EAST); p.add(h2, BorderLayout.NORTH);
+        JPanel h2 = new JPanel(new BorderLayout());
+        h2.setOpaque(false);
+        JLabel lbT = new JLabel("Lô hàng sắp hết hạn (trong 90 ngày)");
+        lbT.setIcon(MenuIcon.IC_WARNING);
+        lbT.setIconTextGap(6);
+        lbT.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        lbT.setForeground(ORANGE);
+        JLabel badge = new JLabel(" " + cnt + " lô ", SwingConstants.CENTER);
+        badge.setOpaque(true);
+        badge.setBackground(ORANGE);
+        badge.setForeground(Color.WHITE);
+        badge.setFont(new Font("Segoe UI", Font.BOLD, 10));
+        h2.add(lbT, BorderLayout.WEST);
+        h2.add(badge, BorderLayout.EAST);
+        p.add(h2, BorderLayout.NORTH);
 
-        DefaultTableModel m = new DefaultTableModel(new String[]{"Sản phẩm", "Mã lô", "Tồn", "HSD", "Còn lại"}, 0) { public boolean isCellEditable(int r, int c) { return false; } };
-        JTable t = new JTable(m); t.setFont(new Font("Segoe UI", Font.PLAIN, 11)); t.setRowHeight(26); t.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 11));
+        DefaultTableModel m = new DefaultTableModel(new String[] { "Sản phẩm", "Mã lô", "Tồn", "HSD", "Còn lại" }, 0) {
+            public boolean isCellEditable(int r, int c) {
+                return false;
+            }
+        };
+        JTable t = new JTable(m);
+        t.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        t.setRowHeight(26);
+        t.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 11));
 
         SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
         List<Object[]> dsHetHan = busThongKe.getLoHangSapHetHanNhanh(90);
         if (dsHetHan != null) {
-            for(Object[] rs : dsHetHan) {
-                int cl = (int)rs[4];
-                m.addRow(new Object[]{rs[0], rs[1], String.format("%,d", (int)rs[2]), sdf.format((Timestamp)rs[3]), cl <= 0 ? "Đã hết hạn" : cl + " ngày"});
+            for (Object[] rs : dsHetHan) {
+                int cl = (int) rs[4];
+                m.addRow(new Object[] { rs[0], rs[1], String.format("%,d", (int) rs[2]), sdf.format((Timestamp) rs[3]),
+                        cl <= 0 ? "Đã hết hạn" : cl + " ngày" });
             }
         }
         t.getColumnModel().getColumn(4).setCellRenderer((tbl2, val, sel, foc, r, c) -> {
-            JLabel l = new JLabel(String.valueOf(val), SwingConstants.CENTER); l.setOpaque(true); l.setFont(new Font("Segoe UI", Font.BOLD, 10));
+            JLabel l = new JLabel(String.valueOf(val), SwingConstants.CENTER);
+            l.setOpaque(true);
+            l.setFont(new Font("Segoe UI", Font.BOLD, 10));
             String v = String.valueOf(val);
-            if (v.equals("Đã hết hạn")) { l.setBackground(Color.decode("#FFEBEE")); l.setForeground(RED); }
-            else if (v.contains("ngày") && Integer.parseInt(v.replace(" ngày", "")) <= 30) { l.setBackground(Color.decode("#FFF3E0")); l.setForeground(ORANGE); }
-            else { l.setBackground(Color.WHITE); l.setForeground(Color.DARK_GRAY); }
+            if (v.equals("Đã hết hạn")) {
+                l.setBackground(Color.decode("#FFEBEE"));
+                l.setForeground(RED);
+            } else if (v.contains("ngày") && Integer.parseInt(v.replace(" ngày", "")) <= 30) {
+                l.setBackground(Color.decode("#FFF3E0"));
+                l.setForeground(ORANGE);
+            } else {
+                l.setBackground(Color.WHITE);
+                l.setForeground(Color.DARK_GRAY);
+            }
             return l;
         });
-        
+
+        t.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        t.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (e.getClickCount() == 1 || e.getClickCount() == 2) {
+                    int row = t.rowAtPoint(e.getPoint());
+                    if (row >= 0) {
+                        String maLo = String.valueOf(t.getValueAt(row, 1));
+                        Window pw = SwingUtilities.getWindowAncestor(ManHinhChinh.this);
+                        if (pw instanceof MainDashboard) {
+                            ((MainDashboard) pw).switchTabAndFilter("Lô hàng", maLo);
+                        }
+                    }
+                }
+            }
+        });
+
         JScrollPane scrollLoHang = new JScrollPane(t);
         scrollLoHang.getVerticalScrollBar().setUI(new Utils.ModernScrollBarUI());
         scrollLoHang.getVerticalScrollBar().setPreferredSize(new Dimension(8, 0));
@@ -448,77 +1128,119 @@ public class ManHinhChinh extends JPanel {
 
     private JPanel createDoiChieuPanel() {
         JPanel root = new JPanel(new BorderLayout(0, 14));
-        root.setBackground(BG); root.setBorder(new EmptyBorder(14, 20, 14, 20));
-        JLabel title = new JLabel("<html><b style='font-size:15px;'>ĐỐI CHIẾU DOANH THU</b><br><span style='color:gray;font-size:11px;'>Đã áp dụng bộ lọc Ca/Nhân viên</span></html>");
+        root.setBackground(BG);
+        root.setBorder(new EmptyBorder(14, 20, 14, 20));
+        JLabel title = new JLabel(
+                "<html><b style='font-size:15px;'>ĐỐI CHIẾU DOANH THU</b><br><span style='color:gray;font-size:11px;'>Đã áp dụng bộ lọc Ca/Nhân viên</span></html>");
 
-        JPanel topRow = new JPanel(new BorderLayout()); topRow.setOpaque(false);
+        JPanel topRow = new JPanel(new BorderLayout());
+        topRow.setOpaque(false);
         topRow.add(title, BorderLayout.WEST);
         root.add(topRow, BorderLayout.NORTH);
 
         boolean isAdmin = UserSession.getInstance().isAdmin();
 
-        // --- BẮT ĐẦU PHẦN ĐƯỢC FIX ---
-        int soHD = busThongKe.getHoaDonHomNay(filterMaNV, filterCa);
-        
-        // 1. Lấy riêng Tiền hàng (chưa trừ khuyến mãi) và Tiền khuyến mãi
-        double tHang = busThongKe.getTongTienHangHomNay(filterMaNV, filterCa); 
-        double tKhuyenMai = busThongKe.getTongKhuyenMaiHomNay(filterMaNV, filterCa); 
-        
-        // 2. Lấy Tổng thanh toán (Tiền thực thu sau khi đã trừ khuyến mãi)
-        double tThanhToan = busThongKe.getDoanhThuHomNay(filterMaNV, filterCa); 
-        
-        // 3. Tính toán Tiền mặt và Chuyển khoản dựa trên Tổng Thanh Toán (thực thu)
-        double tMat = busThongKe.getDoanhThuTienMatHomNay(filterMaNV, filterCa);
-        double ck = tThanhToan - tMat; 
-        // --- KẾT THÚC PHẦN ĐƯỢC FIX ---
+        // GUI chỉ nhận kết quả đã tính từ BUS — không tự tính toán
+        // FIX #4: Mở rộng KPI lên 8 fields: soHD, tHang, tKM, tTT, tMat, tCK, tVAT,
+        // tThuan
+        double[] kpi = busThongKe.getKpiDoiChieu(filterMaNV, filterCa);
+        int soHD = (int) kpi[0];
+        double tHang = kpi[1];
+        double tKhuyenMai = kpi[2];
+        double tThanhToan = kpi[3];
+        double tMat = kpi[4];
+        double ck = kpi[5];
+        double tVAT = kpi[6];
+        double tThuan = kpi[7];
 
-        JPanel body = new JPanel(new GridLayout(1, 3, 12, 0)); body.setBackground(BG);
+        JPanel body = new JPanel(new GridLayout(1, 3, 12, 0));
+        body.setBackground(BG);
 
-        JPanel c1 = wCard(); c1.setLayout(new BoxLayout(c1, BoxLayout.Y_AXIS));
-        addLine(c1, "CHART", "KẾT QUẢ ĐÃ LỌC", null, BLUE, true);
+        // ═══════════ CỘT 1: KẾT QUẢ ĐÃ LỌC (theo ca/NV) ═══════════
+        JPanel c1 = wCard();
+        c1.setLayout(new BoxLayout(c1, BoxLayout.Y_AXIS));
+        addLine(c1, "CHART", "KẾT QUẢ ĐÃ LỌC THEO CA", null, BLUE, true);
         addLine(c1, "Số hóa đơn:", String.valueOf(soHD), Color.BLACK, false);
-        
-        // --- BẮT ĐẦU PHẦN FIX UI ---
-        addLine(c1, "Tiền hàng:", formatMoney((long)tHang), Color.BLACK, false);
-        addLine(c1, "Khuyến mãi:", "-" + formatMoney((long)tKhuyenMai), GREEN, false); // Bỏ hardcode -0đ
-        c1.add(new JSeparator() {{ setMaximumSize(new Dimension(Integer.MAX_VALUE, 1)); }});
-        addLine(c1, "Tổng thanh toán:", formatMoney((long)tThanhToan), BLUE, true); // Hiển thị số tiền thực thu
-        
+
+        // FIX #4: Cấu trúc lại UI — hiển thị minh bạch giống bill
+        c1.add(box(4));
+        addLine(c1, "DOCUMENT", "CHI TIẾT TÍNH TOÁN", null, Color.decode("#637381"), true);
+        addLine(c1, "  Tiền hàng (Tạm tính):", formatMoney(Math.round(tHang)), Color.BLACK, false);
+        addLine(c1, "  (+) Thuế VAT:", "+" + formatMoney(Math.round(tVAT)), Color.decode("#FF6B00"), false);
+        addLine(c1, "  Thành tiền:", formatMoney(Math.round(tHang + tVAT)), Color.BLACK, true);
+        addLine(c1, "  (-) Khuyến mãi:", "-" + formatMoney(Math.round(tKhuyenMai)), GREEN, false);
+        c1.add(new JSeparator() {
+            {
+                setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
+            }
+        });
+        addLine(c1, "  (=) Tổng thanh toán:", formatMoney(Math.round(tThanhToan)), BLUE, true);
+
         c1.add(box(8));
-        
+
         addLine(c1, "ĐỐI CHIẾU THU CHI", null, Color.GRAY, false);
-        addLine(c1, "⇄ Tiền mặt thực thu", formatMoney((long)tMat), Color.BLACK, false);
-        addLine(c1, "↔ Chuyển khoản", formatMoney((long)ck), Color.BLACK, false); // Chuyển khoản đã tính lại chuẩn xác
-        c1.add(new JSeparator() {{ setMaximumSize(new Dimension(Integer.MAX_VALUE, 1)); }});
-        addLine(c1, "Tổng thực thu", formatMoney((long)tThanhToan), BLUE, true); // Hiển thị số tiền thực thu
-        // --- KẾT THÚC PHẦN FIX UI ---
-        
+        addLine(c1, "  ↔ Tiền mặt thực thu:", formatMoney(Math.round(tMat)), Color.BLACK, false);
+        addLine(c1, "  ↔ Chuyển khoản:", formatMoney(Math.round(ck)), Color.BLACK, false);
+        c1.add(new JSeparator() {
+            {
+                setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
+            }
+        });
+        addLine(c1, "  Tổng thực thu:", formatMoney(Math.round(tThanhToan)), BLUE, true);
+
         body.add(c1);
 
-        JPanel c2 = wCard(); c2.setLayout(new BoxLayout(c2, BoxLayout.Y_AXIS));
-        addLine(c2, "CHART", "7 NGÀY QUA", null, BLUE, true);
+        // ═══════════ CỘT 2: SO SÁNH 7 NGÀY QUA ═══════════
+        JPanel c2 = wCard();
+        c2.setLayout(new BoxLayout(c2, BoxLayout.Y_AXIS));
+        addLine(c2, "CHART", "SO SÁNH — 7 NGÀY QUA", null, BLUE, true);
         if (!isAdmin) {
             JLabel lk = new JLabel("Chỉ dành cho Quản lý", SwingConstants.CENTER);
-            lk.setIcon(new MenuIcon("LOCK")); lk.setIconTextGap(6);
-            lk.setFont(new Font("Segoe UI", Font.PLAIN, 11)); lk.setForeground(Color.GRAY); lk.setAlignmentX(CENTER_ALIGNMENT);
-            c2.add(Box.createVerticalGlue()); c2.add(lk); c2.add(Box.createVerticalGlue());
+            lk.setIcon(MenuIcon.IC_LOCK);
+            lk.setIconTextGap(6);
+            lk.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+            lk.setForeground(Color.GRAY);
+            lk.setAlignmentX(CENTER_ALIGNMENT);
+            c2.add(Box.createVerticalGlue());
+            c2.add(lk);
+            c2.add(Box.createVerticalGlue());
         } else {
-        	double dt7 = busThongKe.getDoanhThuThuan7NgayQua(filterMaNV);
-            int hd7 = busThongKe.getSoHoaDon7NgayQua(filterMaNV);
+            // FIX #4: Hiển thị chi tiết 7 ngày qua đồng bộ với cột 1
+            double[] kpi7 = busThongKe.getKpiDoiChieu7NgayQua(filterMaNV);
+            int hd7 = (int) kpi7[0];
+            double tHang7 = kpi7[1];
+            double tKM7 = kpi7[2];
+            double tTT7 = kpi7[3];
+            double tVAT7 = kpi7[4];
+            double tThuan7 = kpi7[5];
+
             addLine(c2, "Số hóa đơn:", String.valueOf(hd7), Color.BLACK, false);
-            addLine(c2, "Doanh thu:", formatMoney((long)dt7), GREEN, true);
+            c2.add(box(4));
+            addLine(c2, "DOCUMENT", "CHI TIẾT TÍNH TOÁN", null, Color.decode("#637381"), true);
+            addLine(c2, "  Tiền hàng (Tạm tính):", formatMoney(Math.round(tHang7)), Color.BLACK, false);
+            addLine(c2, "  (+) Thuế VAT:", "+" + formatMoney(Math.round(tVAT7)), Color.decode("#FF6B00"), false);
+            addLine(c2, "  Thành tiền:", formatMoney(Math.round(tHang7 + tVAT7)), Color.BLACK, true);
+            addLine(c2, "  (-) Khuyến mãi:", "-" + formatMoney(Math.round(tKM7)), GREEN, false);
+            c2.add(new JSeparator() {
+                {
+                    setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
+                }
+            });
+            addLine(c2, "  (=) Tổng thanh toán:", formatMoney(Math.round(tTT7)), BLUE, true);
         }
         body.add(c2);
 
-        JPanel c3 = wCard(); c3.setLayout(new BoxLayout(c3, BoxLayout.Y_AXIS));
+        JPanel c3 = wCard();
+        c3.setLayout(new BoxLayout(c3, BoxLayout.Y_AXIS));
         addLine(c3, "RETURN", "ĐỔI / TRẢ HÀNG", null, RED, true);
         int tongPhieu = busThongKe.getTongPhieuDoiTra();
-        int choXuLy   = busThongKe.getPhieuDoiTraChoXuLy();
+        int choXuLy = busThongKe.getPhieuDoiTraChoXuLy();
         addLine(c3, "Tổng phiếu:", String.valueOf(tongPhieu), Color.BLACK, false);
         addLine(c3, "Chờ xử lý:", String.valueOf(choXuLy), RED, false);
         body.add(c3);
 
-        root.add(body, BorderLayout.CENTER); return root;
+        root.add(body, BorderLayout.CENTER);
+        return root;
     }
 
     private void openKetCaDialog() {
@@ -531,10 +1253,10 @@ public class ManHinhChinh extends JPanel {
         }
 
         double dtCa = busThongKe.getDoanhThuTheoCa(maNV, ca.getThoiGianBatDau());
-        double tmBanHang = busThongKe.getDoanhThuTienMatTheoCa(maNV, ca.getThoiGianBatDau()); 
-        
+        double tmBanHang = busThongKe.getDoanhThuTienMatTheoCa(maNV, ca.getThoiGianBatDau());
+
         // ĐÃ FIX: Tính tiền hoàn trả từ Database thay vì gán bằng 0
-        double tmHoanTra = busThongKe.getTienHoanTraTheoCa(maNV, ca.getThoiGianBatDau()); 
+        double tmHoanTra = busThongKe.getTienHoanTraTheoCa(maNV, ca.getThoiGianBatDau());
 
         Window pw = SwingUtilities.getWindowAncestor(this);
         hienThiPhieuXacNhanCuoi((Frame) pw, ca, maNV, dtCa, tmBanHang, tmHoanTra);
@@ -546,8 +1268,8 @@ public class ManHinhChinh extends JPanel {
         JDialog dlg = new JDialog((Frame) pw, true);
 
         dlg.setUndecorated(true);
-        dlg.setBackground(new Color(0, 0, 0, 0)); 
-        dlg.setSize(440, 440); 
+        dlg.setBackground(new Color(0, 0, 0, 0));
+        dlg.setSize(440, 440);
         dlg.setLocationRelativeTo(pw);
 
         JPanel root = new JPanel(new BorderLayout()) {
@@ -556,18 +1278,20 @@ public class ManHinhChinh extends JPanel {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-                int shadowSize = 6; 
+                int shadowSize = 6;
                 for (int i = 0; i < shadowSize; i++) {
-                    g2.setColor(new Color(0, 0, 0, 12 - i * 2)); 
+                    g2.setColor(new Color(0, 0, 0, 12 - i * 2));
                     g2.fillRoundRect(i, i, getWidth() - i * 2, getHeight() - i * 2, 20, 20);
                 }
 
                 g2.setColor(Color.WHITE);
-                g2.fillRoundRect(shadowSize, shadowSize, getWidth() - shadowSize * 2, getHeight() - shadowSize * 2, 16, 16);
-                
+                g2.fillRoundRect(shadowSize, shadowSize, getWidth() - shadowSize * 2, getHeight() - shadowSize * 2, 16,
+                        16);
+
                 g2.setColor(Color.decode("#DFE3E8"));
-                g2.drawRoundRect(shadowSize, shadowSize, getWidth() - shadowSize * 2 - 1, getHeight() - shadowSize * 2 - 1, 16, 16);
-                
+                g2.drawRoundRect(shadowSize, shadowSize, getWidth() - shadowSize * 2 - 1,
+                        getHeight() - shadowSize * 2 - 1, 16, 16);
+
                 g2.dispose();
             }
         };
@@ -583,20 +1307,25 @@ public class ManHinhChinh extends JPanel {
 
         JLabel lblTitle = new JLabel("XÁC THỰC QUẢN LÝ", SwingConstants.CENTER);
         lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 18));
-        lblTitle.setForeground(Color.decode("#152A4B")); 
+        lblTitle.setForeground(Color.decode("#152A4B"));
 
-        JButton btnClose = new JButton(new MenuIcon("CLOSE")); 
-        btnClose.setForeground(Color.decode("#919EAB")); 
+        JButton btnClose = new JButton(new MenuIcon("CLOSE"));
+        btnClose.setForeground(Color.decode("#919EAB"));
         btnClose.setContentAreaFilled(false);
         btnClose.setBorderPainted(false);
         btnClose.setFocusPainted(false);
         btnClose.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnClose.setPreferredSize(new Dimension(35, 35));
         btnClose.addActionListener(e -> dlg.dispose());
-        
+
         btnClose.addMouseListener(new MouseAdapter() {
-            public void mouseEntered(MouseEvent e) { btnClose.setForeground(Color.RED); }
-            public void mouseExited(MouseEvent e) { btnClose.setForeground(Color.decode("#919EAB")); }
+            public void mouseEntered(MouseEvent e) {
+                btnClose.setForeground(Color.RED);
+            }
+
+            public void mouseExited(MouseEvent e) {
+                btnClose.setForeground(Color.decode("#919EAB"));
+            }
         });
 
         hdr.add(lblTitle, BorderLayout.CENTER);
@@ -624,31 +1353,33 @@ public class ManHinhChinh extends JPanel {
 
         body.add(createLabel("Số tiền nạp thêm (VND):"));
         body.add(Box.createRigidArea(new Dimension(0, 5)));
-        
+
         JTextField txtTien = new JTextField();
         styleInput(txtTien);
         txtTien.setFont(new Font("Segoe UI", Font.BOLD, 16));
         txtTien.setForeground(Color.decode("#00A76F"));
-        
+
         txtTien.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
             private boolean isUpdating = false;
 
             private void formatMoney() {
-                if (isUpdating) return; 
-                
+                if (isUpdating)
+                    return;
+
                 SwingUtilities.invokeLater(() -> {
                     isUpdating = true;
                     String rawText = txtTien.getText().replaceAll("[^0-9]", "");
-                    
+
                     if (!rawText.isEmpty()) {
                         try {
                             long val = Long.parseLong(rawText);
                             DecimalFormat df = new DecimalFormat("###,###,###");
                             String formatted = df.format(val).replace(",", ".") + "đ";
-                            
+
                             txtTien.setText(formatted);
                             txtTien.setCaretPosition(formatted.length() - 1);
-                        } catch (NumberFormatException ex) {}
+                        } catch (NumberFormatException ex) {
+                        }
                     } else {
                         txtTien.setText("");
                     }
@@ -656,9 +1387,20 @@ public class ManHinhChinh extends JPanel {
                 });
             }
 
-            @Override public void insertUpdate(javax.swing.event.DocumentEvent e) { formatMoney(); }
-            @Override public void removeUpdate(javax.swing.event.DocumentEvent e) { formatMoney(); }
-            @Override public void changedUpdate(javax.swing.event.DocumentEvent e) { formatMoney(); }
+            @Override
+            public void insertUpdate(javax.swing.event.DocumentEvent e) {
+                formatMoney();
+            }
+
+            @Override
+            public void removeUpdate(javax.swing.event.DocumentEvent e) {
+                formatMoney();
+            }
+
+            @Override
+            public void changedUpdate(javax.swing.event.DocumentEvent e) {
+                formatMoney();
+            }
         });
 
         body.add(txtTien);
@@ -670,7 +1412,8 @@ public class ManHinhChinh extends JPanel {
         ft.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, Color.decode("#EEF2F6")));
 
         JButton btnHuy = new JButton("Hủy bỏ") {
-            @Override protected void paintComponent(Graphics g) {
+            @Override
+            protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setColor(Color.decode("#F4F6F8"));
@@ -679,6 +1422,8 @@ public class ManHinhChinh extends JPanel {
             }
         };
         btnHuy.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnHuy.setIcon(MenuIcon.of("CANCEL", 16, Color.GRAY));
+        btnHuy.setIconTextGap(6);
         btnHuy.setForeground(Color.GRAY);
         btnHuy.setPreferredSize(new Dimension(100, 38));
         btnHuy.setContentAreaFilled(false);
@@ -688,15 +1433,18 @@ public class ManHinhChinh extends JPanel {
         btnHuy.addActionListener(e -> dlg.dispose());
 
         JButton btnXacNhan = new JButton("Xác nhận nạp") {
-            @Override protected void paintComponent(Graphics g) {
+            @Override
+            protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(Color.decode("#1A73E8")); 
-                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 8, 8); 
+                g2.setColor(Color.decode("#1A73E8"));
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 8, 8);
                 super.paintComponent(g2);
             }
         };
         btnXacNhan.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnXacNhan.setIcon(MenuIcon.of("CHECK_CIRCLE", 16, Color.WHITE));
+        btnXacNhan.setIconTextGap(6);
         btnXacNhan.setForeground(Color.WHITE);
         btnXacNhan.setPreferredSize(new Dimension(140, 38));
         btnXacNhan.setContentAreaFilled(false);
@@ -710,7 +1458,8 @@ public class ManHinhChinh extends JPanel {
             String tStr = txtTien.getText().replaceAll("[^0-9]", "");
 
             if (u.isEmpty() || p.isEmpty() || tStr.isEmpty()) {
-                JOptionPane.showMessageDialog(dlg, "Vui lòng nhập đầy đủ thông tin!", "Lỗi", JOptionPane.WARNING_MESSAGE);
+                JOptionPane.showMessageDialog(dlg, "Vui lòng nhập đầy đủ thông tin!", "Lỗi",
+                        JOptionPane.WARNING_MESSAGE);
                 return;
             }
 
@@ -724,22 +1473,25 @@ public class ManHinhChinh extends JPanel {
 
                     CaLamViec caHienTai = UserSession.getInstance().getCaHienTai();
                     DAO.DAO_CaLamViec daoCa = new DAO.DAO_CaLamViec();
-                    
+
                     if (daoCa.capNhatTienDauCa(caHienTai.getId(), tienDauCaMoi)) {
                         UserSession.getInstance().setTienDauCa(tienDauCaMoi);
-                        caHienTai.setTienDauCa((double) tienDauCaMoi); 
-                        
-                        JOptionPane.showMessageDialog(dlg, "Nạp thành công " + formatMoney(tienNap) + " vào quỹ!\nTổng tiền quỹ hiện tại: " + formatMoney(tienDauCaMoi));
+                        caHienTai.setTienDauCa((double) tienDauCaMoi);
+
+                        JOptionPane.showMessageDialog(dlg, "Nạp thành công " + formatMoney(tienNap)
+                                + " vào quỹ!\nTổng tiền quỹ hiện tại: " + formatMoney(tienDauCaMoi));
                         dlg.dispose();
-                        loadCardPanels(); 
+                        loadCardPanels();
                     } else {
                         JOptionPane.showMessageDialog(dlg, "Lỗi cập nhật Database!", "Lỗi", JOptionPane.ERROR_MESSAGE);
                     }
                 } else {
-                    JOptionPane.showMessageDialog(dlg, "Tài khoản này không có quyền Quản lý!", "Từ chối", JOptionPane.ERROR_MESSAGE);
+                    JOptionPane.showMessageDialog(dlg, "Tài khoản này không có quyền Quản lý!", "Từ chối",
+                            JOptionPane.ERROR_MESSAGE);
                 }
             } else {
-                JOptionPane.showMessageDialog(dlg, "Sai tài khoản hoặc mật khẩu Quản lý!", "Từ chối", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(dlg, "Sai tài khoản hoặc mật khẩu Quản lý!", "Từ chối",
+                        JOptionPane.ERROR_MESSAGE);
             }
         });
 
@@ -749,21 +1501,23 @@ public class ManHinhChinh extends JPanel {
 
         root.add(contentContainer, BorderLayout.CENTER);
         dlg.setContentPane(root);
-        
+
         dlg.setVisible(true);
     }
 
-    private void hienThiPhieuXacNhanCuoi(Frame parentFrame, CaLamViec ca, String maNV, double dtCa, double tmBanHang, double tmHoanTra) {
-        JDialog dlg = new JDialog(parentFrame,true);
+    private void hienThiPhieuXacNhanCuoi(Frame parentFrame, CaLamViec ca, String maNV, double dtCa, double tmBanHang,
+            double tmHoanTra) {
+        JDialog dlg = new JDialog(parentFrame, true);
         dlg.setUndecorated(true);
         dlg.getRootPane().setBorder(BorderFactory.createLineBorder(Color.decode("#DFE3E8"), 2));
-        dlg.setSize(520, 780); 
+        dlg.setSize(520, 780);
         dlg.setLocationRelativeTo(parentFrame);
         dlg.setLayout(new BorderLayout());
         dlg.setResizable(false);
         dlg.getContentPane().setBackground(Color.WHITE);
 
-     // ── HEADER (Có nút X tự chế) ──────────────────────────────────────────────────────
+        // ── HEADER (Có nút X tự chế)
+        // ──────────────────────────────────────────────────────
         JPanel hdr = new JPanel(new BorderLayout()); // Dùng BorderLayout để đẩy nút X sang mép phải
         hdr.setBackground(Color.WHITE);
         hdr.setBorder(new EmptyBorder(15, 20, 10, 20));
@@ -773,22 +1527,27 @@ public class ManHinhChinh extends JPanel {
         hTitle.setForeground(Color.decode("#152A4B"));
 
         // Nút X xịn xò
-        JButton btnClose = new JButton(new MenuIcon("CLOSE")); 
-        btnClose.setForeground(Color.decode("#919EAB")); 
+        JButton btnClose = new JButton(new MenuIcon("CLOSE"));
+        btnClose.setForeground(Color.decode("#919EAB"));
         btnClose.setContentAreaFilled(false);
         btnClose.setBorderPainted(false);
         btnClose.setFocusPainted(false);
         btnClose.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnClose.setPreferredSize(new Dimension(35, 35));
         btnClose.addActionListener(e -> dlg.dispose());
-        
+
         // Đổi màu đỏ khi rê chuột
         btnClose.addMouseListener(new MouseAdapter() {
-            public void mouseEntered(MouseEvent e) { btnClose.setForeground(Color.RED); }
-            public void mouseExited(MouseEvent e) { btnClose.setForeground(Color.decode("#919EAB")); }
+            public void mouseEntered(MouseEvent e) {
+                btnClose.setForeground(Color.RED);
+            }
+
+            public void mouseExited(MouseEvent e) {
+                btnClose.setForeground(Color.decode("#919EAB"));
+            }
         });
 
-        // Mẹo Swing: Thêm 1 panel rỗng bên trái bằng đúng kích thước nút X bên phải 
+        // Mẹo Swing: Thêm 1 panel rỗng bên trái bằng đúng kích thước nút X bên phải
         // để chữ "ĐÓNG CA LÀM VIỆC" luôn được căn giữa tuyệt đối
         JPanel emptyLeft = new JPanel();
         emptyLeft.setOpaque(false);
@@ -805,17 +1564,17 @@ public class ManHinhChinh extends JPanel {
         body.setBackground(Color.WHITE);
         body.setBorder(new EmptyBorder(0, 24, 16, 24));
 
-        long tienDauCa   = UserSession.getInstance().getTienDauCa();
+        long tienDauCa = UserSession.getInstance().getTienDauCa();
         long tienBanHang = (long) tmBanHang;
         long tienTraHang = (long) tmHoanTra;
-        long tienHT      = tienDauCa + tienBanHang - tienTraHang;   
+        long tienHT = tienDauCa + tienBanHang - tienTraHang;
 
         String[] CA_LABELS = { "Ca Sáng", "Ca Chiều", "Ca Tối" };
         String tenCa = (ca != null && ca.getLoaiCa() >= 0 && ca.getLoaiCa() <= 2) ? CA_LABELS[ca.getLoaiCa()] : "—";
         String tenNV = UserSession.getInstance().getTenHienThi();
         String gioBD = "—";
         String thoiGian = "—";
-        
+
         if (ca != null && ca.getThoiGianBatDau() != null) {
             SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
             gioBD = sdf.format(Timestamp.valueOf(ca.getThoiGianBatDau()));
@@ -834,8 +1593,12 @@ public class ManHinhChinh extends JPanel {
         body.add(buildMoneyRow("Tiền đầu ca:", formatMoney(tienDauCa), Color.decode("#00A76F"), false));
         body.add(buildMoneyRow("(+) Tiền mặt bán hàng:", formatMoney(tienBanHang), Color.decode("#1A73E8"), false));
         body.add(buildMoneyRow("(-) Tiền chi đổi/trả:", formatMoney(tienTraHang), Color.decode("#FF5630"), false));
-        
-        body.add(new JSeparator() {{ setMaximumSize(new Dimension(Integer.MAX_VALUE, 1)); }});
+
+        body.add(new JSeparator() {
+            {
+                setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
+            }
+        });
         body.add(box(5));
         body.add(buildMoneyRow("(=) Tiền hệ thống:", formatMoney(tienHT), Color.decode("#152A4B"), true));
 
@@ -845,16 +1608,17 @@ public class ManHinhChinh extends JPanel {
         lblChenh.setForeground(Color.decode("#00A76F"));
         lblChenh.setHorizontalAlignment(SwingConstants.RIGHT);
 
-        JLabel lblTienNop = new JLabel(formatMoney(tienHT)); 
+        JLabel lblTienNop = new JLabel(formatMoney(tienHT));
         lblTienNop.setFont(new Font("Segoe UI", Font.BOLD, 16));
-        lblTienNop.setForeground(Color.decode("#FFAB00")); 
+        lblTienNop.setForeground(Color.decode("#FFAB00"));
         lblTienNop.setHorizontalAlignment(SwingConstants.RIGHT);
 
         txtThucTe.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
             private boolean isUpdating = false;
 
             private void update() {
-                if (isUpdating) return;
+                if (isUpdating)
+                    return;
                 SwingUtilities.invokeLater(() -> {
                     isUpdating = true;
                     String rawText = txtThucTe.getText().replaceAll("[^0-9]", "");
@@ -865,12 +1629,13 @@ public class ManHinhChinh extends JPanel {
                             lblChenh.setText(formatChenhLech(lech));
                             lblChenh.setForeground(lech == 0 ? Color.decode("#00A76F") : Color.decode("#FF5630"));
 
-                            lblTienNop.setText(formatMoney(thuc)); 
+                            lblTienNop.setText(formatMoney(thuc));
 
                             DecimalFormat df = new DecimalFormat("###,###,###");
                             String formatted = df.format(thuc).replace(",", ".");
                             txtThucTe.setText(formatted);
-                        } catch (NumberFormatException ignored) {}
+                        } catch (NumberFormatException ignored) {
+                        }
                     } else {
                         lblChenh.setText("—");
                         lblChenh.setForeground(Color.GRAY);
@@ -879,15 +1644,28 @@ public class ManHinhChinh extends JPanel {
                     isUpdating = false;
                 });
             }
-            public void insertUpdate(javax.swing.event.DocumentEvent e) { update(); }
-            public void removeUpdate(javax.swing.event.DocumentEvent e) { update(); }
-            public void changedUpdate(javax.swing.event.DocumentEvent e) { update(); }
+
+            public void insertUpdate(javax.swing.event.DocumentEvent e) {
+                update();
+            }
+
+            public void removeUpdate(javax.swing.event.DocumentEvent e) {
+                update();
+            }
+
+            public void changedUpdate(javax.swing.event.DocumentEvent e) {
+                update();
+            }
         });
 
         body.add(buildLabelFieldRow("Tiền thực tế cuối ca:", txtThucTe));
         body.add(buildLabelValueRow("Chênh lệch:", lblChenh));
-        
-        body.add(new JSeparator() {{ setMaximumSize(new Dimension(Integer.MAX_VALUE, 1)); }});
+
+        body.add(new JSeparator() {
+            {
+                setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
+            }
+        });
         body.add(box(5));
         body.add(buildLabelValueRow("(>) Cần nộp lại cho Quản lý:", lblTienNop));
         body.add(box(10));
@@ -895,10 +1673,10 @@ public class ManHinhChinh extends JPanel {
         body.add(buildSection("Ghi chú"));
         JTextArea txtNote = new JTextArea(4, 10);
         txtNote.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        txtNote.setLineWrap(true); 
+        txtNote.setLineWrap(true);
         txtNote.setWrapStyleWord(true);
         txtNote.setBorder(new EmptyBorder(8, 10, 8, 10));
-        
+
         JScrollPane noteScroll = new JScrollPane(txtNote);
         noteScroll.setBorder(BorderFactory.createLineBorder(Color.decode("#DFE3E8"), 1, true));
         noteScroll.setAlignmentX(LEFT_ALIGNMENT);
@@ -911,16 +1689,20 @@ public class ManHinhChinh extends JPanel {
         ft.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, Color.decode("#DFE3E8")));
 
         JButton bHuy = new JButton("Hủy");
+        bHuy.setIcon(MenuIcon.of("CANCEL", 16, Color.GRAY));
+        bHuy.setIconTextGap(6);
         bHuy.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         bHuy.setPreferredSize(new Dimension(90, 38));
         bHuy.setFocusPainted(false);
         bHuy.addActionListener(e -> dlg.dispose());
 
         JButton bOk = new JButton("Xác nhận");
+        bOk.setIcon(MenuIcon.of("CHECK_CIRCLE", 16, Color.WHITE));
+        bOk.setIconTextGap(6);
         bOk.setFont(new Font("Segoe UI", Font.BOLD, 13));
         bOk.setPreferredSize(new Dimension(120, 38));
-        bOk.setBackground(Color.decode("#1A73E8")); 
-        bOk.setForeground(Color.WHITE); 
+        bOk.setBackground(Color.decode("#1A73E8"));
+        bOk.setForeground(Color.WHITE);
         bOk.setFocusPainted(false);
         bOk.addActionListener(e -> {
             long thucTe;
@@ -932,16 +1714,20 @@ public class ManHinhChinh extends JPanel {
             if (ca != null) {
                 ca.setTienKetCa(thucTe);
                 ca.setTienHeThongGhiNhan((long) dtCa);
-                // Bạn có thể lưu txtNote.getText() nếu có
+                // FIX v2-7: Đảm bảo tiền đầu ca từ Session được lưu vào DB
+                ca.setTienDauCa(tienDauCa);
+                ca.setGhiChuKetCa(txtNote.getText().trim());
                 busCaLamViec.ketThucCa(ca);
             }
             UserSession.getInstance().logout();
-            dlg.dispose(); 
-            if (parentFrame != null) parentFrame.dispose();
+            dlg.dispose();
+            if (parentFrame != null)
+                parentFrame.dispose();
             SwingUtilities.invokeLater(() -> new ManHinhDangNhap().setVisible(true));
         });
 
-        ft.add(bHuy); ft.add(bOk);
+        ft.add(bHuy);
+        ft.add(bOk);
         dlg.add(ft, BorderLayout.SOUTH);
         dlg.setVisible(true);
     }
@@ -971,7 +1757,8 @@ public class ManHinhChinh extends JPanel {
         l.setForeground(Color.DARK_GRAY);
         JLabel v = new JLabel(value);
         v.setFont(new Font("Segoe UI", bold ? Font.BOLD : Font.PLAIN, 13));
-        row.add(l, BorderLayout.WEST); row.add(v, BorderLayout.EAST);
+        row.add(l, BorderLayout.WEST);
+        row.add(v, BorderLayout.EAST);
         return row;
     }
 
@@ -987,14 +1774,15 @@ public class ManHinhChinh extends JPanel {
         JPanel fakeField = new JPanel(new BorderLayout());
         fakeField.setBackground(Color.decode("#F0FAFB"));
         fakeField.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(Color.decode("#B2EBF2"), 1, true),
-            new EmptyBorder(4, 10, 4, 10)));
+                BorderFactory.createLineBorder(Color.decode("#B2EBF2"), 1, true),
+                new EmptyBorder(4, 10, 4, 10)));
         fakeField.setPreferredSize(new Dimension(200, 30));
         JLabel v = new JLabel(value);
         v.setFont(new Font("Segoe UI", Font.BOLD, 13));
         v.setForeground(valueColor);
         fakeField.add(v, BorderLayout.EAST);
-        row.add(l, BorderLayout.WEST); row.add(fakeField, BorderLayout.EAST);
+        row.add(l, BorderLayout.WEST);
+        row.add(fakeField, BorderLayout.EAST);
         return row;
     }
 
@@ -1008,7 +1796,8 @@ public class ManHinhChinh extends JPanel {
         l.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         l.setForeground(Color.DARK_GRAY);
         field.setPreferredSize(new Dimension(200, 30));
-        row.add(l, BorderLayout.WEST); row.add(field, BorderLayout.EAST);
+        row.add(l, BorderLayout.WEST);
+        row.add(field, BorderLayout.EAST);
         return row;
     }
 
@@ -1021,7 +1810,8 @@ public class ManHinhChinh extends JPanel {
         JLabel l = new JLabel(label);
         l.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         l.setForeground(Color.DARK_GRAY);
-        row.add(l, BorderLayout.WEST); row.add(valueLabel, BorderLayout.EAST);
+        row.add(l, BorderLayout.WEST);
+        row.add(valueLabel, BorderLayout.EAST);
         return row;
     }
 
@@ -1030,70 +1820,241 @@ public class ManHinhChinh extends JPanel {
         f.setFont(new Font("Segoe UI", Font.BOLD, 13));
         f.setHorizontalAlignment(SwingConstants.RIGHT);
         f.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(Color.decode("#1A73E8"), 1, true),
-            new EmptyBorder(4, 10, 4, 10)));
+                BorderFactory.createLineBorder(Color.decode("#1A73E8"), 1, true),
+                new EmptyBorder(4, 10, 4, 10)));
         return f;
     }
 
     private String formatChenhLech(long lech) {
-        if (lech == 0) return "0 đ";
+        if (lech == 0)
+            return "0 đ";
         return (lech > 0 ? "+ " : "- ") + formatMoney(Math.abs(lech));
     }
 
     private JPanel barChart(String title, double[] data) {
-        JPanel wp = wCard(); wp.setLayout(new BorderLayout(0, 6));
-        JLabel lb = new JLabel(title); lb.setFont(new Font("Segoe UI", Font.BOLD, 12)); wp.add(lb, BorderLayout.NORTH);
+        JPanel wp = wCard();
+        wp.setLayout(new BorderLayout(0, 6));
+        JLabel lb = new JLabel(title);
+        lb.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        wp.add(lb, BorderLayout.NORTH);
         double[] fd = data;
         JPanel ch = new JPanel() {
             int hoveredIndex = -1;
-            { addMouseMotionListener(new MouseAdapter() { @Override public void mouseMoved(MouseEvent e) { int W = getWidth(), bw = (W - 20) / 12; int newHover = -1; for (int i = 0; i < 12; i++) { int x = 10 + i * bw; if (e.getX() >= x && e.getX() <= x + bw) { newHover = i; break; } } if (hoveredIndex != newHover) { hoveredIndex = newHover; repaint(); } } });
-              addMouseListener(new MouseAdapter() { @Override public void mouseExited(MouseEvent e) { hoveredIndex = -1; repaint(); } }); }
-            @Override protected void paintComponent(Graphics g) {
-                super.paintComponent(g); Graphics2D g2 = (Graphics2D) g.create(); g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                int W = getWidth(), H = getHeight() - 20; double mx = 1; for (double d : fd) if (d > mx) mx = d;
-                int bw = (W - 20) / 12; String[] ms = {"T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8", "T9", "T10", "T11", "T12"};
-                for (int i = 0; i < 12; i++) {
-                    int bh = (int) ((fd[i] / mx) * (H - 25)); int x = 10 + i * bw, y = H - bh - 5;
-                    g2.setColor(i == hoveredIndex ? Color.decode("#0052CC") : (fd[i] > 0 ? BLUE : Color.decode("#EEF2F6")));
-                    g2.fillRoundRect(x + 2, y, bw - 5, bh, 3, 3); g2.setColor(Color.GRAY); g2.setFont(new Font("Segoe UI", Font.PLAIN, 8)); g2.drawString(ms[i], x + 2, H + 14);
-                    if (i == hoveredIndex && fd[i] > 0) { String val = compactMoney(fd[i]); g2.setColor(new Color(0, 0, 0, 200)); g2.fillRoundRect(x - 5, y - 25, 40, 20, 5, 5); g2.setColor(Color.WHITE); g2.setFont(new Font("Segoe UI", Font.BOLD, 10)); g2.drawString(val, x - 2, y - 11); }
-                } g2.dispose();
+            {
+                addMouseMotionListener(new MouseAdapter() {
+                    @Override
+                    public void mouseMoved(MouseEvent e) {
+                        int W = getWidth(), bw = (W - 20) / 12;
+                        int newHover = -1;
+                        for (int i = 0; i < 12; i++) {
+                            int x = 10 + i * bw;
+                            if (e.getX() >= x && e.getX() <= x + bw) {
+                                newHover = i;
+                                break;
+                            }
+                        }
+                        if (hoveredIndex != newHover) {
+                            hoveredIndex = newHover;
+                            repaint();
+                        }
+                    }
+                });
+                addMouseListener(new MouseAdapter() {
+                    @Override
+                    public void mouseExited(MouseEvent e) {
+                        hoveredIndex = -1;
+                        repaint();
+                    }
+                });
             }
-        }; ch.setBackground(Color.WHITE); wp.add(ch, BorderLayout.CENTER); return wp;
+
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                int W = getWidth(), H = getHeight() - 20;
+                double mx = 1;
+                for (double d : fd)
+                    if (d > mx)
+                        mx = d;
+                int bw = (W - 20) / 12;
+                String[] ms = { "T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8", "T9", "T10", "T11", "T12" };
+                for (int i = 0; i < 12; i++) {
+                    int bh = (int) ((fd[i] / mx) * (H - 25));
+                    int x = 10 + i * bw, y = H - bh - 5;
+                    g2.setColor(
+                            i == hoveredIndex ? Color.decode("#0052CC") : (fd[i] > 0 ? BLUE : Color.decode("#EEF2F6")));
+                    g2.fillRoundRect(x + 2, y, bw - 5, bh, 3, 3);
+                    g2.setColor(Color.GRAY);
+                    g2.setFont(new Font("Segoe UI", Font.PLAIN, 8));
+                    g2.drawString(ms[i], x + 2, H + 14);
+                    if (i == hoveredIndex && fd[i] > 0) {
+                        String val = formatMoney(Math.round(fd[i]));
+                        g2.setFont(new Font("Segoe UI", Font.BOLD, 10));
+                        int textWidth = g2.getFontMetrics().stringWidth(val);
+                        int boxWidth = textWidth + 10;
+                        g2.setColor(new Color(0, 0, 0, 200));
+                        g2.fillRoundRect(x - 5, y - 25, boxWidth, 20, 5, 5);
+                        g2.setColor(Color.WHITE);
+                        g2.drawString(val, x, y - 11);
+                    }
+                }
+                g2.dispose();
+            }
+        };
+        ch.setBackground(Color.WHITE);
+        wp.add(ch, BorderLayout.CENTER);
+        return wp;
     }
 
     private JPanel donutChart(String title, int[] vals, String[] names, Color[] colors) {
-        JPanel wp = wCard(); wp.setLayout(new BorderLayout(0, 6));
-        JLabel lb = new JLabel(title); lb.setFont(new Font("Segoe UI", Font.BOLD, 12)); wp.add(lb, BorderLayout.NORTH);
+        JPanel wp = wCard();
+        wp.setLayout(new BorderLayout(0, 6));
+        JLabel lb = new JLabel(title);
+        lb.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        wp.add(lb, BorderLayout.NORTH);
         JPanel ch = new JPanel() {
             int hoveredIndex = -1;
-            { addMouseMotionListener(new MouseAdapter() { @Override public void mouseMoved(MouseEvent e) { int cx = getWidth() / 2 - 40, cy = getHeight() / 2, r = Math.min(cx, cy) - 15; double dx = e.getX() - cx, dy = e.getY() - cy; double dist = Math.sqrt(dx * dx + dy * dy); if (dist >= r / 2.0 && dist <= r) { double angle = Math.toDegrees(Math.atan2(dy, dx)); if (angle < 0) angle += 360; double currentAngle = 0; int tot = 0; for (int v : vals) tot += v; if (tot == 0) tot = 1; int newHover = -1; for (int i = 0; i < vals.length; i++) { double sweep = 360.0 * vals[i] / tot; double start = (currentAngle - 90 < 0) ? currentAngle + 270 : currentAngle - 90; double end = start + sweep; if (end > 360) { if (angle >= start || angle <= end - 360) newHover = i; } else { if (angle >= start && angle <= end) newHover = i; } currentAngle += sweep; } if (hoveredIndex != newHover) { hoveredIndex = newHover; repaint(); } } else { if (hoveredIndex != -1) { hoveredIndex = -1; repaint(); } } } }); }
-            @Override protected void paintComponent(Graphics g) {
-                super.paintComponent(g); Graphics2D g2 = (Graphics2D) g.create(); g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                int tot = 0; for (int v : vals) tot += v; if (tot == 0) tot = 1;
-                int cx = getWidth() / 2 - 40, cy = getHeight() / 2, r = Math.min(cx, cy) - 15; double ang = -90;
-                for (int i = 0; i < vals.length; i++) { double sw = 360.0 * vals[i] / tot; g2.setColor(i == hoveredIndex ? colors[i].darker() : colors[i]); g2.fillArc(cx - r, cy - r, 2 * r, 2 * r, (int) ang, (int) Math.ceil(sw)); ang += sw; }
-                g2.setColor(Color.WHITE); g2.fillOval(cx - r / 2, cy - r / 2, r, r);
-                if (hoveredIndex != -1 && vals[hoveredIndex] > 0) { g2.setColor(Color.DARK_GRAY); g2.setFont(new Font("Segoe UI", Font.BOLD, 14)); String v = vals[hoveredIndex] + " SP"; int w = g2.getFontMetrics().stringWidth(v); g2.drawString(v, cx - w/2, cy + 5); }
+            {
+                addMouseMotionListener(new MouseAdapter() {
+                    @Override
+                    public void mouseMoved(MouseEvent e) {
+                        int cx = getWidth() / 2 - 40, cy = getHeight() / 2;
+                        int r = Math.min(cx, cy) - 15;
+                        double dx = e.getX() - cx, dy = e.getY() - cy;
+                        double dist = Math.sqrt(dx * dx + dy * dy);
+                        if (dist >= r / 2.0 && dist <= r) {
+                            // +90 để đồng bộ với góc vẽ bắt đầu -90 (12 giờ)
+                            double angle = (Math.toDegrees(Math.atan2(dy, dx)) + 90 + 360) % 360;
+                            int tot = 0;
+                            for (int v : vals)
+                                tot += v;
+                            if (tot == 0)
+                                tot = 1;
+                            double currentAngle = 0;
+                            int newHover = -1;
+                            for (int i = 0; i < vals.length; i++) {
+                                double sweep = 360.0 * vals[i] / tot;
+                                if (angle >= currentAngle && angle < currentAngle + sweep) {
+                                    newHover = i;
+                                    break;
+                                }
+                                currentAngle += sweep;
+                            }
+                            if (hoveredIndex != newHover) {
+                                hoveredIndex = newHover;
+                                repaint();
+                            }
+                        } else {
+                            if (hoveredIndex != -1) {
+                                hoveredIndex = -1;
+                                repaint();
+                            }
+                        }
+                    }
+                });
+                addMouseListener(new MouseAdapter() {
+                    @Override
+                    public void mouseExited(MouseEvent e) {
+                        hoveredIndex = -1;
+                        repaint();
+                    }
+                });
+            }
+
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                int tot = 0;
+                for (int v : vals)
+                    tot += v;
+                if (tot == 0)
+                    tot = 1;
+                int cx = getWidth() / 2 - 40, cy = getHeight() / 2, r = Math.min(cx, cy) - 15;
+                double ang = 90;
+                for (int i = 0; i < vals.length; i++) {
+                    double sw = 360.0 * vals[i] / tot;
+                    g2.setColor(i == hoveredIndex ? colors[i].darker() : colors[i]);
+                    g2.fillArc(cx - r, cy - r, 2 * r, 2 * r, (int) Math.round(ang), (int) Math.ceil(-sw));
+                    ang -= sw;
+                }
+                g2.setColor(Color.WHITE);
+                g2.fillOval(cx - r / 2, cy - r / 2, r, r);
+                // Luôn hiển thị label trung tâm
+                g2.setColor(Color.DARK_GRAY);
+                String centerLabel = hoveredIndex >= 0 ? (vals[hoveredIndex] + " SP") : (tot + " SP");
+                g2.setFont(new Font("Segoe UI", Font.BOLD, 14));
+                int w = g2.getFontMetrics().stringWidth(centerLabel);
+                g2.drawString(centerLabel, cx - w / 2, cy + 5);
+                // Legend
                 int lx = cx + r + 8, ly = cy - vals.length * 10;
-                for (int i = 0; i < vals.length; i++) { g2.setColor(colors[i]); g2.fillRect(lx, ly + i * 18, 8, 8); g2.setColor(Color.DARK_GRAY); g2.setFont(new Font("Segoe UI", i == hoveredIndex ? Font.BOLD : Font.PLAIN, 10)); g2.drawString(names[i] + " (" + vals[i] + ")", lx + 12, ly + i * 18 + 8); }
+                for (int i = 0; i < vals.length; i++) {
+                    g2.setColor(colors[i]);
+                    g2.fillRect(lx, ly + i * 18, 8, 8);
+                    g2.setColor(i == hoveredIndex ? colors[i].darker() : Color.DARK_GRAY);
+                    g2.setFont(new Font("Segoe UI", i == hoveredIndex ? Font.BOLD : Font.PLAIN, 10));
+                    g2.drawString(names[i] + " (" + vals[i] + ")", lx + 12, ly + i * 18 + 8);
+                }
                 g2.dispose();
             }
-        }; ch.setBackground(Color.WHITE); wp.add(ch, BorderLayout.CENTER); return wp;
+        };
+        ch.setBackground(Color.WHITE);
+        wp.add(ch, BorderLayout.CENTER);
+        return wp;
     }
 
-    private JPanel wCard() { JPanel p = new JPanel(); p.setBackground(Color.WHITE); p.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(Color.decode("#EEF2F6")), new EmptyBorder(12, 14, 12, 14))); return p; }
-    private void addLine(JPanel p, String lbl, String val, Color fg, boolean bold) { addLine(p, null, lbl, val, fg, bold); }
-    private void addLine(JPanel p, String iconType, String lbl, String val, Color fg, boolean bold) { JPanel row = new JPanel(new BorderLayout()); row.setOpaque(false); row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 26)); JLabel l = new JLabel(lbl); if (iconType != null) { l.setIcon(new MenuIcon(iconType)); l.setIconTextGap(6); } l.setFont(new Font("Segoe UI", bold ? Font.BOLD : Font.PLAIN, 11)); if (val == null) { l.setForeground(fg); row.add(l, BorderLayout.WEST); } else { JLabel v = new JLabel(val, SwingConstants.RIGHT); v.setFont(new Font("Segoe UI", bold ? Font.BOLD : Font.PLAIN, 11)); v.setForeground(fg); row.add(l, BorderLayout.WEST); row.add(v, BorderLayout.EAST); } p.add(row); p.add(box(3)); }
-    private static Component box(int h) { return Box.createRigidArea(new Dimension(0, h)); }
-    private String formatMoney(long v) { return new DecimalFormat("###,###,###").format(v) + "đ"; }
-    private String compactMoney(double v) { if (v >= 1_000_000_000) return String.format("%.1fTỷ", v / 1_000_000_000); if (v >= 1_000_000) return String.format("%.2fM", v / 1_000_000); if (v >= 1_000) return String.format("%.1fK", v / 1_000); return String.valueOf((long)v); }
+    private JPanel wCard() {
+        JPanel p = new JPanel();
+        p.setBackground(Color.WHITE);
+        p.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(Color.decode("#EEF2F6")),
+                new EmptyBorder(12, 14, 12, 14)));
+        return p;
+    }
+
+    private void addLine(JPanel p, String lbl, String val, Color fg, boolean bold) {
+        addLine(p, null, lbl, val, fg, bold);
+    }
+
+    private void addLine(JPanel p, String iconType, String lbl, String val, Color fg, boolean bold) {
+        JPanel row = new JPanel(new BorderLayout());
+        row.setOpaque(false);
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 26));
+        JLabel l = new JLabel(lbl);
+        if (iconType != null) {
+            l.setIcon(new MenuIcon(iconType));
+            l.setIconTextGap(6);
+        }
+        l.setFont(new Font("Segoe UI", bold ? Font.BOLD : Font.PLAIN, 11));
+        if (val == null) {
+            l.setForeground(fg);
+            row.add(l, BorderLayout.WEST);
+        } else {
+            JLabel v = new JLabel(val, SwingConstants.RIGHT);
+            v.setFont(new Font("Segoe UI", bold ? Font.BOLD : Font.PLAIN, 11));
+            v.setForeground(fg);
+            row.add(l, BorderLayout.WEST);
+            row.add(v, BorderLayout.EAST);
+        }
+        p.add(row);
+        p.add(box(3));
+    }
+
+    private static Component box(int h) {
+        return Box.createRigidArea(new Dimension(0, h));
+    }
+
+    private String formatMoney(long v) {
+        return new DecimalFormat("###,###,###").format(v).replace(",", ".") + " đ";
+    }
 
     private JLabel createLabel(String text) {
         JLabel l = new JLabel(text);
         l.setFont(new Font("Segoe UI", Font.BOLD, 13));
         l.setForeground(Color.DARK_GRAY);
-        l.setAlignmentX(Component.LEFT_ALIGNMENT); 
+        l.setAlignmentX(Component.LEFT_ALIGNMENT);
         return l;
     }
 
@@ -1102,8 +2063,8 @@ public class ManHinhChinh extends JPanel {
         txt.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
         txt.setFont(new Font("Segoe UI", Font.PLAIN, 15));
         txt.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(Color.decode("#DFE3E8")), 
-            new EmptyBorder(5, 12, 5, 12)));
-        txt.setAlignmentX(Component.LEFT_ALIGNMENT); 
+                BorderFactory.createLineBorder(Color.decode("#DFE3E8")),
+                new EmptyBorder(5, 12, 5, 12)));
+        txt.setAlignmentX(Component.LEFT_ALIGNMENT);
     }
 }

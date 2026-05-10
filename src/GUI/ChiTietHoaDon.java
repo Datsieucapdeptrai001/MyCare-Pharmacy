@@ -13,7 +13,10 @@ import javax.swing.table.JTableHeader;
 import Utils.*;
 import java.awt.*;
 import java.util.List;
-
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.qrcode.QRCodeWriter;
+import com.google.zxing.common.BitMatrix;
+import java.awt.image.BufferedImage;
 public class ChiTietHoaDon extends JDialog {
     private String bacSi = "";
     private String coSo = "";
@@ -180,7 +183,7 @@ public class ChiTietHoaDon extends JDialog {
         pnlBody.add(Box.createRigidArea(new Dimension(0, 15)));
         pnlBody.add(createSummaryPanel(phuongThuc));
         pnlBody.add(Box.createRigidArea(new Dimension(0, 20)));
-        pnlBody.add(createFooterTextPanel()); 
+        pnlBody.add(createFooterTextPanel(maHD));
 
         JScrollPane scrollPane = new JScrollPane(pnlBody);
         scrollPane.setBorder(null);
@@ -195,7 +198,29 @@ public class ChiTietHoaDon extends JDialog {
 
         add(scrollPane, BorderLayout.CENTER);
     }
-
+    private ImageIcon generateQR(String data, int size) {
+        try {
+            QRCodeWriter barcodeWriter = new QRCodeWriter();
+            BitMatrix bitMatrix = barcodeWriter.encode(data, BarcodeFormat.QR_CODE, size, size);
+            BufferedImage img = new BufferedImage(size, size, BufferedImage.TYPE_INT_RGB);
+            img.createGraphics();
+            Graphics2D g = (Graphics2D) img.getGraphics();
+            g.setColor(Color.WHITE);
+            g.fillRect(0, 0, size, size);
+            g.setColor(Color.BLACK);
+            for (int i = 0; i < size; i++) {
+                for (int j = 0; j < size; j++) {
+                    if (bitMatrix.get(i, j)) {
+                        g.fillRect(i, j, 1, 1);
+                    }
+                }
+            }
+            return new ImageIcon(img);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
     private JPanel createHeaderPanel(String maHD, String ngay, String khachHang, String sdt, String phuongThuc, String tongTien) {
         JPanel pnlHeader = new JPanel(new BorderLayout());
         pnlHeader.setBackground(isDaHuy ? textRed : primaryGreen);
@@ -531,22 +556,48 @@ public class ChiTietHoaDon extends JDialog {
 
     private JLabel createRightAlignLabel(String text) { JLabel label = new JLabel(text); label.setHorizontalAlignment(SwingConstants.RIGHT); return label; }
 
-    private JPanel createFooterTextPanel() {
-        // Tách ra 2 cột: Cột trái (Cảm ơn), Cột phải (Chữ ký nhân viên) để tránh đẩy khung
+    private JPanel createFooterTextPanel(String maHD) {
+        // Tách ra 2 cột: Cột trái (QR Code + Cảm ơn), Cột phải (Chữ ký nhân viên)
         JPanel pnl = new JPanel(new GridLayout(1, 2, 10, 0)); 
         pnl.setBackground(Color.WHITE);
         pnl.setBorder(new EmptyBorder(10, 0, 10, 0));
 
-        // Khối Trái (Cảm ơn)
-        JPanel pnlLeft = new JPanel(new GridLayout(2, 1, 0, 2));
+        // KHỐI TRÁI (Sinh mã QR + Cảm ơn)
+        JPanel pnlLeft = new JPanel();
+        pnlLeft.setLayout(new BoxLayout(pnlLeft, BoxLayout.Y_AXIS)); 
         pnlLeft.setBackground(Color.WHITE);
-        JLabel l1 = new JLabel("Cảm ơn quý khách đã tin dùng!", SwingConstants.LEFT); 
-        l1.setFont(new Font("Segoe UI", Font.PLAIN, 11)); l1.setForeground(textGray);
-        JLabel l2 = new JLabel("Đổi trả trong 3 ngày kể từ lúc mua.", SwingConstants.LEFT); 
-        l2.setFont(new Font("Segoe UI", Font.PLAIN, 11)); l2.setForeground(textGray);
-        pnlLeft.add(l1); pnlLeft.add(l2);
+        
+        // --- 1. TẠO VÀ THÊM MÃ QR VÀO TRƯỚC (NẰM TRÊN) ---
+        // Đã tăng kích thước QR từ 80 lên 100 pixel để to và rõ hơn
+        ImageIcon qrIcon = generateQR(maHD, 100); 
+        if (qrIcon != null) {
+            JLabel lblQR = new JLabel(qrIcon);
+            lblQR.setAlignmentX(Component.LEFT_ALIGNMENT);
+            pnlLeft.add(lblQR);
+            
+            JLabel lblQRText = new JLabel("Mã quét: " + maHD);
+            lblQRText.setFont(new Font("Segoe UI", Font.BOLD, 11)); // Tăng size chữ mã quét xíu cho cân đối
+            lblQRText.setForeground(textDark);
+            lblQRText.setAlignmentX(Component.LEFT_ALIGNMENT);
+            pnlLeft.add(lblQRText);
+        }
 
-        // Khối Phải (Ký tên)
+        // Tạo một khoảng trống nhỏ 10px giữa mã QR và chữ Cảm ơn
+        pnlLeft.add(Box.createRigidArea(new Dimension(0, 10))); 
+
+        // --- 2. THÊM CHỮ CẢM ƠN XUỐNG DƯỚI ---
+        JLabel l1 = new JLabel("Cảm ơn quý khách đã tin dùng!"); 
+        l1.setFont(new Font("Segoe UI", Font.PLAIN, 11)); l1.setForeground(textGray);
+        l1.setAlignmentX(Component.LEFT_ALIGNMENT); 
+        
+        JLabel l2 = new JLabel("Đổi trả trong 3 ngày kể từ lúc mua."); 
+        l2.setFont(new Font("Segoe UI", Font.PLAIN, 11)); l2.setForeground(textGray);
+        l2.setAlignmentX(Component.LEFT_ALIGNMENT);
+        
+        pnlLeft.add(l1); 
+        pnlLeft.add(l2);
+
+        // KHỐI PHẢI (Ký tên - Giữ nguyên như cũ)
         JPanel pnlRight = new JPanel(new GridLayout(3, 1, 0, 3));
         pnlRight.setBackground(Color.WHITE);
         JLabel lbl3 = new JLabel("Nhân viên xác nhận", SwingConstants.CENTER); 
@@ -554,7 +605,6 @@ public class ChiTietHoaDon extends JDialog {
         JLabel lbl4 = new JLabel("(Ký & Ghi rõ họ tên)", SwingConstants.CENTER); 
         lbl4.setFont(new Font("Segoe UI", Font.ITALIC, 11)); lbl4.setForeground(textGray);
         
-        // Cắt gọn tên nhân viên nếu quá dài
         String tenRutGon = this.tenNhanVien;
         if(tenRutGon != null && tenRutGon.length() > 20) {
              tenRutGon = tenRutGon.substring(0, 18) + "...";
@@ -564,6 +614,7 @@ public class ChiTietHoaDon extends JDialog {
 
         pnlRight.add(lbl3); pnlRight.add(lbl4); pnlRight.add(lbl5);
 
+        // Ghép 2 khối vào Panel chính
         pnl.add(pnlLeft); 
         pnl.add(pnlRight); 
         return pnl;

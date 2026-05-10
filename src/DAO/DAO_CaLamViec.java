@@ -11,7 +11,29 @@ import java.util.List;
 public class DAO_CaLamViec {
 
     public DAO_CaLamViec() {}
-
+    public Entity.CaLamViec layCaChuaDongCuaNhanVien(String maNV) {
+        Entity.CaLamViec ca = null;
+        
+        String sql = "SELECT * FROM CaLamViec WHERE nhanVienId = ? AND thoiGianKetThuc IS NULL";
+        
+        try (Connection con = ConnectDB.getInstance().getConnection();
+             PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setString(1, maNV);
+            ResultSet rs = pst.executeQuery();
+            if (rs.next()) {
+                ca = new Entity.CaLamViec();
+                ca.setId(rs.getString("id"));
+               
+                ca.setThoiGianBatDau(rs.getTimestamp("thoiGianBatDau").toLocalDateTime());
+                ca.setTienDauCa(rs.getDouble("tienDauCa"));
+                ca.setLoaiCa(rs.getInt("loaiCa"));
+               
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return ca;
+    }
     public boolean themCa(CaLamViec ca) {
         String sql = "INSERT INTO CaLamViec (id, nhanVienId, thoiGianBatDau, thoiGianKetThuc, " +
                      "tienHeThongGhiNhan, tienDauCa, tienKetCa, loaiCa, ghiChuKetCa) " +
@@ -38,8 +60,9 @@ public class DAO_CaLamViec {
         } catch (SQLException e) { e.printStackTrace(); return false; }
     }
 
+    // FIX v2-7: Thêm tienDauCa vào UPDATE để Kết Ca lưu đúng tiền quỹ đầu ca
     public boolean capNhatCa(CaLamViec ca) {
-        String sql = "UPDATE CaLamViec SET thoiGianKetThuc=?, tienHeThongGhiNhan=?, tienKetCa=?, ghiChuKetCa=? WHERE id=?";
+        String sql = "UPDATE CaLamViec SET thoiGianKetThuc=?, tienHeThongGhiNhan=?, tienKetCa=?, tienDauCa=?, ghiChuKetCa=? WHERE id=?";
         Connection con = ConnectDB.getInstance().getConnection();
         try (PreparedStatement ps = con.prepareStatement(sql)) {
             if (ca.getThoiGianKetThuc() != null)
@@ -48,12 +71,9 @@ public class DAO_CaLamViec {
             
             ps.setDouble(2, ca.getTienHeThongGhiNhan());
             ps.setDouble(3, ca.getTienKetCa());
-            
-            // ---- ĐÃ SỬA: Cập nhật ghi chú kết ca đàng hoàng ----
-            ps.setString(4, ca.getGhiChuKetCa());
-            // ----------------------------------------------------
-            
-            ps.setString(5, ca.getId());
+            ps.setDouble(4, ca.getTienDauCa()); // FIX: Lưu tiền đầu ca từ Session
+            ps.setString(5, ca.getGhiChuKetCa());
+            ps.setString(6, ca.getId());
             return ps.executeUpdate() > 0;
         } catch (SQLException e) { e.printStackTrace(); return false; }
     }

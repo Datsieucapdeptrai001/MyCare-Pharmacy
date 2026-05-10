@@ -346,6 +346,7 @@ public class ManHinhDangNhap extends JFrame {
                     try {
                         TaiKhoan tk = get();
                         if (tk != null) {
+                            // Xử lý lưu/xóa ghi nhớ tài khoản
                             if (cbGhiNho.isSelected()) {
                                 prefs.put("saved_username", u);
                                 if (!savedUsersList.contains(u)) {
@@ -360,33 +361,47 @@ public class ManHinhDangNhap extends JFrame {
                                 }
                             }
 
+                            // Đưa tài khoản vào Session
                             UserSession.getInstance().setTaiKhoan(tk);
 
-                            if (!UserSession.getInstance().isAdmin()) {
-                            	String maNV = tk.getNhanVienId().getNhanVien();
-                                
-                                BUS_CaLamViec busCa = new BUS_CaLamViec();
-                                // Kiểm tra xem dưới DB có ca nào của NV này chưa kết thúc không
-                                Entity.CaLamViec caDangMo = busCa.getCaHienTai(maNV);
+                            // ====================================================================
+                            // BẮT ĐẦU FIX: KIỂM TRA VÀ NỐI LẠI CA DANG DỞ CHO CẢ ADMIN VÀ STAFF
+                            // ====================================================================
+                            String maNV = tk.getNhanVienId().getNhanVien();
+                            BUS_CaLamViec busCa = new BUS_CaLamViec();
+                            
+                            // Kiểm tra xem dưới DB có ca nào của NV này chưa kết thúc không
+                            Entity.CaLamViec caDangMo = busCa.getCaHienTai(maNV);
 
-                                if (caDangMo != null) {
-                                    JOptionPane.showMessageDialog(ManHinhDangNhap.this, 
-                                        "Phát hiện ca làm việc chưa kết thúc.\nHệ thống sẽ tiếp tục ca làm việc trước đó của bạn!", 
-                                        "Thông báo", JOptionPane.INFORMATION_MESSAGE);
-                                    
-                                    UserSession.getInstance().setCaHienTai(caDangMo);
-                                    UserSession.getInstance().setTienDauCa((long) caDangMo.getTienDauCa());
-                                    UserSession.getInstance().setLoaiCa(caDangMo.getLoaiCa());
-                                    
+                            if (caDangMo != null) {
+                                // 1. TRƯỜNG HỢP CÓ CA CŨ CHƯA KẾT THÚC -> NỐI LẠI CA
+                                JOptionPane.showMessageDialog(ManHinhDangNhap.this, 
+                                    "Phát hiện ca làm việc chưa kết thúc.\nHệ thống sẽ tiếp tục ca làm việc trước đó của bạn!", 
+                                    "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+                                
+                                UserSession.getInstance().setCaHienTai(caDangMo);
+                                UserSession.getInstance().setTienDauCa((long) caDangMo.getTienDauCa());
+                                UserSession.getInstance().setLoaiCa(caDangMo.getLoaiCa());
+                                
+                                new MainDashboard().setVisible(true);
+                                dispose();
+                            } else {
+                                // 2. TRƯỜNG HỢP KHÔNG CÓ CA DANG DỞ
+                                if (UserSession.getInstance().isAdmin()) {
+                                    // QUẢN LÝ: Vào thẳng Dashboard luôn (sẽ bắt mở ca lúc tạo hóa đơn)
+                                    new MainDashboard().setVisible(true);
+                                    dispose();
                                 } else {
+                                    // NHÂN VIÊN: Bắt buộc mở ca ngay lúc đăng nhập
                                     ManHinhMoCa dlg = new ManHinhMoCa(ManHinhDangNhap.this);
                                     dlg.setVisible(true);
                                     
                                     if (!dlg.isConfirmed()) {
-                                        UserSession.getInstance().logout();
+                                        UserSession.getInstance().logout(); // Nếu tắt form mở ca thì hủy phiên đăng nhập
                                         return;
                                     }
                                     
+                                    // Lấy thông tin từ form mở ca
                                     UserSession.getInstance().setLoaiCa(dlg.getSelectedCa());
                                     UserSession.getInstance().setTienDauCa(dlg.getTongTienDauCa());
 
@@ -401,11 +416,12 @@ public class ManHinhDangNhap extends JFrame {
                                     
                                     busCa.themCa(ca); 
                                     UserSession.getInstance().setCaHienTai(ca);
+                                    
+                                    new MainDashboard().setVisible(true);
+                                    dispose();
                                 }
                             }
-                            // KẾT THÚC LOGIC PHỤC HỒI CA
-                            new MainDashboard().setVisible(true);
-                            dispose();
+                            
 
                         } else {
                             showCustomErrorDialog("<html>Tài khoản hoặc mật khẩu không chính xác.<br/>Vui lòng kiểm tra lại!</html>");

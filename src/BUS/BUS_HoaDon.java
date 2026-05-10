@@ -46,8 +46,8 @@ public class BUS_HoaDon {
         return daoHD.layTatCaHoaDon(); 
     }
     
-    public boolean thanhToan(HoaDon hd, List<ChiTietHoaDon> dsCTHD) {
-        return daoHD.luuGiaoDichThanhToan(hd, dsCTHD, daoCTHD, daoLo, daoPB);
+    public boolean thanhToan(HoaDon hd, List<ChiTietHoaDon> dsCTHD, List<ChiTietHoaDon> dsQuaTang) {
+        return daoHD.luuGiaoDichThanhToan(hd, dsCTHD, dsQuaTang, daoCTHD, daoLo, daoPB);
     }
     
     // =========================================================

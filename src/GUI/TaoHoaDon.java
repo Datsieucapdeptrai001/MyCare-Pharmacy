@@ -92,6 +92,8 @@ public class TaoHoaDon extends JDialog {
     private java.util.List<JLabel> listCountLabels = new java.util.ArrayList<>();
  // Thêm dòng này ngay cạnh pendingPhoneToLink của bạn
     public static String pendingPhoneToLink = null;
+    private javax.swing.Timer boKiemTraTienToi;
+    private String maGiaoDichHienTai = "";
     public static String pendingNameToLink = null; // Thêm biến nhớ Tên
     public TaoHoaDon(Frame parent, DefaultTableModel mainModel) {
         super(parent, "Tạo hóa đơn bán hàng mới", true);
@@ -324,6 +326,307 @@ public class TaoHoaDon extends JDialog {
         pnlVoucherTags.repaint();
         updateVoucherTagsUI(); 
     }
+ // =================================================================
+    // HÀM TỰ ĐỘNG LƯU DATABASE & HOÀN THÀNH HÓA ĐƠN
+    // =================================================================
+    private void xuLyHoanThanhHoaDon() {
+        // 1. KIỂM TRA TRƯỚC TỒN KHO & QUY ĐỔI ĐƠN VỊ TÍNH
+        BUS.BUS_DonViDoLuong busDonVi = new BUS.BUS_DonViDoLuong();
+        BUS.BUS_Kho busKho = new BUS.BUS_Kho();
+        
+        for (int i = 0; i < productModel.getRowCount(); i++) {
+            String tenSP = productModel.getValueAt(i, 0).toString().trim();
+            if (tenSP.startsWith("[QUÀ TẶNG]")) {
+                tenSP = tenSP.replace("[QUÀ TẶNG]", "").trim(); 
+            }
+            
+            String tenDVT = productModel.getValueAt(i, 1).toString().trim();
+            int soLuongMua = Integer.parseInt(productModel.getValueAt(i, 2).toString());
+
+            String maSP = "";
+            double tiLeQuyDoi = 1.0;
+            
+            try (java.sql.Connection con = ConnectDB.getInstance().getConnection();
+                 java.sql.PreparedStatement pst = con.prepareStatement("SELECT id FROM SanPham WHERE ten = ?")) {
+                pst.setString(1, tenSP);
+                try (java.sql.ResultSet rs = pst.executeQuery()) {
+                    if (rs.next()) maSP = rs.getString("id");
+                }
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+
+            if (maSP.isEmpty()) {
+                showCustomNotification("LỖI HỆ THỐNG", "Không tìm thấy mã sản phẩm cho: " + tenSP, "ERROR");
+                return;
+            }
+
+            List<DonViDoLuong> dsDonVi = busDonVi.getDSTheoMaSP(maSP);
+            for (DonViDoLuong dv : dsDonVi) {
+                if (dv.getTen().equalsIgnoreCase(tenDVT)) {
+                    tiLeQuyDoi = dv.getChuyenDoiSangDonViCoBan();
+                    break;
+                }
+            }
+
+            int tongSoLuongCoBan = (int) (soLuongMua * tiLeQuyDoi);
+
+            if (!busKho.kiemTraTonKho(maSP, tongSoLuongCoBan)) {
+                showCustomNotification(
+                    "TỒN KHO KHÔNG ĐỦ", 
+                    "Sản phẩm: " + tenSP + "\n" +
+                    "Không đủ hàng để xuất " + soLuongMua + " " + tenDVT + " (Quy đổi: " + tongSoLuongCoBan + " đơn vị cơ bản).\n" +
+                    "Vui lòng giảm số lượng hoặc chọn sản phẩm khác!", 
+                    "WARNING"
+                );
+                return; 
+            }
+        }
+
+        String khach = isCustomerLinked ? linkedTenKH : txtName.getText();
+        if(khach.equals("Tên khách (bỏ trống = Khách lẻ)") || khach.trim().isEmpty()) khach = "Khách lẻ";
+        String sdt = isCustomerLinked ? linkedSdtKH : txtPhone.getText().replace("Số điện thoại (tuỳ chọn)", "");
+        String tongTien = lblTotalPriceValue.getText();
+
+        try (java.sql.Connection con = ConnectDB.getInstance().getConnection()) {
+
+            String maHDMoi = (editingModelRow != -1) ? maHDDangSua.replace("-LuuNhap", "") : phatSinhMaHoaDon();
+            Entity.HoaDon hd = new Entity.HoaDon();
+            hd.setId(maHDMoi);
+            hd.setLoaiHD(Enumeration.LoaiHoaDon.BAN_HANG);
+            
+            String strDiem = isDungDiem ? " | Dùng điểm: -" + tienGiamTuDiem : "";
+            String strKM = maKhuyenMaiApDung.isEmpty() ? "" : " | KM: " + maKhuyenMaiApDung;
+            
+            String strKeDon = "";
+            if (pnlDonThuoc != null && pnlDonThuoc.isVisible()) {
+                String bs = txtBacSi.getText().trim();
+                String cs = txtCoSo.getText().trim();
+                String cd = txtChuanDoan.getText().trim();
+                if (cd.contains("Chẩn đoán bệnh")) cd = ""; 
+                strKeDon = " | BS:" + bs + " | CS:" + cs + (cd.isEmpty() ? "" : " | CD:" + cd);
+            }
+            
+            StringBuilder strGifts = new StringBuilder();
+            for (int i = 0; i < productModel.getRowCount(); i++) {
+                String tenSP = productModel.getValueAt(i, 0).toString();
+                if (tenSP.startsWith("[QUÀ TẶNG]")) {
+                    String realName = tenSP.replace("[QUÀ TẶNG]", "").trim();
+                    String unit = productModel.getValueAt(i, 1).toString();
+                    String qty = productModel.getValueAt(i, 2).toString();
+                    strGifts.append(" | TANG:").append(realName).append(";").append(qty).append(";").append(unit);
+                }
+            }
+            
+            if (phuongThuc.equals("Tiền mặt")) {
+                hd.setGhiChu("CASH:" + tongTienMat + strKM + strDiem + strKeDon + strGifts.toString());
+            } else {
+                hd.setGhiChu("BANK" + strKM + strDiem + strKeDon + strGifts.toString()); 
+            }
+            hd.setNgayLapHD(java.time.LocalDateTime.now());
+
+            Entity.NhanVien nv = new Entity.NhanVien();
+            try {
+                String maNV = Utils.UserSession.getInstance().getMaNhanVien();
+                nv.setNhanVien(maNV != null && !maNV.isEmpty() ? maNV : "DS-0001");
+            } catch(Exception ex) { }
+            hd.setNhanVienId(nv);
+
+            if (isCustomerLinked && !sdt.isEmpty()) {
+                try (java.sql.PreparedStatement pstKH = con.prepareStatement("SELECT id FROM KhachHang WHERE sdt = ?")) {
+                    pstKH.setString(1, sdt);
+                    try (java.sql.ResultSet rsKH = pstKH.executeQuery()) {
+                        if (rsKH.next()) {
+                            Entity.KhachHang khObj = new Entity.KhachHang();
+                            khObj.setId(rsKH.getString("id"));
+                            hd.setKhachHangId(khObj);
+                        }
+                    }
+                }
+            }
+
+            Enumeration.PhuongThucThanhToan pt = phuongThuc.equals("Tiền mặt") 
+                    ? Enumeration.PhuongThucThanhToan.TIEN_MAT 
+                    : Enumeration.PhuongThucThanhToan.CHUYEN_KHOAN_NGAN_HANG;
+            hd.setPhuongThucThanhToan(pt);
+            
+            if (this.maKhuyenMaiApDung != null && !this.maKhuyenMaiApDung.isEmpty()) {
+                Entity.KhuyenMai km = new Entity.KhuyenMai();
+                km.setId(this.maKhuyenMaiApDung.split(",")[0].trim());
+                hd.setKhuyenMaiId(km);
+            }
+
+            java.util.List<Entity.ChiTietHoaDon> dsCTHD = new java.util.ArrayList<>();
+            java.util.List<Entity.ChiTietHoaDon> dsQuaTang = new java.util.ArrayList<>();
+            for (int i = 0; i < productModel.getRowCount(); i++) {
+                String tenSP = productModel.getValueAt(i, 0).toString();
+                boolean isGift = tenSP.startsWith("[QUÀ TẶNG]");
+                if (isGift) {
+                    tenSP = tenSP.replace("[QUÀ TẶNG]", "").trim();
+                }
+                String tenDVT = productModel.getValueAt(i, 1).toString();
+                int soLuong = Integer.parseInt(productModel.getValueAt(i, 2).toString());
+
+                String maSP = "";
+                String maDVT = "";
+                String sql = "SELECT sp.id AS MaSP, dv.id AS MaDVT FROM SanPham sp JOIN DonViDoLuong dv ON sp.id = dv.sanPhamId WHERE sp.ten = ? AND dv.ten = ?";
+                
+                try (java.sql.PreparedStatement pstSP = con.prepareStatement(sql)) {
+                    pstSP.setString(1, tenSP);
+                    pstSP.setString(2, tenDVT);
+                    try (java.sql.ResultSet rsSP = pstSP.executeQuery()) {
+                        if(rsSP.next()) {
+                            maSP = rsSP.getString("MaSP");
+                            maDVT = rsSP.getString("MaDVT");
+                        }
+                    }
+                }
+
+                if (maSP.isEmpty()) throw new Exception("Không tìm thấy mã sản phẩm trong CSDL cho: " + tenSP);
+
+                Entity.ChiTietHoaDon ct = new Entity.ChiTietHoaDon();
+                ct.setHoaDonId(hd);
+                
+                Entity.SanPham sp = new Entity.SanPham();
+                sp.setId(maSP);
+                ct.setSanPhamId(sp);
+
+                Entity.DonViDoLuong dv = new Entity.DonViDoLuong();
+                dv.setId(maDVT);
+                ct.setDonViDoLuongId(dv);
+
+                ct.setSoLuong(soLuong);
+                if (isGift) {
+                    dsQuaTang.add(ct);
+                } else {
+                    dsCTHD.add(ct);
+                }
+                
+                double tiLeQuyDoi = 1.0;
+                List<DonViDoLuong> dsDonVi = busDonVi.getDSTheoMaSP(maSP);
+                for (DonViDoLuong dv_1 : dsDonVi) {
+                    if (dv_1.getTen().equalsIgnoreCase(tenDVT)) {
+                        tiLeQuyDoi = dv_1.getChuyenDoiSangDonViCoBan();
+                        break;
+                    }
+                }
+                int tongSoLuongCoBan = (int) (soLuong * tiLeQuyDoi);
+                
+                int soLuongCanTruBu = tongSoLuongCoBan - soLuong;
+                if (soLuongCanTruBu > 0) {
+                    busKho.xuLyXuatKhoFEFO(maSP, soLuongCanTruBu); 
+                }
+            }
+
+            BUS.BUS_HoaDon busHD = new BUS.BUS_HoaDon();
+            
+            if (editingModelRow != -1 && maHDDangSua != null && !maHDDangSua.isEmpty()) {
+                try {
+                    String sqlDelCT = "DELETE FROM ChiTietHoaDon WHERE hoaDonId = ?";
+                    try (java.sql.PreparedStatement pstDelCT = con.prepareStatement(sqlDelCT)) {
+                        pstDelCT.setString(1, maHDDangSua);
+                        pstDelCT.executeUpdate();
+                    }
+                    String sqlDelHD = "DELETE FROM HoaDon WHERE id = ?";
+                    try (java.sql.PreparedStatement pstDelHD = con.prepareStatement(sqlDelHD)) {
+                        pstDelHD.setString(1, maHDDangSua);
+                        pstDelHD.executeUpdate();
+                    }
+                } catch (Exception exDel) {
+                    System.out.println("Lỗi khi dọn dẹp bản nháp cũ: " + exDel.getMessage());
+                }
+            }
+            
+            boolean success = busHD.thanhToan(hd, dsCTHD, dsQuaTang);
+
+            if (success) {
+                if (boDemNguoc != null) boDemNguoc.stop(); 
+                if (boKiemTraTienToi != null) boKiemTraTienToi.stop(); // Dừng cả đồng hồ quét mã QR
+                
+                if (isCustomerLinked && !sdt.isEmpty()) {
+                    try {
+                        int diemDaDung = isDungDiem ? (int)(tienGiamTuDiem / 100) : 0;
+                        int diemCongMoi = (int) (tongHoaDon / 10000); 
+                        int diemChenhLech = diemCongMoi - diemDaDung; 
+                    
+                        String sqlUpdateDiem = "UPDATE KhachHang SET diemTichLuy = ISNULL(diemTichLuy, 0) + ? WHERE sdt = ?";
+                        try (java.sql.PreparedStatement pstUpdate = con.prepareStatement(sqlUpdateDiem)) {
+                            pstUpdate.setInt(1, diemChenhLech);
+                            pstUpdate.setString(2, sdt);
+                            pstUpdate.executeUpdate();
+                        }
+
+                        Window parentWindow = SwingUtilities.getWindowAncestor(this);
+                        if (parentWindow instanceof MainDashboard) {
+                            DefaultTableModel khModel = ((MainDashboard) parentWindow).getModelKhachHang();
+                            if (khModel != null) {
+                                for (int j = 0; j < khModel.getRowCount(); j++) {
+                                    String phoneInTable = khModel.getValueAt(j, 2).toString();
+                                    if (sdt.equals(phoneInTable)) {
+                                        int dHienTai = 0;
+                                        try {
+                                            String currentDiemStr = khModel.getValueAt(j, 5).toString().replace(".", "").replace(",", "");
+                                            dHienTai = Integer.parseInt(currentDiemStr);
+                                        } catch (Exception ex) {}
+                                        khModel.setValueAt(String.valueOf(dHienTai + diemChenhLech), j, 5);
+
+                                        int donHangHienTai = 0;
+                                        try { donHangHienTai = Integer.parseInt(khModel.getValueAt(j, 3).toString()); } catch(Exception ex) {}
+                                        khModel.setValueAt(String.valueOf(donHangHienTai + 1), j, 3);
+
+                                        long chiTieuHienTai = 0;
+                                        try {
+                                            String currentChiTieu = khModel.getValueAt(j, 4).toString().replaceAll("[^0-9]", "");
+                                            chiTieuHienTai = Long.parseLong(currentChiTieu);
+                                        } catch(Exception ex) {}
+                                        java.text.DecimalFormat df = new java.text.DecimalFormat("#,###đ");
+                                        khModel.setValueAt(df.format(chiTieuHienTai + tongHoaDon), j, 4);
+                                        break; 
+                                    }
+                                }
+                            }
+                        }
+                        
+                        String msgThongBao = "Thanh toán thành công!\n";
+                        if(diemDaDung > 0) msgThongBao += "- Đã sử dụng: " + String.format("%,d", diemDaDung) + " điểm\n";
+                        if(diemCongMoi > 0) msgThongBao += "+ Tích lũy thêm: " + String.format("%,d", diemCongMoi) + " điểm\n";
+                        
+                        showCustomNotification("HOÀN TẤT", msgThongBao, "SUCCESS");
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
+                    }
+                } else {
+                    showCustomNotification("HOÀN TẤT", "Thanh toán thành công!\nHóa đơn và Tồn kho đã được cập nhật.", "SUCCESS");
+                }
+
+                String ngayStr = java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
+                if (editingModelRow != -1) {
+                    mainTableModel.setValueAt(maHDMoi, editingModelRow, 0);
+                    mainTableModel.setValueAt(ngayStr, editingModelRow, 1);
+                    mainTableModel.setValueAt(khach, editingModelRow, 2);         
+                    mainTableModel.setValueAt(sdt, editingModelRow, 3);           
+                    mainTableModel.setValueAt(phuongThuc, editingModelRow, 4);   
+                    mainTableModel.setValueAt(tongTien, editingModelRow, 5);     
+                    mainTableModel.setValueAt("Hoàn thành", editingModelRow, 6); 
+                } else {
+                    mainTableModel.insertRow(0, new Object[]{maHDMoi, ngayStr, khach, sdt, phuongThuc, tongTien, "Hoàn thành", "", "TPCN"});
+                }
+                
+                dispose();
+                
+                Window parentWin = SwingUtilities.getWindowAncestor(this);
+                if (parentWin instanceof MainDashboard) {
+                    ManHinhChinh mhc = ((MainDashboard) parentWin).getManHinhChinh();
+                    if (mhc != null) SwingUtilities.invokeLater(mhc::loadCardPanels);
+                }
+            } else {
+                showCustomNotification("TỪ CHỐI", "Hệ thống từ chối giao dịch!\nVui lòng kiểm tra lại tồn kho.", "WARNING");
+            }
+
+        } catch(Exception ex) {
+            showCustomNotification("LỖI HỆ THỐNG", "Đã xảy ra lỗi: " + ex.getMessage(), "ERROR");
+        }
+    }
     private void initUI(Frame parent) {
     	setSize(1350, 750);
         setLocationRelativeTo(parent);
@@ -539,328 +842,40 @@ public class TaoHoaDon extends JDialog {
                         "WARNING"
                     );
                     return; 
+                } else {
+                    // --- THÊM CHỐT CHẶN TIỀN THỐI KHÁCH Ở ĐÂY ---
+                    long tienThua = tongTienMat - tongHoaDon;
+                    if (tienThua > 0) {
+                        long tienDangCo = layTienMatTrongKetHienTai();
+                        
+                        // Nếu số tiền phải thối vượt quá số tiền có sẵn trong két
+                        if (tienThua > tienDangCo) {
+                            showCustomNotification(
+                                "KÉT KHÔNG ĐỦ TIỀN MẶT", 
+                                "Tiền trong két không đủ để thối lại cho khách!\n\n" +
+                                "• Két hiện có: " + String.format("%,d", tienDangCo).replace(',', '.') + "đ\n" +
+                                "• Cần thối lại: " + String.format("%,d", tienThua).replace(',', '.') + "đ\n\n" +
+                                "Gợi ý: Yêu cầu khách đổi sang thẻ/chuyển khoản hoặc đưa mệnh giá nhỏ hơn.", 
+                                "ERROR"
+                            );
+                            return; // Chặn quá trình thanh toán
+                        }
+                    }
+                    // ----------------------------------------------
                 }
             }
             if (pnlDonThuoc.isVisible()) {
                 String bacSi = txtBacSi.getText().trim();
                 String coSo = txtCoSo.getText().trim();
                 
-                if (bacSi.isEmpty() || bacSi.contains("BS. Nguyễn") || 
-                    coSo.isEmpty() || coSo.contains("BV Bạch Mai")) {
+                if (bacSi.isEmpty() || bacSi.contains("BS. Nguyễn") || coSo.isEmpty() || coSo.contains("BV Bạch Mai")) {
                     showCustomNotification("THIẾU THÔNG TIN", "Đơn hàng này có THUỐC KÊ ĐƠN.\nVui lòng nhập đầy đủ Tên Bác Sĩ và Cơ Sở Khám Bệnh!", "WARNING");
                     return; 
                 }
             }
-
-            // 1. KIỂM TRA TRƯỚC TỒN KHO & QUY ĐỔI ĐƠN VỊ TÍNH
-            BUS.BUS_DonViDoLuong busDonVi = new BUS.BUS_DonViDoLuong();
-            BUS.BUS_Kho busKho = new BUS.BUS_Kho();
             
-            for (int i = 0; i < productModel.getRowCount(); i++) {
-                String tenSP = productModel.getValueAt(i, 0).toString().trim();
-                if (tenSP.startsWith("[QUÀ TẶNG]")) {
-                    tenSP = tenSP.replace("[QUÀ TẶNG]", "").trim(); 
-                }
-                
-                String tenDVT = productModel.getValueAt(i, 1).toString().trim();
-                int soLuongMua = Integer.parseInt(productModel.getValueAt(i, 2).toString());
-
-                String maSP = "";
-                double tiLeQuyDoi = 1.0;
-                
-                try (java.sql.Connection con = ConnectDB.getInstance().getConnection();
-                     java.sql.PreparedStatement pst = con.prepareStatement("SELECT id FROM SanPham WHERE ten = ?")) {
-                    pst.setString(1, tenSP);
-                    try (java.sql.ResultSet rs = pst.executeQuery()) {
-                        if (rs.next()) maSP = rs.getString("id");
-                    }
-                } catch (Exception ex) {
-                    ex.printStackTrace();
-                }
-
-                if (maSP.isEmpty()) {
-                    showCustomNotification("LỖI HỆ THỐNG", "Không tìm thấy mã sản phẩm cho: " + tenSP, "ERROR");
-                    return;
-                }
-
-                List<DonViDoLuong> dsDonVi = busDonVi.getDSTheoMaSP(maSP);
-                for (DonViDoLuong dv : dsDonVi) {
-                    if (dv.getTen().equalsIgnoreCase(tenDVT)) {
-                        tiLeQuyDoi = dv.getChuyenDoiSangDonViCoBan();
-                        break;
-                    }
-                }
-
-                int tongSoLuongCoBan = (int) (soLuongMua * tiLeQuyDoi);
-
-                if (!busKho.kiemTraTonKho(maSP, tongSoLuongCoBan)) {
-                    showCustomNotification(
-                        "TỒN KHO KHÔNG ĐỦ", 
-                        "Sản phẩm: " + tenSP + "\n" +
-                        "Không đủ hàng để xuất " + soLuongMua + " " + tenDVT + " (Quy đổi: " + tongSoLuongCoBan + " đơn vị cơ bản).\n" +
-                        "Vui lòng giảm số lượng hoặc chọn sản phẩm khác!", 
-                        "WARNING"
-                    );
-                    return; 
-                }
-            }
-
-
-            String khach = isCustomerLinked ? linkedTenKH : txtName.getText();
-            if(khach.equals("Tên khách (bỏ trống = Khách lẻ)") || khach.trim().isEmpty()) khach = "Khách lẻ";
-            String sdt = isCustomerLinked ? linkedSdtKH : txtPhone.getText().replace("Số điện thoại (tuỳ chọn)", "");
-            String tongTien = lblTotalPriceValue.getText();
-
-            try (java.sql.Connection con = ConnectDB.getInstance().getConnection()) {
-
-                String maHDMoi = (editingModelRow != -1) ? maHDDangSua.replace("-LuuNhap", "") : phatSinhMaHoaDon();
-                Entity.HoaDon hd = new Entity.HoaDon();
-                hd.setId(maHDMoi);
-                hd.setLoaiHD(Enumeration.LoaiHoaDon.BAN_HANG);
-                
-                String strDiem = isDungDiem ? " | Dùng điểm: -" + tienGiamTuDiem : "";
-                String strKM = maKhuyenMaiApDung.isEmpty() ? "" : " | KM: " + maKhuyenMaiApDung;
-                
-                String strKeDon = "";
-                if (pnlDonThuoc != null && pnlDonThuoc.isVisible()) {
-                    String bs = txtBacSi.getText().trim();
-                    String cs = txtCoSo.getText().trim();
-                    String cd = txtChuanDoan.getText().trim();
-                    if (cd.contains("Chẩn đoán bệnh")) cd = ""; 
-                    strKeDon = " | BS:" + bs + " | CS:" + cs + (cd.isEmpty() ? "" : " | CD:" + cd);
-                }
-                
-                StringBuilder strGifts = new StringBuilder();
-                for (int i = 0; i < productModel.getRowCount(); i++) {
-                    String tenSP = productModel.getValueAt(i, 0).toString();
-                    if (tenSP.startsWith("[QUÀ TẶNG]")) {
-                        String realName = tenSP.replace("[QUÀ TẶNG]", "").trim();
-                        String unit = productModel.getValueAt(i, 1).toString();
-                        String qty = productModel.getValueAt(i, 2).toString();
-                        strGifts.append(" | TANG:").append(realName).append(";").append(qty).append(";").append(unit);
-                    }
-                }
-                
-                if (phuongThuc.equals("Tiền mặt")) {
-                    hd.setGhiChu("CASH:" + tongTienMat + strKM + strDiem + strKeDon + strGifts.toString());
-                } else {
-                    hd.setGhiChu("BANK" + strKM + strDiem + strKeDon + strGifts.toString()); 
-                }
-                hd.setNgayLapHD(java.time.LocalDateTime.now());
-
-                Entity.NhanVien nv = new Entity.NhanVien();
-                try {
-                    String maNV = Utils.UserSession.getInstance().getMaNhanVien();
-                    nv.setNhanVien(maNV != null && !maNV.isEmpty() ? maNV : "DS-0001");
-                } catch(Exception ex) { }
-                hd.setNhanVienId(nv);
-
-                if (isCustomerLinked && !sdt.isEmpty()) {
-                    try (java.sql.PreparedStatement pstKH = con.prepareStatement("SELECT id FROM KhachHang WHERE sdt = ?")) {
-                        pstKH.setString(1, sdt);
-                        try (java.sql.ResultSet rsKH = pstKH.executeQuery()) {
-                            if (rsKH.next()) {
-                                Entity.KhachHang khObj = new Entity.KhachHang();
-                                khObj.setId(rsKH.getString("id"));
-                                hd.setKhachHangId(khObj);
-                            }
-                        }
-                    }
-                }
-
-                Enumeration.PhuongThucThanhToan pt = phuongThuc.equals("Tiền mặt") 
-                        ? Enumeration.PhuongThucThanhToan.TIEN_MAT 
-                        : Enumeration.PhuongThucThanhToan.CHUYEN_KHOAN_NGAN_HANG;
-                hd.setPhuongThucThanhToan(pt);
-                
-                
-                if (this.maKhuyenMaiApDung != null && !this.maKhuyenMaiApDung.isEmpty()) {
-                    Entity.KhuyenMai km = new Entity.KhuyenMai();
-                    km.setId(this.maKhuyenMaiApDung.split(",")[0].trim());
-                    hd.setKhuyenMaiId(km);
-                }
-
-                java.util.List<Entity.ChiTietHoaDon> dsCTHD = new java.util.ArrayList<>();
-                for (int i = 0; i < productModel.getRowCount(); i++) {
-                    String tenSP = productModel.getValueAt(i, 0).toString();
-                    if (tenSP.startsWith("[QUÀ TẶNG]")) continue;
-                    String tenDVT = productModel.getValueAt(i, 1).toString();
-                    int soLuong = Integer.parseInt(productModel.getValueAt(i, 2).toString());
-
-                    String maSP = "";
-                    String maDVT = "";
-                    String sql = "SELECT sp.id AS MaSP, dv.id AS MaDVT FROM SanPham sp JOIN DonViDoLuong dv ON sp.id = dv.sanPhamId WHERE sp.ten = ? AND dv.ten = ?";
-                    
-                    try (java.sql.PreparedStatement pstSP = con.prepareStatement(sql)) {
-                        pstSP.setString(1, tenSP);
-                        pstSP.setString(2, tenDVT);
-                        try (java.sql.ResultSet rsSP = pstSP.executeQuery()) {
-                            if(rsSP.next()) {
-                                maSP = rsSP.getString("MaSP");
-                                maDVT = rsSP.getString("MaDVT");
-                            }
-                        }
-                    }
-
-                    if (maSP.isEmpty()) throw new Exception("Không tìm thấy mã sản phẩm trong CSDL cho: " + tenSP);
-
-                    Entity.ChiTietHoaDon ct = new Entity.ChiTietHoaDon();
-                    ct.setHoaDonId(hd);
-                    
-                    Entity.SanPham sp = new Entity.SanPham();
-                    sp.setId(maSP);
-                    ct.setSanPhamId(sp);
-
-                    Entity.DonViDoLuong dv = new Entity.DonViDoLuong();
-                    dv.setId(maDVT);
-                    ct.setDonViDoLuongId(dv);
-
-                    ct.setSoLuong(soLuong);
-                    dsCTHD.add(ct);
-                    
-                    double tiLeQuyDoi = 1.0;
-                    List<DonViDoLuong> dsDonVi = busDonVi.getDSTheoMaSP(maSP);
-                    for (DonViDoLuong dv_1 : dsDonVi) {
-                        if (dv_1.getTen().equalsIgnoreCase(tenDVT)) {
-                            tiLeQuyDoi = dv_1.getChuyenDoiSangDonViCoBan();
-                            break;
-                        }
-                    }
-                    int tongSoLuongCoBan = (int) (soLuong * tiLeQuyDoi);
-                    
-                    // --- BẮT ĐẦU SỬA LỖI TRỪ 101 VIÊN ---
-                    // Trigger Database đã tự trừ đi số lượng thô (1 hộp -> DB tự trừ 1)
-                    // Do đó trên Java, ta chỉ cần gọi hàm trừ kho phần chênh lệch (100 - 1 = 99 viên)
-                    int soLuongCanTruBu = tongSoLuongCoBan - soLuong;
-                    
-                    if (soLuongCanTruBu > 0) {
-                        busKho.xuLyXuatKhoFEFO(maSP, soLuongCanTruBu); 
-                    }
-                    // --- KẾT THÚC SỬA LỖI ---
-                }
-
-                BUS.BUS_HoaDon busHD = new BUS.BUS_HoaDon();
-                
-           
-                if (editingModelRow != -1 && maHDDangSua != null && !maHDDangSua.isEmpty()) {
-                    try {
-                        // 1. Xóa chi tiết hóa đơn nháp cũ trước (tránh lỗi khóa ngoại)
-                        String sqlDelCT = "DELETE FROM ChiTietHoaDon WHERE hoaDonId = ?";
-                        try (java.sql.PreparedStatement pstDelCT = con.prepareStatement(sqlDelCT)) {
-                            pstDelCT.setString(1, maHDDangSua);
-                            pstDelCT.executeUpdate();
-                        }
-                        // 2. Xóa hóa đơn nháp gốc
-                        String sqlDelHD = "DELETE FROM HoaDon WHERE id = ?";
-                        try (java.sql.PreparedStatement pstDelHD = con.prepareStatement(sqlDelHD)) {
-                            pstDelHD.setString(1, maHDDangSua);
-                            pstDelHD.executeUpdate();
-                        }
-                    } catch (Exception exDel) {
-                        System.out.println("Lỗi khi dọn dẹp bản nháp cũ: " + exDel.getMessage());
-                    }
-                }
-                boolean success = busHD.thanhToan(hd, dsCTHD);
-
-                if (success) {
-                    if (boDemNguoc != null) boDemNguoc.stop(); // DỪNG ĐỒNG HỒ
-                    
-                    if (isCustomerLinked && !sdt.isEmpty()) {
-                        try {
-                            int diemDaDung = isDungDiem ? (int)(tienGiamTuDiem / 100) : 0;
-                            int diemCongMoi = (int) (tongHoaDon / 10000); 
-                            int diemChenhLech = diemCongMoi - diemDaDung; 
-                        
-                            String sqlUpdateDiem = "UPDATE KhachHang SET diemTichLuy = ISNULL(diemTichLuy, 0) + ? WHERE sdt = ?";
-                            try (java.sql.PreparedStatement pstUpdate = con.prepareStatement(sqlUpdateDiem)) {
-                                pstUpdate.setInt(1, diemChenhLech);
-                                pstUpdate.setString(2, sdt);
-                                pstUpdate.executeUpdate();
-                            }
-
-                            Window parentWindow = SwingUtilities.getWindowAncestor(this);
-                            if (parentWindow instanceof MainDashboard) {
-                                DefaultTableModel khModel = ((MainDashboard) parentWindow).getModelKhachHang();
-                                if (khModel != null) {
-                                    for (int j = 0; j < khModel.getRowCount(); j++) {
-                                        String phoneInTable = khModel.getValueAt(j, 2).toString();
-                                        if (sdt.equals(phoneInTable)) {
-                                            int dHienTai = 0;
-                                            try {
-                                                String currentDiemStr = khModel.getValueAt(j, 5).toString().replace(".", "").replace(",", "");
-                                                dHienTai = Integer.parseInt(currentDiemStr);
-                                            } catch (Exception ex) {}
-                                            khModel.setValueAt(String.valueOf(dHienTai + diemChenhLech), j, 5);
-
-                                            int donHangHienTai = 0;
-                                            try {
-                                                donHangHienTai = Integer.parseInt(khModel.getValueAt(j, 3).toString());
-                                            } catch(Exception ex) {}
-                                            khModel.setValueAt(String.valueOf(donHangHienTai + 1), j, 3);
-
-                                            long chiTieuHienTai = 0;
-                                            try {
-                                                String currentChiTieu = khModel.getValueAt(j, 4).toString().replaceAll("[^0-9]", "");
-                                                chiTieuHienTai = Long.parseLong(currentChiTieu);
-                                            } catch(Exception ex) {}
-                                            java.text.DecimalFormat df = new java.text.DecimalFormat("#,###đ");
-                                            khModel.setValueAt(df.format(chiTieuHienTai + tongHoaDon), j, 4);
-
-                                            break; 
-                                        }
-                                    }
-                                }
-                            }
-                            
-                            String msgThongBao = "Thanh toán thành công!\n";
-                            if(diemDaDung > 0) msgThongBao += "- Đã sử dụng: " + String.format("%,d", diemDaDung) + " điểm\n";
-                            if(diemCongMoi > 0) msgThongBao += "+ Tích lũy thêm: " + String.format("%,d", diemCongMoi) + " điểm\n";
-                            
-                            showCustomNotification("HOÀN TẤT", msgThongBao, "SUCCESS");
-                        } catch (Exception ex) {
-                            ex.printStackTrace();
-                            showCustomNotification("CẢNH BÁO", "Thanh toán thành công nhưng có lỗi khi cập nhật điểm!", "WARNING");
-                        }
-                    } else {
-                        showCustomNotification("HOÀN TẤT", "Thanh toán thành công!\nHóa đơn và Tồn kho đã được cập nhật.", "SUCCESS");
-                    }
-
-                    String ngayStr = java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
-                    if (editingModelRow != -1) {
-                        mainTableModel.setValueAt(maHDMoi, editingModelRow, 0);
-                        mainTableModel.setValueAt(ngayStr, editingModelRow, 1);
-                        mainTableModel.setValueAt(khach, editingModelRow, 2);         
-                        mainTableModel.setValueAt(sdt, editingModelRow, 3);           
-                        mainTableModel.setValueAt(phuongThuc, editingModelRow, 4);   
-                        mainTableModel.setValueAt(tongTien, editingModelRow, 5);     
-                        mainTableModel.setValueAt("Hoàn thành", editingModelRow, 6); 
-                    } else {
-                        mainTableModel.insertRow(0, new Object[]{maHDMoi, ngayStr, khach, sdt, phuongThuc, tongTien, "Hoàn thành", "", "TPCN"});
-                    }
-                    dispose();
-                    // Refresh ManHinhChinh để cập nhật số hóa đơn, doanh thu trong ca
-                    Window parentWin = SwingUtilities.getWindowAncestor(this);
-                    if (parentWin instanceof MainDashboard) {
-                        ManHinhChinh mhc = ((MainDashboard) parentWin).getManHinhChinh();
-                        if (mhc != null) {
-                            SwingUtilities.invokeLater(mhc::loadCardPanels);
-                        }
-                    }
-                } else {
-                    showCustomNotification("TỪ CHỐI THANH TOÁN", "Hệ thống từ chối giao dịch!\nVui lòng kiểm tra lại số lượng tồn kho.", "WARNING");
-                }
-
-            } catch(Exception ex) {
-                ex.printStackTrace();
-                String errorMsg = ex.getMessage();
-                if (errorMsg != null && errorMsg.toLowerCase().contains("kho không đủ")) {
-                    showCustomNotification("TỒN KHO KHÔNG ĐỦ", 
-                        errorMsg + "\n\nVui lòng giảm số lượng trong đơn hoặc nhập thêm hàng vào kho!", 
-                        "WARNING");
-                } else {
-                    showCustomNotification("LỖI HỆ THỐNG", "Đã xảy ra lỗi: " + errorMsg, "ERROR");
-                }
-            }
+            // GỌI HÀM LƯU DATABASE VỪA TẠO
+            xuLyHoanThanhHoaDon(); 
         });
 
         btnLuuNhap.addActionListener(e -> {
@@ -876,6 +891,193 @@ public class TaoHoaDon extends JDialog {
 
         // BẮT ĐẦU ĐẾM NGƯỢC NGAY KHI MỞ FORM
         
+    }
+ // =================================================================
+    // HÀM QUÉT MÃ QR & LẮNG NGHE TỰ ĐỘNG
+    // =================================================================
+    private void batDauQuetGiaoDichNganHang(String maGiaoDich, long soTienCanNhan) {
+        if (boKiemTraTienToi != null && boKiemTraTienToi.isRunning()) {
+            boKiemTraTienToi.stop();
+        }
+
+        boKiemTraTienToi = new javax.swing.Timer(3000, e -> {
+            boolean daNhanTien = kiemTraLichSuGiaoDichTuAPI(maGiaoDich, soTienCanNhan);
+            if (daNhanTien) {
+                boKiemTraTienToi.stop(); 
+                showCustomNotification("TING TING", "Đã nhận " + String.format("%,d", soTienCanNhan) + "đ\nHệ thống đang tự động chốt đơn...", "SUCCESS");
+                
+                // Gọi hàm chốt đơn, bên trong hàm này ĐÃ CÓ lệnh dispose() để tự đóng cửa sổ
+                xuLyHoanThanhHoaDon(); 
+            }
+        });
+        boKiemTraTienToi.start();
+    }
+
+    private boolean kiemTraLichSuGiaoDichTuAPI(String maGiaoDich, long soTien) {
+        try {
+            // =============== ĐIỀN LẠI MÃ CỦA BẠN VÀO ĐÂY ===============
+        	String clientId = "";
+            String apiKey = "";
+            // =========================================================
+
+            String apiUrl = "https://api-merchant.payos.vn/v2/payment-requests/" + maGiaoDich;
+
+            java.net.URL url = new java.net.URL(apiUrl);
+            java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("GET");
+            conn.setRequestProperty("x-client-id", clientId);
+            conn.setRequestProperty("x-api-key", apiKey);
+            conn.setRequestProperty("Content-Type", "application/json");
+
+            if (conn.getResponseCode() == 200) {
+                java.util.Scanner s = new java.util.Scanner(conn.getInputStream(), "UTF-8").useDelimiter("\\A");
+                String response = s.hasNext() ? s.next() : "";
+                
+                // Trạng thái PAID nghĩa là tiền đã vào tài khoản ACB của bạn
+                if (response.contains("\"status\":\"PAID\"")) {
+                    return true;
+                }
+            }
+        } catch (Exception ex) {
+            System.err.println("Lỗi gọi API PayOS: " + ex.getMessage());
+        }
+        return false;
+    }
+
+    private void loadQRCodeVCB(JLabel lblQRCode) {
+        lblQRCode.setIcon(null);
+        lblQRCode.setText("Đang tạo mã QR PayOS...");
+
+        long finalTotalAmount = this.tongHoaDon;
+        if (finalTotalAmount <= 0) {
+            lblQRCode.setText("Vui lòng thêm sản phẩm!");
+            return;
+        }
+
+        // 1. PayOS bắt buộc orderCode phải là SỐ. Dùng Unix timestamp là chuẩn nhất.
+        long orderCode = System.currentTimeMillis() / 1000;
+        this.maGiaoDichHienTai = String.valueOf(orderCode); 
+        String description = "Thanh toan " + orderCode;
+
+        SwingWorker<ImageIcon, Void> worker = new SwingWorker<ImageIcon, Void>() {
+            @Override
+            protected ImageIcon doInBackground() throws Exception {
+                // =============== ĐIỀN MÃ CỦA BẠN VÀO ĐÂY ===============
+                String clientId = "";
+                String apiKey = "";
+                String checksumKey = "";
+                // =========================================================
+
+                String cancelUrl = "https://localhost";
+                String returnUrl = "https://localhost";
+
+                // 2. TẠO CHỮ KÝ BẢO MẬT (SIGNATURE)
+                String dataForSignature = "amount=" + finalTotalAmount + "&cancelUrl=" + cancelUrl + "&description=" + description + "&orderCode=" + orderCode + "&returnUrl=" + returnUrl;
+                
+                javax.crypto.Mac sha256_HMAC = javax.crypto.Mac.getInstance("HmacSHA256");
+                javax.crypto.spec.SecretKeySpec secret_key = new javax.crypto.spec.SecretKeySpec(checksumKey.getBytes("UTF-8"), "HmacSHA256");
+                sha256_HMAC.init(secret_key);
+                byte[] hash = sha256_HMAC.doFinal(dataForSignature.getBytes("UTF-8"));
+                StringBuilder hexString = new StringBuilder();
+                for (byte b : hash) {
+                    String hex = Integer.toHexString(0xff & b);
+                    if (hex.length() == 1) hexString.append('0');
+                    hexString.append(hex);
+                }
+                String signature = hexString.toString();
+
+                // 3. GỌI API TẠO PAYMENT LINK
+                java.net.URL url = new java.net.URL("https://api-merchant.payos.vn/v2/payment-requests");
+                java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("POST");
+                conn.setRequestProperty("x-client-id", clientId);
+                conn.setRequestProperty("x-api-key", apiKey);
+                conn.setRequestProperty("Content-Type", "application/json");
+                conn.setDoOutput(true);
+
+                String jsonBody = "{"
+                        + "\"orderCode\": " + orderCode + ","
+                        + "\"amount\": " + finalTotalAmount + ","
+                        + "\"description\": \"" + description + "\","
+                        + "\"cancelUrl\": \"" + cancelUrl + "\","
+                        + "\"returnUrl\": \"" + returnUrl + "\","
+                        + "\"signature\": \"" + signature + "\""
+                        + "}";
+
+                try (java.io.OutputStream os = conn.getOutputStream()) {
+                    byte[] input = jsonBody.getBytes("UTF-8");
+                    os.write(input, 0, input.length);
+                }
+
+                if (conn.getResponseCode() == 200) {
+                    java.util.Scanner s = new java.util.Scanner(conn.getInputStream(), "UTF-8").useDelimiter("\\A");
+                    String response = s.hasNext() ? s.next() : "";
+
+                    // Lấy chuỗi dữ liệu qrCode từ JSON trả về
+                    String qrData = "";
+                    if (response.contains("\"qrCode\":\"")) {
+                        int start = response.indexOf("\"qrCode\":\"") + 10;
+                        int end = response.indexOf("\"", start);
+                        qrData = response.substring(start, end);
+                    }
+
+                    if (!qrData.isEmpty()) {
+                        // 4. CHUYỂN CHUỖI QR THÀNH HÌNH ẢNH ĐỂ HIỂN THỊ
+                    	String qrImageUrl = "https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=" + java.net.URLEncoder.encode(qrData, "UTF-8");
+                    	java.net.URL imgUrl = new java.net.URL(qrImageUrl);
+                    	java.net.HttpURLConnection imgConn = (java.net.HttpURLConnection) imgUrl.openConnection();
+                    	imgConn.setRequestProperty("User-Agent", "Mozilla/5.0");
+                    	java.awt.image.BufferedImage image = javax.imageio.ImageIO.read(imgConn.getInputStream());
+
+                    	// 2. Thu nhỏ lại vừa đúng khung Label 200x200 (Giữ nguyên tỉ lệ để không vỡ)
+                    	return new ImageIcon(image.getScaledInstance(200, 200, java.awt.Image.SCALE_SMOOTH));
+                    }
+                } else {
+                    java.io.InputStream err = conn.getErrorStream();
+                    if(err != null) {
+                        java.util.Scanner s = new java.util.Scanner(err, "UTF-8").useDelimiter("\\A");
+                        System.err.println("Lỗi PayOS: " + (s.hasNext() ? s.next() : ""));
+                    }
+                }
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    ImageIcon icon = get();
+                    if (icon != null) {
+                        lblQRCode.setText("");
+                        lblQRCode.setIcon(icon);
+                        
+                        // Kích hoạt đồng hồ quét ngân hàng ACB liên tục
+                        batDauQuetGiaoDichNganHang(maGiaoDichHienTai, finalTotalAmount);
+
+                        // Giữ lại mẹo Double-click chuột để phòng hờ lúc báo cáo đồ án mạng yếu
+                        for (java.awt.event.MouseListener ml : lblQRCode.getMouseListeners()) {
+                            lblQRCode.removeMouseListener(ml);
+                        }
+                        lblQRCode.addMouseListener(new java.awt.event.MouseAdapter() {
+                            @Override
+                            public void mouseClicked(java.awt.event.MouseEvent e) {
+                                if (e.getClickCount() == 2) {
+                                    if (boKiemTraTienToi != null) boKiemTraTienToi.stop();
+                                    showCustomNotification("TING TING (DEMO)", "Đã chốt đơn thủ công!", "SUCCESS");
+                                    xuLyHoanThanhHoaDon();
+                                }
+                            }
+                        });
+
+                    } else {
+                        lblQRCode.setText("Lỗi tạo QR. Xem log console!");
+                    }
+                } catch (Exception ex) {
+                    lblQRCode.setText("Lỗi kết nối PayOS!");
+                    ex.printStackTrace();
+                }
+            }
+        };
+        worker.execute();
     }
     private void khoiDongDongHoHuyDon(int thoiGianGiay) {
         if (boDemNguoc != null && boDemNguoc.isRunning()) {
@@ -4144,70 +4346,7 @@ txtSearchProduct.addKeyListener(new java.awt.event.KeyAdapter() {
             } 
         }); 
     }
-    private void loadQRCodeVCB(JLabel lblQRCode) {
-        lblQRCode.setIcon(null);
-        lblQRCode.setText("Đang tạo mã QR Vietcombank...");
-
-        // 1. Lấy thẳng tổng tiền cuối cùng đã được hệ thống tính toán
-        long finalTotalAmount = this.tongHoaDon;
-        
-        // Nếu chưa có món hàng nào (0đ) thì không cần gọi API tạo mã làm gì
-        if (finalTotalAmount <= 0) {
-            lblQRCode.setText("Vui lòng thêm sản phẩm!");
-            return;
-        }
-
-        // 2. CẤU HÌNH THÔNG TIN TÀI KHOẢN VCB
-        String bankBin = "vcb"; 
-        String stk = "1038858525"; 
-        String tenTK = "MAI TRUNG KIEN"; 
-        
-        String maHD = (this.maHDDangSua != null && !this.maHDDangSua.isEmpty()) ? this.maHDDangSua : "HD_MOI";
-        String loiNhan = "Thanh toan " + maHD;
-
-        // 3. Tiến hành gọi API chạy ngầm
-        SwingWorker<ImageIcon, Void> worker = new SwingWorker<ImageIcon, Void>() {
-            @Override
-            protected ImageIcon doInBackground() throws Exception {
-                String encodedLoiNhan = java.net.URLEncoder.encode(loiNhan, "UTF-8").replace("+", "%20");
-                String encodedTenTK = java.net.URLEncoder.encode(tenTK, "UTF-8").replace("+", "%20");
-                
-                String apiUrl = String.format(
-                    "https://img.vietqr.io/image/%s-%s-compact2.png?amount=%d&addInfo=%s&accountName=%s",
-                    bankBin, stk, finalTotalAmount, encodedLoiNhan, encodedTenTK
-                );
-
-                java.net.URL url = new java.net.URL(apiUrl);
-                java.net.HttpURLConnection connection = (java.net.HttpURLConnection) url.openConnection();
-                connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
-                connection.setConnectTimeout(5000); 
-                connection.setReadTimeout(5000);
-                
-                java.io.InputStream in = connection.getInputStream();
-                java.awt.image.BufferedImage image = javax.imageio.ImageIO.read(in);
-                
-                if (image == null) {
-                    throw new Exception("Không nhận được dữ liệu ảnh từ API VietQR!");
-                }
-                
-                Image scaledImg = image.getScaledInstance(230, 260, Image.SCALE_SMOOTH);
-                return new ImageIcon(scaledImg);
-            }
-
-            @Override
-            protected void done() {
-                try {
-                    ImageIcon icon = get();
-                    lblQRCode.setText("");
-                    lblQRCode.setIcon(icon);
-                } catch (Exception ex) {
-                    System.err.println("Lỗi load QR: " + ex.getMessage());
-                    lblQRCode.setText("Lỗi tạo QR. Vui lòng thử lại!");
-                }
-            }
-        };
-        worker.execute();
-    }
+    
     private void tuDongApDungKhuyenMai() {
         // [1] DỌN DẸP QUÀ TẶNG CŨ TRÊN GIAO DIỆN
         isTableUpdating = true; 
@@ -4439,6 +4578,40 @@ txtSearchProduct.addKeyListener(new java.awt.event.KeyAdapter() {
         btn.setPreferredSize(new Dimension(130, 40));
         btn.setFocusPainted(false);
         btn.setBorderPainted(false);
+    }
+    private long layTienMatTrongKetHienTai() {
+        Utils.UserSession session = Utils.UserSession.getInstance();
+        if (session.getCaHienTai() == null) return Long.MAX_VALUE; // Cho phép đi qua nếu Quản lý không có ca
+        
+        long tienDauCa = (long) session.getCaHienTai().getTienDauCa();
+        long doanhThuTienMat = 0;
+        
+        try (java.sql.Connection con = ConnectDB.getInstance().getConnection()) {
+            String sql = "SELECT " +
+                         "ISNULL(SUM(CASE WHEN hd.loaiHD = 0 THEN ct.soLuong * dv.gia ELSE 0 END), 0) - " + 
+                         "ISNULL(SUM(CASE WHEN hd.loaiHD = 1 THEN ct.soLuong * dv.gia ELSE 0 END), 0) " +   
+                         "FROM ChiTietHoaDon ct " +
+                         "JOIN HoaDon hd ON ct.hoaDonId = hd.id " +
+                         "JOIN DonViDoLuong dv ON ct.donViDoLuongId = dv.id " +
+                         "WHERE hd.nhanVienId = ? " +
+                         "AND hd.phuongThucThanhToan = 0 " + // 0 = Tiền mặt
+                         "AND hd.ngayLapHD >= ?";            
+            
+            try (java.sql.PreparedStatement pst = con.prepareStatement(sql)) {
+                // ĐÃ FIX LỖI: Lấy trực tiếp mã nhân viên bằng getMaNhanVien()
+                pst.setString(1, session.getMaNhanVien());
+                pst.setTimestamp(2, java.sql.Timestamp.valueOf(session.getCaHienTai().getThoiGianBatDau()));
+                try (java.sql.ResultSet rs = pst.executeQuery()) {
+                    if (rs.next()) {
+                        doanhThuTienMat = (long) rs.getDouble(1);
+                    }
+                }
+            }
+        } catch (Exception ex) {
+            System.err.println("Lỗi tính tiền trong két: " + ex.getMessage());
+        }
+        
+        return tienDauCa + doanhThuTienMat;
     }
     
 }
