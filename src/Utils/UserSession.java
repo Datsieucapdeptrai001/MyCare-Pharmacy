@@ -64,7 +64,7 @@ public class UserSession {
     public CaLamViec getCaHienTai()        { return caHienTai; }
 
     public void setTienDauCa(long tien)    { this.tienDauCa = tien; }
-    public long getTienDauCa()             { return tienDauCa; }
+    public long getTienDauCa()             { return caHienTai != null ? (long) caHienTai.getTienDauCa() : tienDauCa; }
 
     public void setLoaiCa(int loai)        { this.loaiCa = loai; }
     public int  getLoaiCa()                { return loaiCa; }

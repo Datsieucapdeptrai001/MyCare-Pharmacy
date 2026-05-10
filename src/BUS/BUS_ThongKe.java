@@ -43,13 +43,17 @@ public class BUS_ThongKe {
      */
     public double[] getKpiDoiChieu(String maNV, int ca) {
         int    soHD       = dao.getHoaDonHomNay(maNV, ca);
-        double tHang      = dao.getTongTienHangHomNay(maNV, ca);
-        double tThanhToan = dao.getDoanhThuHomNay(maNV, ca);
+        double tHang      = dao.getTongTienHangHomNay(maNV, ca); // Tiền hàng (Tạm tính)
+        double tVAT       = dao.getTongVATHomNay(maNV, ca);      // VAT thực tế
+        double tThanhToan = dao.getDoanhThuHomNay(maNV, ca);     // Tổng thực thu (có VAT)
         double tMat       = dao.getDoanhThuTienMatHomNay(maNV, ca);
-        // BUS tính — không để GUI hay DAO làm
-        double tKhuyenMai = Math.max(0, tHang - tThanhToan);
+        double tThuan     = dao.getDoanhThuThuanHomNay(maNV, ca);
+        
+        // KM = (Tiền hàng + VAT) - Thực thu
+        double tKhuyenMai = Math.max(0, (tHang + tVAT) - tThanhToan);
         double tCK        = Math.max(0, tThanhToan - tMat);
-        return new double[]{soHD, tHang, tKhuyenMai, tThanhToan, tMat, tCK};
+        
+        return new double[]{soHD, tHang, tKhuyenMai, tThanhToan, tMat, tCK, tVAT, tThuan};
     }
 
     /**
@@ -379,5 +383,43 @@ public class BUS_ThongKe {
     /** Khách hàng VIP (điểm >= 500) mua hàng hôm nay — dùng cho ticker */
     public List<Object[]> getKhachHangVIPMuaHomNay(int limit) {
         return dao.getKhachHangVIPMuaHomNay(limit);
+    }
+
+    // ==================== FIX #1: TICKER PHÂN QUYỀN ====================
+    /** Hóa đơn giá trị cao hôm nay lọc theo NV */
+    public List<Object[]> getHoaDonGiaTriCaoHomNay(int limit, String maNV) {
+        return dao.getHoaDonGiaTriCaoHomNay(limit, maNV);
+    }
+
+    // ==================== FIX #2: KPI CÁ NHÂN HÓA ====================
+    /** Top SP hôm nay lọc theo NV */
+    public List<Object[]> getTopSPTrongNgay(String dateYMD, String maNV) {
+        if (dateYMD == null || dateYMD.isEmpty()) return new java.util.ArrayList<>();
+        return dao.getTopSPTrongNgay(dateYMD, maNV);
+    }
+    /** Doanh thu theo giờ hôm nay lọc theo NV */
+    public double[] getDTTheoGioTrongNgay(String dateYMD, String maNV) {
+        if (dateYMD == null || dateYMD.isEmpty()) return new double[24];
+        return dao.getDTTheoGioTrongNgay(dateYMD, maNV);
+    }
+
+    // ==================== FIX #3: TOP KH THEO ĐIỂM TÍCH LŨY ====================
+    /** Top KH sắp xếp theo điểm tích lũy giảm dần */
+    public List<Object[]> getTopKhachHangTheoDiem(int limit) {
+        return dao.getTopKhachHangTheoDiem(limit);
+    }
+
+    // ==================== FIX #4: KPI ĐỐI CHIẾU 7 NGÀY ====================
+    /** KPI 7 ngày qua cho đối chiếu. double[6]: {soHD, tHang, tKM, tThanhToan, tVAT, tThuan} */
+    public double[] getKpiDoiChieu7NgayQua(String maNV) {
+        int    hd7     = dao.getSoHoaDon7NgayQua(maNV);
+        double tHang   = dao.getTongTienHang7NgayQua(maNV);
+        double tVAT    = dao.getTongVAT7NgayQua(maNV);
+        double tTT     = dao.getDoanhThu7NgayQua(maNV);
+        double tThuan  = dao.getDoanhThuThuan7NgayQua(maNV);
+        
+        double tKM     = Math.max(0, (tHang + tVAT) - tTT);
+        
+        return new double[]{hd7, tHang, tKM, tTT, tVAT, tThuan};
     }
 }

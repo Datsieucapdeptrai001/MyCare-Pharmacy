@@ -151,6 +151,18 @@ public class MainDashboard extends JFrame {
     }
     
     public void switchTabAndFilter(String tabName, String keyword) {
+        boolean hasAccess = false;
+        for (JButton btn : menuButtons) {
+            if (btn.getText().equals(tabName)) {
+                hasAccess = true;
+                break;
+            }
+        }
+        if (!hasAccess) {
+            Utils.ThongBao.show(this, "TỪ CHỐI TRUY CẬP", "Tài khoản của bạn không có quyền truy cập vào mục này!", "WARNING");
+            return;
+        }
+
         cardLayout.show(cardPanel, tabName);
         for (JButton btn : menuButtons) {
             if (btn.getText().equals(tabName)) {

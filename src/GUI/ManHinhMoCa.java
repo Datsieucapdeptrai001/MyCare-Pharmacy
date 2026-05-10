@@ -126,10 +126,10 @@ public class ManHinhMoCa extends JDialog {
         };
         hdr.setOpaque(false);
         hdr.setPreferredSize(new Dimension(0, 70));
-        hdr.setBorder(new EmptyBorder(0, 20, 0, 15)); // Giảm nhẹ lề phải để nút X cân đối
+        hdr.setBorder(new EmptyBorder(0, 20, 0, 12));
 
-        // Logo + title (Giữ nguyên)
-        JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 0));
+        // ── LEFT: Logo + Title (cố định, không bị đè) ──
+        JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 8));
         left.setOpaque(false);
 
         JPanel logoBox = new JPanel() {
@@ -148,70 +148,67 @@ public class ManHinhMoCa extends JDialog {
             }
         };
         logoBox.setOpaque(false);
-        logoBox.setPreferredSize(new Dimension(44, 44));
+        logoBox.setPreferredSize(new Dimension(40, 40));
 
-        JLabel lblName = new JLabel("<html><b style='color:white;font-size:15px;'>MYCARE PHARMACY</b><br>"
-                + "<span style='color:rgba(255,255,255,0.8);font-size:11px;'>⏰ Mở ca làm việc — "
+        JLabel lblName = new JLabel("<html><b style='color:white;font-size:14px;'>MYCARE PHARMACY</b><br>"
+                + "<span style='color:rgba(255,255,255,0.8);font-size:10px;'>⏰ Mở ca làm việc — "
                 + new SimpleDateFormat("dd/MM/yyyy HH:mm").format(new Date())
                 + "</span></html>");
 
         left.add(logoBox);
         left.add(lblName);
 
-        // User badge (Giữ nguyên)
-        String initials  = UserSession.getInstance().getInitials();
-        String tenNV     = UserSession.getInstance().getTenHienThi();
-        String chucVu    = UserSession.getInstance().getChucVuHienThi();
+        // ── RIGHT: User badge + Close button (riêng biệt, không chồng) ──
+        // FIX v2-8: Dùng BoxLayout ngang để user badge và nút X nằm cạnh nhau gọn gàng
+        JPanel right = new JPanel();
+        right.setLayout(new BoxLayout(right, BoxLayout.X_AXIS));
+        right.setOpaque(false);
 
-        JPanel userBadge = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 8)) {
-            @Override protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(new Color(255, 255, 255, 40));
-                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 12, 12);
-                g2.dispose();
-            }
-        };
-        userBadge.setOpaque(false);
+        // User badge
+        String initials = UserSession.getInstance().getInitials();
+        String tenNV    = UserSession.getInstance().getTenHienThi();
+        String chucVu   = UserSession.getInstance().getChucVuHienThi();
 
         JLabel avatar = new JLabel(initials, SwingConstants.CENTER);
-        avatar.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        avatar.setFont(new Font("Segoe UI", Font.BOLD, 12));
         avatar.setForeground(Color.WHITE);
         avatar.setOpaque(true);
         avatar.setBackground(Color.decode("#007A52"));
-        avatar.setPreferredSize(new Dimension(34, 34));
+        avatar.setPreferredSize(new Dimension(32, 32));
+        avatar.setMaximumSize(new Dimension(32, 32));
 
-        JLabel lblUser = new JLabel("<html><b style='color:white;'>" + tenNV + "</b><br>"
-                + "<span style='color:rgba(255,255,255,0.75);font-size:10px;'>" + chucVu + "</span></html>");
+        JLabel lblUser = new JLabel("<html><b style='color:white;font-size:11px;'>" + tenNV + "</b><br>"
+                + "<span style='color:rgba(255,255,255,0.7);font-size:9px;'>" + chucVu + "</span></html>");
+        lblUser.setBorder(new EmptyBorder(0, 8, 0, 0));
 
-        userBadge.add(avatar);
-        userBadge.add(lblUser);
+        right.add(avatar);
+        right.add(lblUser);
+        right.add(Box.createRigidArea(new Dimension(12, 0)));
 
-        // --- ĐÃ FIX: TẠO KHUNG BÊN PHẢI CHỨA CẢ USER INFO VÀ NÚT X ---
-        JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 6));
-        rightPanel.setOpaque(false);
-        rightPanel.add(userBadge);
-
+        // FIX v2-8: Nút X rõ ràng, có tooltip
         JButton btnClose = new JButton("✕");
-        btnClose.setFont(new Font("Segoe UI", Font.BOLD, 20));
+        btnClose.setFont(new Font("Segoe UI", Font.BOLD, 18));
         btnClose.setForeground(Color.WHITE);
         btnClose.setContentAreaFilled(false);
         btnClose.setBorderPainted(false);
         btnClose.setFocusPainted(false);
         btnClose.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        btnClose.setPreferredSize(new Dimension(40, 40));
-        
-        // Sự kiện khi bấm nút X
+        btnClose.setPreferredSize(new Dimension(36, 36));
+        btnClose.setMaximumSize(new Dimension(36, 36));
+        btnClose.setToolTipText("Đóng / Hủy mở ca");
         btnClose.addActionListener(e -> {
-            confirmed = false; // Đánh dấu là từ chối mở ca
-            dispose();         // Tắt hộp thoại
+            confirmed = false;
+            dispose();
         });
-        
-        rightPanel.add(btnClose);
+        btnClose.addMouseListener(new MouseAdapter() {
+            public void mouseEntered(MouseEvent e) { btnClose.setForeground(Color.decode("#FFD666")); }
+            public void mouseExited(MouseEvent e) { btnClose.setForeground(Color.WHITE); }
+        });
 
-        // Add 2 khối vào Header
+        right.add(btnClose);
+
         hdr.add(left, BorderLayout.WEST);
-        hdr.add(rightPanel, BorderLayout.EAST);
+        hdr.add(right, BorderLayout.EAST);
 
         JPanel wrapper = new JPanel(new BorderLayout());
         wrapper.setOpaque(false);

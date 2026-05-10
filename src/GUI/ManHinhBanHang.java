@@ -189,13 +189,12 @@ public class ManHinhBanHang extends JPanel {
                 
                 SwingUtilities.invokeLater(() -> {
                     try {
-                    	if (!kiemTraMoCaChoQuanLy()) return;
                         if (maHD.equals("NEW_INVOICE")) {
+                            if (!kiemTraMoCaChoQuanLy()) return;
                             Window p = SwingUtilities.getWindowAncestor(ManHinhBanHang.this);
                             TaoHoaDon dialogTaoHoaDon = new TaoHoaDon((Frame) p, model); 
                             dialogTaoHoaDon.setVisible(true);
                         } else {
-                        	if (!kiemTraMoCaChoQuanLy()) return;
                             moLaiHoaDonNhap(maHD);
                         }
                     } finally {
@@ -324,16 +323,39 @@ public class ManHinhBanHang extends JPanel {
 
     public void moLaiHoaDonNhap(String maHD) {
         SwingUtilities.invokeLater(() -> {
+            if (txtSearch != null) {
+                txtSearch.setText(maHD);
+                applyFilter();
+            }
+            boolean found = false;
             for (int i = 0; i < model.getRowCount(); i++) {
                 if (model.getValueAt(i, 0).toString().equals(maHD)) {
                     String khach = model.getValueAt(i, 2).toString();
                     String sdt = model.getValueAt(i, 3).toString();
+                    String status = model.getValueAt(i, 6).toString();
                     Window p = SwingUtilities.getWindowAncestor(this);
                     
-                    TaoHoaDon dialogSua = new TaoHoaDon((Frame) p, model, i, maHD, khach, sdt);
-                    dialogSua.setVisible(true);
+                    if (status.equals("Đang xử lý")) {
+                        if (!kiemTraMoCaChoQuanLy()) return;
+                        TaoHoaDon dialogSua = new TaoHoaDon((Frame) p, model, i, maHD, khach, sdt);
+                        dialogSua.setVisible(true);
+                    } else {
+                        String ngay = model.getValueAt(i, 1).toString();
+                        String phuongThuc = model.getValueAt(i, 4).toString();
+                        String tongTien = model.getValueAt(i, 5).toString();
+                        BUS.BUS_ChiTietHoaDon busCTHD = new BUS.BUS_ChiTietHoaDon();
+                        java.util.List<Object[]> listSanPham = busCTHD.layDanhSachSanPhamTheoMaHD(maHD);
+                        ChiTietHoaDon dialogChiTiet = new ChiTietHoaDon(
+                            (Frame) p, maHD, ngay, khach, sdt, phuongThuc, tongTien, "", listSanPham
+                        );
+                        dialogChiTiet.setVisible(true);
+                    }
+                    found = true;
                     break;
                 }
+            }
+            if (!found) {
+                Utils.ThongBao.show(this, "KHÔNG TÌM THẤY", "Hóa đơn này không nằm trong danh sách hiện tại!", "WARNING");
             }
         });
     }
