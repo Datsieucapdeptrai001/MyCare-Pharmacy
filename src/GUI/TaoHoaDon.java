@@ -457,9 +457,13 @@ public class TaoHoaDon extends JDialog {
             }
 
             java.util.List<Entity.ChiTietHoaDon> dsCTHD = new java.util.ArrayList<>();
+            java.util.List<Entity.ChiTietHoaDon> dsQuaTang = new java.util.ArrayList<>();
             for (int i = 0; i < productModel.getRowCount(); i++) {
                 String tenSP = productModel.getValueAt(i, 0).toString();
-                if (tenSP.startsWith("[QUÀ TẶNG]")) continue;
+                boolean isGift = tenSP.startsWith("[QUÀ TẶNG]");
+                if (isGift) {
+                    tenSP = tenSP.replace("[QUÀ TẶNG]", "").trim();
+                }
                 String tenDVT = productModel.getValueAt(i, 1).toString();
                 int soLuong = Integer.parseInt(productModel.getValueAt(i, 2).toString());
 
@@ -492,7 +496,11 @@ public class TaoHoaDon extends JDialog {
                 ct.setDonViDoLuongId(dv);
 
                 ct.setSoLuong(soLuong);
-                dsCTHD.add(ct);
+                if (isGift) {
+                    dsQuaTang.add(ct);
+                } else {
+                    dsCTHD.add(ct);
+                }
                 
                 double tiLeQuyDoi = 1.0;
                 List<DonViDoLuong> dsDonVi = busDonVi.getDSTheoMaSP(maSP);
@@ -529,7 +537,7 @@ public class TaoHoaDon extends JDialog {
                 }
             }
             
-            boolean success = busHD.thanhToan(hd, dsCTHD);
+            boolean success = busHD.thanhToan(hd, dsCTHD, dsQuaTang);
 
             if (success) {
                 if (boDemNguoc != null) boDemNguoc.stop(); 

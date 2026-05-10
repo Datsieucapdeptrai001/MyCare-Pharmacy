@@ -619,7 +619,7 @@ public class DAO_HoaDon {
 
         return false;
     }
-    public boolean luuGiaoDichThanhToan(HoaDon hd, List<ChiTietHoaDon> dsCTHD,
+    public boolean luuGiaoDichThanhToan(HoaDon hd, List<ChiTietHoaDon> dsCTHD, List<ChiTietHoaDon> dsQuaTang,
                                         DAO_ChiTietHoaDon daoCTHD,
                                         DAO_LoHang daoLo,
                                         DAO_PhanBoLoHang daoPB) {
@@ -652,6 +652,23 @@ public class DAO_HoaDon {
                     canLay -= layDuoc;
                 }
                 if (canLay > 0) throw new Exception("Kho không đủ hàng: " + ct.getSanPhamId().getId());
+            }
+
+            if (dsQuaTang != null) {
+                for (ChiTietHoaDon ct : dsQuaTang) {
+                    List<LoHang> dsLo = daoLo.layLoTheoSP(con, ct.getSanPhamId().getId());
+                    int canLay = ct.getSoLuong();
+
+                    for (LoHang lh : dsLo) {
+                        if (canLay <= 0) break;
+                        int layDuoc = Math.min(lh.getSoLuongLoHang(), canLay);
+
+                        daoPB.themPhanBo(con, new PhanBoLoHang(hd, ct.getDonViDoLuongId(), ct.getSanPhamId(), lh, layDuoc));
+                        daoLo.capNhatSoLuongVaTrangThaiLo(con, lh.getId(), lh.getSoLuongLoHang() - layDuoc);
+                        canLay -= layDuoc;
+                    }
+                    if (canLay > 0) throw new Exception("Kho không đủ hàng quà tặng: " + ct.getSanPhamId().getId());
+                }
             }
 
             con.commit();
