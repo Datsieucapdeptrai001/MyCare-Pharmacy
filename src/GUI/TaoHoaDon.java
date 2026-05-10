@@ -2688,12 +2688,22 @@ public class TaoHoaDon extends JDialog {
         suggestionPopup.setBackground(Color.WHITE);
 
         javax.swing.Timer searchTimer = new javax.swing.Timer(300, e -> {
-            String text = txtSearchProduct.getText().trim();
+            String rawText = txtSearchProduct.getText().trim();
 
             // Thêm .contains để chặn hệ thống mang chữ nổi đi tìm kiếm
-            if (text.isEmpty() || text.contains("Tìm tên sản phẩm")) {
+            if (rawText.isEmpty() || rawText.contains("Tìm tên sản phẩm")) {
                 suggestionPopup.setVisible(false);
                 return;
+            }
+
+            // Xử lý quét mã vạch GS1: (91)LOT-2026-0001(92)100...
+            final String text;
+            if (rawText.startsWith("(91)") && rawText.contains("(92)")) {
+                int start = rawText.indexOf("(91)") + 4;
+                int end = rawText.indexOf("(92)");
+                text = (start < end) ? rawText.substring(start, end) : rawText;
+            } else {
+                text = rawText;
             }
 
             // FIX: Hủy Worker cũ nếu người dùng gõ quá nhanh
@@ -2704,8 +2714,8 @@ public class TaoHoaDon extends JDialog {
             currentSearchWorker = new SwingWorker<java.util.List<Object[]>, Void>() {
                 @Override
                 protected java.util.List<Object[]> doInBackground() throws Exception {
-                    DAO.DAO_SanPham daoSP = new DAO.DAO_SanPham();
-                    return daoSP.timKiemSanPhamBan(text);
+                    BUS.BUS_SanPham busSP = new BUS.BUS_SanPham(); // Gọi qua BUS
+                    return busSP.timKiemSanPhamBan(text);
                 }
 
                 @Override
@@ -2821,10 +2831,22 @@ public class TaoHoaDon extends JDialog {
 
 txtSearchProduct.addKeyListener(new java.awt.event.KeyAdapter() {
             
-            // --- THÊM MỚI: BẮT PHÍM ENTER ĐỂ THÊM NHANH ---
             @Override
             public void keyPressed(java.awt.event.KeyEvent e) {
                 if (e.getKeyCode() == java.awt.event.KeyEvent.VK_ENTER) {
+                    String rawSearchText = txtSearchProduct.getText().trim();
+                    if (rawSearchText.isEmpty() || rawSearchText.contains("Tìm tên sản phẩm")) return;
+
+                    // Xử lý quét mã vạch GS1: (91)LOT-2026-0001(92)100...
+                    final String searchText;
+                    if (rawSearchText.startsWith("(91)") && rawSearchText.contains("(92)")) {
+                        int start = rawSearchText.indexOf("(91)") + 4;
+                        int end = rawSearchText.indexOf("(92)");
+                        searchText = (start < end) ? rawSearchText.substring(start, end) : rawSearchText;
+                    } else {
+                        searchText = rawSearchText;
+                    }
+
                     // Nếu có gợi ý đang mở và luồng tìm kiếm đã lấy được dữ liệu
                     if (suggestionPopup.isVisible() && currentSearchWorker != null && currentSearchWorker.isDone()) {
                         try {
@@ -2832,79 +2854,31 @@ txtSearchProduct.addKeyListener(new java.awt.event.KeyAdapter() {
                             if (ketQua != null && !ketQua.isEmpty()) {
                                 // Tự động lấy món ĐẦU TIÊN trong danh sách gợi ý
                                 Object[] firstItem = ketQua.get(0);
-                                
-                                String name = firstItem[1].toString();
-                                String unit = firstItem[2] != null ? firstItem[2].toString() : "";
-                                long giaBan = Math.round(Double.parseDouble(firstItem[3].toString()));
-                                String price = String.valueOf(giaBan);
-                                String danhMuc = (firstItem.length > 5 && firstItem[5] != null) ? firstItem[5].toString() : "Khác";
-                                
-                                String thueVat = "5%";
-                                if (firstItem.length > 6 && firstItem[6] != null) {
-                                    String rawVat = firstItem[6].toString().trim();
-                                    try {
-                                        double v = Double.parseDouble(rawVat);
-                                        if (v > 0 && v < 1) v = v * 100; 
-                                        thueVat = (int)v + "%";
-                                    } catch (Exception ex) {
-                                        thueVat = rawVat + (rawVat.contains("%") ? "" : "%");
-                                    }
-                                }
-
-                                // ---------------------------------------------------------
-                                // BẢN VÁ LỖI TRÙNG LẶP: Check cả TÊN SẢN PHẨM và ĐƠN VỊ TÍNH
-                                // ---------------------------------------------------------
-                                boolean daTonTai = false;
-                                int rowIndex = -1;
-                                int currentQty = 0;
-                                for (int i = 0; i < productModel.getRowCount(); i++) {
-                                    // Phải trùng CẢ tên VÀ đơn vị tính thì mới được cộng dồn
-                                    if (productModel.getValueAt(i, 0).toString().equals(name) &&
-                                        productModel.getValueAt(i, 1).toString().equals(unit)) {
-                                        daTonTai = true;
-                                        rowIndex = i;
-                                        currentQty = Integer.parseInt(productModel.getValueAt(i, 2).toString());
-                                        break;
-                                    }
-                                }
-
-                                if (daTonTai) {
-                                    currentQty++; // Tăng 1
-                                    productModel.setValueAt(String.valueOf(currentQty), rowIndex, 2);
-                                    
-                                    // TÍNH LẠI THÀNH TIỀN CÓ VAT
-                                    double vat = 0;
-                                    try {
-                                        String vatStr = productModel.getValueAt(rowIndex, 4).toString().replace("%", "").trim();
-                                        vat = Double.parseDouble(vatStr) / 100.0;
-                                    } catch (Exception ex) {}
-                                    
-                                    long tienHang = giaBan * currentQty;
-                                    long thanhTien = tienHang + (long)(tienHang * vat);
-                                    
-                                    productModel.setValueAt(String.format("%,d", thanhTien).replace(',', '.') + "đ", rowIndex, 5);
-                                } else {
-                                    // TÍNH THÀNH TIỀN CÓ VAT CHO SẢN PHẨM MỚI
-                                	double vat = 0;
-                                    try {
-                                        String vatStr = thueVat.replace("%", "").trim();
-                                        vat = Double.parseDouble(vatStr) / 100.0;
-                                    } catch (Exception ex) {}
-                                    
-                                    long thanhTien = giaBan + (long)(giaBan * vat);
-                                    String giaFormatted = String.format("%,d", giaBan).replace(',', '.') + "đ"; // FIX FORMAT ĐƠN GIÁ
-
-                                    productModel.addRow(new Object[]{
-                                        name, unit, "1", giaFormatted, thueVat, String.format("%,d", thanhTien).replace(',', '.') + "đ", danhMuc 
-                                    });
-                                }
-                                
-                                recalculateTotals();
-                                suggestionPopup.setVisible(false); // Đóng popup
-                                txtSearchProduct.setText(""); // Xóa trắng ô để gõ/bắn mã tiếp theo
+                                xyLyThemSanPhamNhanh(firstItem, suggestionPopup, txtSearchProduct);
                             }
                         } catch (Exception ex) {
                             ex.printStackTrace();
+                        }
+                    } else {
+                        // TRƯỜNG HỢP QUÉT MÃ VẠCH (Tốc độ rất nhanh, Popup chưa kịp hiện)
+                    	BUS.BUS_SanPham busSP = new BUS.BUS_SanPham(); // Gọi qua BUS
+                        java.util.List<Object[]> ketQua = busSP.timKiemSanPhamBan(searchText);
+                        if (ketQua != null && !ketQua.isEmpty()) {
+                            // Ưu tiên tìm đúng mã sản phẩm hoặc lô hàng
+                            Object[] spCanThem = ketQua.get(0);
+                            for (Object[] row : ketQua) {
+                                // Kiểm tra mã SP ở cột 0 hoặc số lô ở cột 7
+                                String maSP = row[0] != null ? row[0].toString() : "";
+                                String soLo = row.length > 7 && row[7] != null ? row[7].toString() : "";
+                                if (maSP.equalsIgnoreCase(searchText) || soLo.equalsIgnoreCase(searchText)) {
+                                    spCanThem = row;
+                                    break;
+                                }
+                            }
+                            xyLyThemSanPhamNhanh(spCanThem, suggestionPopup, txtSearchProduct);
+                        } else {
+                            showCustomNotification("KHÔNG TÌM THẤY", "Không tìm thấy sản phẩm với mã: " + searchText, "WARNING");
+                            txtSearchProduct.setText("");
                         }
                     }
                 }
@@ -2923,6 +2897,78 @@ txtSearchProduct.addKeyListener(new java.awt.event.KeyAdapter() {
         });
         
         return pnl;
+    }
+
+    private void xyLyThemSanPhamNhanh(Object[] firstItem, JPopupMenu suggestionPopup, JTextField txtSearchProduct) {
+        String name = firstItem[1].toString();
+        String unit = firstItem[2] != null ? firstItem[2].toString() : "";
+        long giaBan = Math.round(Double.parseDouble(firstItem[3].toString()));
+        String price = String.valueOf(giaBan);
+        String danhMuc = (firstItem.length > 5 && firstItem[5] != null) ? firstItem[5].toString() : "Khác";
+        
+        String thueVat = "5%";
+        if (firstItem.length > 6 && firstItem[6] != null) {
+            String rawVat = firstItem[6].toString().trim();
+            try {
+                double v = Double.parseDouble(rawVat);
+                if (v > 0 && v < 1) v = v * 100; 
+                thueVat = (int)v + "%";
+            } catch (Exception ex) {
+                thueVat = rawVat + (rawVat.contains("%") ? "" : "%");
+            }
+        }
+
+        // ---------------------------------------------------------
+        // BẢN VÁ LỖI TRÙNG LẶP: Check cả TÊN SẢN PHẨM và ĐƠN VỊ TÍNH
+        // ---------------------------------------------------------
+        boolean daTonTai = false;
+        int rowIndex = -1;
+        int currentQty = 0;
+        for (int i = 0; i < productModel.getRowCount(); i++) {
+            // Phải trùng CẢ tên VÀ đơn vị tính thì mới được cộng dồn
+            if (productModel.getValueAt(i, 0).toString().equals(name) &&
+                productModel.getValueAt(i, 1).toString().equals(unit)) {
+                daTonTai = true;
+                rowIndex = i;
+                currentQty = Integer.parseInt(productModel.getValueAt(i, 2).toString());
+                break;
+            }
+        }
+
+        if (daTonTai) {
+            currentQty++; // Tăng 1
+            productModel.setValueAt(String.valueOf(currentQty), rowIndex, 2);
+            
+            // TÍNH LẠI THÀNH TIỀN CÓ VAT
+            double vat = 0;
+            try {
+                String vatStr = productModel.getValueAt(rowIndex, 4).toString().replace("%", "").trim();
+                vat = Double.parseDouble(vatStr) / 100.0;
+            } catch (Exception ex) {}
+            
+            long tienHang = giaBan * currentQty;
+            long thanhTien = tienHang + (long)(tienHang * vat);
+            
+            productModel.setValueAt(String.format("%,d", thanhTien).replace(',', '.') + "đ", rowIndex, 5);
+        } else {
+            // TÍNH THÀNH TIỀN CÓ VAT CHO SẢN PHẨM MỚI
+            double vat = 0;
+            try {
+                String vatStr = thueVat.replace("%", "").trim();
+                vat = Double.parseDouble(vatStr) / 100.0;
+            } catch (Exception ex) {}
+            
+            long thanhTien = giaBan + (long)(giaBan * vat);
+            String giaFormatted = String.format("%,d", giaBan).replace(',', '.') + "đ"; // FIX FORMAT ĐƠN GIÁ
+
+            productModel.addRow(new Object[]{
+                name, unit, "1", giaFormatted, thueVat, String.format("%,d", thanhTien).replace(',', '.') + "đ", danhMuc 
+            });
+        }
+        
+        recalculateTotals();
+        if (suggestionPopup != null) suggestionPopup.setVisible(false); // Đóng popup
+        if (txtSearchProduct != null) txtSearchProduct.setText(""); // Xóa trắng ô để gõ/bắn mã tiếp theo
     }
 
     private JPanel createSummaryPanel() {
