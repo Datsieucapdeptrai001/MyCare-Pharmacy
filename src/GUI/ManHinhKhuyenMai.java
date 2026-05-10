@@ -1192,7 +1192,6 @@ public class ManHinhKhuyenMai extends JPanel {
             gbc.gridwidth = 2;
             pnlBody.add(pnlDieuKienWrapper, gbc);
 
-            // ================== CẤU HÌNH DỰ TOÁN LỢI NHUẬN TỰ ĐỘNG ==================
             pnlDuToanLoiNhuan = new JPanel(new BorderLayout(15, 0));
             pnlDuToanLoiNhuan.setOpaque(false);
             pnlDuToanLoiNhuan.setBorder(BorderFactory.createTitledBorder(new RoundedBorder(COLOR_INFO, 1, 15),
@@ -1235,7 +1234,6 @@ public class ManHinhKhuyenMai extends JPanel {
             gbc.gridwidth = 2;
             pnlBody.add(pnlDuToanLoiNhuan, gbc);
             
-            // Xử lý sự kiện cập nhật dự toán Real-time
             DocumentListener simListener = new DocumentListener() {
                 public void insertUpdate(DocumentEvent e) { capNhatDuToanLoiNhuan(); }
                 public void removeUpdate(DocumentEvent e) { capNhatDuToanLoiNhuan(); }
@@ -1250,14 +1248,13 @@ public class ManHinhKhuyenMai extends JPanel {
             fldSoLuongMua.getTextField().getDocument().addDocumentListener(simListener);
             fldSoLuongTang.getTextField().getDocument().addDocumentListener(simListener);
 
-            // Bắt sự kiện đổi loại Khuyến mãi
             cbType.addItemListener(e -> {
                 if (e.getStateChange() == ItemEvent.SELECTED) {
                     int idx = cbType.getSelectedIndex();
                     cardLayout.show(pnlDynamicOptions, idx == 0 ? "GIAM_GIA" : idx == 1 ? "GIAM_TIEN" : "TANG_PHAM");
                     condLayout.show(pnlDieuKienWrapper, idx == 0 ? "CO_DIEU_KIEN" : "KHONG_DIEU_KIEN");
                     
-                    pnlDuToanLoiNhuan.setVisible(idx != 0); // Ẩn nếu là giảm phần trăm (0)
+                    pnlDuToanLoiNhuan.setVisible(idx != 0); 
                     fldGiaNhapTangMoPhong.setVisible(idx == 2);
                     
                     pnlDuToanLoiNhuan.revalidate();
@@ -1269,7 +1266,6 @@ public class ManHinhKhuyenMai extends JPanel {
                 }
             });
 
-            // Bắt sự kiện người dùng đổi Đơn Vị Tính -> Nạp lại Giá
             ItemListener unitListener = e -> {
                 if (e.getStateChange() == ItemEvent.SELECTED) updateMoPhongPrices();
             };
@@ -1441,19 +1437,13 @@ public class ManHinhKhuyenMai extends JPanel {
                 }
             }
 
-            SwingUtilities.invokeLater(() -> {
-                isSyncingDates = false;
-                dpStart.txtDate.setText(dpStart.getText());
-                
-                // Đồng bộ ẩn/hiện dự toán
-                int initialIdx = cbType.getSelectedIndex();
-                pnlDuToanLoiNhuan.setVisible(initialIdx != 0);
-                fldGiaNhapTangMoPhong.setVisible(initialIdx == 2);
-                
-                if (initialIdx != 0) {
-                    updateMoPhongPrices(); // Tải giá vốn ban đầu
-                }
-            });
+            // ĐÃ KHẮC PHỤC: Sử dụng JScrollPane để cuộn nội dung, chống tràn màn hình
+            JScrollPane scrollBody = new JScrollPane(pnlBody);
+            scrollBody.setBorder(null);
+            scrollBody.getViewport().setBackground(Color.WHITE);
+            scrollBody.getVerticalScrollBar().setUnitIncrement(16);
+            scrollBody.getVerticalScrollBar().setUI(new ModernScrollBarUI());
+            scrollBody.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
 
             JPanel pnlFooter = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 15));
             pnlFooter.setBackground(Color.WHITE);
@@ -1615,22 +1605,38 @@ public class ManHinhKhuyenMai extends JPanel {
             pnlFooter.add(btnSave);
 
             mainPanel.add(pnlHeader, BorderLayout.NORTH);
-            mainPanel.add(pnlBody, BorderLayout.CENTER);
+            mainPanel.add(scrollBody, BorderLayout.CENTER);
             mainPanel.add(pnlFooter, BorderLayout.SOUTH);
 
             dialog.add(mainPanel);
 
             dialog.pack();
-            dialog.setSize(850, dialog.getHeight() + 25);
+            int targetHeight = dialog.getHeight() + 25;
+            Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+            int maxHeight = screenSize.height - 50; 
+            
+            // ĐÃ KHẮC PHỤC: Thuật toán nhận diện màn hình để form không bị tràn
+            if (targetHeight > maxHeight) {
+                dialog.setSize(850, maxHeight);
+            } else {
+                dialog.setSize(850, targetHeight);
+            }
+            
             dialog.setLocationRelativeTo(null);
+            
+            SwingUtilities.invokeLater(() -> {
+                int initialIdx = cbType.getSelectedIndex();
+                pnlDuToanLoiNhuan.setVisible(initialIdx != 0);
+                fldGiaNhapTangMoPhong.setVisible(initialIdx == 2);
+                if (initialIdx != 0) {
+                    updateMoPhongPrices(); 
+                }
+            });
         }
         
-        /**
-         * Hàm tự động lấy Giá Nhập & Giá Bán từ CSDL khi người dùng chọn đúng Đơn vị tính
-         */
         private void updateMoPhongPrices() {
             int type = cbType.getSelectedIndex();
-            if (type == 0) return; // Không làm gì nếu là giảm %
+            if (type == 0) return; 
             
             if (type == 1) {
                 fldGiaNhapMoPhong.getTextField().setEditable(false);
@@ -1673,7 +1679,7 @@ public class ManHinhKhuyenMai extends JPanel {
             SwingUtilities.invokeLater(() -> {
                 try {
                     int loaiHinhThuc = cbType.getSelectedIndex();
-                    if (loaiHinhThuc == 0) return; // Bỏ qua nếu là giảm %
+                    if (loaiHinhThuc == 0) return; 
                     
                     double giaNhapMua = parseDoubleSafe(fldGiaNhapMoPhong.getTextField().getText());
                     double giaBanMua = parseDoubleSafe(fldGiaBanMoPhong.getTextField().getText());
@@ -1738,7 +1744,6 @@ public class ManHinhKhuyenMai extends JPanel {
                 }
                 if (!hasData) cb.addItem("Đơn vị");
                 
-                // Gọi nạp Giá vốn/Giá bán tự động ngay khi Đơn vị tính được load xong
                 if (cbType.getSelectedIndex() != 0) {
                     updateMoPhongPrices();
                 }
