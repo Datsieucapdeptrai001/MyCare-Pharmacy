@@ -134,7 +134,36 @@ public class DAO_KhuyenMai {
         }
         return km;
     }
+    public java.util.List<Object[]> layDanhSachKhuyenMaiFull() {
+        java.util.List<Object[]> result = new java.util.ArrayList<>();
+        String sql = "SELECT k.id, k.tenKhuyenMai, h.moTa, ISNULL(spYeuCau.ten, '') AS tenSanPhamYeuCau " +
+                     "FROM KhuyenMai k " +
+                     "JOIN HinhThucKhuyenMai h ON k.id = h.khuyenMaiId " +
+                     "LEFT JOIN SanPham spYeuCau ON h.spYeuCau = spYeuCau.id " +
+                     "WHERE k.trangThai = 1 " + 
+                     "AND CAST(k.ngayBatDau AS DATE) <= CAST(GETDATE() AS DATE) " +
+                     "AND (k.ngayKetThuc IS NULL OR CAST(k.ngayKetThuc AS DATE) >= CAST(GETDATE() AS DATE))";
 
+        try (java.sql.Connection con = ConnectDB.getInstance().getConnection();
+             java.sql.Statement st = con.createStatement();
+             java.sql.ResultSet rs = st.executeQuery(sql)) {
+             
+            while(rs.next()) {
+                Object[] row = new Object[6]; 
+                row[0] = rs.getString("id");               
+                row[1] = rs.getString("tenKhuyenMai");     
+                row[2] = rs.getString("moTa");             
+                row[3] = ""; 
+                row[4] = ""; 
+                row[5] = rs.getString("tenSanPhamYeuCau"); 
+                
+                result.add(row);
+            }
+        } catch(Exception e) {
+            e.printStackTrace();
+        }
+        return result;
+    }
     public List<Object[]> layDanhSachKhuyenMaiChoTable() {
         List<Object[]> listData = new ArrayList<>();
         Connection con = ConnectDB.getInstance().getConnection();
