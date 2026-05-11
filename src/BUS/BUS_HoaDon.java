@@ -5,7 +5,7 @@ import Entity.*;
 import Enumeration.TrangThaiLoHang;
 import java.time.LocalDateTime;
 import java.util.List;
-
+import java.util.ArrayList;
 public class BUS_HoaDon {
     private DAO_HoaDon daoHD = new DAO_HoaDon();
     private DAO_ChiTietHoaDon daoCTHD = new DAO_ChiTietHoaDon();
@@ -31,9 +31,122 @@ public class BUS_HoaDon {
     }
     
     public List<Object[]> layDanhSachHoaDonChoBang() {
-        return daoHD.layDanhSachHoaDonChoBang(); 
+        // Gọi DAO lấy dữ liệu thô
+        List<Object[]> dsRaw = daoHD.layDanhSachHoaDonRaw();
+        List<Object[]> dsFormatted = new ArrayList<>();
+        
+        java.text.DecimalFormat df = new java.text.DecimalFormat("#,###đ");
+        java.time.format.DateTimeFormatter dtf = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+        
+        for (Object[] row : dsRaw) {
+            String id = (String) row[0];
+            String loaiHD = (String) row[1];
+            java.sql.Timestamp tsNgay = (java.sql.Timestamp) row[2];
+            String kh = (String) row[3];
+            String sdt = (String) row[4];
+            String phuongThuc = (String) row[5];
+            String ghiChu = (String) row[6];
+            double tongTienGoc = row[7] != null ? (double) row[7] : 0;
+            double tongVAT = row[8] != null ? (double) row[8] : 0;
+            
+            // ----------------------------------------------------
+            // BƯỚC 1: XỬ LÝ TOÁN HỌC (TÍNH VAT VÀ TỔNG TIỀN)
+            // ----------------------------------------------------
+            double totalAmount = tongTienGoc + tongVAT; 
+            double originalAmount = totalAmount; 
+            double tongTienGiam = 0;
+            
+            // Xử lý đọc ghi chú để khấu trừ tiền
+            if (ghiChu != null && !ghiChu.isEmpty()) {
+                String[] parts = ghiChu.split("\\|");
+                for (String p : parts) {
+                    p = p.trim();
+                    if (p.startsWith("Dùng điểm: -") || p.contains("KM_GIAM:")) {
+                        try {
+                            long tienGiam = Long.parseLong(p.replaceAll("[^0-9]", ""));
+                            tongTienGiam += tienGiam;
+                        } catch (Exception ignored) {}
+                    } else if (p.startsWith("KM:")) {
+                        String[] mks = p.substring(3).trim().split(",");
+                        for (String mk : mks) {
+                            // Gọi DAO lấy thông tin KM, hoàn toàn không dính dáng câu lệnh SQL ở BUS
+                            double[] kmData = daoHD.layThongTinKhuyenMai(mk);
+                            if (kmData[0] == 1.0) { // Giảm theo %
+                                tongTienGiam += originalAmount * (kmData[1] / 100.0);
+                            } else if (kmData[0] == 2.0) { // Giảm tiền mặt
+                                tongTienGiam += kmData[1];
+                            }
+                        }
+                    }
+                }
+            }
+            
+            totalAmount -= tongTienGiam; // Trừ đi tổng tiền khuyến mãi/điểm thưởng
+            if (totalAmount < 0) totalAmount = 0;
+
+            // ----------------------------------------------------
+            // BƯỚC 2: FORMAT DỮ LIỆU CHUẨN BỊ CHO GUI HIỂN THỊ
+            // ----------------------------------------------------
+            String ngayStr = tsNgay != null ? tsNgay.toLocalDateTime().format(dtf) : "";
+            String tenKhach = kh != null ? kh : "Khách lẻ";
+            String sdtKhach = sdt != null ? sdt : "";
+            String hienThiPT = "CHUYEN_KHOAN_NGAN_HANG".equals(phuongThuc) ? "Chuyển khoản" : "Tiền mặt";
+            
+            String trangThai = "Hoàn thành";
+            if (loaiHD != null && (loaiHD.equals("TRA_HANG") || loaiHD.equals("DOI_HANG"))) {
+                trangThai = "Đổi trả";
+            } else if (ghiChu != null) {
+                if (ghiChu.contains("Lưu nháp") || ghiChu.contains("Đang xử lý")) trangThai = "Đang xử lý";
+                else if (ghiChu.contains("Đã hủy")) trangThai = "Đã hủy";
+            }
+
+            // Gói vào mảng Object chuẩn bị đưa lên Table trên GUI
+            dsFormatted.add(new Object[]{
+                id, ngayStr, tenKhach, sdtKhach, hienThiPT, df.format(totalAmount).replace(',', '.'), trangThai, ghiChu
+            });
+        }
+        
+        return dsFormatted;
     }
-    
+ // File: BUS_HoaDon.java
+    public List<Object[]> layDanhSachHoaDonHienThi() {
+        List<Object[]> dsRaw = daoHD.layDanhSachHoaDonRaw();
+        List<Object[]> dsFormatted = new ArrayList<>();
+        java.text.DecimalFormat df = new java.text.DecimalFormat("#,###đ");
+        java.time.format.DateTimeFormatter dtf = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+
+        for (Object[] row : dsRaw) {
+            double tongChuaThue = (double) row[7];
+            double tongThue = (double) row[8];
+            double totalAmount = tongChuaThue + tongThue; // TÍNH TOÁN VAT TẠI BUS
+            
+            double tongTienGiam = 0;
+            String ghiChu = (String) row[6];
+            
+            // Xử lý logic bóc tách ghi chú để trừ tiền (Logic Business)
+            if (ghiChu != null && !ghiChu.isEmpty()) {
+                String[] parts = ghiChu.split("\\|");
+                for (String p : parts) {
+                    if (p.contains("Dùng điểm") || p.contains("KM_GIAM:")) {
+                        tongTienGiam += Long.parseLong(p.replaceAll("[^0-9]", ""));
+                    }
+                }
+            }
+            
+            totalAmount -= tongTienGiam;
+            if (totalAmount < 0) totalAmount = 0;
+
+            String hienThiPT = "CHUYEN_KHOAN_NGAN_HANG".equals(row[5]) ? "Chuyển khoản" : "Tiền mặt";
+            String ngayStr = row[2] != null ? ((java.sql.Timestamp)row[2]).toLocalDateTime().format(dtf) : "";
+
+            dsFormatted.add(new Object[]{
+                row[0], ngayStr, row[3] != null ? row[3] : "Khách lẻ", 
+                row[4] != null ? row[4] : "", hienThiPT, df.format(totalAmount).replace(',', '.'), 
+                "Hoàn thành", ghiChu
+            });
+        }
+        return dsFormatted;
+    }
     public HoaDon getHoaDonTheoMa(String maHD) {
         return daoHD.timHoaDonTheoMa(maHD); 
     }
@@ -99,11 +212,9 @@ public class BUS_HoaDon {
         public long tongThanhToan = 0;
     }
 
-    // THÊM HÀM NÀY VÀO BUS_HoaDon: Đưa mọi phép toán cộng trừ nhân chia về đây
+    
     public KetQuaHoaDon tinhToanTienHoaDon(List<long[]> danhSachSanPham, boolean isDungDiem, int diemHienTaiKH, long tienGiamGiaKhuyenMai) {
         KetQuaHoaDon kq = new KetQuaHoaDon();
-        
-        // 1. Tính toán Tạm tính, VAT và Tổng số lượng
         for (long[] sp : danhSachSanPham) {
             long soLuong = sp[0];
             long donGia = sp[1];
@@ -114,12 +225,8 @@ public class BUS_HoaDon {
             kq.tongVat += (long) (thanhTien * thueSuat);
             kq.tongSoLuongSP += soLuong;
         }
-        
-        // 2. Tính Tổng thanh toán (chưa trừ điểm)
         long totalToPay = kq.tamTinh + kq.tongVat - tienGiamGiaKhuyenMai;
         if (totalToPay < 0) totalToPay = 0;
-        
-        // 3. Xử lý logic dùng điểm thưởng
         if (isDungDiem) {
             long maxTienGiam = diemHienTaiKH * 100L; // 1 điểm = 100đ
             if (maxTienGiam > totalToPay) {

@@ -27,96 +27,53 @@ public class DAO_HoaDon {
 
     public DAO_HoaDon() {}
 
-    public List<Object[]> layDanhSachHoaDonChoBang() {
+ // File: DAO_HoaDon.java
+    public List<Object[]> layDanhSachHoaDonRaw() {
         List<Object[]> ds = new ArrayList<>();
-        
-        // ĐÃ SỬA: Đổi / 100 thành / 100.0 để tránh lỗi chia số nguyên (mất VAT) trong SQL
+        // SQL lấy Tổng tiền chưa thuế và Tổng tiền thuế riêng biệt
         String sql = "SELECT hd.id, hd.loaiHD, hd.ngayLapHD, kh.hoVaTen, kh.sdt, hd.phuongThucThanhToan, hd.ghiChu, " +
-                "(SELECT SUM(ct.soLuong * dv.gia * (1 + (ISNULL(sp.thueVAT, 0) / 100.0))) " + 
-                " FROM ChiTietHoaDon ct " +
+                "(SELECT SUM(ct.soLuong * dv.gia) FROM ChiTietHoaDon ct " + 
                 " JOIN DonViDoLuong dv ON ct.donViDoLuongId = dv.id AND ct.sanPhamId = dv.sanPhamId " +
-                " JOIN SanPham sp ON ct.sanPhamId = sp.id " + 
-                " WHERE ct.hoaDonId = hd.id) as tongTienGoc " +
-                "FROM HoaDon hd " +
-                "LEFT JOIN KhachHang kh ON hd.khachHangId = kh.id " +
-                "ORDER BY hd.ngayLapHD DESC"; 
+                " WHERE ct.hoaDonId = hd.id) as tongTienChuaThue, " +
+                "(SELECT SUM(ct.soLuong * dv.gia * (ISNULL(sp.thueVAT, 0) / 100.0)) FROM ChiTietHoaDon ct " + 
+                " JOIN DonViDoLuong dv ON ct.donViDoLuongId = dv.id AND ct.sanPhamId = dv.sanPhamId " +
+                " JOIN SanPham sp ON ct.sanPhamId = sp.id WHERE ct.hoaDonId = hd.id) as tongTienThue " +
+                "FROM HoaDon hd LEFT JOIN KhachHang kh ON hd.khachHangId = kh.id ORDER BY hd.ngayLapHD DESC"; 
                      
         try (Connection con = ConnectDB.getInstance().getConnection();
              PreparedStatement pst = con.prepareStatement(sql);
              ResultSet rs = pst.executeQuery()) {
-            
-            DecimalFormat df = new DecimalFormat("#,###đ");
-            DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
-
             while (rs.next()) {
-                double totalAmount = rs.getDouble("tongTienGoc");
-                double originalAmount = totalAmount; // Lưu lại tổng tiền gốc để tính % KM
-                double tongTienGiam = 0;
-                String ghiChu = rs.getString("ghiChu");
-                String loaiHD = rs.getString("loaiHD"); 
-                
-                // ĐÃ SỬA: Xử lý khấu trừ tiền giảm giá đồng bộ với hàm layThongTinGiaTuHDGoc
-                if (ghiChu != null && !ghiChu.isEmpty()) {
-                    String[] parts = ghiChu.split("\\|");
-                    for (String p : parts) {
-                        p = p.trim();
-                        if (p.startsWith("Dùng điểm: -") || p.contains("KM_GIAM:")) {
-                            try {
-                                long tienGiam = Long.parseLong(p.replaceAll("[^0-9]", ""));
-                                tongTienGiam += tienGiam;
-                            } catch (Exception ignored) {}
-                        } else if (p.startsWith("KM:")) {
-                            // Truy vấn để bóc tách và tính toán % giảm hoặc tiền mặt từ HinhThucKhuyenMai
-                            String[] mks = p.substring(3).trim().split(",");
-                            for (String mk : mks) {
-                                String sqlKM = "SELECT loaiHinhThuc, giaTri FROM HinhThucKhuyenMai WHERE khuyenMaiId = ?";
-                                try (PreparedStatement pstKM = con.prepareStatement(sqlKM)) {
-                                    pstKM.setString(1, mk.trim());
-                                    try (ResultSet rsKM = pstKM.executeQuery()) {
-                                        if (rsKM.next()) {
-                                            String loaiKM = rsKM.getString("loaiHinhThuc");
-                                            double val = rsKM.getDouble("giaTri");
-                                            if (loaiKM.contains("PHAN_TRAM") || loaiKM.contains("%")) {
-                                                tongTienGiam += originalAmount * (val / 100.0);
-                                            } else if (loaiKM.contains("TIEN_MAT")) {
-                                                tongTienGiam += val;
-                                            }
-                                        }
-                                    }
-                                } catch (Exception ignored) {}
-                            }
-                        }
-                    }
-                }
-                
-                totalAmount -= tongTienGiam; // Trừ đi tổng tiền khuyến mãi
-                if (totalAmount < 0) totalAmount = 0;
-
-                String id = rs.getString("id");
-                String ngay = rs.getTimestamp("ngayLapHD") != null 
-                             ? rs.getTimestamp("ngayLapHD").toLocalDateTime().format(dtf) : "";
-                String kh = rs.getString("hoVaTen") != null ? rs.getString("hoVaTen") : "Khách lẻ";
-                String sdt = rs.getString("sdt") != null ? rs.getString("sdt") : "";
-                
-                String pt = rs.getString("phuongThucThanhToan");
-                String hienThiPT = "CHUYEN_KHOAN_NGAN_HANG".equals(pt) ? "Chuyển khoản" : "Tiền mặt";
-
-                String trangThai = "Hoàn thành";
-                if (loaiHD != null && (loaiHD.equals("TRA_HANG") || loaiHD.equals("DOI_HANG"))) {
-                    trangThai = "Đổi trả";
-                } else if (ghiChu != null) {
-                    if (ghiChu.contains("Lưu nháp") || ghiChu.contains("Đang xử lý")) trangThai = "Đang xử lý";
-                    else if (ghiChu.contains("Đã hủy")) trangThai = "Đã hủy";
-                }
-
                 ds.add(new Object[]{
-                    id, ngay, kh, sdt, hienThiPT, df.format(totalAmount), trangThai, ghiChu
+                    rs.getString("id"), rs.getString("loaiHD"), rs.getTimestamp("ngayLapHD"),
+                    rs.getString("hoVaTen"), rs.getString("sdt"), rs.getString("phuongThucThanhToan"),
+                    rs.getString("ghiChu"), rs.getDouble("tongTienChuaThue"), rs.getDouble("tongTienThue")
                 });
             }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
+        } catch (SQLException e) { e.printStackTrace(); }
         return ds;
+    }
+
+    // 2. Hàm phụ trợ để BUS gọi lấy thông tin Khuyến Mãi (Không viết SQL dính vào BUS)
+    public double[] layThongTinKhuyenMai(String maKM) {
+        String sqlKM = "SELECT loaiHinhThuc, giaTri FROM HinhThucKhuyenMai WHERE khuyenMaiId = ?";
+        try (Connection con = ConnectDB.getInstance().getConnection();
+             PreparedStatement pstKM = con.prepareStatement(sqlKM)) {
+            pstKM.setString(1, maKM.trim());
+            try (ResultSet rsKM = pstKM.executeQuery()) {
+                if (rsKM.next()) {
+                    String loaiKM = rsKM.getString("loaiHinhThuc");
+                    double val = rsKM.getDouble("giaTri");
+                    // Trả về mảng: Index 0 là loại (1 = %, 2 = Tiền mặt), Index 1 là Giá trị
+                    if (loaiKM.contains("PHAN_TRAM") || loaiKM.contains("%")) {
+                        return new double[]{1.0, val}; 
+                    } else if (loaiKM.contains("TIEN_MAT")) {
+                        return new double[]{2.0, val}; 
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
+        return new double[]{0.0, 0.0};
     }
     
     public List<String> timGoiYHoaDonHoanThanh(String tuKhoa) {
