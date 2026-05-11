@@ -518,63 +518,64 @@ public class ManHinhLoHang extends JPanel {
     }
 
     private void loadDataFromDatabase() {
-        dsTatCa.clear();
-        try {
-            busKho.kiemKeKho();
-            List<LoHang> dsLo = busKho.layDSLoHang(hienLoAn);
+        SwingUtilities.invokeLater(() -> {
+            try {
+                busKho.kiemKeKho();
+                List<LoHang> dsLo = busKho.layDSLoHang(hienLoAn);
 
-            if (dsLo != null) {
-                for (LoHang lh : dsLo) {
-                    if (lh == null)
-                        continue;
+                dsTatCa.clear();
+                if (dsLo != null) {
+                    for (LoHang lh : dsLo) {
+                        if (lh == null) continue;
 
-                    String id = safe(lh.getId());
-                    String soLo = safe(lh.getSoLoHang());
+                        String id = safe(lh.getId());
+                        String soLo = safe(lh.getSoLoHang());
 
-                    String maSP = "";
-                    String tenSP = "";
-                    String donVi = "Chưa có";
+                        String maSP = "";
+                        String tenSP = "";
+                        String donVi = "Chưa có";
 
-                    if (lh.getSanPhamId() != null) {
-                        if (lh.getSanPhamId().getId() != null)
-                            maSP = lh.getSanPhamId().getId();
-                        if (lh.getSanPhamId().getTen() != null)
-                            tenSP = lh.getSanPhamId().getTen();
+                        if (lh.getSanPhamId() != null) {
+                            if (lh.getSanPhamId().getId() != null)
+                                maSP = lh.getSanPhamId().getId();
+                            if (lh.getSanPhamId().getTen() != null)
+                                tenSP = lh.getSanPhamId().getTen();
 
-                        if (!maSP.isEmpty()) {
-                            List<DonViDoLuong> dsDVDL = busDonVi.getDSTheoMaSP(maSP);
-                            if (dsDVDL != null && !dsDVDL.isEmpty()) {
-                                donVi = dsDVDL.get(0).getTen();
-                                for (DonViDoLuong dv : dsDVDL) {
-                                    if (dv.getChuyenDoiSangDonViCoBan() == 1.0) {
-                                        donVi = dv.getTen();
-                                        break;
+                            if (!maSP.isEmpty()) {
+                                List<DonViDoLuong> dsDVDL = busDonVi.getDSTheoMaSP(maSP);
+                                if (dsDVDL != null && !dsDVDL.isEmpty()) {
+                                    donVi = dsDVDL.get(0).getTen();
+                                    for (DonViDoLuong dv : dsDVDL) {
+                                        if (dv.getChuyenDoiSangDonViCoBan() == 1.0) {
+                                            donVi = dv.getTen();
+                                            break;
+                                        }
                                     }
                                 }
                             }
                         }
+
+                        int soLuong = lh.getSoLuongLoHang();
+                        int gia = lh.getGia();
+                        String hanSuDung = lh.getNgayHetHan() != null
+                                ? lh.getNgayHetHan().toLocalDate().format(DATE_FORMAT)
+                                : "";
+
+                        String trangThai = convertTrangThaiToText(lh.getTrangThai());
+                        if (soLuong <= 0 && !"Đã ẩn".equals(trangThai)) {
+                            trangThai = "Hết hàng";
+                        }
+
+                        dsTatCa.add(new BatchItem(id, soLo, maSP, tenSP, donVi, soLuong, gia, hanSuDung, trangThai));
                     }
-
-                    int soLuong = lh.getSoLuongLoHang();
-                    int gia = lh.getGia();
-                    String hanSuDung = lh.getNgayHetHan() != null
-                            ? lh.getNgayHetHan().toLocalDate().format(DATE_FORMAT)
-                            : "";
-
-                    String trangThai = convertTrangThaiToText(lh.getTrangThai());
-                    if (soLuong <= 0 && !"Đã ẩn".equals(trangThai)) {
-                        trangThai = "Hết hàng";
-                    }
-
-                    dsTatCa.add(new BatchItem(id, soLo, maSP, tenSP, donVi, soLuong, gia, hanSuDung, trangThai));
                 }
+                updateStats();
+                refreshTable();
+            } catch (Exception e) {
+                e.printStackTrace();
+                showCustomNotification("Lỗi hệ thống", "Lỗi tải dữ liệu lô hàng từ CSDL!", "ERROR");
             }
-            updateStats();
-            refreshTable();
-        } catch (Exception e) {
-            e.printStackTrace();
-            showCustomNotification("Lỗi hệ thống", "Lỗi tải dữ liệu lô hàng từ CSDL!", "ERROR");
-        }
+        });
     }
 
     private void updateStats() {
@@ -718,12 +719,25 @@ public class ManHinhLoHang extends JPanel {
     }
 
     public void moManHinhNhapLoMoi(String tenSP) {
-        Window owner = SwingUtilities.getWindowAncestor(this);
-        ManHinhNhapLoHangMoi dialog = new ManHinhNhapLoHangMoi(owner, this::loadDataFromDatabase);
-        if (tenSP != null && !tenSP.isEmpty()) {
-            dialog.setSanPhamAutoFill(tenSP);
+        try {
+            Window window = SwingUtilities.getWindowAncestor(this);
+            JFrame owner = null;
+            if (window instanceof JFrame) {
+                owner = (JFrame) window;
+            } else {
+                Frame[] frames = JFrame.getFrames();
+                if (frames.length > 0) owner = (JFrame) frames[0];
+            }
+
+            ManHinhNhapLoHangMoi dialog = new ManHinhNhapLoHangMoi(owner, this::loadDataFromDatabase);
+            if (tenSP != null && !tenSP.isEmpty()) {
+                dialog.setSanPhamAutoFill(tenSP);
+            }
+            dialog.setVisible(true);
+        } catch (Exception e) {
+            e.printStackTrace();
+            showCustomNotification("Lỗi Giao Diện", "Không thể mở form Nhập Lô Hàng: " + e.getMessage(), "ERROR");
         }
-        dialog.setVisible(true);
     }
 
     private void moManHinhNhapLoMoi() {
@@ -886,7 +900,7 @@ public class ManHinhLoHang extends JPanel {
 
         JPanel pnlBody = new JPanel(null);
         pnlBody.setBackground(Color.WHITE);
-        pnlBody.setPreferredSize(new Dimension(420, 170)); // Tăng height một xíu để vừa dòng chữ dài
+        pnlBody.setPreferredSize(new Dimension(420, 170)); 
 
         JPanel pnlIcon = new JPanel() {
             @Override
@@ -1396,6 +1410,8 @@ public class ManHinhLoHang extends JPanel {
 
         if (!readOnly)
             return;
+        
+        // ĐÃ SỬA CÚ PHÁP XUỐNG JAVA 8 TRUYỀN THỐNG: KHÔNG SỬ DỤNG INSTANCEOF BẮT KIỂU JAVA 16+
         disableButtonsByText(this, "Thêm mới", "Nhập lô hàng", "Xuất / Hủy Kho", "Lịch sử", "Nhập Excel", "Thêm", "Xóa",
                 "Sửa", "Lưu");
 
@@ -1405,16 +1421,19 @@ public class ManHinhLoHang extends JPanel {
         }
     }
 
+    // ĐÃ SỬA CÚ PHÁP XUỐNG JAVA 8 TRUYỀN THỐNG: KHÔNG SỬ DỤNG INSTANCEOF BẮT KIỂU JAVA 16+
     private void disableButtonsByText(Container container, String... texts) {
         for (Component c : container.getComponents()) {
-            if (c instanceof JButton btn) {
+            if (c instanceof JButton) {
+                JButton btn = (JButton) c;
                 for (String t : texts) {
                     if (t.equals(btn.getText())) {
                         btn.setVisible(false);
                         break;
                     }
                 }
-            } else if (c instanceof Container child) {
+            } else if (c instanceof Container) {
+                Container child = (Container) c;
                 disableButtonsByText(child, texts);
             }
         }
