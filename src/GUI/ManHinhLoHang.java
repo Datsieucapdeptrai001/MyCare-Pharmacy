@@ -456,19 +456,16 @@ public class ManHinhLoHang extends JPanel {
         header.setPreferredSize(new Dimension(header.getWidth(), 40));
         header.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, BORDER_COLOR));
 
-        // ==========================================
-        // CẬP NHẬT LẠI ĐỘ RỘNG CÁC CỘT (TỶ LỆ VÀNG ĐỂ KHÔNG BỊ CẮT CHỮ)
-        // ==========================================
-        table.getColumnModel().getColumn(0).setPreferredWidth(40); // STT
-        table.getColumnModel().getColumn(1).setPreferredWidth(120); // Mã lô
-        table.getColumnModel().getColumn(2).setPreferredWidth(230); // Sản phẩm (Thu gọn bớt)
-        table.getColumnModel().getColumn(3).setPreferredWidth(100); // Đơn vị (Nới rộng để chứa Hộp/Viên)
-        table.getColumnModel().getColumn(4).setPreferredWidth(180); // Tồn kho (Nới rộng để chứa chuỗi dài)
-        table.getColumnModel().getColumn(5).setPreferredWidth(110); // Giá vốn
-        table.getColumnModel().getColumn(6).setPreferredWidth(100); // HSD
-        table.getColumnModel().getColumn(7).setPreferredWidth(130); // Còn lại
-        table.getColumnModel().getColumn(8).setPreferredWidth(120); // Tình trạng
-        table.getColumnModel().getColumn(9).setPreferredWidth(60); // Thao tác
+        table.getColumnModel().getColumn(0).setPreferredWidth(40);
+        table.getColumnModel().getColumn(1).setPreferredWidth(120);
+        table.getColumnModel().getColumn(2).setPreferredWidth(230);
+        table.getColumnModel().getColumn(3).setPreferredWidth(100);
+        table.getColumnModel().getColumn(4).setPreferredWidth(180);
+        table.getColumnModel().getColumn(5).setPreferredWidth(110);
+        table.getColumnModel().getColumn(6).setPreferredWidth(100);
+        table.getColumnModel().getColumn(7).setPreferredWidth(130);
+        table.getColumnModel().getColumn(8).setPreferredWidth(120);
+        table.getColumnModel().getColumn(9).setPreferredWidth(60);
 
         table.addMouseMotionListener(new MouseMotionAdapter() {
             @Override
@@ -571,7 +568,6 @@ public class ManHinhLoHang extends JPanel {
                                     int slLon = (int) (soLuong / maxQuyDoi);
                                     int slLe = (int) (soLuong % maxQuyDoi);
 
-                                    // FIX LOGIC HIỂN THỊ: Thay dấu "-" bằng dấu "," cho dễ nhìn, gọn gàng
                                     if (slLon > 0 && slLe > 0) {
                                         tonKhoHienThi = formatNumber(slLon) + " " + dvLon.getTen() + ", "
                                                 + formatNumber(slLe) + " " + dvCoBan.getTen();
@@ -672,19 +668,15 @@ public class ManHinhLoHang extends JPanel {
                         case DUOC_BAN:
                             matchFilter = "Được bán".equals(item.trangThai);
                             break;
-
                         case HET_HAN:
                             matchFilter = conLai.startsWith("Quá") || "Hết hạn".equals(item.trangThai);
                             break;
-
                         case HET_HANG:
                             matchFilter = "Hết hàng".equals(item.trangThai);
                             break;
-
                         case GAN_HET_HAN_90:
                             matchFilter = !conLai.startsWith("Quá") && parseDays(conLai) <= 90;
                             break;
-
                         default:
                             matchFilter = true;
                             break;
@@ -850,10 +842,6 @@ public class ManHinhLoHang extends JPanel {
         }
     }
 
-    // =========================================================================
-    // HỆ THỐNG DIALOG HIỆN ĐẠI (Đồng bộ từ màn hình Xuất Kho)
-    // =========================================================================
-
     private boolean showCustomConfirmDialog(String titleText, String message) {
         final boolean[] result = { false };
         Window owner = SwingUtilities.getWindowAncestor(this);
@@ -986,8 +974,6 @@ public class ManHinhLoHang extends JPanel {
         }
         dialog.setVisible(true);
     }
-
-    // =========================================================================
 
     private void switchFilter(TrangThaiFilter newFilter, JButton source) {
         if (chkNear90 != null)
@@ -1214,7 +1200,6 @@ public class ManHinhLoHang extends JPanel {
                 lbl.setHorizontalAlignment(SwingConstants.CENTER);
             } else if (column == 4 || column == 5) {
                 lbl.setHorizontalAlignment(SwingConstants.RIGHT);
-                // Highlight cột Tồn kho cho nổi bật
                 if (column == 4) {
                     lbl.setFont(new Font("Segoe UI", Font.BOLD, 13));
                     if (!"Đã ẩn".equals(trangThaiRow)) {

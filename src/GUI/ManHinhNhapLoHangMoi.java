@@ -842,22 +842,18 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         boolean laTaiSuDung = busKho.tonTaiMaLoDaAn(maLo);
         boolean success = busKho.themLoHang(loHang);
 
-        // ĐÃ SỬA: Thay JOptionPane bằng hàm hiển thị thông báo xịn xò
         if (success) {
             String tenSPHienThi = (selectedSanPham != null && selectedSanPham.getTen() != null)
                     ? selectedSanPham.getTen()
                     : "Sản phẩm không tên";
-
             showModernAlert(laTaiSuDung ? "Đã tái sử dụng lô hàng đã ẩn!" : "Thêm lô hàng thành công!", true);
             if (reloadListener != null)
                 reloadListener.onReload();
             dispose();
 
-            // GỌI MÀN HÌNH IN MÃ VẠCH 1D LÊN SAU KHI LƯU THÀNH CÔNG
             Window owner = SwingUtilities.getWindowAncestor(this);
             DialogInMaVach dialogMaVach = new DialogInMaVach(owner, maLo, tenSPHienThi);
             dialogMaVach.setVisible(true);
-
         } else {
             showModernAlert("Lưu lô hàng thất bại!", false);
         }
@@ -899,7 +895,7 @@ public class ManHinhNhapLoHangMoi extends JDialog {
     }
 
     private void showQRScannerDialog() {
-        JDialog dialog = new JDialog(this, "Quét mã QR", Dialog.ModalityType.APPLICATION_MODAL);
+        JDialog dialog = new JDialog(this, "Quét mã vạch", Dialog.ModalityType.APPLICATION_MODAL);
         dialog.setSize(400, 150);
         dialog.setLocationRelativeTo(this);
         dialog.setUndecorated(true);
@@ -948,8 +944,6 @@ public class ManHinhNhapLoHangMoi extends JDialog {
                 if (parts.length >= 5) {
                     String maSP = parts[0].trim();
                     setSanPhamAutoFill(maSP);
-
-                    // Tìm và load quy cách cho sản phẩm mã QR này
                     for (SanPham sp : dsTatCaSanPham) {
                         if (sp.getId().equalsIgnoreCase(maSP) || sp.getTen().equalsIgnoreCase(maSP)) {
                             selectedSanPham = sp;
@@ -957,7 +951,6 @@ public class ManHinhNhapLoHangMoi extends JDialog {
                             break;
                         }
                     }
-
                     txtMaLo.setText(parts[1].trim());
                     txtSoLuong.setText(parts[2].trim());
                     long parsedGiaNhap = Long.parseLong(getDigitsOnly(parts[3].trim()));
