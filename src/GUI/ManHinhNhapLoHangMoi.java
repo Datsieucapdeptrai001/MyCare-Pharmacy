@@ -7,7 +7,9 @@ import Entity.DonViDoLuong;
 import Entity.KhoHang;
 import Entity.LoHang;
 import Entity.SanPham;
+import Enumeration.TrangThaiLoHang;
 import Utils.MenuIcon;
+import Utils.ThongBao;
 
 import javax.swing.*;
 import javax.swing.border.AbstractBorder;
@@ -42,6 +44,11 @@ public class ManHinhNhapLoHangMoi extends JDialog {
     private static final Color HEADER_BG = new Color(14, 116, 144);
     private static final Color FOOTER_BG = new Color(248, 250, 252);
     private static final Color TEXT_PRIMARY = new Color(15, 23, 42);
+    
+    private static final Color HEADER_BG = new Color(14, 116, 144); 
+    private static final Color FOOTER_BG = new Color(248, 250, 252); 
+    
+    private static final Color TEXT_PRIMARY = new Color(15, 23, 42); 
     private static final Color TEXT_SECONDARY = new Color(100, 116, 139);
     private static final Color TEXT_HINT = new Color(148, 163, 184);
     private static final Color PRIMARY = new Color(14, 116, 144);
@@ -64,7 +71,7 @@ public class ManHinhNhapLoHangMoi extends JDialog {
     private final BUS_Kho busKho = new BUS_Kho();
     private final BUS_DonViDoLuong busDonVi = new BUS_DonViDoLuong();
 
-    private HintTextField txtTimSanPham;
+    private SuggestionField txtTimSanPham;
     private SanPham selectedSanPham = null;
     private List<SanPham> dsTatCaSanPham = new ArrayList<>();
     private JPopupMenu popupSanPham;
@@ -77,6 +84,7 @@ public class ManHinhNhapLoHangMoi extends JDialog {
     private String currentDonViNho = "ĐV cơ bản";
     private String currentDonViLon = "Đơn vị";
 
+    
     private HintTextField txtMaLo;
     private HintTextField txtSoLuong;
     private HintTextField txtGiaNhap;
@@ -108,9 +116,9 @@ public class ManHinhNhapLoHangMoi extends JDialog {
 
     public void setSanPhamAutoFill(String tenSP) {
         if (txtTimSanPham != null) {
-            txtTimSanPham.setText(tenSP);
-            txtTimSanPham.requestFocus();
-            txtTimSanPham.setCaretPosition(txtTimSanPham.getText().length());
+            txtTimSanPham.getTextField().setText(tenSP);
+            txtTimSanPham.getTextField().requestFocus();
+            txtTimSanPham.getTextField().setCaretPosition(txtTimSanPham.getTextField().getText().length());
         }
     }
 
@@ -192,8 +200,13 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         body.setBackground(CARD_BG);
         body.setBorder(new EmptyBorder(20, 32, 20, 32));
 
+        // ĐÃ KHẮC PHỤC: Lấy danh sách sản phẩm đổ vào String List cho SuggestionField giống ManHinhKhuyenMai
+        List<String> khoSanPham = new ArrayList<>();
         try {
             dsTatCaSanPham = busSanPham.getDsThuoc();
+            for (SanPham sp : dsTatCaSanPham) {
+                khoSanPham.add(sp.getTen() + " (" + sp.getId() + ")");
+            }
         } catch (Exception e) {
         }
 
@@ -205,6 +218,7 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         pnlQR.add(btnScanQR);
 
         JPanel comboSanPhamWrapper = createProductSelectorField();
+        txtTimSanPham = new SuggestionField("Sản phẩm (Bắt buộc chọn từ danh sách) *", "Nhập tên, mã SP...", khoSanPham, "SEARCH");
 
         txtMaLo = createTextField("VD: LOT-2026-001");
 
@@ -255,6 +269,13 @@ public class ManHinhNhapLoHangMoi extends JDialog {
 
         gbc.gridy = 0;
         body.add(pnlQR, gbc);
+        // Bọc lỗi cho SuggestionField
+        JPanel spWrapper = new JPanel(new BorderLayout());
+        spWrapper.setOpaque(false);
+        spWrapper.add(txtTimSanPham, BorderLayout.CENTER);
+        spWrapper.add(errSanPham, BorderLayout.SOUTH);
+        body.add(spWrapper, gbc);
+
         gbc.gridy = 1;
         body.add(createFullWidthField("Sản phẩm (Chọn hoặc nhập mới) *", comboSanPhamWrapper, errSanPham, "SEARCH"),
                 gbc);
@@ -733,12 +754,18 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         }, KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), JComponent.WHEN_IN_FOCUSED_WINDOW);
         rootPane.registerKeyboardAction(e -> dispose(), KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0),
                 JComponent.WHEN_IN_FOCUSED_WINDOW);
+        rootPane.registerKeyboardAction(
+                e -> handleSubmit(), KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), JComponent.WHEN_IN_FOCUSED_WINDOW
+        );
+        rootPane.registerKeyboardAction(
+                e -> dispose(), KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), JComponent.WHEN_IN_FOCUSED_WINDOW
+        );
     }
 
     private void handleSubmit() {
         clearErrors();
 
-        String spText = txtTimSanPham.getText().trim();
+        String spText = txtTimSanPham.getTextField().getText().trim();
         String maLo = txtMaLo.getText().trim().toUpperCase();
         String giaNhapText = getDigitsOnly(txtGiaNhap.getText().trim());
         String hanSuDung = txtHanSuDung.getText().trim();
@@ -748,6 +775,9 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         if (spText.isEmpty() || spText.equals("Nhập tên, mã SP hoặc bấm ▼ để chọn...")) {
             errSanPham.setText("Vui lòng chọn hoặc nhập tên sản phẩm");
             valid = false;
+        if (spText.isEmpty() || spText.equals("Nhập tên, mã SP...")) { 
+            errSanPham.setText("Vui lòng chọn sản phẩm từ danh sách!"); 
+            valid = false; 
         } else {
             selectedSanPham = null;
             for (SanPham sp : dsTatCaSanPham) {
@@ -763,6 +793,9 @@ public class ManHinhNhapLoHangMoi extends JDialog {
                 selectedSanPham.setTen(spText);
             } else {
                 updateQuyCachTuSanPham(selectedSanPham.getId());
+            if (selectedSanPham == null || selectedSanPham.getId() == null || selectedSanPham.getId().isEmpty()) {
+                errSanPham.setText("Vui lòng chọn 1 sản phẩm hợp lệ từ danh sách gợi ý!");
+                valid = false;
             }
         }
 
@@ -834,6 +867,7 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         loHang.setNgayNhap(LocalDateTime.now());
         loHang.setNgayHetHan(ngayHSD.atStartOfDay());
         loHang.setSanPhamId(selectedSanPham);
+        loHang.setTrangThai(TrangThaiLoHang.CON_HANG); 
 
         KhoHang kho = new KhoHang();
         kho.setId("KHO-0001");
@@ -842,7 +876,6 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         boolean laTaiSuDung = busKho.tonTaiMaLoDaAn(maLo);
         boolean success = busKho.themLoHang(loHang);
 
-        // ĐÃ SỬA: Thay JOptionPane bằng hàm hiển thị thông báo xịn xò
         if (success) {
             String tenSPHienThi = (selectedSanPham != null && selectedSanPham.getTen() != null)
                     ? selectedSanPham.getTen()
@@ -851,6 +884,9 @@ public class ManHinhNhapLoHangMoi extends JDialog {
             showModernAlert(laTaiSuDung ? "Đã tái sử dụng lô hàng đã ẩn!" : "Thêm lô hàng thành công!", true);
             if (reloadListener != null)
                 reloadListener.onReload();
+            String msg = laTaiSuDung ? "Đã tái sử dụng lô hàng đã ẩn thành công!" : "Thêm lô hàng mới vào hệ thống thành công!";
+            ThongBao.show(this, "Thành Công", msg, "SUCCESS");
+            if (reloadListener != null) reloadListener.onReload();
             dispose();
 
             // GỌI MÀN HÌNH IN MÃ VẠCH 1D LÊN SAU KHI LƯU THÀNH CÔNG
@@ -859,7 +895,7 @@ public class ManHinhNhapLoHangMoi extends JDialog {
             dialogMaVach.setVisible(true);
 
         } else {
-            showModernAlert("Lưu lô hàng thất bại!", false);
+            ThongBao.show(this, "Thất Bại", "Lưu lô hàng thất bại! Vui lòng kiểm tra lại CSDL.", "ERROR");
         }
     }
 
@@ -882,6 +918,7 @@ public class ManHinhNhapLoHangMoi extends JDialog {
             }
             return String.format("LH-%04d", max + 1);
         } catch (Exception e) {
+        } catch (Exception e) { 
         }
         return "LH-0001";
     }
@@ -1082,6 +1119,161 @@ public class ManHinhNhapLoHangMoi extends JDialog {
             g2.setStroke(new BasicStroke(focused ? 1.5f : 1f));
             g2.drawRoundRect(x + 1, y + 1, width - 3, height - 3, 10, 10);
             g2.dispose();
+        }
+    }
+
+    // ĐÃ KHẮC PHỤC: Chép toàn bộ JMenuItem JPopupMenu an toàn từ màn hình khuyến mãi qua
+    class SuggestionField extends JPanel {
+        private TextFieldWithPlaceholder textField;
+        private JPopupMenu popupMenu;
+        private List<String> dictionary;
+        private boolean isSelecting = false;
+
+        public SuggestionField(String label, String placeholder, List<String> dictionary, String iconName) {
+            this.dictionary = dictionary;
+            setLayout(new BorderLayout(0, 8));
+            setOpaque(false);
+
+            JLabel lbl = new JLabel(label);
+            lbl.setFont(FONT_LABEL);
+            lbl.setForeground(TEXT_PRIMARY);
+
+            textField = new TextFieldWithPlaceholder(placeholder);
+            textField.setBorder(null);
+            textField.setOpaque(false);
+            textField.setPreferredSize(new Dimension(0, 36));
+
+            JPanel pnlInput = new JPanel(new BorderLayout(10, 0)) {
+                @Override
+                protected void paintComponent(Graphics g) {
+                    Graphics2D g2 = (Graphics2D) g.create();
+                    g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                    g2.setColor(getBackground());
+                    g2.fillRoundRect(0, 0, getWidth(), getHeight(), 16, 16);
+                    g2.dispose();
+                    super.paintComponent(g);
+                }
+            };
+            pnlInput.setOpaque(false);
+            pnlInput.setBackground(Color.WHITE);
+
+            pnlInput.setBorder(BorderFactory.createCompoundBorder(
+                    new ModernBorder(),
+                    new EmptyBorder(0, 0, 0, 0)));
+
+            if (iconName != null && !iconName.isEmpty()) {
+                JLabel lblIcon = new JLabel(new MenuIcon(iconName));
+                lblIcon.setForeground(PRIMARY);
+                pnlInput.add(lblIcon, BorderLayout.WEST);
+            }
+
+            textField.addFocusListener(new FocusAdapter() {
+                public void focusGained(FocusEvent e) {
+                    pnlInput.setBackground(Color.decode("#F0F8FF"));
+                    pnlInput.repaint();
+                }
+
+                public void focusLost(FocusEvent e) {
+                    pnlInput.setBackground(Color.WHITE);
+                    pnlInput.repaint();
+                }
+            });
+
+            pnlInput.add(textField, BorderLayout.CENTER);
+
+            add(lbl, BorderLayout.NORTH);
+            add(pnlInput, BorderLayout.CENTER);
+
+            popupMenu = new JPopupMenu();
+            popupMenu.setFocusable(false);
+
+            textField.getDocument().addDocumentListener(new DocumentListener() {
+                public void insertUpdate(DocumentEvent e) { if (!isSelecting) showSuggestions(); }
+                public void removeUpdate(DocumentEvent e) { if (!isSelecting) showSuggestions(); }
+                public void changedUpdate(DocumentEvent e) { if (!isSelecting) showSuggestions(); }
+            });
+        }
+
+        private void showSuggestions() {
+            if (!textField.hasFocus()) return; 
+
+            SwingUtilities.invokeLater(() -> {
+                if (isSelecting) return;
+                popupMenu.setVisible(false);
+                popupMenu.removeAll();
+
+                String rawText = textField.getText();
+                if (rawText == null || rawText.trim().isEmpty()) return;
+
+                String text = rawText.toLowerCase();
+                boolean hasItems = false;
+                int count = 0;
+
+                for (String word : dictionary) {
+                    if (word.toLowerCase().contains(text)) {
+                        JMenuItem item = new JMenuItem(word);
+                        item.setCursor(new Cursor(Cursor.HAND_CURSOR));
+                        item.setBackground(Color.WHITE);
+                        item.setFont(FONT_TEXT);
+
+                        item.addMouseListener(new MouseAdapter() {
+                            @Override
+                            public void mousePressed(MouseEvent e) {
+                                if (SwingUtilities.isLeftMouseButton(e)) {
+                                    isSelecting = true;
+                                    if (textField.getInputContext() != null) {
+                                        textField.getInputContext().endComposition();
+                                    }
+                                    SwingUtilities.invokeLater(() -> {
+                                        textField.setText(word);
+                                        textField.setCaretPosition(word.length());
+                                        textField.setForeground(TEXT_PRIMARY);
+                                        popupMenu.setVisible(false);
+                                        Timer timer = new Timer(50, evt -> isSelecting = false);
+                                        timer.setRepeats(false);
+                                        timer.start();
+                                    });
+                                }
+                            }
+                        });
+                        popupMenu.add(item);
+                        hasItems = true;
+                        count++;
+                        if (count >= 10) break;
+                    }
+                }
+
+                if (hasItems) {
+                    popupMenu.pack();
+                    popupMenu.show(textField, 0, textField.getHeight());
+                }
+            });
+        }
+
+        public JTextField getTextField() {
+            return textField;
+        }
+
+        class TextFieldWithPlaceholder extends JTextField {
+            private String placeholder;
+            public TextFieldWithPlaceholder(String placeholder) {
+                this.placeholder = placeholder;
+                this.setFont(FONT_TEXT);
+            }
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                if (getText().isEmpty() && placeholder != null && !placeholder.isEmpty()) {
+                    Graphics2D g2 = (Graphics2D) g.create();
+                    g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                    g2.setColor(TEXT_HINT);
+                    g2.setFont(getFont().deriveFont(Font.ITALIC));
+                    FontMetrics fm = g2.getFontMetrics();
+                    int y = (getHeight() - fm.getHeight()) / 2 + fm.getAscent();
+                    g2.drawString(placeholder, getInsets().left, y);
+                    g2.dispose();
+                }
+            }
         }
     }
 
