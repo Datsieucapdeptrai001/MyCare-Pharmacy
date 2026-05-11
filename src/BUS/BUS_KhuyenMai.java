@@ -4,7 +4,7 @@ import DAO.DAO_DieuKienKhuyenMai;
 import DAO.DAO_HinhThucKhuyenMai;
 import DAO.DAO_KhuyenMai;
 import DAO.DAO_SanPham; 
-import DAO.DAO_LoHang; // IMPORT DAO_LoHang CHO CHUẨN KIẾN TRÚC
+import DAO.DAO_LoHang; 
 import Entity.KhuyenMai;
 import Entity.DieuKienKhuyenMai;
 import Entity.HinhThucKhuyenMai;
@@ -23,14 +23,14 @@ public class BUS_KhuyenMai {
     private DAO_DieuKienKhuyenMai daoDieuKienKhuyenMai;
     private DAO_HinhThucKhuyenMai daoHinhThucKhuyenMai;
     private DAO_SanPham daoSanPham; 
-    private DAO_LoHang daoLoHang; // KHAI BÁO DAO_LOHANG
+    private DAO_LoHang daoLoHang; 
 
     public BUS_KhuyenMai() {
         this.daoKhuyenMai = new DAO_KhuyenMai();
         this.daoDieuKienKhuyenMai = new DAO_DieuKienKhuyenMai();
         this.daoHinhThucKhuyenMai = new DAO_HinhThucKhuyenMai();
         this.daoSanPham = new DAO_SanPham(); 
-        this.daoLoHang = new DAO_LoHang(); // KHỞI TẠO
+        this.daoLoHang = new DAO_LoHang(); 
     }
 
     public Object[] timKhuyenMaiTotNhat(double tongTienHoaDon) {
@@ -147,6 +147,53 @@ public class BUS_KhuyenMai {
         return true;
     }
 
+    // ==============================================================
+    // HÀM MỚI: KIỂM TRA CHI TIẾT GIỎ HÀNG CHUẨN 3 LỚP (TRẢ VỀ LỜI NHẮC NHỞ)
+    // ==============================================================
+    public String kiemTraChiTietKhuyenMaiVoiGioHang(String maKM, double tongTienHienTai, Map<String, Integer> gioHang) {
+        // 1. Kiểm tra Tổng tiền hóa đơn (Nếu khuyến mãi có yêu cầu Đơn tối thiểu)
+        List<DieuKienKhuyenMai> dsDieuKien = daoDieuKienKhuyenMai.layTheoKhuyenMaiId(maKM);
+        if (dsDieuKien != null && !dsDieuKien.isEmpty()) {
+            for (DieuKienKhuyenMai dk : dsDieuKien) {
+                if ("HOA_DON".equalsIgnoreCase(dk.getDoiTuongApDung()) && "GIA_TRI".equalsIgnoreCase(dk.getLoaiDieuKien())) {
+                    if (tongTienHienTai < dk.getGiaTri()) {
+                        double tienThieu = dk.getGiaTri() - tongTienHienTai;
+                        return "Chưa đủ điều kiện! Cần mua thêm " + String.format("%,.0f VNĐ", tienThieu) + " để áp dụng.";
+                    }
+                }
+            }
+        }
+
+        // 2. Kiểm tra Số lượng Sản phẩm yêu cầu trong Giỏ hàng
+        HinhThucKhuyenMai htkm = daoHinhThucKhuyenMai.layTheoMaKM(maKM);
+        if (htkm != null) {
+            String spYeuCau = htkm.getSpYeuCau();
+            int slYeuCau = htkm.getSlYeuCau();
+
+            // Nếu chương trình có chỉ định 1 sản phẩm bắt buộc phải mua
+            if (spYeuCau != null && !spYeuCau.trim().isEmpty()) {
+                String tenSpCheck = spYeuCau.trim();
+                int slTrongGio = 0;
+                
+                // Quét giỏ hàng xem có sản phẩm này không (Quét không phân biệt hoa thường để an toàn)
+                for (Map.Entry<String, Integer> entry : gioHang.entrySet()) {
+                    if (entry.getKey().trim().equalsIgnoreCase(tenSpCheck)) {
+                        slTrongGio += entry.getValue();
+                    }
+                }
+
+                // Nếu số lượng trong giỏ chưa đạt đủ số lượng yêu cầu của Khuyến mãi
+                if (slTrongGio < slYeuCau) {
+                    int slThieu = slYeuCau - slTrongGio;
+                    String donVi = (htkm.getDvdlYeuCau() == null || htkm.getDvdlYeuCau().trim().isEmpty()) ? "SP" : htkm.getDvdlYeuCau().trim();
+                    return "Chưa đủ điều kiện! Cần mua thêm " + slThieu + " " + donVi + " [" + tenSpCheck + "].";
+                }
+            }
+        }
+
+        return "OK"; // Thỏa mãn tất cả mọi điều kiện
+    }
+
     public double apDungKM(String maKM, double tongTienHoaDon) {
         if (!kiemTraDieuKienKhuyenMai(maKM, tongTienHoaDon)) return tongTienHoaDon;
 
@@ -216,16 +263,11 @@ public class BUS_KhuyenMai {
         }
     }
 
-    // ===========================================
-    // GỌI DAO_LOHANG ĐỂ LẤY DỮ LIỆU ĐÚNG CHUẨN 3 LỚP
-    // ===========================================
     public List<Map<String, Object>> layDanhSachGoiYKhuyenMaiVoiLogic() {
         List<Map<String, Object>> goiyList = new ArrayList<>();
         
-        // Gọi DAO_LoHang để lấy dữ liệu, tuân thủ đúng nguyên tắc Single Responsibility
         List<Object[]> dsLoCanDate = daoLoHang.layDuLieuLoHangCanDateTho();
         
-        // Chạy thuật toán tính toán Business Logic
         if (dsLoCanDate != null && !dsLoCanDate.isEmpty()) {
             for (Object[] dongDuLieu : dsLoCanDate) {
                 String soLoHang = (String) dongDuLieu[0];
@@ -234,12 +276,10 @@ public class BUS_KhuyenMai {
                 double giaNhap = (Double) dongDuLieu[3];
                 int soNgay = (Integer) dongDuLieu[4];
                 
-                // Thuật toán: Tính % tối đa có thể giảm trước khi chạm mốc lỗ
                 double phanTramMax = ((giaBan - giaNhap) / giaBan) * 100.0;
                 
-                if (phanTramMax <= 5) continue; // Nếu biên lợi nhuận quá mỏng (< 5%), không gợi ý
+                if (phanTramMax <= 5) continue; 
                 
-                // Gợi ý mức giảm an toàn: Ưu tiên xả hàng cận date nên giảm mạnh nhưng chừa lại 5-10% lời
                 int mucGiamGoiY = 5;
                 if (phanTramMax >= 40) mucGiamGoiY = 30;
                 else if (phanTramMax >= 30) mucGiamGoiY = 20;
@@ -248,14 +288,12 @@ public class BUS_KhuyenMai {
                 
                 double loiNhuanDuKien = giaBan - (giaBan * mucGiamGoiY / 100.0) - giaNhap;
                 
-                // Khởi tạo Map dữ liệu trả về cho GUI
                 Map<String, Object> item = new HashMap<>();
                 item.put("title", "Xả hàng lô: " + soLoHang);
                 item.put("desc", "Còn <b>" + soNgay + " ngày</b> hết hạn. Khuyên dùng: Giảm <b>" + mucGiamGoiY + "%</b> cho <b>" + tenSP + "</b> (Lãi: " + String.format("%,.0fđ", loiNhuanDuKien) + "/SP).");
                 item.put("icon", "ALERT");
                 item.put("color", "#E1304C"); 
                 
-                // Dữ liệu dùng để AutoFill vào Form (Hoàn toàn dùng giá trị Enum/Text)
                 Map<String, Object> autoData = new HashMap<>();
                 autoData.put("isAutoFill", true);
                 autoData.put("1", "Xả hàng lô " + soLoHang + " (" + tenSP + ")"); 
@@ -273,7 +311,6 @@ public class BUS_KhuyenMai {
             }
         }
 
-        // Fallback mặc định nếu không có lô hàng nào sắp hết hạn
         if (goiyList.isEmpty()) {
             LocalDate today = LocalDate.now();
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
