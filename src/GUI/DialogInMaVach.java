@@ -27,10 +27,11 @@ public class DialogInMaVach extends JDialog {
     private static final Color TEXT_PRIMARY = new Color(15, 23, 42);
     private static final Color TEXT_SECONDARY = new Color(100, 116, 139);
 
-    public DialogInMaVach(Window owner, String maLo, String tenSP) {
+    // HÀM KHỞI TẠO ĐÃ NHẬN 4 THAM SỐ (Có thêm maSP)
+    public DialogInMaVach(Window owner, String maLo, String maSP, String tenSP) {
         super(owner, "In Tem Mã Lô", ModalityType.APPLICATION_MODAL);
         setUndecorated(true);
-        setSize(400, 420);
+        setSize(400, 440);
         setLocationRelativeTo(owner);
         setShape(new RoundRectangle2D.Double(0, 0, getWidth(), getHeight(), 16, 16));
 
@@ -53,7 +54,6 @@ public class DialogInMaVach extends JDialog {
         body.setBackground(Color.WHITE);
         body.setBorder(new EmptyBorder(20, 20, 20, 20));
 
-        // KHUNG TEM NHÃN (Phần này sẽ được xuất ra máy in)
         JPanel pnlTemNhan = new JPanel();
         pnlTemNhan.setLayout(new BoxLayout(pnlTemNhan, BoxLayout.Y_AXIS));
         pnlTemNhan.setBackground(Color.WHITE);
@@ -65,7 +65,11 @@ public class DialogInMaVach extends JDialog {
         lblTenSP.setForeground(TEXT_PRIMARY);
         lblTenSP.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        // TẠO HÌNH ẢNH MÃ VẠCH 1D (CODE 128)
+        JLabel lblMaSP = new JLabel("Mã SP: " + maSP, SwingConstants.CENTER);
+        lblMaSP.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        lblMaSP.setForeground(TEXT_SECONDARY);
+        lblMaSP.setAlignmentX(Component.CENTER_ALIGNMENT);
+
         JLabel lblBarcode = new JLabel();
         lblBarcode.setAlignmentX(Component.CENTER_ALIGNMENT);
         try {
@@ -76,22 +80,21 @@ public class DialogInMaVach extends JDialog {
         } catch (Exception e) {
             lblBarcode.setText("Lỗi tạo mã vạch");
             lblBarcode.setForeground(Color.RED);
-            e.printStackTrace();
         }
 
-        JLabel lblMaLo = new JLabel(maLo, SwingConstants.CENTER);
+        JLabel lblMaLo = new JLabel("Lô: " + maLo, SwingConstants.CENTER);
         lblMaLo.setFont(new Font("Consolas", Font.BOLD, 16));
         lblMaLo.setForeground(TEXT_PRIMARY);
         lblMaLo.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        // Đưa các thành phần vào khung tem nhãn
         pnlTemNhan.add(lblTenSP);
-        pnlTemNhan.add(Box.createVerticalStrut(20));
+        pnlTemNhan.add(Box.createVerticalStrut(4));
+        pnlTemNhan.add(lblMaSP);
+        pnlTemNhan.add(Box.createVerticalStrut(15));
         pnlTemNhan.add(lblBarcode);
         pnlTemNhan.add(Box.createVerticalStrut(5));
         pnlTemNhan.add(lblMaLo);
 
-        // Thêm khung tem vào body
         body.add(pnlTemNhan);
         body.add(Box.createVerticalStrut(25));
 
@@ -112,34 +115,26 @@ public class DialogInMaVach extends JDialog {
         JButton btnInTem = new JButton("In ra máy in");
         stylePrimaryButton(btnInTem);
         btnInTem.addActionListener(e -> {
-            // LỆNH IN THỰC TẾ RA MÁY IN
             PrinterJob job = PrinterJob.getPrinterJob();
             job.setJobName("In Tem Ma Lo: " + maLo);
 
             job.setPrintable(new Printable() {
                 @Override
                 public int print(Graphics graphics, PageFormat pageFormat, int pageIndex) throws PrinterException {
-                    if (pageIndex > 0) {
+                    if (pageIndex > 0)
                         return Printable.NO_SUCH_PAGE;
-                    }
                     Graphics2D g2d = (Graphics2D) graphics;
-                    // Dịch chuyển tọa độ để in không bị lẹm viền trang giấy
                     g2d.translate(pageFormat.getImageableX(), pageFormat.getImageableY());
-
-                    // Lệnh vẽ nguyên cái khung pnlTemNhan ra giấy in
                     pnlTemNhan.printAll(g2d);
-
                     return Printable.PAGE_EXISTS;
                 }
             });
 
-            // Mở hộp thoại chọn máy in của Windows
             boolean doPrint = job.printDialog();
             if (doPrint) {
                 try {
                     job.print();
                     showModernAlert("Đã gửi lệnh in thành công!", true);
-                    // Đóng cửa sổ sau 1.5 giây
                     Timer timer = new Timer(1500, evt -> dispose());
                     timer.setRepeats(false);
                     timer.start();
@@ -209,12 +204,10 @@ public class DialogInMaVach extends JDialog {
         dialog.setSize(380, 160);
         dialog.setLocationRelativeTo(this);
         dialog.setShape(new RoundRectangle2D.Double(0, 0, dialog.getWidth(), dialog.getHeight(), 16, 16));
-
         Color themeColor = isSuccess ? SUCCESS : new Color(239, 68, 68);
         JPanel root = new JPanel(new BorderLayout());
         root.setBackground(Color.WHITE);
         root.setBorder(BorderFactory.createLineBorder(themeColor, 2));
-
         JPanel pnlContent = new JPanel(new FlowLayout(FlowLayout.CENTER, 16, 35));
         pnlContent.setBackground(Color.WHITE);
         JLabel lblIcon = new JLabel(new MenuIcon(isSuccess ? "CHECK_CIRCLE" : "WARNING"));
@@ -222,10 +215,8 @@ public class DialogInMaVach extends JDialog {
         JLabel lblMessage = new JLabel(message);
         lblMessage.setFont(new Font("Segoe UI", Font.BOLD, 16));
         lblMessage.setForeground(TEXT_PRIMARY);
-
         pnlContent.add(lblIcon);
         pnlContent.add(lblMessage);
-
         JPanel pnlBottom = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 16));
         pnlBottom.setBackground(Color.WHITE);
         JButton btnOk = new JButton("OK");
@@ -248,15 +239,12 @@ public class DialogInMaVach extends JDialog {
             }
         });
         btnOk.addActionListener(e -> dialog.dispose());
-
         dialog.getRootPane().setDefaultButton(btnOk);
         dialog.getRootPane().registerKeyboardAction(e -> dialog.dispose(),
                 KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), JComponent.WHEN_IN_FOCUSED_WINDOW);
-
         pnlBottom.add(btnOk);
         root.add(pnlContent, BorderLayout.CENTER);
         root.add(pnlBottom, BorderLayout.SOUTH);
-
         dialog.setContentPane(root);
         dialog.setVisible(true);
     }
