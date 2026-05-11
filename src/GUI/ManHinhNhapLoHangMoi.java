@@ -45,7 +45,6 @@ public class ManHinhNhapLoHangMoi extends JDialog {
     private static final Color TEXT_SECONDARY = new Color(100, 116, 139);
     private static final Color TEXT_HINT = new Color(148, 163, 184);
     private static final Color PRIMARY = new Color(14, 116, 144);
-    private static final Color PRIMARY_HOVER = new Color(22, 133, 163);
     private static final Color BORDER = new Color(226, 232, 240);
     private static final Color BORDER_FOCUS = new Color(14, 116, 144);
     private static final Color DANGER = new Color(239, 68, 68);
@@ -72,7 +71,6 @@ public class ManHinhNhapLoHangMoi extends JDialog {
     private DefaultListModel<SanPham> modelSanPham;
     private boolean isFiltering = false;
 
-    // Biến lưu trữ quy cách động từ sản phẩm
     private double currentQuyCach = 1.0;
     private String currentDonViNho = "ĐV cơ bản";
     private String currentDonViLon = "Đơn vị";
@@ -83,7 +81,6 @@ public class ManHinhNhapLoHangMoi extends JDialog {
     private HintTextField txtHanSuDung;
 
     private JLabel errSanPham, errMaLo, errSoLuong, errGiaNhap, errHanSuDung;
-
     private JLabel lblTongQuyDoi;
     private JLabel lblGiaVonVien;
 
@@ -104,6 +101,7 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         setShape(new RoundRectangle2D.Double(0, 0, getWidth(), getHeight(), 16, 16));
         setContentPane(createMainUI());
         registerKeyboardActions();
+        txtMaLo.setText(taoMaLoHangTuDong()); // Tự động mớm sẵn Mã lô để đỡ phải gõ
     }
 
     public void setSanPhamAutoFill(String tenSP) {
@@ -133,19 +131,15 @@ public class ManHinhNhapLoHangMoi extends JDialog {
 
         JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 0));
         left.setOpaque(false);
-
         JLabel lblIcon = new JLabel(new MenuIcon("ADD"));
         lblIcon.setForeground(Color.WHITE);
-
         JLabel title = new JLabel("Thêm Lô Hàng");
         title.setFont(FONT_TITLE);
         title.setForeground(Color.WHITE);
-
         left.add(lblIcon);
         left.add(title);
 
-        JButton btnClose = new JButton();
-        btnClose.setIcon(new MenuIcon("CLOSE"));
+        JButton btnClose = new JButton(new MenuIcon("CLOSE"));
         btnClose.setFocusPainted(false);
         btnClose.setBorderPainted(false);
         btnClose.setContentAreaFilled(false);
@@ -178,12 +172,10 @@ public class ManHinhNhapLoHangMoi extends JDialog {
                 setLocation(getLocation().x + e.getX() - x, getLocation().y + e.getY() - y);
             }
         };
-
         header.addMouseListener(dragWindow);
         header.addMouseMotionListener(dragWindow);
         header.add(left, BorderLayout.WEST);
         header.add(btnClose, BorderLayout.EAST);
-
         return header;
     }
 
@@ -199,18 +191,15 @@ public class ManHinhNhapLoHangMoi extends JDialog {
 
         JPanel pnlQR = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
         pnlQR.setOpaque(false);
-        JButton btnScanQR = createSecondaryButton("Quét mã vạch");
+        JButton btnScanQR = createSecondaryButton("Quét mã QR");
         btnScanQR.setForeground(PRIMARY);
         btnScanQR.addActionListener(e -> showQRScannerDialog());
         pnlQR.add(btnScanQR);
 
         JPanel comboSanPhamWrapper = createProductSelectorField();
 
-        txtMaLo = createTextField("VD: LOT-2026-001");
-
-        // Form nhập liệu tinh gọn
-        txtSoLuong = createTextField("VD: 50");
-        txtSoLuong.setText("0");
+        txtMaLo = createTextField("VD: LH-0001");
+        txtSoLuong = createTextField("0");
         txtGiaNhap = createTextField("0");
 
         ((AbstractDocument) txtSoLuong.getDocument()).setDocumentFilter(new DigitsOnlyFilter(9));
@@ -226,7 +215,6 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         lblTongQuyDoi = new JLabel("Tổng số lượng: 0 (ĐV cơ bản)");
         lblTongQuyDoi.setFont(new Font("Segoe UI", Font.BOLD, 14));
         lblTongQuyDoi.setForeground(PRIMARY);
-
         lblGiaVonVien = new JLabel("Giá vốn: 0 đ/ĐV cơ bản");
         lblGiaVonVien.setFont(new Font("Segoe UI", Font.BOLD | Font.ITALIC, 14));
         lblGiaVonVien.setForeground(WARNING);
@@ -289,30 +277,25 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         return body;
     }
 
-    // Tự động quét DB để lấy Quy cách từ Sản phẩm
     private void updateQuyCachTuSanPham(String maSP) {
         currentQuyCach = 1.0;
         currentDonViNho = "ĐV cơ bản";
         currentDonViLon = "Đơn vị";
-
         try {
             List<DonViDoLuong> dsDVDL = busDonVi.getDSTheoMaSP(maSP);
             if (dsDVDL != null && !dsDVDL.isEmpty()) {
                 for (DonViDoLuong dv : dsDVDL) {
-                    if (dv.getChuyenDoiSangDonViCoBan() == 1.0) {
+                    if (dv.getChuyenDoiSangDonViCoBan() == 1.0)
                         currentDonViNho = dv.getTen();
-                    }
                     if (dv.getChuyenDoiSangDonViCoBan() > currentQuyCach) {
                         currentQuyCach = dv.getChuyenDoiSangDonViCoBan();
                         currentDonViLon = dv.getTen();
                     }
                 }
-                if (currentQuyCach == 1.0) {
+                if (currentQuyCach == 1.0)
                     currentDonViLon = dsDVDL.get(0).getTen();
-                }
             }
         } catch (Exception e) {
-            e.printStackTrace();
         }
         calculateTotal();
     }
@@ -321,12 +304,10 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         try {
             long sl = txtSoLuong.getText().isEmpty() ? 0 : Long.parseLong(txtSoLuong.getText());
             long tong = (long) (sl * currentQuyCach);
-
             String textTong = "Tổng nhập kho: " + vnNumberFormat.format(tong) + " " + currentDonViNho;
-            if (currentQuyCach > 1.0) {
+            if (currentQuyCach > 1.0)
                 textTong += " (Quy cách 1 " + currentDonViLon + " = " + (int) currentQuyCach + " " + currentDonViNho
                         + ")";
-            }
             lblTongQuyDoi.setText(textTong);
 
             long giaNhap = txtGiaNhap.getText().isEmpty() ? 0 : Long.parseLong(getDigitsOnly(txtGiaNhap.getText()));
@@ -343,12 +324,10 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         wrap.setBackground(Color.WHITE);
         ModernBorder sharedBorder = new ModernBorder();
         wrap.setBorder(sharedBorder);
-
         txtTimSanPham = new HintTextField("Nhập tên, mã SP hoặc bấm ▼ để chọn...");
         txtTimSanPham.setFont(FONT_TEXT);
         txtTimSanPham.setForeground(TEXT_PRIMARY);
         txtTimSanPham.setBorder(null);
-
         JButton btnDrop = new JButton("▼");
         btnDrop.setFont(new Font("Segoe UI", Font.BOLD, 12));
         btnDrop.setFocusPainted(false);
@@ -356,13 +335,11 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         btnDrop.setBorder(new EmptyBorder(0, 12, 0, 12));
         btnDrop.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         btnDrop.setForeground(PRIMARY);
-
         setupAutocompletePopup(wrap);
-
         btnDrop.addActionListener(e -> {
-            if (popupSanPham != null && popupSanPham.isVisible()) {
+            if (popupSanPham != null && popupSanPham.isVisible())
                 popupSanPham.setVisible(false);
-            } else {
+            else {
                 txtTimSanPham.requestFocus();
                 isFiltering = true;
                 modelSanPham.clear();
@@ -372,7 +349,6 @@ public class ManHinhNhapLoHangMoi extends JDialog {
                 showProductPopup(wrap);
             }
         });
-
         txtTimSanPham.getDocument().addDocumentListener(new DocumentListener() {
             private void update() {
                 SwingUtilities.invokeLater(() -> filterSanPham(wrap));
@@ -393,7 +369,6 @@ public class ManHinhNhapLoHangMoi extends JDialog {
                 update();
             }
         });
-
         txtTimSanPham.addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {
@@ -415,7 +390,6 @@ public class ManHinhNhapLoHangMoi extends JDialog {
                 }
             }
         });
-
         txtTimSanPham.addFocusListener(new FocusAdapter() {
             @Override
             public void focusGained(FocusEvent e) {
@@ -429,7 +403,6 @@ public class ManHinhNhapLoHangMoi extends JDialog {
                 wrap.repaint();
             }
         });
-
         wrap.add(txtTimSanPham, BorderLayout.CENTER);
         wrap.add(btnDrop, BorderLayout.EAST);
         return wrap;
@@ -459,7 +432,6 @@ public class ManHinhNhapLoHangMoi extends JDialog {
                 return lb;
             }
         });
-
         listSanPham.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
@@ -467,7 +439,6 @@ public class ManHinhNhapLoHangMoi extends JDialog {
                     selectSanPhamFromList();
             }
         });
-
         JScrollPane scroll = new JScrollPane(listSanPham);
         scroll.setBorder(BorderFactory.createLineBorder(PRIMARY, 2));
         scroll.getVerticalScrollBar().setPreferredSize(new Dimension(8, 0));
@@ -486,10 +457,9 @@ public class ManHinhNhapLoHangMoi extends JDialog {
             for (SanPham sp : dsTatCaSanPham)
                 modelSanPham.addElement(sp);
         } else {
-            for (SanPham sp : dsTatCaSanPham) {
+            for (SanPham sp : dsTatCaSanPham)
                 if (sp.getTen().toLowerCase().contains(kw) || sp.getId().toLowerCase().contains(kw))
                     modelSanPham.addElement(sp);
-            }
         }
         if (modelSanPham.getSize() > 0)
             showProductPopup(anchorPanel);
@@ -522,8 +492,6 @@ public class ManHinhNhapLoHangMoi extends JDialog {
             txtTimSanPham.requestFocus();
             txtTimSanPham.setCaretPosition(txtTimSanPham.getText().length());
             isFiltering = false;
-
-            // Kích hoạt nạp Quy Cách sau khi chọn SP
             updateQuyCachTuSanPham(sp.getId());
         }
     }
@@ -533,23 +501,18 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         wrap.setBackground(Color.WHITE);
         ModernBorder sharedBorder = new ModernBorder();
         wrap.setBorder(sharedBorder);
-
         txtHanSuDung = new HintTextField("dd/MM/yyyy");
         txtHanSuDung.setFont(FONT_TEXT);
         txtHanSuDung.setForeground(TEXT_PRIMARY);
         txtHanSuDung.setBorder(null);
-
-        JButton btnCal = new JButton();
-        btnCal.setIcon(new MenuIcon("CALENDAR"));
+        JButton btnCal = new JButton(new MenuIcon("CALENDAR"));
         btnCal.setFocusPainted(false);
         btnCal.setContentAreaFilled(false);
         btnCal.setBorder(new EmptyBorder(0, 12, 0, 12));
         btnCal.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         btnCal.setForeground(PRIMARY);
-
         CustomDatePicker datePickerPopup = new CustomDatePicker(this, txtHanSuDung);
         btnCal.addActionListener(e -> datePickerPopup.showPopup(wrap));
-
         txtHanSuDung.addFocusListener(new FocusAdapter() {
             @Override
             public void focusGained(FocusEvent e) {
@@ -563,7 +526,6 @@ public class ManHinhNhapLoHangMoi extends JDialog {
                 wrap.repaint();
             }
         });
-
         wrap.add(txtHanSuDung, BorderLayout.CENTER);
         wrap.add(btnCal, BorderLayout.EAST);
         return wrap;
@@ -608,14 +570,12 @@ public class ManHinhNhapLoHangMoi extends JDialog {
                 new EmptyBorder(16, 24, 16, 24)));
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 0));
         actions.setOpaque(false);
-
         JButton btnCancel = createSecondaryButton("Hủy");
         btnCancel.setIcon(new MenuIcon("CANCEL"));
         btnCancel.setIconTextGap(8);
-        JButton btnSubmit = createPrimaryButton("Lưu lô hàng");
+        JButton btnSubmit = createPrimaryButton("Lưu & In Tem");
         btnSubmit.setIcon(new MenuIcon("SAVE"));
-        btnSubmit.setIconTextGap(8);
-
+        btnSubmit.setIconTextGap(8); // Đổi tên nút cho hợp nghiệp vụ
         btnCancel.addActionListener(e -> dispose());
         btnSubmit.addActionListener(e -> handleSubmit());
         actions.add(btnCancel);
@@ -735,14 +695,16 @@ public class ManHinhNhapLoHangMoi extends JDialog {
                 JComponent.WHEN_IN_FOCUSED_WINDOW);
     }
 
+    private String getDigitsOnly(String text) {
+        return text == null ? "" : text.replaceAll("\\D+", "");
+    }
+
     private void handleSubmit() {
         clearErrors();
-
         String spText = txtTimSanPham.getText().trim();
         String maLo = txtMaLo.getText().trim().toUpperCase();
         String giaNhapText = getDigitsOnly(txtGiaNhap.getText().trim());
         String hanSuDung = txtHanSuDung.getText().trim();
-
         boolean valid = true;
 
         if (spText.isEmpty() || spText.equals("Nhập tên, mã SP hoặc bấm ▼ để chọn...")) {
@@ -761,16 +723,14 @@ public class ManHinhNhapLoHangMoi extends JDialog {
             if (selectedSanPham == null) {
                 selectedSanPham = new SanPham();
                 selectedSanPham.setTen(spText);
-            } else {
+            } else
                 updateQuyCachTuSanPham(selectedSanPham.getId());
-            }
         }
 
         if (maLo.isEmpty()) {
             errMaLo.setText("Mã lô không được để trống");
             valid = false;
         }
-
         long soLuongLon = 0;
         try {
             if (!txtSoLuong.getText().trim().isEmpty())
@@ -779,13 +739,11 @@ public class ManHinhNhapLoHangMoi extends JDialog {
             errSoLuong.setText("Không hợp lệ");
             valid = false;
         }
-
         int tongSoLuongQuyDoi = (int) (soLuongLon * currentQuyCach);
         if (tongSoLuongQuyDoi <= 0 && valid) {
             errSoLuong.setText("Số lượng phải > 0");
             valid = false;
         }
-
         int giaHop = 0;
         double giaVien = 0.0;
         try {
@@ -793,9 +751,8 @@ public class ManHinhNhapLoHangMoi extends JDialog {
             if (giaHop < 0) {
                 errGiaNhap.setText("Không được âm");
                 valid = false;
-            } else {
+            } else
                 giaVien = (currentQuyCach > 0) ? ((double) giaHop / currentQuyCach) : 0;
-            }
         } catch (Exception e) {
             errGiaNhap.setText("Không hợp lệ");
             valid = false;
@@ -820,7 +777,6 @@ public class ManHinhNhapLoHangMoi extends JDialog {
 
         if (!valid)
             return;
-
         if (busKho.tonTaiMaLoDangHoatDong(maLo)) {
             errMaLo.setText("Mã lô đã tồn tại");
             return;
@@ -834,7 +790,6 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         loHang.setNgayNhap(LocalDateTime.now());
         loHang.setNgayHetHan(ngayHSD.atStartOfDay());
         loHang.setSanPhamId(selectedSanPham);
-
         KhoHang kho = new KhoHang();
         kho.setId("KHO-0001");
         loHang.setKhoHangId(kho);
@@ -846,13 +801,17 @@ public class ManHinhNhapLoHangMoi extends JDialog {
             String tenSPHienThi = (selectedSanPham != null && selectedSanPham.getTen() != null)
                     ? selectedSanPham.getTen()
                     : "Sản phẩm không tên";
+            String maSPHienThi = (selectedSanPham != null && selectedSanPham.getId() != null) ? selectedSanPham.getId()
+                    : "N/A";
+
             showModernAlert(laTaiSuDung ? "Đã tái sử dụng lô hàng đã ẩn!" : "Thêm lô hàng thành công!", true);
             if (reloadListener != null)
                 reloadListener.onReload();
             dispose();
 
+            // LIÊN KẾT: Gọi bảng in tem nhãn có sẵn Mã SP và Mã Lô
             Window owner = SwingUtilities.getWindowAncestor(this);
-            DialogInMaVach dialogMaVach = new DialogInMaVach(owner, maLo, tenSPHienThi);
+            DialogInMaVach dialogMaVach = new DialogInMaVach(owner, maLo, maSPHienThi, tenSPHienThi);
             dialogMaVach.setVisible(true);
         } else {
             showModernAlert("Lưu lô hàng thất bại!", false);
@@ -864,8 +823,10 @@ public class ManHinhNhapLoHangMoi extends JDialog {
             List<LoHang> dsLo = busKho.layDSLoHang();
             int max = 0;
             for (LoHang lh : dsLo) {
+                // Fix: Check ID thay vì SoLoHang
                 if (lh == null || lh.getId() == null)
                     continue;
+
                 String id = lh.getId().trim().toUpperCase().replace("-", "");
                 if (id.startsWith("LH")) {
                     try {
@@ -890,12 +851,8 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         errHanSuDung.setText(" ");
     }
 
-    private String getDigitsOnly(String text) {
-        return text == null ? "" : text.replaceAll("\\D+", "");
-    }
-
     private void showQRScannerDialog() {
-        JDialog dialog = new JDialog(this, "Quét mã vạch", Dialog.ModalityType.APPLICATION_MODAL);
+        JDialog dialog = new JDialog(this, "Quét mã QR", Dialog.ModalityType.APPLICATION_MODAL);
         dialog.setSize(400, 150);
         dialog.setLocationRelativeTo(this);
         dialog.setUndecorated(true);
@@ -903,11 +860,11 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         JPanel root = new JPanel(new BorderLayout());
         root.setBackground(Color.WHITE);
         root.setBorder(BorderFactory.createLineBorder(PRIMARY, 2));
-        JLabel lblInfo = new JLabel("Vui lòng đưa mã vạch vào máy quét...", SwingConstants.CENTER);
+        JLabel lblInfo = new JLabel("Đưa mã QR/Mã vạch vào máy quét...", SwingConstants.CENTER);
         lblInfo.setFont(new Font("Segoe UI", Font.BOLD, 16));
         lblInfo.setForeground(TEXT_PRIMARY);
         root.add(lblInfo, BorderLayout.CENTER);
-        JButton btnClose = createSecondaryButton("Đóng");
+        JButton btnClose = createSecondaryButton("Đóng lại");
         btnClose.addActionListener(e -> dialog.dispose());
         JPanel pnlBottom = new JPanel(new FlowLayout(FlowLayout.CENTER));
         pnlBottom.setBackground(Color.WHITE);
