@@ -620,67 +620,76 @@ public class DAO_HoaDon {
         return false;
     }
     public boolean luuGiaoDichThanhToan(HoaDon hd, List<ChiTietHoaDon> dsCTHD, List<ChiTietHoaDon> dsQuaTang,
-                                        DAO_ChiTietHoaDon daoCTHD,
-                                        DAO_LoHang daoLo,
-                                        DAO_PhanBoLoHang daoPB) {
-        Connection con = null;
-        try {
-            con = ConnectDB.getInstance().getConnection();
-            con.setAutoCommit(false);
+            DAO_ChiTietHoaDon daoCTHD,
+            DAO_LoHang daoLo,
+            DAO_PhanBoLoHang daoPB) {
+Connection con = null;
+try {
+con = ConnectDB.getInstance().getConnection();
+con.setAutoCommit(false);
 
-            // Xóa nháp cũ nếu tồn tại
-            try (PreparedStatement pDel1 = con.prepareStatement("DELETE FROM ChiTietHoaDon WHERE hoaDonId = ?");
-                 PreparedStatement pDel2 = con.prepareStatement("DELETE FROM HoaDon WHERE id = ?")) {
-                pDel1.setString(1, hd.getId()); pDel1.executeUpdate();
-                pDel2.setString(1, hd.getId()); pDel2.executeUpdate();
-            } catch (Exception ignored) {}
+// Xóa nháp cũ nếu tồn tại
+try (PreparedStatement pDel1 = con.prepareStatement("DELETE FROM ChiTietHoaDon WHERE hoaDonId = ?");
+PreparedStatement pDel2 = con.prepareStatement("DELETE FROM HoaDon WHERE id = ?")) {
+pDel1.setString(1, hd.getId()); pDel1.executeUpdate();
+pDel2.setString(1, hd.getId()); pDel2.executeUpdate();
+} catch (Exception ignored) {}
 
-            if (!themHoaDon(con, hd)) throw new Exception("Lỗi lưu hóa đơn");
+if (!themHoaDon(con, hd)) throw new Exception("Lỗi lưu hóa đơn");
 
-            for (ChiTietHoaDon ct : dsCTHD) {
-                if (!daoCTHD.themCTHD(con, ct)) throw new Exception("Lỗi lưu chi tiết");
+// 1. LƯU SẢN PHẨM KHÁCH MUA
+for (ChiTietHoaDon ct : dsCTHD) {
+if (!daoCTHD.themCTHD(con, ct)) throw new Exception("Lỗi lưu chi tiết");
 
-                List<LoHang> dsLo = daoLo.layLoTheoSP(con, ct.getSanPhamId().getId());
-                int canLay = ct.getSoLuong();
+List<LoHang> dsLo = daoLo.layLoTheoSP(con, ct.getSanPhamId().getId());
+int canLay = ct.getSoLuong();
 
-                for (LoHang lh : dsLo) {
-                    if (canLay <= 0) break;
-                    int layDuoc = Math.min(lh.getSoLuongLoHang(), canLay);
+for (LoHang lh : dsLo) {
+if (canLay <= 0) break;
+int layDuoc = Math.min(lh.getSoLuongLoHang(), canLay);
 
-                    daoPB.themPhanBo(con, new PhanBoLoHang(hd, ct.getDonViDoLuongId(), ct.getSanPhamId(), lh, layDuoc));
-                    daoLo.capNhatSoLuongVaTrangThaiLo(con, lh.getId(), lh.getSoLuongLoHang() - layDuoc);
-                    canLay -= layDuoc;
-                }
-                if (canLay > 0) throw new Exception("Kho không đủ hàng: " + ct.getSanPhamId().getId());
-            }
+daoPB.themPhanBo(con, new PhanBoLoHang(hd, ct.getDonViDoLuongId(), ct.getSanPhamId(), lh, layDuoc));
+daoLo.capNhatSoLuongVaTrangThaiLo(con, lh.getId(), lh.getSoLuongLoHang() - layDuoc);
+canLay -= layDuoc;
+}
+if (canLay > 0) throw new Exception("Kho không đủ hàng: " + ct.getSanPhamId().getId());
+}
 
-            if (dsQuaTang != null) {
-                for (ChiTietHoaDon ct : dsQuaTang) {
-                    List<LoHang> dsLo = daoLo.layLoTheoSP(con, ct.getSanPhamId().getId());
-                    int canLay = ct.getSoLuong();
+// 2. LƯU QUÀ TẶNG KÈM
+if (dsQuaTang != null) {
+for (ChiTietHoaDon ct : dsQuaTang) {
 
-                    for (LoHang lh : dsLo) {
-                        if (canLay <= 0) break;
-                        int layDuoc = Math.min(lh.getSoLuongLoHang(), canLay);
+// ==========================================
+// 💡 ĐÂY LÀ DÒNG CODE BẠN BỊ THIẾU CẦN THÊM VÀO
+// ==========================================
+if (!daoCTHD.themCTHD(con, ct)) throw new Exception("Lỗi lưu chi tiết quà tặng");
+// ==========================================
 
-                        daoPB.themPhanBo(con, new PhanBoLoHang(hd, ct.getDonViDoLuongId(), ct.getSanPhamId(), lh, layDuoc));
-                        daoLo.capNhatSoLuongVaTrangThaiLo(con, lh.getId(), lh.getSoLuongLoHang() - layDuoc);
-                        canLay -= layDuoc;
-                    }
-                    if (canLay > 0) throw new Exception("Kho không đủ hàng quà tặng: " + ct.getSanPhamId().getId());
-                }
-            }
+List<LoHang> dsLo = daoLo.layLoTheoSP(con, ct.getSanPhamId().getId());
+int canLay = ct.getSoLuong();
 
-            con.commit();
-            return true;
-        } catch (Exception e) {
-            try { if (con != null) con.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
-            e.printStackTrace();
-            return false;
-        } finally {
-            try { if (con != null) con.setAutoCommit(true); } catch (SQLException e) { e.printStackTrace(); }
-        }
-    }
+for (LoHang lh : dsLo) {
+if (canLay <= 0) break;
+int layDuoc = Math.min(lh.getSoLuongLoHang(), canLay);
+
+daoPB.themPhanBo(con, new PhanBoLoHang(hd, ct.getDonViDoLuongId(), ct.getSanPhamId(), lh, layDuoc));
+daoLo.capNhatSoLuongVaTrangThaiLo(con, lh.getId(), lh.getSoLuongLoHang() - layDuoc);
+canLay -= layDuoc;
+}
+if (canLay > 0) throw new Exception("Kho không đủ hàng quà tặng: " + ct.getSanPhamId().getId());
+}
+}
+
+con.commit();
+return true;
+} catch (Exception e) {
+try { if (con != null) con.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
+e.printStackTrace();
+return false;
+} finally {
+try { if (con != null) con.setAutoCommit(true); } catch (SQLException e) { e.printStackTrace(); }
+}
+}
 
     public boolean themHoaDon(Connection con, HoaDon hd) throws SQLException {
         String sql = "INSERT INTO HoaDon (id, loaiHD, ghiChu, ngayLapHD, nhanVienId, khachHangId, khuyenMaiId, phuongThucThanhToan, hoaDonGocId) "

@@ -270,65 +270,99 @@ public class TaoHoaDon extends JDialog {
         });
     }
     private void lamMoiKhuyenMai() {
-        try {
-            List<Object[]> dsMoi = busKhuyenMai.layDanhSachKhuyenMaiChoTable(); 
+        if (pnlVoucherTags == null) return;
+        
+        pnlVoucherTags.removeAll();
+        pnlVoucherTags.setLayout(new FlowLayout(FlowLayout.LEFT, 10, 10)); 
+        
+        // CÂU TRUY VẤN "CHỐNG CHÁY": Tự fallback lấy tên gốc nếu JOIN ID thất bại
+        String sqlLoad = "SELECT k.id, k.tenKhuyenMai, h.moTa, h.loaiHinhThuc, h.giaTri AS mucGiam, " +
+                "ISNULL(d.giaTri, 0) AS donToiThieu, " +
+                "ISNULL(h.slYeuCau, 0) AS slYeuCau, " +
+                "ISNULL(h.slTang, 0) AS slTang, " +
+                "ISNULL(spYeuCau.ten, ISNULL(h.spYeuCau, '')) AS tenSanPhamYeuCau, " +
+                "ISNULL(spTang.ten, ISNULL(h.spTang, '')) AS tenSanPhamTang " +
+                "FROM KhuyenMai k " +
+                "JOIN HinhThucKhuyenMai h ON k.id = h.khuyenMaiId " +
+                "LEFT JOIN DieuKienKhuyenMai d ON k.id = d.khuyenMaiId " +
+                "LEFT JOIN SanPham spYeuCau ON h.spYeuCau = spYeuCau.id " +
+                "LEFT JOIN SanPham spTang ON h.spTang = spTang.id " +
+                "WHERE k.trangThai = 1 " + 
+                "AND CAST(k.ngayBatDau AS DATE) <= CAST(GETDATE() AS DATE) " +
+                "AND (k.ngayKetThuc IS NULL OR CAST(k.ngayKetThuc AS DATE) >= CAST(GETDATE() AS DATE))";
+                         
+        try (java.sql.Connection con = ConnectDB.getInstance().getConnection();
+             java.sql.Statement st = con.createStatement();
+             java.sql.ResultSet rs = st.executeQuery(sqlLoad)) {
             
-            if (dsMoi != null) {
-                // Xóa cache cũ đi
-                this.dsKhuyenMaiCache.clear();
+            boolean hasVoucher = false;
+            if(dsKhuyenMaiCache != null) dsKhuyenMaiCache.clear();
+
+            while(rs.next()) {
+                hasVoucher = true;
+                String maKM = rs.getString("id");
+                String moTa = rs.getString("moTa");
+                String tenKM = rs.getString("tenKhuyenMai");
+                String loaiKM = rs.getString("loaiHinhThuc");
+                double mucGiam = rs.getDouble("mucGiam");
+                long donToiThieu = (long) rs.getDouble("donToiThieu");
                 
-                // Lọc ra các mã đang ở trạng thái "Đang hoạt động" để đưa vào hóa đơn
-                for(Object[] km : dsMoi) {
-                    String trangThai = km[7].toString(); // Cột số 7 chứa Trạng Thái
-                    if("Đang hoạt động".equals(trangThai)) {
-                        this.dsKhuyenMaiCache.add(km);
+                int slYeuCau = rs.getInt("slYeuCau");
+                int slTang = rs.getInt("slTang");
+                String tenSPYeuCau = rs.getString("tenSanPhamYeuCau").trim();
+                String tenSPTang = rs.getString("tenSanPhamTang").trim();
+
+                dsKhuyenMaiCache.add(new Object[]{maKM});
+
+                // TỰ ĐỘNG DỊCH THÀNH TIẾNG VIỆT
+                String hienThi = "";
+                if (moTa != null && !moTa.trim().isEmpty()) {
+                    hienThi = moTa;
+                } else if (tenKM != null && !tenKM.trim().isEmpty()) {
+                    hienThi = tenKM;
+                } else {
+                    if ("SAN_PHAM_KEM_THEO".equals(loaiKM)) {
+                        hienThi = "Tặng " + (slTang > 0 ? slTang : 1) + " " + (!tenSPTang.isEmpty() ? tenSPTang : "sản phẩm");
+                        if (slYeuCau > 0 && !tenSPYeuCau.isEmpty()) {
+                            hienThi += " (Khi mua " + slYeuCau + " " + tenSPYeuCau + ")";
+                        } else if (slYeuCau > 0) {
+                            hienThi += " (Khi mua " + slYeuCau + " SP)";
+                        } else if (donToiThieu > 0) {
+                            hienThi += " (Đơn >= " + String.format("%,d", donToiThieu).replace(',', '.') + "đ)";
+                        }
+                    } else if ("GIAM_THEO_PHAN_TRAM".equals(loaiKM)) {
+                        hienThi = "Giảm " + (int)mucGiam + "%";
+                        if (donToiThieu > 0) hienThi += " (Đơn >= " + String.format("%,d", donToiThieu).replace(',', '.') + "đ)";
+                    } else if ("GIAM_TIEN_MAT".equals(loaiKM)) {
+                        hienThi = "Giảm " + String.format("%,d", (long)mucGiam).replace(',', '.') + "đ";
+                        if (donToiThieu > 0) hienThi += " (Đơn >= " + String.format("%,d", donToiThieu).replace(',', '.') + "đ)";
+                    } else {
+                        hienThi = "Chương trình ưu đãi";
                     }
                 }
-                
-                System.out.println("Đã cập nhật " + this.dsKhuyenMaiCache.size() + " mã khuyến mãi hợp lệ.");
-                
-                // Vẽ lại các nhãn (tags) mã KM lên giao diện
-                renderVoucherTagsUI();
-                
-                // Tính toán lại tổng tiền
-                recalculateTotals(); 
-            }
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
-    }
 
-    private void renderVoucherTagsUI() {
-        if (pnlVoucherTags == null) return;
-        pnlVoucherTags.removeAll();
-
-        
-        pnlVoucherTags.setLayout(new GridLayout(0, 3, 10, 10));
-        if (dsKhuyenMaiCache == null || dsKhuyenMaiCache.isEmpty()) {
-            JLabel lblEmpty = new JLabel("<html><i>(Hiện chưa có chương trình khuyến mãi nào)</i></html>");
-            lblEmpty.setForeground(Color.GRAY);
-            pnlVoucherTags.add(lblEmpty);
-        } else {
-            for (Object[] row : dsKhuyenMaiCache) {
-                String maKM = row[0].toString();      
-                String mucGiamUI = row[3].toString(); 
-                String donToiThieuUI = row[4].toString(); 
-
-                String labelStr = maKM + ": " + mucGiamUI;
-                if (!donToiThieuUI.equals("Không yêu cầu") && !donToiThieuUI.equals("Mọi đơn hàng")) {
-                    labelStr += " (Đơn ≥ " + donToiThieuUI + ")";
-                }
-
+                String labelStr = maKM + " (" + hienThi + ")";
                 pnlVoucherTags.add(createVoucherTag(labelStr, maKM, txtVoucherInput));
             }
+            
+            if(!hasVoucher) {
+                JLabel lblEmpty = new JLabel("<html><i>(Hiện chưa có chương trình khuyến mãi nào)</i></html>");
+                lblEmpty.setForeground(Color.GRAY);
+                pnlVoucherTags.add(lblEmpty);
+            }
+            
+            pnlVoucherTags.revalidate();
+            pnlVoucherTags.repaint();
+            updateVoucherTagsUI();
+            recalculateTotals(); 
+            
+        } catch(Exception e) {
+            e.printStackTrace();
         }
-        pnlVoucherTags.revalidate();
-        pnlVoucherTags.repaint();
-        updateVoucherTagsUI(); 
     }
- // =================================================================
-    // HÀM TỰ ĐỘNG LƯU DATABASE & HOÀN THÀNH HÓA ĐƠN
-    // =================================================================
+
+    
+ 
     private void xuLyHoanThanhHoaDon() {
         // 1. KIỂM TRA TRƯỚC TỒN KHO & QUY ĐỔI ĐƠN VỊ TÍNH
         BUS.BUS_DonViDoLuong busDonVi = new BUS.BUS_DonViDoLuong();
@@ -1223,127 +1257,68 @@ public class TaoHoaDon extends JDialog {
     private void recalculateTotals() {
         if (productModel == null) return;
         
-        // [1] LƯU TRẠNG THÁI THANH CUỘN TRƯỚC KHI TÍNH TOÁN
         int currentScrollPos = 0;
-        if (mainScrollPane != null) {
-            currentScrollPos = mainScrollPane.getVerticalScrollBar().getValue();
-        }
+        if (mainScrollPane != null) currentScrollPos = mainScrollPane.getVerticalScrollBar().getValue();
         
-        long tongTien = 0;     // Tiền hàng (Tạm tính)
-        long tongVat = 0;      // Tổng tiền thuế VAT
-        int soLuongSanPham = 0;
+        // 1. GUI chỉ làm nhiệm vụ dọn dẹp chuỗi (bỏ chữ "đ", "%") và thu thập dữ liệu thô
+        java.util.List<long[]> danhSachSP = new java.util.ArrayList<>();
         
-        boolean hasThuocKeDon = false; 
-
         for (int i = 0; i < productModel.getRowCount(); i++) {
             try {
                 Object danhMucObj = getSafeValue(productModel, i, 6);
-                if (danhMucObj != null) {
-                    String dm = danhMucObj.toString().toLowerCase();
-                    if (dm.contains("kê đơn") && !dm.contains("không")) {
-                        hasThuocKeDon = true;
-                    }
-                }
+                String tenSp = productModel.getValueAt(i, 0).toString();
+                
+                // Bỏ qua hàng Quà tặng khi tính tiền
+                if (tenSp.startsWith("[QUÀ TẶNG]")) continue;
 
-                int sl = 0;
-                Object slObj = getSafeValue(productModel, i, 2);
-                if (slObj != null) {
-                    sl = Integer.parseInt(slObj.toString().trim());
-                }
-
-                // ==============================================================
-                // FIX LỖI TÍNH TIỀN: PHÂN TÍCH CHUỖI TIỀN TỆ AN TOÀN HƠN
-                // ==============================================================
-                long donGia = 0;
-                Object donGiaObj = getSafeValue(productModel, i, 3);
-                if (donGiaObj != null) {
-                    // Loại bỏ tất cả ký tự không phải là số (kể cả khoảng trắng ẩn, dấu chấm, phẩy, đ)
-                    String donGiaStr = donGiaObj.toString().replaceAll("\\D+", ""); 
-                    if (!donGiaStr.isEmpty()) {
-                         donGia = Long.parseLong(donGiaStr);
-                    }
-                }
-
-                long thanhTien = sl * donGia;
-                tongTien += thanhTien;
-                soLuongSanPham += sl;
-
-                double thueSuat = 0.0;
-                Object vatObj = getSafeValue(productModel, i, 4);
-                if (vatObj != null) {
-                    // Loại bỏ dấu % và khoảng trắng, sau đó parse thành Double
-                    String vatStr = vatObj.toString().replace("%", "").replaceAll("\\s+", "");
-                    if (!vatStr.isEmpty()) {
-                        thueSuat = Double.parseDouble(vatStr) / 100.0;
-                    }
-                }
-                tongVat += (long) (thanhTien * thueSuat);
-
-            } catch (Exception ex) {
-                // Log lỗi ra console để dễ debug nếu có dòng nào bị lỗi parse số
-                System.out.println("Lỗi tính toán dòng " + i + ": " + ex.getMessage());
-            }
+                int sl = Integer.parseInt(getSafeValue(productModel, i, 2).toString().trim());
+                long donGia = Long.parseLong(getSafeValue(productModel, i, 3).toString().replaceAll("\\D+", ""));
+                long vatPercent = Long.parseLong(getSafeValue(productModel, i, 4).toString().replace("%", "").replaceAll("\\s+", ""));
+                
+                danhSachSP.add(new long[]{sl, donGia, vatPercent});
+            } catch (Exception ex) {}
         }
 
-        if (lblTotalItems != null) lblTotalItems.setText(String.format("Tổng sản phẩm: %d", soLuongSanPham));
+        // --- GỌI BUS TÍNH TOÁN (ĐÁP ỨNG ĐÚNG CHUẨN 3 LỚP) ---
+        BUS.BUS_HoaDon busHD = new BUS.BUS_HoaDon();
+        BUS.BUS_HoaDon.KetQuaHoaDon kq = busHD.tinhToanTienHoaDon(danhSachSP, isDungDiem, diemHienTaiKH, tienGiamGia);
 
-        this.tamTinh = tongTien;
-        this.vat = tongVat;
+        // Cập nhật lại các biến toàn cục của Form
+        this.tamTinh = kq.tamTinh;
+        this.vat = kq.tongVat;
+        this.tienGiamTuDiem = kq.tienGiamTuDiem;
+        this.tongHoaDon = kq.tongThanhToan;
         
+        // Khuyến mãi vẫn tạm để đây do liên quan giao diện
         tuDongApDungKhuyenMai(); 
-        
-        long totalToPay = this.tamTinh + this.vat;
-        totalToPay -= tienGiamGia; 
-        if (totalToPay < 0) totalToPay = 0;
-        
-        if (isDungDiem) {
-            long maxTienGiam = diemHienTaiKH * 100L;
-            if (maxTienGiam > totalToPay) {
-                this.tienGiamTuDiem = (totalToPay / 100L) * 100L; 
-            } else {
-                this.tienGiamTuDiem = maxTienGiam; 
-            }
-            totalToPay -= this.tienGiamTuDiem;
-        } else {
-            this.tienGiamTuDiem = 0; 
-        }
-        
-        if (totalToPay < 0) totalToPay = 0;
-        this.tongHoaDon = totalToPay; 
 
-        if (lblSubtotalValue != null) lblSubtotalValue.setText(String.format("%,d", this.tamTinh).replace(',', '.') + "đ");
-        if (lblVatValue != null) lblVatValue.setText("+" + String.format("%,d", this.vat).replace(',', '.') + "đ");
+        // 2. GUI nhận kết quả từ BUS và Đổ lên màn hình (Chỉ setText)
+        if (lblTotalItems != null) lblTotalItems.setText(String.format("Tổng sản phẩm: %d", kq.tongSoLuongSP));
+        if (lblSubtotalValue != null) lblSubtotalValue.setText(String.format("%,d", kq.tamTinh).replace(',', '.') + "đ");
+        if (lblVatValue != null) lblVatValue.setText("+" + String.format("%,d", kq.tongVat).replace(',', '.') + "đ");
         if (lblDiscountValue != null) lblDiscountValue.setText("-" + String.format("%,d", tienGiamGia).replace(',', '.') + "đ");
-        if (lblDungDiemValue != null) lblDungDiemValue.setText("-" + String.format("%,d", this.tienGiamTuDiem).replace(',', '.') + "đ");
-        if (lblTotalPriceValue != null) lblTotalPriceValue.setText(String.format("%,d", totalToPay).replace(',', '.') + "đ");
-        if (lblQRAmount != null) lblQRAmount.setText("Cần thanh toán: " + String.format("%,d", totalToPay).replace(',', '.') + "đ");
-        if (lblExactValue != null) lblExactValue.setText(String.format("%,d", totalToPay).replace(',', '.') + "đ");
+        if (lblDungDiemValue != null) lblDungDiemValue.setText("-" + String.format("%,d", kq.tienGiamTuDiem).replace(',', '.') + "đ");
+        if (lblTotalPriceValue != null) lblTotalPriceValue.setText(String.format("%,d", kq.tongThanhToan).replace(',', '.') + "đ");
+        if (lblQRAmount != null) lblQRAmount.setText("Cần thanh toán: " + String.format("%,d", kq.tongThanhToan).replace(',', '.') + "đ");
+        if (lblExactValue != null) lblExactValue.setText(String.format("%,d", kq.tongThanhToan).replace(',', '.') + "đ");
 
         if (lblDungDiemText != null) {
-            int diemThucTeDung = (int)(this.tienGiamTuDiem / 100L);
+            int diemThucTeDung = (int)(kq.tienGiamTuDiem / 100L);
             if (isDungDiem) {
-                lblDungDiemText.setText(String.format("Dùng %,d điểm", diemThucTeDung) + " (-" + String.format("%,d", this.tienGiamTuDiem).replace(',', '.') + "đ)");
+                lblDungDiemText.setText(String.format("Dùng %,d điểm", diemThucTeDung) + " (-" + String.format("%,d", kq.tienGiamTuDiem).replace(',', '.') + "đ)");
             } else {
                 lblDungDiemText.setText(String.format("Dùng %,d điểm", diemHienTaiKH) + " (-" + String.format("%,d", diemHienTaiKH * 100L).replace(',', '.') + "đ)");
             }
         }
 
-        if ("Chuyển khoản".equals(phuongThuc) && lblQRCode != null) {
-            loadQRCodeVCB(lblQRCode); 
-        }
-        
+        if ("Chuyển khoản".equals(phuongThuc) && lblQRCode != null) loadQRCodeVCB(lblQRCode); 
         capNhatTongTien();
 
-        // [2] PHỤC HỒI LẠI TRẠNG THÁI THANH CUỘN (Dùng Double InvokeLater)
         if (mainScrollPane != null) {
             final int savedScrollPos = currentScrollPos;
             SwingUtilities.invokeLater(() -> {
-                mainScrollPane.revalidate();
-                mainScrollPane.repaint();
-                // Ép vòng lặp sự kiện tiếp theo (sau khi bảng đã thực sự phình to) phải cuộn về chỗ cũ
-                SwingUtilities.invokeLater(() -> {
-                    mainScrollPane.getVerticalScrollBar().setValue(savedScrollPos);
-                });
+                mainScrollPane.revalidate(); mainScrollPane.repaint();
+                SwingUtilities.invokeLater(() -> mainScrollPane.getVerticalScrollBar().setValue(savedScrollPos));
             });
         }
     }
@@ -1376,41 +1351,50 @@ public class TaoHoaDon extends JDialog {
         pnlVoucherTags = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
         pnlVoucherTags.setOpaque(false);
         
-        // FIX: Đóng Connection và Statement đúng chuẩn
-        String sqlLoad = "SELECT k.id, h.loaiHinhThuc, h.giaTri AS mucGiam, ISNULL(d.giaTri, 0) AS donToiThieu " +
+        // CẬP NHẬT: Lấy thẳng cột "moTa" từ CSDL để hiển thị rõ ràng người dùng cần mua gì
+        String sqlLoad = "SELECT k.id, k.tenKhuyenMai, h.moTa, " +
+                "ISNULL(spYeuCau.ten, '') AS tenSanPhamYeuCau, " +
+                "ISNULL(spTang.ten, '') AS tenSanPhamTang " +
                 "FROM KhuyenMai k " +
                 "JOIN HinhThucKhuyenMai h ON k.id = h.khuyenMaiId " +
-                "LEFT JOIN DieuKienKhuyenMai d ON k.id = d.khuyenMaiId " +
-                "WHERE k.trangThai = 1 " + // <--- SỬA THÀNH SỐ 1 Ở ĐÂY
-                "AND k.ngayBatDau <= GETDATE() AND k.ngayKetThuc >= GETDATE()";
+                "LEFT JOIN SanPham spYeuCau ON h.spYeuCau = spYeuCau.id " +
+                "LEFT JOIN SanPham spTang ON h.spTang = spTang.id " +
+                "WHERE k.trangThai = 1 " + 
+                "AND CAST(k.ngayBatDau AS DATE) <= CAST(GETDATE() AS DATE) " +
+                "AND (k.ngayKetThuc IS NULL OR CAST(k.ngayKetThuc AS DATE) >= CAST(GETDATE() AS DATE))";
                          
         try (java.sql.Connection con = ConnectDB.getInstance().getConnection();
              java.sql.Statement st = con.createStatement();
              java.sql.ResultSet rs = st.executeQuery(sqlLoad)) {
             
             boolean hasVoucher = false;
-            dsKhuyenMaiCache.clear();
+            if(dsKhuyenMaiCache != null) dsKhuyenMaiCache.clear();
 
             while(rs.next()) {
                 hasVoucher = true;
                 String maKM = rs.getString("id");
-                String loaiKM = rs.getString("loaiHinhThuc"); 
-                double giaTri = rs.getDouble("mucGiam");
-                double donToiThieu = rs.getDouble("donToiThieu");
+                String tenKM = rs.getString("tenKhuyenMai");
+                String moTa = rs.getString("moTa");
                 
-                dsKhuyenMaiCache.add(new Object[]{maKM, loaiKM, giaTri, donToiThieu});
+                // Lấy thêm tên sản phẩm từ cơ sở dữ liệu nếu bạn cần dùng
+                String tenSanPhamYeuCau = rs.getString("tenSanPhamYeuCau");
+                String tenSanPhamTang = rs.getString("tenSanPhamTang");
+                
+                dsKhuyenMaiCache.add(new Object[]{maKM});
 
-                String labelStr = "Mã " + maKM + ": ";
-                if(loaiKM != null && loaiKM.trim().toUpperCase().contains("PHAN_TRAM")) {
-                    labelStr += "Giảm " + (int)giaTri + "%";
-                } else {
-                    labelStr += "Giảm " + String.format("%,d", (long)giaTri).replace(',', '.') + "đ";
-                }
-                
-                if(donToiThieu > 0) {
-                    labelStr += " (Đơn ≥ " + String.format("%,d", (long)donToiThieu).replace(',', '.') + "đ)";
+                // Ưu tiên hiển thị cột "moTa", nếu không có thì lấy cột "tenKhuyenMai"
+                String hienThi = (moTa != null && !moTa.trim().isEmpty()) ? moTa : tenKM;
+                if (hienThi == null || hienThi.trim().isEmpty()) {
+                    hienThi = "Chương trình ưu đãi";
                 }
 
+                // Nếu bạn muốn hiển thị thêm tên sản phẩm yêu cầu ra Thẻ (Tag) thì có thể nối chuỗi ở đây. 
+                // Ví dụ: Nếu chưa có mô tả mà có SP yêu cầu thì in ra "Áp dụng cho: Paracetamol"
+                if (hienThi.equals(tenKM) && !tenSanPhamYeuCau.isEmpty()) {
+                    hienThi += " (Áp dụng cho " + tenSanPhamYeuCau + ")";
+                }
+
+                String labelStr = maKM + " (" + hienThi + ")";
                 pnlVoucherTags.add(createVoucherTag(labelStr, maKM, txtVoucherInput));
             }
             
@@ -1425,59 +1409,31 @@ public class TaoHoaDon extends JDialog {
 
         pnlWrapper.add(pnlInput, BorderLayout.NORTH);
 
-     // Tạo một Panel bọc ngoài để ngăn GridLayout tự động giãn chiều cao
-     JPanel pnlTagsContainer = new JPanel(new BorderLayout());
-     pnlTagsContainer.setOpaque(false);
-     pnlTagsContainer.add(pnlVoucherTags, BorderLayout.NORTH); // Ép các thẻ lên sát phía trên
+        JPanel pnlTagsContainer = new JPanel(new BorderLayout());
+        pnlTagsContainer.setOpaque(false);
+        pnlTagsContainer.add(pnlVoucherTags, BorderLayout.NORTH); 
 
-     pnlWrapper.add(pnlTagsContainer, BorderLayout.CENTER);
+        pnlWrapper.add(pnlTagsContainer, BorderLayout.CENTER);
 
-     btnApply.addActionListener(e -> {
-         String code = txtVoucherInput.getText().trim();
-         if(code.isEmpty() || code.equals("NHẬP MÃ HOẶC CHỌN BÊN DƯỚI...")) return;
+        // NÚT ÁP DỤNG: Đã được làm gọn gàng, đẩy logic sang hàm kiemTraHopLeKhuyenMai
+        btnApply.addActionListener(e -> {
+            String code = txtVoucherInput.getText().trim();
+            if(code.isEmpty() || code.equals("NHẬP MÃ HOẶC CHỌN BÊN DƯỚI...")) return;
 
-         long tongTienDK = tamTinh + vat; 
-         String sqlCheck = "SELECT h.loaiHinhThuc, h.giaTri AS mucGiam, ISNULL(d.giaTri, 0) AS donToiThieu " +
-                 "FROM KhuyenMai k " +
-                 "JOIN HinhThucKhuyenMai h ON k.id = h.khuyenMaiId " +
-                 "LEFT JOIN DieuKienKhuyenMai d ON k.id = d.khuyenMaiId " +
-                 "WHERE k.id = ? AND k.trangThai = 1 " + // <--- SỬA THÀNH SỐ 1 Ở ĐÂY
-                 "AND k.ngayBatDau <= GETDATE() AND k.ngayKetThuc >= GETDATE()";
-         
-         try (java.sql.Connection con = ConnectDB.getInstance().getConnection();
-              java.sql.PreparedStatement pst = con.prepareStatement(sqlCheck)) {
-              
-             pst.setString(1, code);
-             try (java.sql.ResultSet rsCheck = pst.executeQuery()) {
-                 if(rsCheck.next()) {
-                     String loaiKM = rsCheck.getString("loaiHinhThuc");
-                     double giaTri = rsCheck.getDouble("mucGiam");
-                     long donToiThieu = (long) rsCheck.getDouble("donToiThieu");
-
-                     if (tongTienDK < donToiThieu) {
-                         showCustomNotification("CẢNH BÁO", "Chưa đạt giá trị đơn tối thiểu (" + String.format("%,d", donToiThieu).replace(',', '.') + "đ) để áp dụng mã này!", "WARNING");
-                         return;
-                     }
-
-                     if(loaiKM != null && loaiKM.trim().toUpperCase().contains("PHAN_TRAM")) {
-                         tienGiamGia = (long) (tongTienDK * (giaTri / 100.0));
-                     } else {
-                         tienGiamGia = (long) giaTri; 
-                     }
-
-                     maKhuyenMaiApDung = code;
-                 } else {
-                     tienGiamGia = 0;
-                     maKhuyenMaiApDung = "";
-                     showCustomNotification("LỖI", "Mã khuyến mãi không tồn tại hoặc đã hết hạn!", "ERROR");
-                 }
-             }
-             recalculateTotals(); 
-
-         } catch(Exception ex) {
-             ex.printStackTrace();
-         }
-     });
+            if (kiemTraHopLeKhuyenMai(code)) {
+                maKhuyenMaiApDung = code;
+                recalculateTotals(); 
+                showCustomNotification("THÀNH CÔNG", "Đã áp dụng mã khuyến mãi: " + code, "SUCCESS");
+            } else {
+                // Nếu sai, tự reset mã và tiền giảm
+                maKhuyenMaiApDung = "";
+                tienGiamGia = 0;
+                recalculateTotals();
+            }
+            if (!kiemTraHopLeKhuyenMai(code)) {
+                return; 
+            }
+        });
 
         return pnlWrapper;
     }
@@ -4043,16 +3999,20 @@ txtSearchProduct.addKeyListener(new java.awt.event.KeyAdapter() {
         pnl.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mouseClicked(java.awt.event.MouseEvent e) {
-                // Khi click vào tag, điền mã vào ô text
+                // Kiểm tra trước khi cho phép gắn màu xanh
+                
+                if (!kiemTraHopLeKhuyenMai(maKM.trim())) {
+                    maKhuyenMaiApDung = "";
+                    tienGiamGia = 0;
+                    recalculateTotals();
+                    return; 
+                }
                 if (txtInput != null) {
                     txtInput.setText(maKM.trim());
-                    txtInput.setForeground(Color.decode("#10B981")); // Đổi màu xanh lá
+                    txtInput.setForeground(Color.decode("#10B981")); 
                 }
                 
-                // Ép buộc hệ thống nhận diện mã này
                 maKhuyenMaiApDung = maKM.trim();
-                
-                // Gọi tính lại tiền thay vì bấm nút ảo (tránh lỗi NullPointerException)
                 recalculateTotals(); 
             }
             
@@ -4435,12 +4395,14 @@ txtSearchProduct.addKeyListener(new java.awt.event.KeyAdapter() {
         // Khóa chặn lặp mã (1 Voucher chỉ được quét 1 lần)
         java.util.Set<String> processedPromoIds = new java.util.HashSet<>();
 
-        String sql = "SELECT k.id, h.loaiHinhThuc, h.giaTri AS mucGiam, ISNULL(d.giaTri, 0) AS donToiThieu, " +
-                "ISNULL(h.slYeuCau, 0) AS slYeuCau, ISNULL(h.spYeuCau, '') AS spYeuCau, ISNULL(h.dvdlYeuCau, '') AS dvdlYeuCau, " +
-                "ISNULL(h.slTang, 0) AS slTang, ISNULL(h.spTang, '') AS spTang, ISNULL(h.dvdlTang, '') AS dvdlTang " +
+        String sql = "SELECT k.id, h.loaiHinhThuc, h.giaTri AS mucGiam, ISNULL(d.giaTri, 0) AS dkGiaTri, d.loaiDieuKien, " +
+                "ISNULL(h.slYeuCau, 0) AS h_slYeuCau, ISNULL(spYeuCau.ten, ISNULL(h.spYeuCau, '')) AS spYeuCau, ISNULL(h.dvdlYeuCau, '') AS dvdlYeuCau, " +
+                "ISNULL(h.slTang, 0) AS slTang, ISNULL(spTang.ten, ISNULL(h.spTang, '')) AS spTang, ISNULL(h.dvdlTang, '') AS dvdlTang " +
                 "FROM KhuyenMai k " +
                 "JOIN HinhThucKhuyenMai h ON k.id = h.khuyenMaiId " +
                 "LEFT JOIN DieuKienKhuyenMai d ON k.id = d.khuyenMaiId " +
+                "LEFT JOIN SanPham spYeuCau ON h.spYeuCau = spYeuCau.id " +
+                "LEFT JOIN SanPham spTang ON h.spTang = spTang.id " +
                 "WHERE k.trangThai = 1 " + 
                 "AND CAST(k.ngayBatDau AS DATE) <= CAST(GETDATE() AS DATE) " +
                 "AND (k.ngayKetThuc IS NULL OR CAST(k.ngayKetThuc AS DATE) >= CAST(GETDATE() AS DATE))";
@@ -4449,25 +4411,38 @@ txtSearchProduct.addKeyListener(new java.awt.event.KeyAdapter() {
              java.sql.PreparedStatement pst = con.prepareStatement(sql);
              java.sql.ResultSet rs = pst.executeQuery()) {
              
-        	long maxTienGiam = 0;
+            long maxTienGiam = 0;
             String bestMaKM_GiamGia = "";
 
             while (rs.next()) {
                 String maKM = rs.getString("id").trim();
-                
                 if (processedPromoIds.contains(maKM)) continue;
 
                 String loaiKM = rs.getString("loaiHinhThuc") != null ? rs.getString("loaiHinhThuc").toUpperCase() : "";
                 double giaTriGiam = rs.getDouble("mucGiam");
-                double donToiThieu = rs.getDouble("donToiThieu");
                 
-                int slYeuCau = rs.getInt("slYeuCau");
+                long donToiThieu = 0;
+                int slYeuCau = rs.getInt("h_slYeuCau");
+                
+                // FIX: Nhận dạng Điều kiện Số Lượng hay Điều kiện Tiền
+                String loaiDK = rs.getString("loaiDieuKien");
+                if ("SO_LUONG".equals(loaiDK)) {
+                    if (slYeuCau <= 0) slYeuCau = (int) rs.getDouble("dkGiaTri");
+                } else {
+                    donToiThieu = (long) rs.getDouble("dkGiaTri");
+                }
+                
                 String spYeuCau = rs.getString("spYeuCau").trim();
                 String dvdlYeuCau = rs.getString("dvdlYeuCau") == null ? "" : rs.getString("dvdlYeuCau").trim(); 
                 
                 int slTang = rs.getInt("slTang");
                 String spTang = rs.getString("spTang").trim();
                 String dvdlTang = rs.getString("dvdlTang") == null ? "" : rs.getString("dvdlTang").trim();
+
+                // FIX: Tự động giả định Món cần mua = Món được tặng nếu Form lưu bị trống
+                if (spYeuCau.isEmpty() && !spTang.isEmpty() && loaiKM.contains("SAN_PHAM_KEM_THEO")) {
+                    spYeuCau = spTang;
+                }
 
                 boolean duDieuKien = false;
                 long soLuongTangThucTe = 0;
@@ -4658,6 +4633,116 @@ txtSearchProduct.addKeyListener(new java.awt.event.KeyAdapter() {
         }
         
         return tienDauCa + doanhThuTienMat;
+    }
+    private boolean kiemTraHopLeKhuyenMai(String maKM) {
+        long tongTienDK = tamTinh + vat;
+        int tongSoLuongSP_ThucTe = 0;
+        
+        for (int i = 0; i < productModel.getRowCount(); i++) {
+            if (productModel.getValueAt(i, 0) != null && !productModel.getValueAt(i, 0).toString().startsWith("[QUÀ TẶNG]")) {
+                try {
+                    tongSoLuongSP_ThucTe += Integer.parseInt(productModel.getValueAt(i, 2).toString());
+                } catch (Exception ex) {}
+            }
+        }
+
+        // BỔ SUNG: Join thêm bảng SanPham cho spTang và check d.loaiDieuKien
+        String sqlCheck = "SELECT h.loaiHinhThuc, ISNULL(h.giaTri, 0) AS mucGiam, " +
+                          "ISNULL(d.giaTri, 0) AS dkGiaTri, d.loaiDieuKien, " +
+                          "ISNULL(h.slYeuCau, 0) AS h_slYeuCau, " +
+                          "ISNULL(sp.ten, ISNULL(h.spYeuCau, '')) AS tenSpYeuCau, " +
+                          "ISNULL(spTang.ten, ISNULL(h.spTang, '')) AS tenSpTang, " +
+                          "ISNULL(dv.ten, ISNULL(h.dvdlYeuCau, '')) AS tenDvdlYeuCau " +
+                          "FROM KhuyenMai k " +
+                          "JOIN HinhThucKhuyenMai h ON k.id = h.khuyenMaiId " +
+                          "LEFT JOIN DieuKienKhuyenMai d ON k.id = d.khuyenMaiId " +
+                          "LEFT JOIN SanPham sp ON h.spYeuCau = sp.id " +
+                          "LEFT JOIN SanPham spTang ON h.spTang = spTang.id " +
+                          "LEFT JOIN DonViDoLuong dv ON h.dvdlYeuCau = dv.id " +
+                          "WHERE k.id = ? AND k.trangThai = 1 " +
+                          "AND CAST(k.ngayBatDau AS DATE) <= CAST(GETDATE() AS DATE) " +
+                          "AND (k.ngayKetThuc IS NULL OR CAST(k.ngayKetThuc AS DATE) >= CAST(GETDATE() AS DATE))";
+
+        try (java.sql.Connection con = ConnectDB.getInstance().getConnection();
+             java.sql.PreparedStatement pst = con.prepareStatement(sqlCheck)) {
+             
+            pst.setString(1, maKM);
+            try (java.sql.ResultSet rs = pst.executeQuery()) {
+                if (rs.next()) {
+                    long donToiThieu = 0;
+                    int slYeuCau = rs.getInt("h_slYeuCau");
+                    
+                    // FIX QUAN TRỌNG: Phân biệt rõ Điều kiện Tiền và Điều kiện Số lượng
+                    String loaiDK = rs.getString("loaiDieuKien");
+                    if ("SO_LUONG".equals(loaiDK)) {
+                        if (slYeuCau <= 0) slYeuCau = (int) rs.getDouble("dkGiaTri");
+                    } else {
+                        donToiThieu = (long) rs.getDouble("dkGiaTri");
+                    }
+
+                    String tenSpYeuCau = rs.getString("tenSpYeuCau").trim();
+                    String tenSpTang = rs.getString("tenSpTang").trim();
+                    String tenDvdlYeuCau = rs.getString("tenDvdlYeuCau").trim();
+                    
+                    // ==========================================
+                    // FIX TRÍ MẠNG: NẾU SP YÊU CẦU BỊ TRỐNG NHƯNG CÓ SP TẶNG -> LẤY TÊN SP TẶNG LÀM CHUẨN
+                    // ==========================================
+                    if (tenSpYeuCau.isEmpty() && !tenSpTang.isEmpty() && "SAN_PHAM_KEM_THEO".equals(rs.getString("loaiHinhThuc"))) {
+                        tenSpYeuCau = tenSpTang; 
+                    }
+                    
+                    String loaiKM = rs.getString("loaiHinhThuc");
+                    double mucGiam = rs.getDouble("mucGiam");
+
+                    // 1. CHẶN: Kiểm tra đơn tối thiểu
+                    if (donToiThieu > 0 && tongTienDK < donToiThieu) {
+                        showCustomNotification("CHƯA ĐỦ ĐIỀU KIỆN", "Chưa đạt giá trị đơn tối thiểu (" + String.format("%,d", donToiThieu).replace(',', '.') + "đ) để áp dụng mã này!", "WARNING");
+                        return false;
+                    }
+
+                    // 2. CHẶN: Kiểm tra mua sản phẩm chỉ định (Giờ đã lấy được tên SP Tặng hiển thị)
+                    if (!tenSpYeuCau.isEmpty() && slYeuCau > 0) {
+                        int slSanPhamYeuCauThucTe = 0;
+                        for (int i = 0; i < productModel.getRowCount(); i++) {
+                            String tenSpTrongBang = productModel.getValueAt(i, 0).toString();
+                            String dvtTrongBang = productModel.getValueAt(i, 1).toString();
+                            
+                            if (!tenSpTrongBang.startsWith("[QUÀ TẶNG]") && tenSpTrongBang.toLowerCase().contains(tenSpYeuCau.toLowerCase())) {
+                                if (tenDvdlYeuCau.isEmpty() || dvtTrongBang.equalsIgnoreCase(tenDvdlYeuCau)) {
+                                    slSanPhamYeuCauThucTe += Integer.parseInt(productModel.getValueAt(i, 2).toString());
+                                }
+                            }
+                        }
+                        
+                        if (slSanPhamYeuCauThucTe < slYeuCau) {
+                            showCustomNotification("CHƯA ĐỦ ĐIỀU KIỆN", "Bạn cần mua ít nhất " + slYeuCau + " " + (tenDvdlYeuCau.isEmpty() ? "sản phẩm" : tenDvdlYeuCau) + " [" + tenSpYeuCau + "] để nhận ưu đãi!\nGiỏ hàng hiện mới có " + slSanPhamYeuCauThucTe + ".", "WARNING");
+                            return false;
+                        }
+                    } 
+                    // 3. CHẶN: Yêu cầu tổng số lượng (áp dụng cho toàn bộ hóa đơn nếu KHÔNG CÓ tên sản phẩm)
+                    else if (slYeuCau > 0) {
+                        if (tongSoLuongSP_ThucTe < slYeuCau) {
+                            showCustomNotification("CHƯA ĐỦ ĐIỀU KIỆN", "Bạn cần mua tổng cộng " + slYeuCau + " sản phẩm trở lên để áp dụng mã này!", "WARNING");
+                            return false;
+                        }
+                    }
+                    
+                    if(loaiKM != null && loaiKM.trim().toUpperCase().contains("PHAN_TRAM")) {
+                        tienGiamGia = (long) (tongTienDK * (mucGiam / 100.0));
+                    } else {
+                        tienGiamGia = (long) mucGiam; 
+                    }
+
+                    return true; 
+                } else {
+                    showCustomNotification("LỖI", "Mã khuyến mãi không tồn tại hoặc đã hết hạn!", "ERROR");
+                    return false;
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
     }
     
 }

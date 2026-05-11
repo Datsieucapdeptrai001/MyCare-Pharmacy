@@ -90,4 +90,51 @@ public class BUS_HoaDon {
         }
         return daoHD.timGoiYHoaDonHoanThanh(tuKhoa.trim());
     }
+ // Thêm class này vào bên trong BUS_HoaDon (hoặc tạo file riêng tùy ý)
+    public static class KetQuaHoaDon {
+        public long tamTinh = 0;
+        public long tongVat = 0;
+        public int tongSoLuongSP = 0;
+        public long tienGiamTuDiem = 0;
+        public long tongThanhToan = 0;
+    }
+
+    // THÊM HÀM NÀY VÀO BUS_HoaDon: Đưa mọi phép toán cộng trừ nhân chia về đây
+    public KetQuaHoaDon tinhToanTienHoaDon(List<long[]> danhSachSanPham, boolean isDungDiem, int diemHienTaiKH, long tienGiamGiaKhuyenMai) {
+        KetQuaHoaDon kq = new KetQuaHoaDon();
+        
+        // 1. Tính toán Tạm tính, VAT và Tổng số lượng
+        for (long[] sp : danhSachSanPham) {
+            long soLuong = sp[0];
+            long donGia = sp[1];
+            double thueSuat = sp[2] / 100.0; // VAT (%)
+            
+            long thanhTien = soLuong * donGia;
+            kq.tamTinh += thanhTien;
+            kq.tongVat += (long) (thanhTien * thueSuat);
+            kq.tongSoLuongSP += soLuong;
+        }
+        
+        // 2. Tính Tổng thanh toán (chưa trừ điểm)
+        long totalToPay = kq.tamTinh + kq.tongVat - tienGiamGiaKhuyenMai;
+        if (totalToPay < 0) totalToPay = 0;
+        
+        // 3. Xử lý logic dùng điểm thưởng
+        if (isDungDiem) {
+            long maxTienGiam = diemHienTaiKH * 100L; // 1 điểm = 100đ
+            if (maxTienGiam > totalToPay) {
+                kq.tienGiamTuDiem = (totalToPay / 100L) * 100L; // Làm tròn điểm
+            } else {
+                kq.tienGiamTuDiem = maxTienGiam; 
+            }
+            totalToPay -= kq.tienGiamTuDiem;
+        } else {
+            kq.tienGiamTuDiem = 0;
+        }
+        
+        if (totalToPay < 0) totalToPay = 0;
+        kq.tongThanhToan = totalToPay;
+        
+        return kq;
+    }
 }
