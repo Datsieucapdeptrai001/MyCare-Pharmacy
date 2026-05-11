@@ -163,6 +163,10 @@ public class DAO_KhuyenMai {
                 double giamToiDaDB = rs.getDouble("giamToiDa"); 
                 double donToiThieuDB = rs.getObject("donToiThieu") != null ? rs.getDouble("donToiThieu") : 0;
 
+                // ĐÃ FIX: Lấy tên Sản phẩm để hiển thị thay vì chữ "Sản phẩm" vô hồn
+                String spYeuCau = rs.getString("spYeuCau");
+                String spHienThi = (spYeuCau != null && !spYeuCau.trim().isEmpty()) ? spYeuCau : "Tất cả SP";
+
                 String hinhThucUI = "Giảm phần trăm (%)";
                 String mucGiamUI = "";
                 String donToiThieuUI = "";
@@ -178,21 +182,21 @@ public class DAO_KhuyenMai {
                     
                     String dvM = rs.getString("dvdlYeuCau");
                     donToiThieuUI = "Mua " + rs.getInt("slYeuCau") + " " + (dvM != null && !dvM.isEmpty() ? dvM : "SP");
-                    doiTuongUI = "Tất cả";
+                    doiTuongUI = spHienThi; // Hiển thị Đích danh tên Sản phẩm
                 } else if ("GIAM_TIEN_MAT".equals(hinhThucDB)) {
                     hinhThucUI = "Giảm tiền mặt";
                     mucGiamUI = String.format("-%,.0f đ", mucGiamDB);
                     
                     String dvM = rs.getString("dvdlYeuCau");
                     donToiThieuUI = "Mua " + rs.getInt("slYeuCau") + " " + (dvM != null && !dvM.isEmpty() ? dvM : "SP");
-                    doiTuongUI = "Sản phẩm";
+                    doiTuongUI = spHienThi; // Hiển thị Đích danh tên Sản phẩm
                 } else {
                     mucGiamUI = mucGiamDB + "%";
                     if (giamToiDaDB > 0) {
                         mucGiamUI += " (Tối đa " + String.format("%,.0f đ", giamToiDaDB) + ")";
                     }
                     donToiThieuUI = donToiThieuDB > 0 ? String.format("%,.0f đ", donToiThieuDB) : "Không yêu cầu";
-                    doiTuongUI = rs.getString("doiTuongApDung") != null && rs.getString("doiTuongApDung").equals("HOA_DON") ? "Hóa đơn" : "Sản phẩm";
+                    doiTuongUI = rs.getString("doiTuongApDung") != null && rs.getString("doiTuongApDung").equals("HOA_DON") ? "Hóa đơn" : spHienThi;
                 }
                 
                 String thoiGianUI = "N/A"; 
