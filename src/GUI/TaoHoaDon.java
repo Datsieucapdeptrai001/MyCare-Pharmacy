@@ -281,8 +281,7 @@ public class TaoHoaDon extends JDialog {
                 String tenKM = km[1] != null ? km[1].toString() : "Khuyến mãi";
                 String moTa = km[2] != null ? km[2].toString() : "";
                 String tenSPY = km[5] != null ? km[5].toString() : "";
-                
-                // Logic hiển thị: Nếu mô tả rỗng thì lấy tên Khuyến mãi
+            
                 String hienThi = (!moTa.trim().isEmpty()) ? moTa : tenKM;
                 
                 String label = maKM + " (" + hienThi + ")";
@@ -296,305 +295,155 @@ public class TaoHoaDon extends JDialog {
         pnlVoucherTags.revalidate(); 
         pnlVoucherTags.repaint();
     }
-
-    
- 
     private void xuLyHoanThanhHoaDon() {
-        // 1. KIỂM TRA TRƯỚC TỒN KHO & QUY ĐỔI ĐƠN VỊ TÍNH
         BUS.BUS_DonViDoLuong busDonVi = new BUS.BUS_DonViDoLuong();
         BUS.BUS_Kho busKho = new BUS.BUS_Kho();
-        
-        for (int i = 0; i < productModel.getRowCount(); i++) {
-            String tenSP = productModel.getValueAt(i, 0).toString().trim();
-            if (tenSP.startsWith("[QUÀ TẶNG]")) {
-                tenSP = tenSP.replace("[QUÀ TẶNG]", "").trim(); 
-            }
-            
-            String tenDVT = productModel.getValueAt(i, 1).toString().trim();
-            int soLuongMua = Integer.parseInt(productModel.getValueAt(i, 2).toString());
+        BUS.BUS_HoaDon busHD = new BUS.BUS_HoaDon();
 
-            String maSP = "";
-            double tiLeQuyDoi = 1.0;
-            
-            try (java.sql.Connection con = ConnectDB.getInstance().getConnection();
-                 java.sql.PreparedStatement pst = con.prepareStatement("SELECT id FROM SanPham WHERE ten = ?")) {
-                pst.setString(1, tenSP);
-                try (java.sql.ResultSet rs = pst.executeQuery()) {
-                    if (rs.next()) maSP = rs.getString("id");
-                }
-            } catch (Exception ex) {
-                ex.printStackTrace();
-            }
-
-            if (maSP.isEmpty()) {
-                showCustomNotification("LỖI HỆ THỐNG", "Không tìm thấy mã sản phẩm cho: " + tenSP, "ERROR");
-                return;
-            }
-
-            List<DonViDoLuong> dsDonVi = busDonVi.getDSTheoMaSP(maSP);
-            for (DonViDoLuong dv : dsDonVi) {
-                if (dv.getTen().equalsIgnoreCase(tenDVT)) {
-                    tiLeQuyDoi = dv.getChuyenDoiSangDonViCoBan();
-                    break;
-                }
-            }
-
-            int tongSoLuongCoBan = (int) (soLuongMua * tiLeQuyDoi);
-
-            if (!busKho.kiemTraTonKho(maSP, tongSoLuongCoBan)) {
-                showCustomNotification(
-                    "TỒN KHO KHÔNG ĐỦ", 
-                    "Sản phẩm: " + tenSP + "\n" +
-                    "Không đủ hàng để xuất " + soLuongMua + " " + tenDVT + " (Quy đổi: " + tongSoLuongCoBan + " đơn vị cơ bản).\n" +
-                    "Vui lòng giảm số lượng hoặc chọn sản phẩm khác!", 
-                    "WARNING"
-                );
-                return; 
-            }
-        }
-
+        // 1. CHUẨN BỊ DỮ LIỆU CƠ BẢN
         String khach = isCustomerLinked ? linkedTenKH : txtName.getText();
         if(khach.equals("Tên khách (bỏ trống = Khách lẻ)") || khach.trim().isEmpty()) khach = "Khách lẻ";
         String sdt = isCustomerLinked ? linkedSdtKH : txtPhone.getText().replace("Số điện thoại (tuỳ chọn)", "");
         String tongTien = lblTotalPriceValue.getText();
 
-        try (java.sql.Connection con = ConnectDB.getInstance().getConnection()) {
+        String maHDMoi = (editingModelRow != -1) ? maHDDangSua.replace("-LuuNhap", "") : phatSinhMaHoaDon();
+        Entity.HoaDon hd = new Entity.HoaDon();
+        hd.setId(maHDMoi);
+        hd.setLoaiHD(Enumeration.LoaiHoaDon.BAN_HANG);
+        hd.setNgayLapHD(java.time.LocalDateTime.now());
 
-            String maHDMoi = (editingModelRow != -1) ? maHDDangSua.replace("-LuuNhap", "") : phatSinhMaHoaDon();
-            Entity.HoaDon hd = new Entity.HoaDon();
-            hd.setId(maHDMoi);
-            hd.setLoaiHD(Enumeration.LoaiHoaDon.BAN_HANG);
-            
-            String strDiem = isDungDiem ? " | Dùng điểm: -" + tienGiamTuDiem : "";
-            String strKM = maKhuyenMaiApDung.isEmpty() ? "" : " | KM: " + maKhuyenMaiApDung;
-            
-            String strKeDon = "";
-            if (pnlDonThuoc != null && pnlDonThuoc.isVisible()) {
-                String bs = txtBacSi.getText().trim();
-                String cs = txtCoSo.getText().trim();
-                String cd = txtChuanDoan.getText().trim();
-                if (cd.contains("Chẩn đoán bệnh")) cd = ""; 
-                strKeDon = " | BS:" + bs + " | CS:" + cs + (cd.isEmpty() ? "" : " | CD:" + cd);
+        // Ghi chú & Quà tặng
+        String strDiem = isDungDiem ? " | Dùng điểm: -" + tienGiamTuDiem : "";
+        String strKM = (maKhuyenMaiApDung == null || maKhuyenMaiApDung.isEmpty()) ? "" : " | KM: " + maKhuyenMaiApDung;
+        String strKeDon = "";
+        if (pnlDonThuoc != null && pnlDonThuoc.isVisible()) {
+            String bs = txtBacSi.getText().trim();
+            String cs = txtCoSo.getText().trim();
+            String cd = txtChuanDoan.getText().trim();
+            strKeDon = " | BS:" + bs + " | CS:" + cs + (cd.contains("Chẩn đoán") || cd.isEmpty() ? "" : " | CD:" + cd);
+        }
+        
+        StringBuilder strGifts = new StringBuilder();
+        for (int i = 0; i < productModel.getRowCount(); i++) {
+            String tenSP = productModel.getValueAt(i, 0).toString();
+            if (tenSP.startsWith("[QUÀ TẶNG]")) {
+                strGifts.append(" | TANG:").append(tenSP.replace("[QUÀ TẶNG]", "").trim())
+                        .append(";").append(productModel.getValueAt(i, 2).toString())
+                        .append(";").append(productModel.getValueAt(i, 1).toString());
             }
+        }
+        hd.setGhiChu(phuongThuc.equals("Tiền mặt") ? ("CASH:" + tongTienMat + strKM + strDiem + strKeDon + strGifts) : ("BANK" + strKM + strDiem + strKeDon + strGifts));
+
+        // Nhân viên
+        Entity.NhanVien nv = new Entity.NhanVien();
+        try {
+            String maNV = Utils.UserSession.getInstance().getMaNhanVien();
+            nv.setNhanVien(maNV != null && !maNV.isEmpty() ? maNV : "DS-0001");
+        } catch(Exception ex) { nv.setNhanVien("DS-0001"); }
+        hd.setNhanVienId(nv);
+
+        // Khách hàng & Phương thức TT & Khuyến Mãi
+        if (isCustomerLinked && !sdt.isEmpty()) {
+            Entity.KhachHang khObj = new BUS.BUS_KhachHang().timKhachHangTheoSdt(sdt); // Gọi BUS chuẩn
+            if (khObj != null) hd.setKhachHangId(khObj);
+        }
+        hd.setPhuongThucThanhToan(phuongThuc.equals("Tiền mặt") ? Enumeration.PhuongThucThanhToan.TIEN_MAT : Enumeration.PhuongThucThanhToan.CHUYEN_KHOAN_NGAN_HANG);
+        if (this.maKhuyenMaiApDung != null && !this.maKhuyenMaiApDung.isEmpty()) {
+            Entity.KhuyenMai km = new Entity.KhuyenMai(); km.setId(this.maKhuyenMaiApDung.split(",")[0].trim());
+            hd.setKhuyenMaiId(km);
+        }
+
+        // 2. DUYỆT GIỎ HÀNG VÀ KIỂM TRA TỒN KHO QUA BUS (KHÔNG SQL)
+        java.util.List<Entity.ChiTietHoaDon> dsCTHD = new java.util.ArrayList<>();
+        java.util.List<Entity.ChiTietHoaDon> dsQuaTang = new java.util.ArrayList<>();
+
+        for (int i = 0; i < productModel.getRowCount(); i++) {
+            String tenSP = productModel.getValueAt(i, 0).toString().trim();
+            boolean isGift = tenSP.startsWith("[QUÀ TẶNG]");
+            if (isGift) tenSP = tenSP.replace("[QUÀ TẶNG]", "").trim();
             
-            StringBuilder strGifts = new StringBuilder();
-            for (int i = 0; i < productModel.getRowCount(); i++) {
-                String tenSP = productModel.getValueAt(i, 0).toString();
-                if (tenSP.startsWith("[QUÀ TẶNG]")) {
-                    String realName = tenSP.replace("[QUÀ TẶNG]", "").trim();
-                    String unit = productModel.getValueAt(i, 1).toString();
-                    String qty = productModel.getValueAt(i, 2).toString();
-                    strGifts.append(" | TANG:").append(realName).append(";").append(qty).append(";").append(unit);
+            String tenDVT = productModel.getValueAt(i, 1).toString().trim();
+            int soLuongMua = Integer.parseInt(productModel.getValueAt(i, 2).toString());
+
+            String[] ids = busHD.layMaSPVaMaDVT(tenSP, tenDVT);
+            if (ids == null) {
+                showCustomNotification("LỖI HỆ THỐNG", "Không tìm thấy mã CSDL cho: " + tenSP, "ERROR"); return;
+            }
+            String maSP = ids[0]; String maDVT = ids[1];
+
+            // Rào lỗi kiểm tra tồn kho
+            double tiLeQuyDoi = 1.0;
+            List<Entity.DonViDoLuong> dsDonVi = busDonVi.getDSTheoMaSP(maSP);
+            for (Entity.DonViDoLuong dv_1 : dsDonVi) {
+                if (dv_1.getTen().equalsIgnoreCase(tenDVT)) { tiLeQuyDoi = dv_1.getChuyenDoiSangDonViCoBan(); break; }
+            }
+            int tongSoLuongCoBan = (int) (soLuongMua * tiLeQuyDoi);
+
+            if (!busKho.kiemTraTonKho(maSP, tongSoLuongCoBan)) {
+                showCustomNotification("TỒN KHO KHÔNG ĐỦ", "Sản phẩm: " + tenSP + "\nKhông đủ hàng để xuất " + soLuongMua + " " + tenDVT, "WARNING");
+                return; 
+            }
+
+            // Đóng gói Chi Tiết Hóa Đơn
+            Entity.ChiTietHoaDon ct = new Entity.ChiTietHoaDon();
+            ct.setHoaDonId(hd);
+            Entity.SanPham sp = new Entity.SanPham(); sp.setId(maSP); ct.setSanPhamId(sp);
+            Entity.DonViDoLuong dv = new Entity.DonViDoLuong(); dv.setId(maDVT); ct.setDonViDoLuongId(dv);
+            ct.setSoLuong(soLuongMua);
+
+            if (isGift) dsQuaTang.add(ct); else dsCTHD.add(ct);
+        }
+
+        // 3. XỬ LÝ LƯU DATABASE THÔNG QUA BUS
+        if (editingModelRow != -1 && maHDDangSua != null && !maHDDangSua.isEmpty()) {
+            busHD.xoaHoaDonNhap(maHDDangSua); // Dọn dẹp nháp qua BUS
+        }
+        
+        boolean success = busHD.thanhToan(hd, dsCTHD, dsQuaTang); // HÀM CHÍNH ĐÃ CÓ SẴN CỦA ÔNG
+
+        if (success) {
+            if (boDemNguoc != null) boDemNguoc.stop(); 
+            if (boKiemTraTienToi != null) boKiemTraTienToi.stop(); 
+            
+            // Cập nhật điểm và trừ kho (Tái sử dụng logic cũ nhưng an toàn hơn)
+            for (Entity.ChiTietHoaDon ct : dsCTHD) {
+                double tiLe = 1.0;
+                List<Entity.DonViDoLuong> dsDonVi = busDonVi.getDSTheoMaSP(ct.getSanPhamId().getId());
+                for (Entity.DonViDoLuong dv_1 : dsDonVi) {
+                    if (dv_1.getId().equals(ct.getDonViDoLuongId().getId())) { tiLe = dv_1.getChuyenDoiSangDonViCoBan(); break; }
                 }
+                int slCanTru = (int)(ct.getSoLuong() * tiLe) - ct.getSoLuong();
+                if (slCanTru > 0) busKho.xuLyXuatKhoFEFO(ct.getSanPhamId().getId(), slCanTru);
             }
-            
-            if (phuongThuc.equals("Tiền mặt")) {
-                hd.setGhiChu("CASH:" + tongTienMat + strKM + strDiem + strKeDon + strGifts.toString());
-            } else {
-                hd.setGhiChu("BANK" + strKM + strDiem + strKeDon + strGifts.toString()); 
-            }
-            hd.setNgayLapHD(java.time.LocalDateTime.now());
-
-            Entity.NhanVien nv = new Entity.NhanVien();
-            try {
-                String maNV = Utils.UserSession.getInstance().getMaNhanVien();
-                nv.setNhanVien(maNV != null && !maNV.isEmpty() ? maNV : "DS-0001");
-            } catch(Exception ex) { }
-            hd.setNhanVienId(nv);
 
             if (isCustomerLinked && !sdt.isEmpty()) {
-                try (java.sql.PreparedStatement pstKH = con.prepareStatement("SELECT id FROM KhachHang WHERE sdt = ?")) {
-                    pstKH.setString(1, sdt);
-                    try (java.sql.ResultSet rsKH = pstKH.executeQuery()) {
-                        if (rsKH.next()) {
-                            Entity.KhachHang khObj = new Entity.KhachHang();
-                            khObj.setId(rsKH.getString("id"));
-                            hd.setKhachHangId(khObj);
-                        }
-                    }
-                }
-            }
-
-            Enumeration.PhuongThucThanhToan pt = phuongThuc.equals("Tiền mặt") 
-                    ? Enumeration.PhuongThucThanhToan.TIEN_MAT 
-                    : Enumeration.PhuongThucThanhToan.CHUYEN_KHOAN_NGAN_HANG;
-            hd.setPhuongThucThanhToan(pt);
-            
-            if (this.maKhuyenMaiApDung != null && !this.maKhuyenMaiApDung.isEmpty()) {
-                Entity.KhuyenMai km = new Entity.KhuyenMai();
-                km.setId(this.maKhuyenMaiApDung.split(",")[0].trim());
-                hd.setKhuyenMaiId(km);
-            }
-
-            java.util.List<Entity.ChiTietHoaDon> dsCTHD = new java.util.ArrayList<>();
-            java.util.List<Entity.ChiTietHoaDon> dsQuaTang = new java.util.ArrayList<>();
-            for (int i = 0; i < productModel.getRowCount(); i++) {
-                String tenSP = productModel.getValueAt(i, 0).toString();
-                boolean isGift = tenSP.startsWith("[QUÀ TẶNG]");
-                if (isGift) {
-                    tenSP = tenSP.replace("[QUÀ TẶNG]", "").trim();
-                }
-                String tenDVT = productModel.getValueAt(i, 1).toString();
-                int soLuong = Integer.parseInt(productModel.getValueAt(i, 2).toString());
-
-                String maSP = "";
-                String maDVT = "";
-                String sql = "SELECT sp.id AS MaSP, dv.id AS MaDVT FROM SanPham sp JOIN DonViDoLuong dv ON sp.id = dv.sanPhamId WHERE sp.ten = ? AND dv.ten = ?";
+                int diemDaDung = isDungDiem ? (int)(tienGiamTuDiem / 100) : 0;
+                int diemCongMoi = (int) (tongHoaDon / 10000); 
+                int diemChenhLech = diemCongMoi - diemDaDung; 
                 
-                try (java.sql.PreparedStatement pstSP = con.prepareStatement(sql)) {
-                    pstSP.setString(1, tenSP);
-                    pstSP.setString(2, tenDVT);
-                    try (java.sql.ResultSet rsSP = pstSP.executeQuery()) {
-                        if(rsSP.next()) {
-                            maSP = rsSP.getString("MaSP");
-                            maDVT = rsSP.getString("MaDVT");
-                        }
-                    }
-                }
+                new BUS.BUS_KhachHang().capNhatDiemTichLuy(sdt, diemChenhLech); // Hãy tạo hàm update điểm trong BUS Khách hàng nếu chưa có
 
-                if (maSP.isEmpty()) throw new Exception("Không tìm thấy mã sản phẩm trong CSDL cho: " + tenSP);
-
-                Entity.ChiTietHoaDon ct = new Entity.ChiTietHoaDon();
-                ct.setHoaDonId(hd);
-                
-                Entity.SanPham sp = new Entity.SanPham();
-                sp.setId(maSP);
-                ct.setSanPhamId(sp);
-
-                Entity.DonViDoLuong dv = new Entity.DonViDoLuong();
-                dv.setId(maDVT);
-                ct.setDonViDoLuongId(dv);
-
-                ct.setSoLuong(soLuong);
-                if (isGift) {
-                    dsQuaTang.add(ct);
-                } else {
-                    dsCTHD.add(ct);
-                }
-                
-                double tiLeQuyDoi = 1.0;
-                List<DonViDoLuong> dsDonVi = busDonVi.getDSTheoMaSP(maSP);
-                for (DonViDoLuong dv_1 : dsDonVi) {
-                    if (dv_1.getTen().equalsIgnoreCase(tenDVT)) {
-                        tiLeQuyDoi = dv_1.getChuyenDoiSangDonViCoBan();
-                        break;
-                    }
-                }
-                int tongSoLuongCoBan = (int) (soLuong * tiLeQuyDoi);
-                
-                int soLuongCanTruBu = tongSoLuongCoBan - soLuong;
-                if (soLuongCanTruBu > 0) {
-                    busKho.xuLyXuatKhoFEFO(maSP, soLuongCanTruBu); 
-                }
-            }
-
-            BUS.BUS_HoaDon busHD = new BUS.BUS_HoaDon();
-            
-            if (editingModelRow != -1 && maHDDangSua != null && !maHDDangSua.isEmpty()) {
-                try {
-                    String sqlDelCT = "DELETE FROM ChiTietHoaDon WHERE hoaDonId = ?";
-                    try (java.sql.PreparedStatement pstDelCT = con.prepareStatement(sqlDelCT)) {
-                        pstDelCT.setString(1, maHDDangSua);
-                        pstDelCT.executeUpdate();
-                    }
-                    String sqlDelHD = "DELETE FROM HoaDon WHERE id = ?";
-                    try (java.sql.PreparedStatement pstDelHD = con.prepareStatement(sqlDelHD)) {
-                        pstDelHD.setString(1, maHDDangSua);
-                        pstDelHD.executeUpdate();
-                    }
-                } catch (Exception exDel) {
-                    System.out.println("Lỗi khi dọn dẹp bản nháp cũ: " + exDel.getMessage());
-                }
-            }
-            
-            boolean success = busHD.thanhToan(hd, dsCTHD, dsQuaTang);
-
-            if (success) {
-                if (boDemNguoc != null) boDemNguoc.stop(); 
-                if (boKiemTraTienToi != null) boKiemTraTienToi.stop(); // Dừng cả đồng hồ quét mã QR
-                
-                if (isCustomerLinked && !sdt.isEmpty()) {
-                    try {
-                        int diemDaDung = isDungDiem ? (int)(tienGiamTuDiem / 100) : 0;
-                        int diemCongMoi = (int) (tongHoaDon / 10000); 
-                        int diemChenhLech = diemCongMoi - diemDaDung; 
-                    
-                        String sqlUpdateDiem = "UPDATE KhachHang SET diemTichLuy = ISNULL(diemTichLuy, 0) + ? WHERE sdt = ?";
-                        try (java.sql.PreparedStatement pstUpdate = con.prepareStatement(sqlUpdateDiem)) {
-                            pstUpdate.setInt(1, diemChenhLech);
-                            pstUpdate.setString(2, sdt);
-                            pstUpdate.executeUpdate();
-                        }
-
-                        Window parentWindow = SwingUtilities.getWindowAncestor(this);
-                        if (parentWindow instanceof MainDashboard) {
-                            DefaultTableModel khModel = ((MainDashboard) parentWindow).getModelKhachHang();
-                            if (khModel != null) {
-                                for (int j = 0; j < khModel.getRowCount(); j++) {
-                                    String phoneInTable = khModel.getValueAt(j, 2).toString();
-                                    if (sdt.equals(phoneInTable)) {
-                                        int dHienTai = 0;
-                                        try {
-                                            String currentDiemStr = khModel.getValueAt(j, 5).toString().replace(".", "").replace(",", "");
-                                            dHienTai = Integer.parseInt(currentDiemStr);
-                                        } catch (Exception ex) {}
-                                        khModel.setValueAt(String.valueOf(dHienTai + diemChenhLech), j, 5);
-
-                                        int donHangHienTai = 0;
-                                        try { donHangHienTai = Integer.parseInt(khModel.getValueAt(j, 3).toString()); } catch(Exception ex) {}
-                                        khModel.setValueAt(String.valueOf(donHangHienTai + 1), j, 3);
-
-                                        long chiTieuHienTai = 0;
-                                        try {
-                                            String currentChiTieu = khModel.getValueAt(j, 4).toString().replaceAll("[^0-9]", "");
-                                            chiTieuHienTai = Long.parseLong(currentChiTieu);
-                                        } catch(Exception ex) {}
-                                        java.text.DecimalFormat df = new java.text.DecimalFormat("#,###đ");
-                                        khModel.setValueAt(df.format(chiTieuHienTai + tongHoaDon), j, 4);
-                                        break; 
-                                    }
-                                }
-                            }
-                        }
-                        
-                        String msgThongBao = "Thanh toán thành công!\n";
-                        if(diemDaDung > 0) msgThongBao += "- Đã sử dụng: " + String.format("%,d", diemDaDung) + " điểm\n";
-                        if(diemCongMoi > 0) msgThongBao += "+ Tích lũy thêm: " + String.format("%,d", diemCongMoi) + " điểm\n";
-                        
-                        showCustomNotification("HOÀN TẤT", msgThongBao, "SUCCESS");
-                    } catch (Exception ex) {
-                        ex.printStackTrace();
-                    }
-                } else {
-                    showCustomNotification("HOÀN TẤT", "Thanh toán thành công!\nHóa đơn và Tồn kho đã được cập nhật.", "SUCCESS");
-                }
-
-                String ngayStr = java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
-                if (editingModelRow != -1) {
-                    mainTableModel.setValueAt(maHDMoi, editingModelRow, 0);
-                    mainTableModel.setValueAt(ngayStr, editingModelRow, 1);
-                    mainTableModel.setValueAt(khach, editingModelRow, 2);         
-                    mainTableModel.setValueAt(sdt, editingModelRow, 3);           
-                    mainTableModel.setValueAt(phuongThuc, editingModelRow, 4);   
-                    mainTableModel.setValueAt(tongTien, editingModelRow, 5);     
-                    mainTableModel.setValueAt("Hoàn thành", editingModelRow, 6); 
-                } else {
-                    mainTableModel.insertRow(0, new Object[]{maHDMoi, ngayStr, khach, sdt, phuongThuc, tongTien, "Hoàn thành", "", "TPCN"});
-                }
-                
-                dispose();
-                
-                Window parentWin = SwingUtilities.getWindowAncestor(this);
-                if (parentWin instanceof MainDashboard) {
-                    ManHinhChinh mhc = ((MainDashboard) parentWin).getManHinhChinh();
-                    if (mhc != null) SwingUtilities.invokeLater(mhc::loadCardPanels);
-                }
+                String msgThongBao = "Thanh toán thành công!\n";
+                if(diemDaDung > 0) msgThongBao += "- Đã sử dụng: " + String.format("%,d", diemDaDung) + " điểm\n";
+                if(diemCongMoi > 0) msgThongBao += "+ Tích lũy thêm: " + String.format("%,d", diemCongMoi) + " điểm\n";
+                showCustomNotification("HOÀN TẤT", msgThongBao, "SUCCESS");
             } else {
-                showCustomNotification("TỪ CHỐI", "Hệ thống từ chối giao dịch!\nVui lòng kiểm tra lại tồn kho.", "WARNING");
+                showCustomNotification("HOÀN TẤT", "Thanh toán thành công!\nHóa đơn và Tồn kho đã được cập nhật.", "SUCCESS");
             }
 
-        } catch(Exception ex) {
-            showCustomNotification("LỖI HỆ THỐNG", "Đã xảy ra lỗi: " + ex.getMessage(), "ERROR");
+            // 4. CẬP NHẬT GIAO DIỆN BẢNG
+            String ngayStr = java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
+            if (editingModelRow != -1) {
+                mainTableModel.setValueAt(maHDMoi, editingModelRow, 0); mainTableModel.setValueAt(ngayStr, editingModelRow, 1);
+                mainTableModel.setValueAt(khach, editingModelRow, 2);   mainTableModel.setValueAt(sdt, editingModelRow, 3);           
+                mainTableModel.setValueAt(phuongThuc, editingModelRow, 4); mainTableModel.setValueAt(tongTien, editingModelRow, 5);     
+                mainTableModel.setValueAt("Hoàn thành", editingModelRow, 6); 
+            } else {
+                mainTableModel.insertRow(0, new Object[]{maHDMoi, ngayStr, khach, sdt, phuongThuc, tongTien, "Hoàn thành", "", "TPCN"});
+            }
+            dispose();
+        } else {
+            showCustomNotification("TỪ CHỐI", "Hệ thống từ chối giao dịch!\nVui lòng kiểm tra lại.", "WARNING");
         }
     }
     private void initUI(Frame parent) {
@@ -731,27 +580,25 @@ public class TaoHoaDon extends JDialog {
                 
                 if (confirm) {
                     if (boDemNguoc != null) boDemNguoc.stop(); // Dừng đồng hồ
+                    
                     if (this.maHDDangSua != null && !this.maHDDangSua.isEmpty()) {
-                        String sql = "UPDATE HoaDon SET ghiChu = N'Đã hủy' WHERE id = ?"; 
-                        try (java.sql.Connection con = ConnectDB.getInstance().getConnection();
-                             java.sql.PreparedStatement pst = con.prepareStatement(sql)) {
-                            
-                            pst.setString(1, this.maHDDangSua);
-                            pst.executeUpdate();
-                            
-                        } catch (Exception ex) {
-                            ex.printStackTrace();
-                            showCustomNotification("LỖI", "Lỗi khi hủy: " + ex.getMessage(), "ERROR");
-                            return;
+                        // GỌI QUA TẦNG BUS THAY VÌ CHẠY SQL TRỰC TIẾP
+                        BUS.BUS_HoaDon busHD = new BUS.BUS_HoaDon();
+                        boolean isSuccess = busHD.huyHoaDon(this.maHDDangSua);
+                        
+                        if (!isSuccess) {
+                            showCustomNotification("LỖI", "Lỗi khi cập nhật hệ thống. Vui lòng thử lại!", "ERROR");
+                            return; // Dừng lại nếu lỗi
                         }
                     }
 
+                    // Cập nhật lại giao diện bảng bên ngoài màn hình chính
                     if (this.editingModelRow != -1) {
                         mainTableModel.setValueAt("Đã hủy", this.editingModelRow, 6); 
                     }
 
                     showCustomNotification("THÀNH CÔNG", "Đã hủy hóa đơn thành công!", "SUCCESS");
-                    this.dispose(); 
+                    this.dispose(); // Đóng cửa sổ hiện tại
                 }
             });
             pnlFooter.add(btnXoaDon, BorderLayout.WEST);
@@ -1085,22 +932,13 @@ public class TaoHoaDon extends JDialog {
     }
 
     private void thucHienHuyDonTuDong() {
-        // Cập nhật CSDL
         if (this.maHDDangSua != null && !this.maHDDangSua.isEmpty()) {
-            String sql = "UPDATE HoaDon SET ghiChu = N'Đã hủy' WHERE id = ?"; 
-            try (java.sql.Connection con = ConnectDB.getInstance().getConnection();
-                 java.sql.PreparedStatement pst = con.prepareStatement(sql)) {
-                pst.setString(1, this.maHDDangSua);
-                pst.executeUpdate();
-            } catch (Exception ex) {}
+            BUS.BUS_HoaDon busHD = new BUS.BUS_HoaDon();
+            busHD.huyHoaDon(this.maHDDangSua);
         }
-        
-        // Cập nhật bảng
         if (this.editingModelRow != -1 && mainTableModel != null) {
             mainTableModel.setValueAt("Đã hủy", this.editingModelRow, 6); 
         }
-
-        // ĐÓNG MÀN HÌNH TẠO HÓA ĐƠN NGAY LẬP TỨC (KHÔNG HIỆN THÔNG BÁO NỮA)
         this.dispose(); 
     }
     class CustomToggleSwitch extends JPanel {
@@ -3512,10 +3350,7 @@ txtSearchProduct.addKeyListener(new java.awt.event.KeyAdapter() {
                 hd.setLoaiHD(Enumeration.LoaiHoaDon.BAN_HANG); 
                 hd.setPhuongThucThanhToan(Enumeration.PhuongThucThanhToan.TIEN_MAT);
                 hd.setGhiChu("Lưu nháp" + strKeDon + strGifts.toString());
-                
-                // =========================================================
-                // FIX LỖI: LƯU MÃ KHUYẾN MÃI VÀO ĐỐI TƯỢNG HÓA ĐƠN
-                // =========================================================
+               
                 if (this.maKhuyenMaiApDung != null && !this.maKhuyenMaiApDung.isEmpty()) {
                     Entity.KhuyenMai km = new Entity.KhuyenMai();
                     km.setId(this.maKhuyenMaiApDung.split(",")[0].trim()); // Lấy mã đầu tiên

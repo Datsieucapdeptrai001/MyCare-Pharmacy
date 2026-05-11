@@ -150,7 +150,17 @@ public class BUS_HoaDon {
     public HoaDon getHoaDonTheoMa(String maHD) {
         return daoHD.timHoaDonTheoMa(maHD); 
     }
-    
+    public void xoaHoaDonNhap(String maHD) {
+        new DAO.DAO_HoaDon().xoaHoaDonNhap(maHD);
+    }
+    public boolean thanhToanToanDien(HoaDon hd, List<ChiTietHoaDon> dsCTHD, List<ChiTietHoaDon> dsQuaTang, 
+            String maHDDangSua, KhachHang kh, int diemChenhLech) {
+    	// Có thể thêm logic kiểm tra tồn kho bằng busKho ở đây trước khi gọi DAO
+    	return daoHD.thanhToanToanDien(hd, dsCTHD, dsQuaTang, maHDDangSua, kh, diemChenhLech);
+    }
+    public String[] layMaSPVaMaDVT(String tenSP, String tenDVT) {
+    	return daoHD.layMaSPVaMaDVT(tenSP, tenDVT);
+    }
     public HoaDon layHoaDonTheoMa(String maHD) {
         return daoHD.layHoaDonTheoMa(maHD); 
     }
@@ -163,9 +173,12 @@ public class BUS_HoaDon {
         return daoHD.luuGiaoDichThanhToan(hd, dsCTHD, dsQuaTang, daoCTHD, daoLo, daoPB);
     }
     
-    // =========================================================
-    // XỬ LÝ LƯU PHIẾU ĐỔI TRẢ VÀ CHI TIẾT SẢN PHẨM (CHUẨN 3 TẦNG)
-    // =========================================================
+    public boolean huyHoaDon(String maHD) {
+        if (maHD == null || maHD.trim().isEmpty()) {
+            return false;
+        }
+        return daoHD.huyHoaDon(maHD);
+    }
     public boolean taoPhieuDoiTra(HoaDon hdDoiTra, List<Object[]> dsTra, List<Object[]> dsDoi) {
         // 1. Lưu thông tin Phiếu (Hóa đơn) vào Database
         boolean isSuccess = daoHD.themHoaDon(hdDoiTra);

@@ -71,7 +71,9 @@ public class BUS_KhuyenMai {
     public List<Object[]> layDanhSachKhuyenMaiChoTable() {
         return daoKhuyenMai.layDanhSachKhuyenMaiChoTable();
     }
-
+    public List<Object[]> layDanhSachKhuyenMaiFull() {
+        return daoKhuyenMai.layDanhSachKhuyenMaiFull(); 
+    }
     public List<KhuyenMai> layDsKhuyenMai() {
         return daoKhuyenMai.layDsKhuyenMai();
     }

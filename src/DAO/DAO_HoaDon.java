@@ -768,6 +768,7 @@ try { if (con != null) con.setAutoCommit(true); } catch (SQLException e) { e.pri
             return false;
         }
     }
+    
     public Object[] layThongTinGiaTuHDGoc(String maHDGoc, String tenSP) {
         String dvt = "Hộp";
         double giaGocHienTai = 0.0, thueVAT = 0.0;
@@ -841,4 +842,143 @@ try { if (con != null) con.setAutoCommit(true); } catch (SQLException e) { e.pri
         } catch (Exception e) { e.printStackTrace(); }
         return new Object[]{dvt, 0.0};
     } 
+    public boolean thanhToanToanDien(HoaDon hd, List<ChiTietHoaDon> dsCTHD, List<ChiTietHoaDon> dsQuaTang, 
+            String maHDDangSua, KhachHang kh, int diemChenhLech) {
+    		Connection con = ConnectDB.getInstance().getConnection();
+    		if (con == null) return false;
+
+    		try {
+    			con.setAutoCommit(false); // BẮT ĐẦU TRANSACTION - Sống cùng sống, chết cùng chết
+
+    			// 1. Dọn dẹp hóa đơn nháp (nếu đang sửa)
+    			if (maHDDangSua != null && !maHDDangSua.isEmpty()) {
+    				try (PreparedStatement pstDelCT = con.prepareStatement("DELETE FROM ChiTietHoaDon WHERE hoaDonId = ?")) {
+    					pstDelCT.setString(1, maHDDangSua);
+    					pstDelCT.executeUpdate();
+    				}
+    				try (PreparedStatement pstDelHD = con.prepareStatement("DELETE FROM HoaDon WHERE id = ?")) {
+    					pstDelHD.setString(1, maHDDangSua);
+    					pstDelHD.executeUpdate();
+    				}
+    			}
+
+// 2. Insert Hóa Đơn (Tự viết câu lệnh Insert của ông vào đây)
+    			String sqlInsertHD = "INSERT INTO HoaDon (id, loaiHD, ngayLapHD, nhanVienId, khachHangId, phuongThucThanhToan, khuyenMaiId, ghiChu) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+				try (PreparedStatement pstHD = con.prepareStatement(sqlInsertHD)) {
+					pstHD.setString(1, hd.getId());
+					pstHD.setString(2, hd.getLoaiHD().toString());
+					pstHD.setTimestamp(3, Timestamp.valueOf(hd.getNgayLapHD()));
+					pstHD.setString(4, hd.getNhanVienId().getNhanVien());
+					pstHD.setString(5, hd.getKhachHangId() != null ? hd.getKhachHangId().getId() : null);
+					pstHD.setString(6, hd.getPhuongThucThanhToan().toString());
+					pstHD.setString(7, hd.getKhuyenMaiId() != null ? hd.getKhuyenMaiId().getId() : null);
+					pstHD.setString(8, hd.getGhiChu());
+					pstHD.executeUpdate();
+				}
+
+// 3. Insert Chi Tiết Hóa Đơn và Quà Tặng
+				String sqlInsertCT = "INSERT INTO ChiTietHoaDon (hoaDonId, sanPhamId, donViDoLuongId, soLuong) VALUES (?, ?, ?, ?)";
+				try (PreparedStatement pstCT = con.prepareStatement(sqlInsertCT)) {
+					for (ChiTietHoaDon ct : dsCTHD) {
+						pstCT.setString(1, hd.getId());
+						pstCT.setString(2, ct.getSanPhamId().getId());
+						pstCT.setString(3, ct.getDonViDoLuongId().getId());
+						pstCT.setInt(4, ct.getSoLuong());
+						pstCT.addBatch();
+					}
+					for (ChiTietHoaDon qt : dsQuaTang) {
+						pstCT.setString(1, hd.getId());
+						pstCT.setString(2, qt.getSanPhamId().getId());
+						pstCT.setString(3, qt.getDonViDoLuongId().getId());
+						pstCT.setInt(4, qt.getSoLuong());
+						pstCT.addBatch();
+					}
+					pstCT.executeBatch();
+				}
+
+				// 4. Cập nhật điểm Khách Hàng (nếu có)
+				if (kh != null && kh.getSdt() != null && diemChenhLech != 0) {
+					String sqlUpdateDiem = "UPDATE KhachHang SET diemTichLuy = ISNULL(diemTichLuy, 0) + ? WHERE sdt = ?";
+					try (PreparedStatement pstDiem = con.prepareStatement(sqlUpdateDiem)) {
+						pstDiem.setInt(1, diemChenhLech);
+						pstDiem.setString(2, kh.getSdt());
+						pstDiem.executeUpdate();
+					}
+				}
+
+				con.commit(); // NẾU MỌI THỨ OK -> LƯU THẬT VÀO DB
+				return true;
+    		} catch (Exception e) {
+    			try { con.rollback(); } catch (SQLException ex) { ex.printStackTrace(); } // LỖI LÀ HỦY TOÀN BỘ
+    			e.printStackTrace();
+    			return false;
+    		} finally {
+    			try { con.setAutoCommit(true); } catch (SQLException ex) { ex.printStackTrace(); }
+    		}
+    }
+    public String[] layMaSPVaMaDVT(String tenSP, String tenDVT) {
+        String sql = "SELECT sp.id AS MaSP, dv.id AS MaDVT FROM SanPham sp JOIN DonViDoLuong dv ON sp.id = dv.sanPhamId WHERE sp.ten = ? AND dv.ten = ?";
+        try (java.sql.Connection con = ConnectDB.getInstance().getConnection();
+             java.sql.PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setString(1, tenSP);
+            pst.setString(2, tenDVT);
+            try (java.sql.ResultSet rs = pst.executeQuery()) {
+                if(rs.next()) return new String[]{rs.getString("MaSP"), rs.getString("MaDVT")};
+            }
+        } catch (Exception e) { e.printStackTrace(); }
+        return null; 
+    }
+    public java.util.List<Object[]> layDanhSachKhuyenMaiFull() {
+        java.util.List<Object[]> result = new java.util.ArrayList<>();
+        String sql = "SELECT k.id, k.tenKhuyenMai, h.moTa, ISNULL(spYeuCau.ten, '') AS tenSanPhamYeuCau " +
+                     "FROM KhuyenMai k " +
+                     "JOIN HinhThucKhuyenMai h ON k.id = h.khuyenMaiId " +
+                     "LEFT JOIN SanPham spYeuCau ON h.spYeuCau = spYeuCau.id " +
+                     "WHERE k.trangThai = 1 " + 
+                     "AND CAST(k.ngayBatDau AS DATE) <= CAST(GETDATE() AS DATE) " +
+                     "AND (k.ngayKetThuc IS NULL OR CAST(k.ngayKetThuc AS DATE) >= CAST(GETDATE() AS DATE))";
+
+        try (java.sql.Connection con = ConnectDB.getInstance().getConnection();
+             java.sql.Statement st = con.createStatement();
+             java.sql.ResultSet rs = st.executeQuery(sql)) {
+             
+            while(rs.next()) {
+                Object[] row = new Object[6]; 
+                row[0] = rs.getString("id");               
+                row[1] = rs.getString("tenKhuyenMai");     
+                row[2] = rs.getString("moTa");             
+                row[3] = ""; 
+                row[4] = ""; 
+                row[5] = rs.getString("tenSanPhamYeuCau"); 
+                
+                result.add(row);
+            }
+        } catch(Exception e) {
+            e.printStackTrace();
+        }
+        return result;
+    }
+    public boolean huyHoaDon(String maHD) {
+        String sql = "UPDATE HoaDon SET ghiChu = N'Đã hủy' WHERE id = ?"; 
+        try (Connection con = ConnectDB.getInstance().getConnection();
+             PreparedStatement pst = con.prepareStatement(sql)) {
+            
+            pst.setString(1, maHD);
+            return pst.executeUpdate() > 0;
+            
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+    public void xoaHoaDonNhap(String maHD) {
+        try (java.sql.Connection con = ConnectDB.getInstance().getConnection()) {
+            try (java.sql.PreparedStatement pst1 = con.prepareStatement("DELETE FROM ChiTietHoaDon WHERE hoaDonId = ?")) {
+                pst1.setString(1, maHD); pst1.executeUpdate();
+            }
+            try (java.sql.PreparedStatement pst2 = con.prepareStatement("DELETE FROM HoaDon WHERE id = ?")) {
+                pst2.setString(1, maHD); pst2.executeUpdate();
+            }
+        } catch (Exception e) { e.printStackTrace(); }
+    }
 }
