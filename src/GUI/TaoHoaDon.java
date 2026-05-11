@@ -274,19 +274,27 @@ public class TaoHoaDon extends JDialog {
         pnlVoucherTags.removeAll();
         BUS_KhuyenMai busKM = new BUS_KhuyenMai();
         List<Object[]> ds = busKM.layDanhSachKhuyenMaiFull(); // Gọi qua BUS
+        if (ds != null) {
+            for (Object[] km : ds) {
+                // Rào lỗi 2: Ép kiểu an toàn bằng toán tử 3 ngôi (Ternary Operator)
+                String maKM = km[0] != null ? km[0].toString() : "UNKNOWN";
+                String tenKM = km[1] != null ? km[1].toString() : "Khuyến mãi";
+                String moTa = km[2] != null ? km[2].toString() : "";
+                String tenSPY = km[5] != null ? km[5].toString() : "";
+                
+                // Logic hiển thị: Nếu mô tả rỗng thì lấy tên Khuyến mãi
+                String hienThi = (!moTa.trim().isEmpty()) ? moTa : tenKM;
+                
+                String label = maKM + " (" + hienThi + ")";
+                if (!tenSPY.trim().isEmpty()) {
+                    label += " - Áp dụng: " + tenSPY;
+                }
 
-        for (Object[] km : ds) {
-            String maKM = (String) km[0];
-            String moTa = (String) km[2];
-            String tenSPY = (String) km[5];
-            
-            // Tự động bổ sung tên sản phẩm vào nhãn hiển thị
-            String label = maKM + " (" + (moTa != null ? moTa : km[1]) + ")";
-            if (!tenSPY.isEmpty()) label += " - Áp dụng: " + tenSPY;
-
-            pnlVoucherTags.add(createVoucherTag(label, maKM, txtVoucherInput));
+                pnlVoucherTags.add(createVoucherTag(label, maKM, txtVoucherInput));
+            }
         }
-        pnlVoucherTags.revalidate(); pnlVoucherTags.repaint();
+        pnlVoucherTags.revalidate(); 
+        pnlVoucherTags.repaint();
     }
 
     
