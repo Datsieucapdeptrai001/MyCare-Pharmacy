@@ -199,7 +199,7 @@ public class ManHinhNhapLoHangMoi extends JDialog {
 
         JPanel pnlQR = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
         pnlQR.setOpaque(false);
-        JButton btnScanQR = createSecondaryButton("Quét mã QR");
+        JButton btnScanQR = createSecondaryButton("Quét mã vạch");
         btnScanQR.setForeground(PRIMARY);
         btnScanQR.addActionListener(e -> showQRScannerDialog());
         pnlQR.add(btnScanQR);
@@ -895,7 +895,7 @@ public class ManHinhNhapLoHangMoi extends JDialog {
     }
 
     private void showQRScannerDialog() {
-        JDialog dialog = new JDialog(this, "Quét mã QR", Dialog.ModalityType.APPLICATION_MODAL);
+        JDialog dialog = new JDialog(this, "Quét mã vạch", Dialog.ModalityType.APPLICATION_MODAL);
         dialog.setSize(400, 150);
         dialog.setLocationRelativeTo(this);
         dialog.setUndecorated(true);
@@ -903,7 +903,7 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         JPanel root = new JPanel(new BorderLayout());
         root.setBackground(Color.WHITE);
         root.setBorder(BorderFactory.createLineBorder(PRIMARY, 2));
-        JLabel lblInfo = new JLabel("Vui lòng đưa mã QR vào máy quét...", SwingConstants.CENTER);
+        JLabel lblInfo = new JLabel("Vui lòng đưa mã vạch vào máy quét...", SwingConstants.CENTER);
         lblInfo.setFont(new Font("Segoe UI", Font.BOLD, 16));
         lblInfo.setForeground(TEXT_PRIMARY);
         root.add(lblInfo, BorderLayout.CENTER);
