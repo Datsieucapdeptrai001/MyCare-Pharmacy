@@ -309,7 +309,69 @@ public class DAO_KhuyenMai {
         }
         return false;
     }
+    public List<Object[]> layDanhSachKhuyenMaiHienThiTag() {
+        List<Object[]> result = new ArrayList<>();
+        String sqlLoad = "SELECT k.id, k.tenKhuyenMai, h.moTa, " +
+                         "ISNULL(spYeuCau.ten, '') AS tenSanPhamYeuCau, " +
+                         "ISNULL(spTang.ten, '') AS tenSanPhamTang " +
+                         "FROM KhuyenMai k " +
+                         "JOIN HinhThucKhuyenMai h ON k.id = h.khuyenMaiId " +
+                         "LEFT JOIN SanPham spYeuCau ON h.spYeuCau = spYeuCau.id " +
+                         "LEFT JOIN SanPham spTang ON h.spTang = spTang.id " +
+                         "WHERE k.trangThai = 1 " + 
+                         "AND CAST(k.ngayBatDau AS DATE) <= CAST(GETDATE() AS DATE) " +
+                         "AND (k.ngayKetThuc IS NULL OR CAST(k.ngayKetThuc AS DATE) >= CAST(GETDATE() AS DATE))";
+                         
+        try (Connection con = ConnectDB.getInstance().getConnection();
+             java.sql.Statement st = con.createStatement();
+             java.sql.ResultSet rs = st.executeQuery(sqlLoad)) {
+            
+            while(rs.next()) {
+                result.add(new Object[]{
+                    rs.getString("id"),
+                    rs.getString("tenKhuyenMai"),
+                    rs.getString("moTa"),
+                    rs.getString("tenSanPhamYeuCau"),
+                    rs.getString("tenSanPhamTang")
+                });
+            }
+        } catch(Exception e) {
+            e.printStackTrace();
+        }
+        return result;
+    }
+    public List<Object[]> layDanhSachKhuyenMaiHopLe() {
+        List<Object[]> ds = new ArrayList<>();
+        String sql = "SELECT k.id, h.loaiHinhThuc, h.giaTri AS mucGiam, ISNULL(d.giaTri, 0) AS dkGiaTri, d.loaiDieuKien, " +
+                "ISNULL(h.slYeuCau, 0) AS h_slYeuCau, ISNULL(spYeuCau.ten, ISNULL(h.spYeuCau, '')) AS spYeuCau, ISNULL(h.dvdlYeuCau, '') AS dvdlYeuCau, " +
+                "ISNULL(h.slTang, 0) AS slTang, ISNULL(spTang.ten, ISNULL(h.spTang, '')) AS spTang, ISNULL(h.dvdlTang, '') AS dvdlTang " +
+                "FROM KhuyenMai k " +
+                "JOIN HinhThucKhuyenMai h ON k.id = h.khuyenMaiId " +
+                "LEFT JOIN DieuKienKhuyenMai d ON k.id = d.khuyenMaiId " +
+                "LEFT JOIN SanPham spYeuCau ON h.spYeuCau = spYeuCau.id " +
+                "LEFT JOIN SanPham spTang ON h.spTang = spTang.id " +
+                "WHERE k.trangThai = 1 " + 
+                "AND CAST(k.ngayBatDau AS DATE) <= CAST(GETDATE() AS DATE) " +
+                "AND (k.ngayKetThuc IS NULL OR CAST(k.ngayKetThuc AS DATE) >= CAST(GETDATE() AS DATE))";
 
+        try (Connection con = ConnectDB.getInstance().getConnection();
+             PreparedStatement pst = con.prepareStatement(sql);
+             ResultSet rs = pst.executeQuery()) {
+             
+            while (rs.next()) {
+                // Đóng gói dữ liệu vào mảng Object để trả về BUS
+                ds.add(new Object[]{
+                    rs.getString("id"), rs.getString("loaiHinhThuc"), rs.getDouble("mucGiam"),
+                    rs.getDouble("dkGiaTri"), rs.getString("loaiDieuKien"), rs.getInt("h_slYeuCau"),
+                    rs.getString("spYeuCau"), rs.getString("dvdlYeuCau"), rs.getInt("slTang"),
+                    rs.getString("spTang"), rs.getString("dvdlTang")
+                });
+            }
+        } catch (Exception e) {
+            System.err.println("Lỗi quét khuyến mãi DB: " + e.getMessage());
+        }
+        return ds;
+    }
     public double[] layThongKeHieuSuatKM(String maKM) {
         double[] stats = new double[]{0, 0, 0}; 
         Connection con = ConnectDB.getInstance().getConnection();

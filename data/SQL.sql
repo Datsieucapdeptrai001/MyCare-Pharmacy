@@ -1,9 +1,6 @@
 ﻿USE [master];
 GO
 
--- ==============================================================================
--- 1. ÉP ĐÓNG TẤT CẢ KẾT NỐI VÀ XÓA DATABASE CŨ (ĐỂ LÀM LẠI BẢN SẠCH 100%)
--- ==============================================================================
 IF DB_ID('MYCAREPHARMACY') IS NOT NULL
 BEGIN
     ALTER DATABASE [MYCAREPHARMACY] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
@@ -18,9 +15,6 @@ GO
 USE [MYCAREPHARMACY];
 GO
 
--- ==============================================================================
--- 3. TẠO CẤU TRÚC BẢNG (TABLES)
--- ==============================================================================
 
 CREATE TABLE [dbo].[ApDungKhuyenMai](
 	[id] [nvarchar](50) NOT NULL PRIMARY KEY,
