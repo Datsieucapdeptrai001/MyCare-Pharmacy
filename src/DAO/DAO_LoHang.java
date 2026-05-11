@@ -444,4 +444,39 @@ public class DAO_LoHang {
         }
         return list;
     }
+ // =========================================================
+    // HÀM LẤY LÔ HÀNG CẬN DATE (PHỤC VỤ GỢI Ý KHUYẾN MÃI Ở TẦNG BUS)
+    // =========================================================
+    public List<Object[]> layDuLieuLoHangCanDateTho() {
+        List<Object[]> listData = new ArrayList<>();
+        
+        // Tối ưu Query: Không dùng SubQuery. 
+        // Lấy l.gia làm Giá Nhập và d.gia làm Giá Bán.
+        String sql = "SELECT l.id as maLo, l.soLoHang, s.ten as tenSP, d.gia as giaBan, l.gia as giaNhap, " +
+                     "DATEDIFF(day, GETDATE(), l.ngayHetHan) as soNgayConLai " +
+                     "FROM LoHang l " +
+                     "JOIN SanPham s ON l.sanPhamId = s.id " +
+                     "JOIN DonViDoLuong d ON s.id = d.sanPhamId " +
+                     "WHERE DATEDIFF(day, GETDATE(), l.ngayHetHan) BETWEEN 0 AND 90 " +
+                     "AND ISNULL(l.trangThai, 'CON_HANG') <> 'AN' " +
+                     "AND d.chuyenDoiDonViCoBan = 1";
+                     
+        Connection con = ConnectDB.getInstance().getConnection();
+        if (con == null) return listData;
+        
+        try (Statement stmt = con.createStatement(); ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                listData.add(new Object[]{
+                    rs.getString("soLoHang"),
+                    rs.getString("tenSP"),
+                    rs.getDouble("giaBan"),
+                    rs.getDouble("giaNhap"),
+                    rs.getInt("soNgayConLai")
+                });
+            }
+        } catch (Exception e) {
+            System.err.println("Lỗi query Lô hàng cận date (DAO_LoHang): " + e.getMessage());
+        }
+        return listData;
+    }
 }

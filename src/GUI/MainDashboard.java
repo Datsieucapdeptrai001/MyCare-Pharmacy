@@ -128,12 +128,54 @@ public class MainDashboard extends JFrame {
         add(sidebar,    BorderLayout.WEST);
         add(rightPanel, BorderLayout.CENTER);
 
+        // Kích hoạt phím tắt toàn cục cho các tab
+        setupKeyBindings();
+
         cardLayout.show(cardPanel, "Màn hình chính");
         if (lblTieuDeTrang != null) {
             lblTieuDeTrang.setText("MÀN HÌNH CHÍNH");
         }
     }
     
+    // =================================================================================
+    // CÀI ĐẶT PHÍM TẮT HOTKEYS (F1 - F9, F12)
+    // =================================================================================
+    private void setupKeyBindings() {
+        InputMap inputMap = getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
+        ActionMap actionMap = getRootPane().getActionMap();
+
+        // Gán phím F1 -> F9 cho các nút menu (Dựa theo index danh sách quyền của tài khoản)
+        for (int i = 0; i < menuButtons.size(); i++) {
+            JButton btn = menuButtons.get(i);
+            int hotkeyNum = i + 1;
+            
+            if (hotkeyNum <= 9) { // Chỉ map đến F9 cho menu
+                String actionKey = "Tab_F" + hotkeyNum;
+                KeyStroke keyStroke = KeyStroke.getKeyStroke("F" + hotkeyNum);
+                
+                inputMap.put(keyStroke, actionKey);
+                actionMap.put(actionKey, new AbstractAction() {
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+                        btn.doClick(); // Kích hoạt chuyển tab y như click chuột
+                    }
+                });
+                
+                // Thêm tooltip để hướng dẫn người dùng khi rê chuột vào menu
+                btn.setToolTipText("Phím tắt nhanh: F" + hotkeyNum);
+            }
+        }
+
+        // Gán phím F12 cho chức năng Đăng xuất an toàn
+        inputMap.put(KeyStroke.getKeyStroke("F12"), "LogoutAction");
+        actionMap.put("LogoutAction", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                xuLyDangXuat();
+            }
+        });
+    }
+
     public void chuyenSangTabBanHang() {
         for (JButton btn : menuButtons) {
             if (btn.getText().contains("Bán hàng")) {
@@ -236,8 +278,6 @@ public class MainDashboard extends JFrame {
                 item.setCursor(new Cursor(Cursor.HAND_CURSOR));
                 item.setPreferredSize(new Dimension(240, 35));
                 
-                // ĐÃ KHẮC PHỤC LỖI CRASH EDT: 
-                // Bọc lệnh chuyển tài khoản trong SwingUtilities.invokeLater để tách biệt luồng xử lý giao diện
                 item.addActionListener(e -> {
                     SwingUtilities.invokeLater(() -> xulyChuyenTaiKhoan(nhanVien));
                 });
@@ -666,6 +706,7 @@ public class MainDashboard extends JFrame {
 
         final JButton btnLogout = createMenuButton("Đăng xuất", true);
         btnLogout.setIcon(new MenuIcon("LOGOUT"));
+        btnLogout.setToolTipText("Phím tắt nhanh: F12");
         btnLogout.addActionListener(e -> hienThiThongBaoDangXuat());
         JPanel wrapLogout = new JPanel(new BorderLayout());
         wrapLogout.setOpaque(false);
