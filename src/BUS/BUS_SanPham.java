@@ -19,6 +19,12 @@ public class BUS_SanPham {
         if (isBlank(text)) return new ArrayList<>();
         return daoSanPham.timKiemSanPhamBan(text.trim());
     }
+    public double layThueVATTheoTenSP(String tenSP) {
+        if (tenSP == null || tenSP.trim().isEmpty()) {
+            return 0;
+        }
+        return daoSanPham.layThueVATTheoTenSP(tenSP.trim());
+    }
     public boolean kiemTraThongTinSP(SanPham sp) {
         if (sp == null) return false;
         if (isBlank(sp.getId())) return false;

@@ -25,6 +25,7 @@ public class BUS_KhuyenMai {
     private DAO_SanPham daoSanPham; 
     private DAO_LoHang daoLoHang; 
 
+    
     public BUS_KhuyenMai() {
         this.daoKhuyenMai = new DAO_KhuyenMai();
         this.daoDieuKienKhuyenMai = new DAO_DieuKienKhuyenMai();
@@ -32,7 +33,17 @@ public class BUS_KhuyenMai {
         this.daoSanPham = new DAO_SanPham(); 
         this.daoLoHang = new DAO_LoHang(); 
     }
+    public List<Object[]> layDanhSachKhuyenMaiHopLe() {
+        return daoKhuyenMai.layDanhSachKhuyenMaiHopLe();
+    }
 
+    public List<Object[]> layDanhSachKhuyenMaiHienThiTag() {
+        return daoKhuyenMai.layDanhSachKhuyenMaiHienThiTag();
+    }
+
+    public List<Object[]> layDanhSachKhuyenMaiFull() {
+        return daoKhuyenMai.layDanhSachKhuyenMaiFull(); 
+    }
     public Object[] timKhuyenMaiTotNhat(double tongTienHoaDon) {
         List<String> dsMaKM = daoKhuyenMai.layDanhSachMaKMCoHieuLuc();
         String maTotNhat = null;
@@ -71,9 +82,7 @@ public class BUS_KhuyenMai {
     public List<Object[]> layDanhSachKhuyenMaiChoTable() {
         return daoKhuyenMai.layDanhSachKhuyenMaiChoTable();
     }
-    public List<Object[]> layDanhSachKhuyenMaiFull() {
-        return daoKhuyenMai.layDanhSachKhuyenMaiFull(); 
-    }
+    
     public List<KhuyenMai> layDsKhuyenMai() {
         return daoKhuyenMai.layDsKhuyenMai();
     }
@@ -464,5 +473,37 @@ public class BUS_KhuyenMai {
             }
         }
         return new KetQuaApDungKhuyenMai(tongTienGiamDoc, danhSachQuaTang, danhSachMaDaDuyet);
+    }
+    public static class PromoValidationResult {
+        public boolean isValid;
+        public String message;
+        public long discountAmount;
+
+        public PromoValidationResult(boolean isValid, String message, long discountAmount) {
+            this.isValid = isValid;
+            this.message = message;
+            this.discountAmount = discountAmount;
+        }
+    }
+
+    public PromoValidationResult kiemTraHopLePromotion(String maKM, double tongTienHoaDon, List<Object[]> dsSP) {
+        Map<String, Integer> gioHang = new HashMap<>();
+        for (Object[] item : dsSP) {
+            String tenSP = item[0].toString();
+            if (tenSP.startsWith("[QUÀ TẶNG]")) continue; 
+            
+            int sl = Integer.parseInt(item[2].toString());
+            gioHang.put(tenSP, gioHang.getOrDefault(tenSP, 0) + sl);
+        }
+
+        String checkMsg = kiemTraChiTietKhuyenMaiVoiGioHang(maKM, tongTienHoaDon, gioHang);
+        if (!"OK".equals(checkMsg)) {
+            return new PromoValidationResult(false, checkMsg, 0);
+        }
+
+        double giaSauGiam = apDungKM(maKM, tongTienHoaDon);
+        long tienGiam = (long) (tongTienHoaDon - giaSauGiam);
+
+        return new PromoValidationResult(true, "Áp dụng khuyến mãi thành công!", tienGiam);
     }
 }

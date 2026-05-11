@@ -29,7 +29,24 @@ public class BUS_HoaDon {
     public List<Object[]> layDanhSachHoaDonTheoNVHomNay(String maNV) {
         return daoHD.layDanhSachHoaDonTheoNVHomNay(maNV);
     }
-    
+    public boolean themHoaDon(HoaDon hd) {
+        if (hd == null || hd.getId() == null || hd.getId().trim().isEmpty()) {
+            return false;
+        }
+        return daoHD.themHoaDon(hd);
+    }
+    public long tinhDoanhThuTienMatCaHienTai(String maNV, java.time.LocalDateTime thoiGianBatDau) {
+        if (maNV == null || thoiGianBatDau == null) {
+            return 0;
+        }
+        return daoHD.tinhDoanhThuTienMatCaHienTai(maNV, thoiGianBatDau);
+    }
+    public boolean capNhatHoaDon(HoaDon hd) {
+        if (hd == null || hd.getId() == null || hd.getId().trim().isEmpty()) {
+            return false;
+        }
+        return daoHD.capNhatHoaDon(hd);
+    }
     public List<Object[]> layDanhSachHoaDonChoBang() {
         // Gọi DAO lấy dữ liệu thô
         List<Object[]> dsRaw = daoHD.layDanhSachHoaDonRaw();

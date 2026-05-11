@@ -19,7 +19,23 @@ public class DAO_SanPham {
 
     public DAO_SanPham() {
     }
-
+    public double layThueVATTheoTenSP(String tenSP) {
+        double vat = 0;
+        String sql = "SELECT thueVAT FROM SanPham WHERE ten = ?";
+        try (java.sql.Connection con = ConnectDB.getInstance().getConnection();
+             java.sql.PreparedStatement pst = con.prepareStatement(sql)) {
+             
+            pst.setString(1, tenSP);
+            try (java.sql.ResultSet rs = pst.executeQuery()) {
+                if (rs.next()) {
+                    vat = rs.getDouble("thueVAT");
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Lỗi lấy VAT theo tên SP: " + e.getMessage());
+        }
+        return vat;
+    }
     public List<Object[]> layDanhSachSanPhamChoBang() {
         List<Object[]> ds = new ArrayList<>();
         String sql = "SELECT id, ten, danhMuc, ISNULL(hoatChat, '') AS hoatChat, dang, " +
@@ -50,7 +66,7 @@ public class DAO_SanPham {
                         case "KEO_NGAM":       dang = "Kẹo ngậm";        break;
                         case "DUNG_DICH":      dang = "Dung dịch";       break;
                         case "HON_DICH":       dang = "Hỗn dịch";        break;
-                        case "THUOC_NHO_GIOT": dang = "Thuốc nhỏ giọt"; break;
+                        case "THUOC_NHO_GIOT": dang = "Thuốc nhỏ giọt"; 	break;
                         case "SUC_MIENG":      dang = "Súc miệng";       break;
                         default:               dang = "Viên nén";        break;
                     }
