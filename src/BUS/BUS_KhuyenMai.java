@@ -166,13 +166,20 @@ public class BUS_KhuyenMai {
 
         // 2. Kiểm tra Số lượng Sản phẩm yêu cầu trong Giỏ hàng
         HinhThucKhuyenMai htkm = daoHinhThucKhuyenMai.layTheoMaKM(maKM);
-        if (htkm != null) {
-            String spYeuCau = htkm.getSpYeuCau();
+        if (htkm != null && htkm.getDoiTuongApDung() == DoiTuongApDung.SAN_PHAM) {
+            String spYeuCau = htkm.getSpYeuCau(); // spYeuCau lúc này đang chứa Mã SP (Ví dụ: SP001)
             int slYeuCau = htkm.getSlYeuCau();
 
             // Nếu chương trình có chỉ định 1 sản phẩm bắt buộc phải mua
             if (spYeuCau != null && !spYeuCau.trim().isEmpty()) {
                 String tenSpCheck = spYeuCau.trim();
+                
+                // [CHUẨN 3 LỚP]: Dùng DAO_SanPham để lấy thông tin Tên Sản Phẩm thực tế
+                Entity.SanPham sp = daoSanPham.getSanPhamTheoMa(tenSpCheck);
+                if (sp != null && sp.getTen() != null) {
+                    tenSpCheck = sp.getTen().trim(); // Đã dịch từ Mã SP (SP001) sang Tên SP (Panadol)
+                }
+
                 int slTrongGio = 0;
                 
                 // Quét giỏ hàng xem có sản phẩm này không (Quét không phân biệt hoa thường để an toàn)
@@ -338,5 +345,122 @@ public class BUS_KhuyenMai {
         }
         
         return goiyList;
+    }
+    
+    // ==============================================================
+    // LỚP HỖ TRỢ TRẢ VỀ KẾT QUẢ KHUYẾN MÃI
+    // ==============================================================
+    public static class KetQuaApDungKhuyenMai {
+        private long tongTienGiam;
+        private List<Object[]> danhSachQuaTang;
+        private List<String> danhSachMaDaDuyet;
+
+        public KetQuaApDungKhuyenMai(long tongTienGiam, List<Object[]> danhSachQuaTang, List<String> danhSachMaDaDuyet) {
+            this.tongTienGiam = tongTienGiam;
+            this.danhSachQuaTang = danhSachQuaTang;
+            this.danhSachMaDaDuyet = danhSachMaDaDuyet;
+        }
+
+        public long getTongTienGiam() { return tongTienGiam; }
+        public List<Object[]> getDanhSachQuaTang() { return danhSachQuaTang; }
+        public List<String> getDanhSachMaDaDuyet() { return danhSachMaDaDuyet; }
+    }
+
+    // ==============================================================
+    // HÀM TỰ ĐỘNG TÍNH TOÁN QUÀ TẶNG & TIỀN GIẢM CHO TẦNG GUI
+    // ==============================================================
+    public KetQuaApDungKhuyenMai tinhToanKhuyenMaiTuDong(long tongTienBill, int tongSoLuongSPThucTe, Map<String, Integer> gioHangHienTai) {
+        long tongTienGiamDoc = 0;
+        List<Object[]> danhSachQuaTang = new ArrayList<>();
+        List<String> danhSachMaDaDuyet = new ArrayList<>();
+        
+        // Gọi DAO lấy tất cả Khuyến mãi đang có hiệu lực
+        List<Object[]> dsKM = layDanhSachKhuyenMaiChoTable(); 
+        
+        if (dsKM != null) {
+            for (Object[] kmRow : dsKM) {
+                String maKM = (String) kmRow[0];
+                boolean dangHoatDong = (Boolean) kmRow[9]; 
+                
+                if (!dangHoatDong) continue;
+
+                String loaiKM = (String) kmRow[2]; // Hình thức khuyến mãi
+                double donToiThieu = (Double) kmRow[11];
+                
+                // 1. Nếu khuyến mãi yêu cầu đơn tối thiểu (Ví dụ hóa đơn > 500k)
+                if (donToiThieu > 0 && tongTienBill < donToiThieu) {
+                    continue; 
+                }
+
+                // 2. Phân loại và xử lý từng loại Khuyến mãi
+                if (loaiKM.contains("phần trăm")) {
+                    String apDungCho = (String) kmRow[5]; // "Hóa đơn" hoặc Tên sản phẩm
+                    double mucGiamTreo = (Double) kmRow[10];
+                    double giamToiDa = (Double) kmRow[18];
+                    
+                    if (apDungCho.equalsIgnoreCase("Hóa đơn")) {
+                        double tienGiamPhanTram = tongTienBill * (mucGiamTreo / 100.0);
+                        if (giamToiDa > 0 && tienGiamPhanTram > giamToiDa) {
+                            tienGiamPhanTram = giamToiDa;
+                        }
+                        tongTienGiamDoc += tienGiamPhanTram;
+                        danhSachMaDaDuyet.add(maKM);
+                    } 
+                    else {
+                        // Áp dụng cho 1 sản phẩm cụ thể
+                        String tenSPYeuCau = (String) kmRow[12]; // db lưu ID sản phẩm
+                        Entity.SanPham sp = daoSanPham.getSanPhamTheoMa(tenSPYeuCau);
+                        String tenSpCheck = sp != null ? sp.getTen() : tenSPYeuCau;
+
+                        if (gioHangHienTai.containsKey(tenSpCheck)) {
+                            // Ghi chú: Chỗ này thường phải biết Đơn giá của SP đó để tính tiền giảm. 
+                            // Tạm thời nếu có trong giỏ thì add mã vào để GUI biết là đã kích hoạt.
+                            danhSachMaDaDuyet.add(maKM);
+                        }
+                    }
+                } 
+                else if (loaiKM.contains("tiền mặt")) {
+                    String tenSPYeuCau = (String) kmRow[12]; 
+                    Entity.SanPham sp = daoSanPham.getSanPhamTheoMa(tenSPYeuCau);
+                    String tenSpCheck = sp != null ? sp.getTen() : tenSPYeuCau;
+                    int slYeuCau = (Integer) kmRow[13];
+                    double tienGiam = (Double) kmRow[10];
+                    
+                    int slTrongGio = gioHangHienTai.getOrDefault(tenSpCheck, 0);
+                    if (slTrongGio >= slYeuCau) {
+                        int soLanApDung = slTrongGio / slYeuCau; // Khách mua gấp đôi yêu cầu thì giảm gấp đôi
+                        tongTienGiamDoc += (tienGiam * soLanApDung);
+                        danhSachMaDaDuyet.add(maKM);
+                    }
+                } 
+                else if (loaiKM.contains("kèm theo")) {
+                    String tenSPYeuCau = (String) kmRow[12]; 
+                    Entity.SanPham spMua = daoSanPham.getSanPhamTheoMa(tenSPYeuCau);
+                    String tenSpCheck = spMua != null ? spMua.getTen() : tenSPYeuCau;
+                    
+                    int slYeuCau = (Integer) kmRow[13];
+                    
+                    int slTrongGio = gioHangHienTai.getOrDefault(tenSpCheck, 0);
+                    if (slTrongGio >= slYeuCau) {
+                        int soLanApDung = slTrongGio / slYeuCau; 
+                        
+                        String tenSPTang = (String) kmRow[15]; 
+                        Entity.SanPham spTang = daoSanPham.getSanPhamTheoMa(tenSPTang);
+                        String tenThuong = spTang != null ? spTang.getTen() : tenSPTang;
+                        
+                        int slTang = (Integer) kmRow[16];
+                        String dvTang = (String) kmRow[17];
+                        
+                        int tongSlTang = slTang * soLanApDung;
+                        danhSachQuaTang.add(new Object[]{
+                            "[QUÀ TẶNG] " + tenThuong, dvTang, tongSlTang, "0đ", "0%", "0đ", "Khác"
+                        });
+                        
+                        danhSachMaDaDuyet.add(maKM);
+                    }
+                }
+            }
+        }
+        return new KetQuaApDungKhuyenMai(tongTienGiamDoc, danhSachQuaTang, danhSachMaDaDuyet);
     }
 }
