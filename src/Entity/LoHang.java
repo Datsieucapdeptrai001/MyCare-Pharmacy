@@ -8,7 +8,7 @@ public class LoHang {
     private String id;
     private String soLoHang;
     private int soLuongLoHang;
-    private int gia;
+    private double gia;
     private LocalDateTime ngayNhap;
     private LocalDateTime ngayHetHan;
     private TrangThaiLoHang trangThai;
@@ -18,9 +18,9 @@ public class LoHang {
     public LoHang() {
     }
 
-    public LoHang(String id, String soLoHang, int soLuongLoHang, int gia,
-                  LocalDateTime ngayNhap, LocalDateTime ngayHetHan,
-                  TrangThaiLoHang trangThai, SanPham sanPhamId, KhoHang khoHangId) {
+    public LoHang(String id, String soLoHang, int soLuongLoHang, double gia,
+            LocalDateTime ngayNhap, LocalDateTime ngayHetHan,
+            TrangThaiLoHang trangThai, SanPham sanPhamId, KhoHang khoHangId) {
         this.id = id;
         this.soLoHang = soLoHang;
         this.soLuongLoHang = soLuongLoHang;
@@ -56,11 +56,11 @@ public class LoHang {
         this.soLuongLoHang = soLuongLoHang;
     }
 
-    public int getGia() {
+    public double getGia() {
         return gia;
     }
 
-    public void setGia(int gia) {
+    public void setGia(double gia) {
         this.gia = gia;
     }
 

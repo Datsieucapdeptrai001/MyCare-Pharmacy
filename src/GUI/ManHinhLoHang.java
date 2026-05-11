@@ -20,11 +20,13 @@ import java.awt.event.ItemEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
+import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public class ManHinhLoHang extends JPanel {
 
@@ -426,7 +428,7 @@ public class ManHinhLoHang extends JPanel {
         wrap.add(topInfo, BorderLayout.NORTH);
 
         String[] cols = {
-                "#", "Mã lô", "Sản phẩm", "Đơn vị", "Tồn kho", "Giá nhập",
+                "#", "Mã lô", "Sản phẩm", "Đơn vị", "Tồn kho", "Giá vốn (ĐVCB)",
                 "Hạn sử dụng", "Còn lại", "Tình trạng", "Thao tác"
         };
 
@@ -454,16 +456,19 @@ public class ManHinhLoHang extends JPanel {
         header.setPreferredSize(new Dimension(header.getWidth(), 40));
         header.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, BORDER_COLOR));
 
-        table.getColumnModel().getColumn(0).setPreferredWidth(40);
-        table.getColumnModel().getColumn(1).setPreferredWidth(130);
-        table.getColumnModel().getColumn(2).setPreferredWidth(260);
-        table.getColumnModel().getColumn(3).setPreferredWidth(70);
-        table.getColumnModel().getColumn(4).setPreferredWidth(80);
-        table.getColumnModel().getColumn(5).setPreferredWidth(110);
-        table.getColumnModel().getColumn(6).setPreferredWidth(120);
-        table.getColumnModel().getColumn(7).setPreferredWidth(140);
-        table.getColumnModel().getColumn(8).setPreferredWidth(120);
-        table.getColumnModel().getColumn(9).setPreferredWidth(70);
+        // ==========================================
+        // CẬP NHẬT LẠI ĐỘ RỘNG CÁC CỘT (TỶ LỆ VÀNG ĐỂ KHÔNG BỊ CẮT CHỮ)
+        // ==========================================
+        table.getColumnModel().getColumn(0).setPreferredWidth(40); // STT
+        table.getColumnModel().getColumn(1).setPreferredWidth(120); // Mã lô
+        table.getColumnModel().getColumn(2).setPreferredWidth(230); // Sản phẩm (Thu gọn bớt)
+        table.getColumnModel().getColumn(3).setPreferredWidth(100); // Đơn vị (Nới rộng để chứa Hộp/Viên)
+        table.getColumnModel().getColumn(4).setPreferredWidth(180); // Tồn kho (Nới rộng để chứa chuỗi dài)
+        table.getColumnModel().getColumn(5).setPreferredWidth(110); // Giá vốn
+        table.getColumnModel().getColumn(6).setPreferredWidth(100); // HSD
+        table.getColumnModel().getColumn(7).setPreferredWidth(130); // Còn lại
+        table.getColumnModel().getColumn(8).setPreferredWidth(120); // Tình trạng
+        table.getColumnModel().getColumn(9).setPreferredWidth(60); // Thao tác
 
         table.addMouseMotionListener(new MouseMotionAdapter() {
             @Override
@@ -534,6 +539,7 @@ public class ManHinhLoHang extends JPanel {
                     String maSP = "";
                     String tenSP = "";
                     String donVi = "Chưa có";
+                    String tonKhoHienThi = "";
 
                     if (lh.getSanPhamId() != null) {
                         if (lh.getSanPhamId().getId() != null)
@@ -544,19 +550,53 @@ public class ManHinhLoHang extends JPanel {
                         if (!maSP.isEmpty()) {
                             List<DonViDoLuong> dsDVDL = busDonVi.getDSTheoMaSP(maSP);
                             if (dsDVDL != null && !dsDVDL.isEmpty()) {
-                                donVi = dsDVDL.get(0).getTen();
+                                DonViDoLuong dvCoBan = null;
+                                DonViDoLuong dvLon = null;
+                                double maxQuyDoi = 1.0;
+
                                 for (DonViDoLuong dv : dsDVDL) {
                                     if (dv.getChuyenDoiSangDonViCoBan() == 1.0) {
+                                        dvCoBan = dv;
                                         donVi = dv.getTen();
-                                        break;
                                     }
+                                    if (dv.getChuyenDoiSangDonViCoBan() > maxQuyDoi) {
+                                        maxQuyDoi = dv.getChuyenDoiSangDonViCoBan();
+                                        dvLon = dv;
+                                    }
+                                }
+
+                                int soLuong = lh.getSoLuongLoHang();
+
+                                if (dvCoBan != null && dvLon != null && maxQuyDoi > 1.0) {
+                                    int slLon = (int) (soLuong / maxQuyDoi);
+                                    int slLe = (int) (soLuong % maxQuyDoi);
+
+                                    // FIX LOGIC HIỂN THỊ: Thay dấu "-" bằng dấu "," cho dễ nhìn, gọn gàng
+                                    if (slLon > 0 && slLe > 0) {
+                                        tonKhoHienThi = formatNumber(slLon) + " " + dvLon.getTen() + ", "
+                                                + formatNumber(slLe) + " " + dvCoBan.getTen();
+                                    } else if (slLon > 0 && slLe == 0) {
+                                        tonKhoHienThi = formatNumber(slLon) + " " + dvLon.getTen();
+                                    } else {
+                                        tonKhoHienThi = formatNumber(slLe) + " " + dvCoBan.getTen();
+                                    }
+                                    donVi = dvLon.getTen() + "/" + dvCoBan.getTen();
+                                } else {
+                                    tonKhoHienThi = formatNumber(soLuong);
+                                    if (dvCoBan == null && !dsDVDL.isEmpty())
+                                        donVi = dsDVDL.get(0).getTen();
                                 }
                             }
                         }
                     }
 
                     int soLuong = lh.getSoLuongLoHang();
-                    int gia = lh.getGia();
+                    double gia = lh.getGia();
+
+                    if (tonKhoHienThi.isEmpty()) {
+                        tonKhoHienThi = formatNumber(soLuong);
+                    }
+
                     String hanSuDung = lh.getNgayHetHan() != null
                             ? lh.getNgayHetHan().toLocalDate().format(DATE_FORMAT)
                             : "";
@@ -566,7 +606,8 @@ public class ManHinhLoHang extends JPanel {
                         trangThai = "Hết hàng";
                     }
 
-                    dsTatCa.add(new BatchItem(id, soLo, maSP, tenSP, donVi, soLuong, gia, hanSuDung, trangThai));
+                    dsTatCa.add(new BatchItem(id, soLo, maSP, tenSP, donVi, soLuong, tonKhoHienThi, gia, hanSuDung,
+                            trangThai));
                 }
             }
             updateStats();
@@ -674,7 +715,7 @@ public class ManHinhLoHang extends JPanel {
                     item.soLo,
                     item.maSanPham + (safe(item.tenSanPham).isEmpty() ? "" : " - " + item.tenSanPham),
                     item.donVi,
-                    formatNumber(item.tonKho),
+                    item.tonKhoHienThi,
                     formatCurrency(item.giaNhap),
                     item.hanSuDung,
                     item.getConLai(),
@@ -765,7 +806,7 @@ public class ManHinhLoHang extends JPanel {
             return;
 
         if (item.tonKho > 0) {
-            String msg = "Lô hàng " + soLo + " hiện vẫn còn tồn " + String.format("%,d", item.tonKho) + " " + item.donVi
+            String msg = "Lô hàng " + soLo + " hiện vẫn còn tồn " + item.tonKhoHienThi
                     + ".\n\n" +
                     "Theo nguyên tắc quản lý kho, bạn KHÔNG ĐƯỢC PHÉP ẩn lô hàng khi giá trị tài sản vẫn còn trên hệ thống.\n\n"
                     +
@@ -886,7 +927,7 @@ public class ManHinhLoHang extends JPanel {
 
         JPanel pnlBody = new JPanel(null);
         pnlBody.setBackground(Color.WHITE);
-        pnlBody.setPreferredSize(new Dimension(420, 170)); // Tăng height một xíu để vừa dòng chữ dài
+        pnlBody.setPreferredSize(new Dimension(420, 170));
 
         JPanel pnlIcon = new JPanel() {
             @Override
@@ -1067,8 +1108,10 @@ public class ManHinhLoHang extends JPanel {
         }
     }
 
-    private String formatCurrency(int value) {
-        return String.format("%,dđ", value);
+    private String formatCurrency(double value) {
+        NumberFormat vnNumberFormat = NumberFormat.getInstance(new Locale("vi", "VN"));
+        vnNumberFormat.setMaximumFractionDigits(2);
+        return vnNumberFormat.format(value) + "đ";
     }
 
     private String formatNumber(int value) {
@@ -1096,16 +1139,19 @@ public class ManHinhLoHang extends JPanel {
     }
 
     private class BatchItem {
-        String id, soLo, maSanPham, tenSanPham, donVi, hanSuDung, trangThai;
-        int tonKho, giaNhap;
+        String id, soLo, maSanPham, tenSanPham, donVi, hanSuDung, trangThai, tonKhoHienThi;
+        int tonKho;
+        double giaNhap;
 
-        BatchItem(String i, String sl, String msp, String tsp, String dv, int tk, int gn, String hsd, String tt) {
+        BatchItem(String i, String sl, String msp, String tsp, String dv, int tk, String tkHienThi, double gn,
+                String hsd, String tt) {
             id = i;
             soLo = sl;
             maSanPham = msp;
             tenSanPham = tsp;
             donVi = dv;
             tonKho = tk;
+            tonKhoHienThi = tkHienThi;
             giaNhap = gn;
             hanSuDung = hsd;
             trangThai = tt;
@@ -1168,8 +1214,13 @@ public class ManHinhLoHang extends JPanel {
                 lbl.setHorizontalAlignment(SwingConstants.CENTER);
             } else if (column == 4 || column == 5) {
                 lbl.setHorizontalAlignment(SwingConstants.RIGHT);
-                if (column == 4)
+                // Highlight cột Tồn kho cho nổi bật
+                if (column == 4) {
                     lbl.setFont(new Font("Segoe UI", Font.BOLD, 13));
+                    if (!"Đã ẩn".equals(trangThaiRow)) {
+                        lbl.setForeground(PRIMARY_BLUE);
+                    }
+                }
             } else if (column == 6) {
                 lbl.setHorizontalAlignment(SwingConstants.CENTER);
             } else if (column == 7) {
