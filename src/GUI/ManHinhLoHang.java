@@ -515,6 +515,13 @@ public class ManHinhLoHang extends JPanel {
         scroll.setBorder(new RoundedLineBorder(BORDER_COLOR, 1, 8));
         scroll.getViewport().setBackground(Color.WHITE);
 
+        // Áp dụng Modern ScrollBar
+        scroll.getVerticalScrollBar().setUI(new ModernScrollBarUI());
+        scroll.getVerticalScrollBar().setPreferredSize(new Dimension(12, 0));
+
+        scroll.getHorizontalScrollBar().setUI(new ModernScrollBarUI());
+        scroll.getHorizontalScrollBar().setPreferredSize(new Dimension(0, 12));
+
         wrap.add(scroll, BorderLayout.CENTER);
         return wrap;
     }
@@ -1426,6 +1433,58 @@ public class ManHinhLoHang extends JPanel {
             outer.paintBorder(c, g, x, y, w, h);
         }
     }
+
+    // --- LỚP MODERNSCROLLBARUI THÊM MỚI ---
+    private static class ModernScrollBarUI extends javax.swing.plaf.basic.BasicScrollBarUI {
+
+        @Override
+        protected JButton createDecreaseButton(int orientation) {
+            return createZeroButton();
+        }
+
+        @Override
+        protected JButton createIncreaseButton(int orientation) {
+            return createZeroButton();
+        }
+
+        private JButton createZeroButton() {
+            JButton button = new JButton();
+            button.setPreferredSize(new Dimension(0, 0));
+            button.setMinimumSize(new Dimension(0, 0));
+            button.setMaximumSize(new Dimension(0, 0));
+            return button;
+        }
+
+        @Override
+        protected void paintTrack(Graphics g, JComponent c, Rectangle trackBounds) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setColor(new Color(248, 250, 252));
+            g2.fillRect(trackBounds.x, trackBounds.y, trackBounds.width, trackBounds.height);
+            g2.dispose();
+        }
+
+        @Override
+        protected void paintThumb(Graphics g, JComponent c, Rectangle thumbBounds) {
+            if (thumbBounds.isEmpty() || !scrollbar.isEnabled())
+                return;
+
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+            Color thumbColor = isDragging ? new Color(156, 163, 175) : new Color(186, 195, 208);
+            g2.setColor(thumbColor);
+
+            int padding = 3;
+            int x = thumbBounds.x + padding;
+            int y = thumbBounds.y + padding;
+            int width = thumbBounds.width - 2 * padding;
+            int height = thumbBounds.height - 2 * padding;
+
+            g2.fillRoundRect(x, y, width, height, width, width);
+            g2.dispose();
+        }
+    }
+    // --- KẾT THÚC MODERNSCROLLBARUI ---
 
     public void setReadOnly(boolean readOnly) {
         this.isStaffRole = readOnly;

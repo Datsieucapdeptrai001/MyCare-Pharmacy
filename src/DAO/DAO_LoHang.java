@@ -124,8 +124,11 @@ public class DAO_LoHang {
         return dsLoHang;
     }
 
+    // =========================================================
+    // ĐÃ THÊM MÃ VẠCH NỘI BỘ VÀO LỆNH INSERT
+    // =========================================================
     public boolean themLoHang(LoHang lo) {
-        String sql = "INSERT INTO LoHang(id, soLoHang, soLuongLoHang, gia, ngayNhap, ngayHetHan, trangThai, sanPhamId, khoHangId) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO LoHang(id, soLoHang, soLuongLoHang, gia, ngayNhap, ngayHetHan, trangThai, sanPhamId, khoHangId, maVachNoiBo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         Connection con = ConnectDB.getInstance().getConnection();
         try (PreparedStatement pst = con.prepareStatement(sql)) {
             pst.setString(1, lo.getId());
@@ -137,6 +140,7 @@ public class DAO_LoHang {
             pst.setString(7, lo.getTrangThai().name());
             pst.setString(8, lo.getSanPhamId() == null ? null : lo.getSanPhamId().getId());
             pst.setString(9, lo.getKhoHangId() == null ? null : lo.getKhoHangId().getId());
+            pst.setString(10, lo.getMaVachNoiBo()); // <-- THÊM DÒNG NÀY
             return pst.executeUpdate() > 0;
         } catch (Exception e) {
             e.printStackTrace();
@@ -150,7 +154,7 @@ public class DAO_LoHang {
         try (PreparedStatement pst = con.prepareStatement(sql)) {
             pst.setString(1, lo.getSanPhamId() == null ? null : lo.getSanPhamId().getId());
             pst.setInt(2, lo.getSoLuongLoHang());
-            pst.setDouble(3, lo.getGia()); // <-- SỬA Ở ĐÂY
+            pst.setDouble(3, lo.getGia());
             pst.setTimestamp(4, java.sql.Timestamp.valueOf(lo.getNgayNhap()));
             pst.setTimestamp(5, java.sql.Timestamp.valueOf(lo.getNgayHetHan()));
             pst.setString(6, lo.getKhoHangId() == null ? null : lo.getKhoHangId().getId());
@@ -281,12 +285,22 @@ public class DAO_LoHang {
         }
     }
 
+    // =========================================================
+    // ĐÃ MAP CỘT maVachNoiBo TỪ RESULTSET VÀO ENTITY
+    // =========================================================
     private LoHang mapLoHang(ResultSet rs) throws SQLException {
         LoHang lh = new LoHang();
         lh.setId(rs.getString("id"));
         lh.setSoLoHang(rs.getString("soLoHang"));
         lh.setSoLuongLoHang(rs.getInt("soLuongLoHang"));
-        lh.setGia(rs.getDouble("gia")); // <-- SỬA Ở ĐÂY
+        lh.setGia(rs.getDouble("gia"));
+
+        try {
+            lh.setMaVachNoiBo(rs.getString("maVachNoiBo")); // <-- THÊM DÒNG NÀY
+        } catch (Exception ignored) {
+            // Catch trong trường hợp câu query cũ chưa update
+        }
+
         if (rs.getString("trangThai") != null)
             lh.setTrangThai(TrangThaiLoHang.valueOf(rs.getString("trangThai")));
         if (rs.getTimestamp("ngayHetHan") != null)
@@ -444,34 +458,36 @@ public class DAO_LoHang {
         }
         return list;
     }
- // =========================================================
+
+    // =========================================================
     // HÀM LẤY LÔ HÀNG CẬN DATE (PHỤC VỤ GỢI Ý KHUYẾN MÃI Ở TẦNG BUS)
     // =========================================================
     public List<Object[]> layDuLieuLoHangCanDateTho() {
         List<Object[]> listData = new ArrayList<>();
-        
-        // Tối ưu Query: Không dùng SubQuery. 
+
+        // Tối ưu Query: Không dùng SubQuery.
         // Lấy l.gia làm Giá Nhập và d.gia làm Giá Bán.
         String sql = "SELECT l.id as maLo, l.soLoHang, s.ten as tenSP, d.gia as giaBan, l.gia as giaNhap, " +
-                     "DATEDIFF(day, GETDATE(), l.ngayHetHan) as soNgayConLai " +
-                     "FROM LoHang l " +
-                     "JOIN SanPham s ON l.sanPhamId = s.id " +
-                     "JOIN DonViDoLuong d ON s.id = d.sanPhamId " +
-                     "WHERE DATEDIFF(day, GETDATE(), l.ngayHetHan) BETWEEN 0 AND 90 " +
-                     "AND ISNULL(l.trangThai, 'CON_HANG') <> 'AN' " +
-                     "AND d.chuyenDoiDonViCoBan = 1";
-                     
+                "DATEDIFF(day, GETDATE(), l.ngayHetHan) as soNgayConLai " +
+                "FROM LoHang l " +
+                "JOIN SanPham s ON l.sanPhamId = s.id " +
+                "JOIN DonViDoLuong d ON s.id = d.sanPhamId " +
+                "WHERE DATEDIFF(day, GETDATE(), l.ngayHetHan) BETWEEN 0 AND 90 " +
+                "AND ISNULL(l.trangThai, 'CON_HANG') <> 'AN' " +
+                "AND d.chuyenDoiDonViCoBan = 1";
+
         Connection con = ConnectDB.getInstance().getConnection();
-        if (con == null) return listData;
-        
+        if (con == null)
+            return listData;
+
         try (Statement stmt = con.createStatement(); ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
-                listData.add(new Object[]{
-                    rs.getString("soLoHang"),
-                    rs.getString("tenSP"),
-                    rs.getDouble("giaBan"),
-                    rs.getDouble("giaNhap"),
-                    rs.getInt("soNgayConLai")
+                listData.add(new Object[] {
+                        rs.getString("soLoHang"),
+                        rs.getString("tenSP"),
+                        rs.getDouble("giaBan"),
+                        rs.getDouble("giaNhap"),
+                        rs.getInt("soNgayConLai")
                 });
             }
         } catch (Exception e) {

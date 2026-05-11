@@ -81,8 +81,10 @@ public class ManHinhNhapLoHangMoi extends JDialog {
     private HintTextField txtHanSuDung;
 
     private JLabel errSanPham, errMaLo, errSoLuong, errGiaNhap, errHanSuDung;
-    private JLabel lblTongQuyDoi;
-    private JLabel lblGiaVonVien;
+    private JLabel lblTongQuyDoi, lblGiaVonVien;
+
+    // Label động thay đổi theo đơn vị tính
+    private JLabel lblTitleSoLuong, lblTitleGiaNhap;
 
     private final ReloadListener reloadListener;
 
@@ -101,7 +103,19 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         setShape(new RoundRectangle2D.Double(0, 0, getWidth(), getHeight(), 16, 16));
         setContentPane(createMainUI());
         registerKeyboardActions();
-        txtMaLo.setText(taoMaLoHangTuDong()); // Tự động mớm sẵn Mã lô để đỡ phải gõ
+
+        // ============================================================
+        // TỰ ĐỘNG BẬT BẢNG QUÉT MÃ KHI VỪA MỞ CỬA SỔ
+        // ============================================================
+        this.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowOpened(WindowEvent e) {
+                // Đợi render UI xong thì hiện Dialog quét
+                Timer timer = new Timer(150, evt -> showQRScannerDialog());
+                timer.setRepeats(false);
+                timer.start();
+            }
+        });
     }
 
     public void setSanPhamAutoFill(String tenSP) {
@@ -133,7 +147,7 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         left.setOpaque(false);
         JLabel lblIcon = new JLabel(new MenuIcon("ADD"));
         lblIcon.setForeground(Color.WHITE);
-        JLabel title = new JLabel("Thêm Lô Hàng");
+        JLabel title = new JLabel("Thêm Lô Hàng Mới");
         title.setFont(FONT_TITLE);
         title.setForeground(Color.WHITE);
         left.add(lblIcon);
@@ -191,14 +205,17 @@ public class ManHinhNhapLoHangMoi extends JDialog {
 
         JPanel pnlQR = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
         pnlQR.setOpaque(false);
-        JButton btnScanQR = createSecondaryButton("Quét mã QR");
+        JButton btnScanQR = createSecondaryButton("Quét mã tem");
         btnScanQR.setForeground(PRIMARY);
         btnScanQR.addActionListener(e -> showQRScannerDialog());
         pnlQR.add(btnScanQR);
 
         JPanel comboSanPhamWrapper = createProductSelectorField();
 
-        txtMaLo = createTextField("VD: LH-0001");
+        // --------------------------------------------------------------------------
+        // Đổi Gợi ý (Placeholder) theo ý ông, không điền tự động để user tự nhập
+        // --------------------------------------------------------------------------
+        txtMaLo = createTextField("VD: LOT-2026-0001");
         txtSoLuong = createTextField("0");
         txtGiaNhap = createTextField("0");
 
@@ -235,6 +252,17 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         txtSoLuong.getDocument().addDocumentListener(calcListener);
         txtGiaNhap.getDocument().addDocumentListener(calcListener);
 
+        // --------------------------------------------------------------------------
+        // TẠO TIÊU ĐỀ ĐỘNG THAY ĐỔI THEO ĐƠN VỊ TÍNH (Thùng/Hộp/Viên)
+        // --------------------------------------------------------------------------
+        lblTitleSoLuong = new JLabel("Số lượng nhập kho *");
+        lblTitleSoLuong.setFont(FONT_LABEL);
+        lblTitleSoLuong.setForeground(TEXT_PRIMARY);
+
+        lblTitleGiaNhap = new JLabel("Giá nhập (của 1 đơn vị) *");
+        lblTitleGiaNhap.setFont(FONT_LABEL);
+        lblTitleGiaNhap.setForeground(TEXT_PRIMARY);
+
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.gridx = 0;
         gbc.weightx = 1.0;
@@ -243,14 +271,22 @@ public class ManHinhNhapLoHangMoi extends JDialog {
 
         gbc.gridy = 0;
         body.add(pnlQR, gbc);
+
         gbc.gridy = 1;
         body.add(createFullWidthField("Sản phẩm (Chọn hoặc nhập mới) *", comboSanPhamWrapper, errSanPham, "SEARCH"),
                 gbc);
+
         gbc.gridy = 2;
         body.add(createFullWidthField("Mã lô *", txtMaLo, errMaLo, "DOCUMENT"), gbc);
+
         gbc.gridy = 3;
-        body.add(createTwoColumnRow("Số lượng nhập kho *", txtSoLuong, errSoLuong, "BOX",
-                "Giá nhập (của 1 đơn vị nhập) *", txtGiaNhap, errGiaNhap, "TAB_DOLLAR"), gbc);
+        JPanel pnlCol1 = createFullWidthFieldWithLabel(lblTitleSoLuong, txtSoLuong, errSoLuong, "BOX");
+        JPanel pnlCol2 = createFullWidthFieldWithLabel(lblTitleGiaNhap, txtGiaNhap, errGiaNhap, "TAB_DOLLAR");
+        JPanel rowPanel = new JPanel(new GridLayout(1, 2, 24, 0));
+        rowPanel.setOpaque(false);
+        rowPanel.add(pnlCol1);
+        rowPanel.add(pnlCol2);
+        body.add(rowPanel, gbc);
 
         gbc.gridy = 4;
         JPanel dateFieldWrapper = createDatePickerField();
@@ -297,6 +333,11 @@ public class ManHinhNhapLoHangMoi extends JDialog {
             }
         } catch (Exception e) {
         }
+
+        // TỰ ĐỘNG ĐỔI TÊN LABEL THEO ĐƠN VỊ CỦA SẢN PHẨM ĐỂ NHÂN VIÊN NHẬP CHÍNH XÁC
+        lblTitleSoLuong.setText("Số lượng nhập kho (" + currentDonViLon + ") *");
+        lblTitleGiaNhap.setText("Giá nhập (của 1 " + currentDonViLon + ") *");
+
         calculateTotal();
     }
 
@@ -532,6 +573,13 @@ public class ManHinhNhapLoHangMoi extends JDialog {
     }
 
     private JPanel createFullWidthField(String title, JComponent field, JLabel error, String iconName) {
+        JLabel lblTitle = new JLabel(title);
+        lblTitle.setFont(FONT_LABEL);
+        lblTitle.setForeground(TEXT_PRIMARY);
+        return createFullWidthFieldWithLabel(lblTitle, field, error, iconName);
+    }
+
+    private JPanel createFullWidthFieldWithLabel(JLabel lblTitle, JComponent field, JLabel error, String iconName) {
         JPanel block = new JPanel(new BorderLayout(0, 8));
         block.setOpaque(false);
         JPanel titlePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
@@ -541,9 +589,6 @@ public class ManHinhNhapLoHangMoi extends JDialog {
             lblIcon.setForeground(PRIMARY);
             titlePanel.add(lblIcon);
         }
-        JLabel lblTitle = new JLabel(title);
-        lblTitle.setFont(FONT_LABEL);
-        lblTitle.setForeground(TEXT_PRIMARY);
         titlePanel.add(lblTitle);
         JPanel fieldWrapper = new JPanel(new BorderLayout(0, 4));
         fieldWrapper.setOpaque(false);
@@ -552,15 +597,6 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         block.add(titlePanel, BorderLayout.NORTH);
         block.add(fieldWrapper, BorderLayout.CENTER);
         return block;
-    }
-
-    private JPanel createTwoColumnRow(String title1, JComponent field1, JLabel error1, String icon1, String title2,
-            JComponent field2, JLabel error2, String icon2) {
-        JPanel rowPanel = new JPanel(new GridLayout(1, 2, 24, 0));
-        rowPanel.setOpaque(false);
-        rowPanel.add(createFullWidthField(title1, field1, error1, icon1));
-        rowPanel.add(createFullWidthField(title2, field2, error2, icon2));
-        return rowPanel;
     }
 
     private JPanel createFooter() {
@@ -575,7 +611,7 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         btnCancel.setIconTextGap(8);
         JButton btnSubmit = createPrimaryButton("Lưu & In Tem");
         btnSubmit.setIcon(new MenuIcon("SAVE"));
-        btnSubmit.setIconTextGap(8); // Đổi tên nút cho hợp nghiệp vụ
+        btnSubmit.setIconTextGap(8);
         btnCancel.addActionListener(e -> dispose());
         btnSubmit.addActionListener(e -> handleSubmit());
         actions.add(btnCancel);
@@ -708,7 +744,7 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         boolean valid = true;
 
         if (spText.isEmpty() || spText.equals("Nhập tên, mã SP hoặc bấm ▼ để chọn...")) {
-            errSanPham.setText("Vui lòng chọn hoặc nhập tên sản phẩm");
+            errSanPham.setText("Vui lòng chọn sản phẩm");
             valid = false;
         } else {
             selectedSanPham = null;
@@ -728,7 +764,7 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         }
 
         if (maLo.isEmpty()) {
-            errMaLo.setText("Mã lô không được để trống");
+            errMaLo.setText("Số lô không được bỏ trống (Vui lòng tự gõ hoặc quét mã)");
             valid = false;
         }
         long soLuongLon = 0;
@@ -760,7 +796,7 @@ public class ManHinhNhapLoHangMoi extends JDialog {
 
         LocalDate ngayHSD = null;
         if (hanSuDung.isEmpty() || hanSuDung.equals("dd/MM/yyyy")) {
-            errHanSuDung.setText("Vui lòng nhập hạn sử dụng");
+            errHanSuDung.setText("Vui lòng nhập HSD");
             valid = false;
         } else {
             try {
@@ -770,7 +806,7 @@ public class ManHinhNhapLoHangMoi extends JDialog {
                     valid = false;
                 }
             } catch (DateTimeParseException e) {
-                errHanSuDung.setText("Sai định dạng dd/MM/yyyy");
+                errHanSuDung.setText("Sai định dạng");
                 valid = false;
             }
         }
@@ -778,18 +814,23 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         if (!valid)
             return;
         if (busKho.tonTaiMaLoDangHoatDong(maLo)) {
-            errMaLo.setText("Mã lô đã tồn tại");
+            errMaLo.setText("Mã lô đã tồn tại trong kho");
             return;
         }
 
+        String idTuDong = taoMaLoHangTuDong(); // Dùng làm ID gốc nội bộ
+        String maVachNoiBo = "MV" + idTuDong.replace("-", "");
+
         LoHang loHang = new LoHang();
-        loHang.setId(taoMaLoHangTuDong());
+        loHang.setId(idTuDong);
         loHang.setSoLoHang(maLo);
         loHang.setSoLuongLoHang(tongSoLuongQuyDoi);
         loHang.setGia(giaVien);
         loHang.setNgayNhap(LocalDateTime.now());
         loHang.setNgayHetHan(ngayHSD.atStartOfDay());
         loHang.setSanPhamId(selectedSanPham);
+        loHang.setMaVachNoiBo(maVachNoiBo);
+
         KhoHang kho = new KhoHang();
         kho.setId("KHO-0001");
         loHang.setKhoHangId(kho);
@@ -809,9 +850,8 @@ public class ManHinhNhapLoHangMoi extends JDialog {
                 reloadListener.onReload();
             dispose();
 
-            // LIÊN KẾT: Gọi bảng in tem nhãn có sẵn Mã SP và Mã Lô
             Window owner = SwingUtilities.getWindowAncestor(this);
-            DialogInMaVach dialogMaVach = new DialogInMaVach(owner, maLo, maSPHienThi, tenSPHienThi);
+            DialogInMaVach dialogMaVach = new DialogInMaVach(owner, maVachNoiBo, maSPHienThi, tenSPHienThi);
             dialogMaVach.setVisible(true);
         } else {
             showModernAlert("Lưu lô hàng thất bại!", false);
@@ -823,10 +863,8 @@ public class ManHinhNhapLoHangMoi extends JDialog {
             List<LoHang> dsLo = busKho.layDSLoHang();
             int max = 0;
             for (LoHang lh : dsLo) {
-                // Fix: Check ID thay vì SoLoHang
                 if (lh == null || lh.getId() == null)
                     continue;
-
                 String id = lh.getId().trim().toUpperCase().replace("-", "");
                 if (id.startsWith("LH")) {
                     try {
@@ -851,30 +889,46 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         errHanSuDung.setText(" ");
     }
 
+    // ==============================================================================
+    // BẢNG QUÉT MÃ QR/TEM (Có nút nhập tay giống như bên Xuất Kho)
+    // ==============================================================================
     private void showQRScannerDialog() {
-        JDialog dialog = new JDialog(this, "Quét mã QR", Dialog.ModalityType.APPLICATION_MODAL);
-        dialog.setSize(400, 150);
+        JDialog dialog = new JDialog(this, "YÊU CẦU QUÉT MÃ", Dialog.ModalityType.APPLICATION_MODAL);
+        dialog.setSize(450, 180);
         dialog.setLocationRelativeTo(this);
         dialog.setUndecorated(true);
         dialog.setShape(new RoundRectangle2D.Double(0, 0, dialog.getWidth(), dialog.getHeight(), 16, 16));
+
         JPanel root = new JPanel(new BorderLayout());
         root.setBackground(Color.WHITE);
         root.setBorder(BorderFactory.createLineBorder(PRIMARY, 2));
-        JLabel lblInfo = new JLabel("Đưa mã QR/Mã vạch vào máy quét...", SwingConstants.CENTER);
-        lblInfo.setFont(new Font("Segoe UI", Font.BOLD, 16));
+
+        JLabel lblIconScan = new JLabel(new MenuIcon("ADD", 40, PRIMARY)); // Icon Quét
+        lblIconScan.setHorizontalAlignment(SwingConstants.CENTER);
+        lblIconScan.setBorder(new EmptyBorder(20, 0, 0, 0));
+
+        JLabel lblInfo = new JLabel("Vui lòng đưa súng quét đọc mã lô in trên hộp...", SwingConstants.CENTER);
+        lblInfo.setFont(new Font("Segoe UI", Font.BOLD, 17));
         lblInfo.setForeground(TEXT_PRIMARY);
-        root.add(lblInfo, BorderLayout.CENTER);
-        JButton btnClose = createSecondaryButton("Đóng lại");
+
+        JButton btnClose = createSecondaryButton("Nhập tay");
+        btnClose.setPreferredSize(new Dimension(120, 38));
         btnClose.addActionListener(e -> dialog.dispose());
-        JPanel pnlBottom = new JPanel(new FlowLayout(FlowLayout.CENTER));
+
+        JPanel pnlBottom = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 15));
         pnlBottom.setBackground(Color.WHITE);
         pnlBottom.add(btnClose);
+
+        root.add(lblIconScan, BorderLayout.NORTH);
+        root.add(lblInfo, BorderLayout.CENTER);
         root.add(pnlBottom, BorderLayout.SOUTH);
+
         JTextField txtHiddenQR = new JTextField();
         txtHiddenQR.setOpaque(false);
         txtHiddenQR.setBorder(null);
         txtHiddenQR.setForeground(new Color(0, 0, 0, 0));
-        root.add(txtHiddenQR, BorderLayout.NORTH);
+        root.add(txtHiddenQR, BorderLayout.WEST);
+
         txtHiddenQR.addActionListener(e -> {
             String qrData = txtHiddenQR.getText().trim();
             if (!qrData.isEmpty()) {
@@ -882,6 +936,7 @@ public class ManHinhNhapLoHangMoi extends JDialog {
                 processQRCodeData(qrData);
             }
         });
+
         dialog.addWindowFocusListener(new WindowAdapter() {
             @Override
             public void windowGainedFocus(WindowEvent e) {
@@ -890,6 +945,7 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         });
         dialog.getRootPane().registerKeyboardAction(e -> dialog.dispose(),
                 KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), JComponent.WHEN_IN_FOCUSED_WINDOW);
+
         dialog.setContentPane(root);
         dialog.setVisible(true);
     }
@@ -915,9 +971,8 @@ public class ManHinhNhapLoHangMoi extends JDialog {
                     txtHanSuDung.setText(parts[4].trim());
                     clearErrors();
                     showModernAlert("Đã điền tự động thông tin từ mã QR!", true);
-                } else {
+                } else
                     showModernAlert("Mã QR không đủ 5 trường dữ liệu!", false);
-                }
             } else {
                 txtMaLo.setText(qrData);
                 clearErrors();
@@ -928,54 +983,110 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         }
     }
 
+    // ==============================================================================
+    // THÔNG BÁO XỊN XÒ TỪ XUẤT KHO SANG
+    // ==============================================================================
     private void showModernAlert(String message, boolean isSuccess) {
         JDialog dialog = new JDialog(this, "Thông báo", Dialog.ModalityType.APPLICATION_MODAL);
         dialog.setUndecorated(true);
-        dialog.setSize(380, 160);
-        dialog.setLocationRelativeTo(this);
-        dialog.setShape(new RoundRectangle2D.Double(0, 0, dialog.getWidth(), dialog.getHeight(), 16, 16));
+        dialog.setBackground(new Color(0, 0, 0, 0));
         Color themeColor = isSuccess ? SUCCESS : DANGER;
-        JPanel root = new JPanel(new BorderLayout());
-        root.setBackground(Color.WHITE);
-        root.setBorder(BorderFactory.createLineBorder(themeColor, 2));
-        JPanel pnlContent = new JPanel(new FlowLayout(FlowLayout.CENTER, 16, 35));
-        pnlContent.setBackground(Color.WHITE);
-        JLabel lblIcon = new JLabel(new MenuIcon(isSuccess ? "CHECK_CIRCLE" : "WARNING"));
-        lblIcon.setForeground(themeColor);
-        JLabel lblMessage = new JLabel(message);
-        lblMessage.setFont(new Font("Segoe UI", Font.BOLD, 16));
-        lblMessage.setForeground(TEXT_PRIMARY);
-        pnlContent.add(lblIcon);
-        pnlContent.add(lblMessage);
-        JPanel pnlBottom = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 16));
-        pnlBottom.setBackground(Color.WHITE);
-        JButton btnOk = new JButton("OK");
-        btnOk.setFocusPainted(false);
-        btnOk.setForeground(Color.WHITE);
-        btnOk.setBackground(themeColor);
-        btnOk.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        btnOk.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        btnOk.setBorder(new EmptyBorder(8, 40, 8, 40));
-        btnOk.setOpaque(true);
-        btnOk.addMouseListener(new MouseAdapter() {
+
+        JPanel pnlMain = new JPanel(new BorderLayout());
+        pnlMain.setBorder(BorderFactory.createLineBorder(themeColor, 2));
+        pnlMain.setBackground(Color.WHITE);
+
+        JPanel pnlHeader = new JPanel(new BorderLayout());
+        pnlHeader.setBackground(themeColor);
+        pnlHeader.setPreferredSize(new Dimension(0, 45));
+        JLabel lblTitle = new JLabel((isSuccess ? "THÀNH CÔNG" : "THÔNG BÁO LỖI"), SwingConstants.CENTER);
+        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        lblTitle.setForeground(Color.WHITE);
+        pnlHeader.add(lblTitle, BorderLayout.CENTER);
+
+        JPanel pnlBody = new JPanel(null);
+        pnlBody.setBackground(Color.WHITE);
+        pnlBody.setPreferredSize(new Dimension(420, 130));
+
+        JPanel pnlIcon = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+                if (!isSuccess) {
+                    g2.setColor(new Color(254, 226, 226));
+                    g2.fillRoundRect(0, 0, 50, 50, 50, 50);
+                    g2.setColor(DANGER);
+                    g2.setStroke(new BasicStroke(4f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                    g2.drawLine(17, 17, 33, 33);
+                    g2.drawLine(33, 17, 17, 33);
+                } else {
+                    g2.setColor(new Color(209, 250, 229));
+                    g2.fillRoundRect(0, 0, 50, 50, 50, 50);
+                    g2.setColor(SUCCESS);
+                    g2.setStroke(new BasicStroke(4f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                    g2.drawLine(15, 26, 22, 33);
+                    g2.drawLine(22, 33, 35, 16);
+                }
+                g2.dispose();
+            }
+        };
+        pnlIcon.setBounds(25, 25, 50, 50);
+        pnlIcon.setOpaque(false);
+
+        JTextArea msgArea = new JTextArea(message);
+        msgArea.setFont(new Font("Segoe UI", Font.PLAIN, 15));
+        msgArea.setWrapStyleWord(true);
+        msgArea.setLineWrap(true);
+        msgArea.setOpaque(false);
+        msgArea.setEditable(false);
+        msgArea.setFocusable(false);
+
+        JScrollPane scroll = new JScrollPane(msgArea);
+        scroll.setBounds(95, 20, 305, 95);
+        scroll.setBorder(null);
+        scroll.setOpaque(false);
+        scroll.getViewport().setOpaque(false);
+
+        pnlBody.add(pnlIcon);
+        pnlBody.add(scroll);
+
+        JPanel pnlFooter = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 15));
+        pnlFooter.setBackground(Color.WHITE);
+        JButton btnClose = new JButton("Đóng");
+        btnClose.setFocusPainted(false);
+        btnClose.setForeground(Color.WHITE);
+        btnClose.setBackground(themeColor);
+        btnClose.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btnClose.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btnClose.setBorder(new EmptyBorder(8, 30, 8, 30));
+        btnClose.setOpaque(true);
+        btnClose.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseEntered(MouseEvent e) {
-                btnOk.setBackground(isSuccess ? SUCCESS_HOVER : DANGER.darker());
+                btnClose.setBackground(isSuccess ? SUCCESS_HOVER : DANGER.darker());
             }
 
             @Override
             public void mouseExited(MouseEvent e) {
-                btnOk.setBackground(themeColor);
+                btnClose.setBackground(themeColor);
             }
         });
-        btnOk.addActionListener(e -> dialog.dispose());
-        dialog.getRootPane().setDefaultButton(btnOk);
-        dialog.getRootPane().registerKeyboardAction(e -> dialog.dispose(),
-                KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), JComponent.WHEN_IN_FOCUSED_WINDOW);
-        pnlBottom.add(btnOk);
-        root.add(pnlContent, BorderLayout.CENTER);
-        root.add(pnlBottom, BorderLayout.SOUTH);
-        dialog.setContentPane(root);
+        btnClose.addActionListener(e -> dialog.dispose());
+        pnlFooter.add(btnClose);
+
+        pnlMain.add(pnlHeader, BorderLayout.NORTH);
+        pnlMain.add(pnlBody, BorderLayout.CENTER);
+        pnlMain.add(pnlFooter, BorderLayout.SOUTH);
+
+        dialog.add(pnlMain);
+        dialog.pack();
+        dialog.setLocationRelativeTo(this);
+
+        if (isSuccess)
+            new Timer(1500, e -> dialog.dispose()).start();
         dialog.setVisible(true);
     }
 
@@ -1182,9 +1293,8 @@ public class ManHinhNhapLoHangMoi extends JDialog {
             int yPos = screenLoc.y + invoker.getHeight() + 2;
             try {
                 Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
-                if (yPos + popupHeight > screenSize.height - 40) {
+                if (yPos + popupHeight > screenSize.height - 40)
                     yPos = screenLoc.y - popupHeight - 2;
-                }
             } catch (Exception ex) {
             }
             setLocation(screenLoc.x, yPos);
