@@ -25,6 +25,13 @@ public class BUS_KhachHang {
         return daoKhachHang.getKhachHangTheoSDT(sdt);
     }
     
+    // ========================================================
+    // FIX 1: Bổ sung Alias function để khớp với lệnh gọi trong TaoHoaDon.java
+    // ========================================================
+    public KhachHang timKhachHangTheoSdt(String sdt) {
+        return getKhachHangTheoSDT(sdt);
+    }
+    
     public boolean validateThongTin(KhachHang kh) {
         if (kh.getId() == null || kh.getId().trim().isEmpty()) return false;
         if (kh.getHoVaTen() == null || kh.getHoVaTen().trim().isEmpty()) return false;
@@ -69,6 +76,26 @@ public class BUS_KhachHang {
         int diemCongThem = (int) (soTienThanhToan / 1000);
         int diemMoi = diemHienTai + diemCongThem;
         kh.setDiemTichLuy(diemMoi);
+        return daoKhachHang.capNhatDiemTichLuy(kh.getId(), diemMoi);
+    }
+
+    // ========================================================
+    // FIX 2: Bổ sung hàm cập nhật điểm nhận (SĐT, Điểm chênh lệch) từ TaoHoaDon
+    // BUS sẽ tự lấy Mã KH và tính toán tổng điểm mới trước khi đẩy xuống DAO
+    // ========================================================
+    public boolean capNhatDiemTichLuy(String sdtKhachHang, int diemChenhLech) {
+        if (sdtKhachHang == null || sdtKhachHang.trim().isEmpty()) return false;
+        
+        KhachHang kh = daoKhachHang.getKhachHangTheoSDT(sdtKhachHang);
+        if (kh == null) return false;
+
+        // Tính điểm mới dựa trên điểm hiện tại và phần chênh lệch (Cộng thêm hoặc Trừ đi)
+        int diemMoi = kh.getDiemTichLuy() + diemChenhLech;
+        
+        // Đảm bảo điểm không bị âm do lỗi logic hoặc khách hàng dùng quá số điểm
+        if (diemMoi < 0) diemMoi = 0; 
+
+        // Đẩy xuống DAO với định dạng chuẩn (Mã KH, Điểm Mới)
         return daoKhachHang.capNhatDiemTichLuy(kh.getId(), diemMoi);
     }
 

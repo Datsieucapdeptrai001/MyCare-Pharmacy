@@ -6,7 +6,7 @@ import DAO.DAO_DonViDoLuong;
 import Entity.DonViDoLuong;
 
 public class BUS_DonViDoLuong {
-    
+
     private DAO_DonViDoLuong daoDVDL;
 
     public BUS_DonViDoLuong() {
@@ -32,5 +32,25 @@ public class BUS_DonViDoLuong {
             return new ArrayList<>();
         }
         return daoDVDL.getDSTheoTenSP(tenSP.trim());
+    }
+
+    /**
+     * Lấy đơn vị đo lường theo Mã Vạch (phục vụ tính năng quét mã bằng súng)
+     */
+    public DonViDoLuong layDonViTheoMaVach(String maVach) {
+        if (maVach == null || maVach.trim().isEmpty()) {
+            return null;
+        }
+        return daoDVDL.layDonViTheoMaVach(maVach.trim());
+    }
+
+    /**
+     * Cập nhật mã vạch cho đơn vị tính (thường gọi lúc mới nhập hàng)
+     */
+    public boolean capNhatMaVach(String maSP, String tenDonVi, String maVachMoi) {
+        if (maSP == null || tenDonVi == null || maVachMoi == null) {
+            return false;
+        }
+        return daoDVDL.capNhatMaVach(maSP, tenDonVi, maVachMoi);
     }
 }
