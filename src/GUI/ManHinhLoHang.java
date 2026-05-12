@@ -543,6 +543,7 @@ public class ManHinhLoHang extends JPanel {
                     String maSP = "";
                     String tenSP = "";
                     String donVi = "Chưa có";
+                    String donViCoBan = ""; // Đã thêm để lưu đơn vị cơ bản
                     String tonKhoHienThi = "";
 
                     if (lh.getSanPhamId() != null) {
@@ -562,6 +563,7 @@ public class ManHinhLoHang extends JPanel {
                                     if (dv.getChuyenDoiSangDonViCoBan() == 1.0) {
                                         dvCoBan = dv;
                                         donVi = dv.getTen();
+                                        donViCoBan = dv.getTen(); // Lưu lại đơn vị cơ bản
                                     }
                                     if (dv.getChuyenDoiSangDonViCoBan() > maxQuyDoi) {
                                         maxQuyDoi = dv.getChuyenDoiSangDonViCoBan();
@@ -586,8 +588,10 @@ public class ManHinhLoHang extends JPanel {
                                     donVi = dvLon.getTen() + "/" + dvCoBan.getTen();
                                 } else {
                                     tonKhoHienThi = formatNumber(soLuong);
-                                    if (dvCoBan == null && !dsDVDL.isEmpty())
+                                    if (dvCoBan == null && !dsDVDL.isEmpty()) {
                                         donVi = dsDVDL.get(0).getTen();
+                                        donViCoBan = dsDVDL.get(0).getTen(); // Lưu đơn vị cơ bản nếu không có quy đổi
+                                    }
                                 }
                             }
                         }
@@ -609,7 +613,15 @@ public class ManHinhLoHang extends JPanel {
                         trangThai = "Hết hàng";
                     }
 
-                    dsTatCa.add(new BatchItem(id, soLo, maSP, tenSP, donVi, soLuong, tonKhoHienThi, gia, hanSuDung,
+                    // Xử lý đơn vị cơ bản nếu trống
+                    if (donViCoBan.isEmpty() && !"Chưa có".equals(donVi)) {
+                        donViCoBan = donVi;
+                    }
+                    if ("Chưa có".equals(donViCoBan))
+                        donViCoBan = "";
+
+                    dsTatCa.add(new BatchItem(id, soLo, maSP, tenSP, donVi, donViCoBan, soLuong, tonKhoHienThi, gia,
+                            hanSuDung,
                             trangThai));
                 }
             }
@@ -715,7 +727,8 @@ public class ManHinhLoHang extends JPanel {
                     item.maSanPham + (safe(item.tenSanPham).isEmpty() ? "" : " - " + item.tenSanPham),
                     item.donVi,
                     item.tonKhoHienThi,
-                    formatCurrency(item.giaNhap),
+                    // Hiển thị giá vốn kèm đơn vị cơ bản
+                    formatCurrency(item.giaNhap) + (item.donViCoBan.isEmpty() ? "" : " / " + item.donViCoBan),
                     item.hanSuDung,
                     item.getConLai(),
                     item.trangThai,
@@ -1132,17 +1145,21 @@ public class ManHinhLoHang extends JPanel {
     }
 
     private class BatchItem {
-        String id, soLo, maSanPham, tenSanPham, donVi, hanSuDung, trangThai, tonKhoHienThi;
+        // Cập nhật thêm donViCoBan
+        String id, soLo, maSanPham, tenSanPham, donVi, donViCoBan, hanSuDung, trangThai, tonKhoHienThi;
         int tonKho;
         double giaNhap;
 
-        BatchItem(String i, String sl, String msp, String tsp, String dv, int tk, String tkHienThi, double gn,
+        // Cập nhật hàm tạo
+        BatchItem(String i, String sl, String msp, String tsp, String dv, String dvcb, int tk, String tkHienThi,
+                double gn,
                 String hsd, String tt) {
             id = i;
             soLo = sl;
             maSanPham = msp;
             tenSanPham = tsp;
             donVi = dv;
+            donViCoBan = dvcb;
             tonKho = tk;
             tonKhoHienThi = tkHienThi;
             giaNhap = gn;
