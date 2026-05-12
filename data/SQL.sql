@@ -466,7 +466,8 @@ INSERT [dbo].[LoHang] VALUES (N'LH-0037', N'LOT-2024-0037', N'SP2024-0037', 500,
 INSERT [dbo].[LoHang] VALUES (N'LH-0038', N'LOT-2024-0038', N'SP2024-0038', 300, CAST(2500.00 AS Decimal(18, 2)), CAST(N'2027-08-31T00:00:00.0000000' AS DateTime2), N'CON_HANG', CAST(N'2026-04-30T20:49:43.9466667' AS DateTime2), N'KHO-0001', NULL)
 INSERT [dbo].[LoHang] VALUES (N'LH-0039', N'LOT-2024-0039', N'SP2024-0039', 600, CAST(1500.00 AS Decimal(18, 2)), CAST(N'2026-09-30T00:00:00.0000000' AS DateTime2), N'CON_HANG', CAST(N'2026-04-30T20:49:43.9466667' AS DateTime2), N'KHO-0001', NULL)
 INSERT [dbo].[LoHang] VALUES (N'LH-0040', N'LOT-2024-0040', N'SP2024-0040', 250, CAST(3000.00 AS Decimal(18, 2)), CAST(N'2026-12-31T00:00:00.0000000' AS DateTime2), N'CON_HANG', CAST(N'2026-04-30T20:49:43.9466667' AS DateTime2), N'KHO-0001', NULL)
-
+-- !!! ĐÃ SỬA: BỔ SUNG LÔ HÀNG 0041 TỪ MÃ GS1 MÀ BẠN ĐÃ QUÉT !!!
+INSERT [dbo].[LoHang] VALUES (N'LH-0041', N'LOT-2026-0001', N'SP2024-0009', 100, CAST(40000.00 AS Decimal(18, 2)), CAST(N'2026-05-24T00:00:00.0000000' AS DateTime2), N'CON_HANG', GETDATE(), N'KHO-0001', N'MVLH0042')
 -- !!! ĐÃ SỬA: BỔ SUNG LÔ HÀNG 0041 TỪ MÃ GS1 MÀ BẠN ĐÃ QUÉT !!!
 INSERT [dbo].[LoHang] VALUES (N'LH-0041', N'LOT-2026-0001', N'SP2024-0009', 100, CAST(40000.00 AS Decimal(18, 2)), CAST(N'2026-05-24T00:00:00.0000000' AS DateTime2), N'CON_HANG', GETDATE(), N'KHO-0001', NULL)
 
@@ -624,7 +625,21 @@ GO
 -- ==============================================================================
 -- CẬP NHẬT giaBan THEO ĐƠN VỊ CƠ BẢN
 -- ==============================================================================
-
+SELECT 
+    sp.id, sp.ten, dv.ten AS donVi, dv.gia AS giaBan, 
+    lh.soLuongLoHang AS tonKho, sp.danhMuc, sp.thueVAT, 
+    lh.soLoHang, lh.ngayHetHan
+FROM SanPham sp
+LEFT JOIN DonViDoLuong dv ON sp.id = dv.sanPhamId
+LEFT JOIN LoHang lh ON sp.id = lh.sanPhamId
+WHERE sp.trangThai = 'HOAT_DONG' 
+  AND (
+      sp.id LIKE ?             -- Tìm theo Mã SP (SP2024-0001)
+      OR sp.ten LIKE ?         -- Tìm theo Tên (Paracetamol)
+      OR dv.maVach = ?         -- BỔ SUNG: Tìm theo mã vạch siêu thị (893...)
+      OR lh.maVachNoiBo = ?    -- BỔ SUNG: Tìm theo mã QR nội bộ (MVLH0042)
+      OR lh.soLoHang = ?       -- BỔ SUNG: Tìm theo số lô (LOT-2024-0001)
+  )
 UPDATE sp SET sp.giaBan = dvl.gia
 FROM SanPham sp
 INNER JOIN DonViDoLuong dvl ON dvl.sanPhamId = sp.id AND dvl.ten = sp.donViDoCoBan

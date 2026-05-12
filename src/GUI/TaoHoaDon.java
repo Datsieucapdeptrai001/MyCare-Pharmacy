@@ -268,27 +268,39 @@ public class TaoHoaDon extends JDialog {
             }
         });
     }
- // Trong TaoHoaDon.java - Hàm làm mới Voucher
     private void lamMoiKhuyenMai() {
         pnlVoucherTags.removeAll();
         BUS_KhuyenMai busKM = new BUS_KhuyenMai();
-        List<Object[]> ds = busKM.layDanhSachKhuyenMaiFull(); // Gọi qua BUS
-        if (ds != null) {
+        List<Object[]> ds = busKM.layDanhSachKhuyenMaiFull(); 
+        
+        if (ds != null && !ds.isEmpty()) {
+            int count = 0;
+            JPanel currentRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
+            currentRow.setOpaque(false);
+            pnlVoucherTags.add(currentRow);
+
             for (Object[] km : ds) {
-                // Rào lỗi 2: Ép kiểu an toàn bằng toán tử 3 ngôi (Ternary Operator)
                 String maKM = km[0] != null ? km[0].toString() : "UNKNOWN";
                 String tenKM = km[1] != null ? km[1].toString() : "Khuyến mãi";
                 String moTa = km[2] != null ? km[2].toString() : "";
                 String tenSPY = km[5] != null ? km[5].toString() : "";
             
                 String hienThi = (!moTa.trim().isEmpty()) ? moTa : tenKM;
-                
                 String label = maKM + " (" + hienThi + ")";
                 if (!tenSPY.trim().isEmpty()) {
                     label += " - Áp dụng: " + tenSPY;
                 }
 
-                pnlVoucherTags.add(createVoucherTag(label, maKM, txtVoucherInput));
+                // Cứ đủ 5 mã thì rớt xuống hàng ngang mới
+                if (count == 4) {
+                    currentRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
+                    currentRow.setOpaque(false);
+                    pnlVoucherTags.add(currentRow);
+                    count = 0;
+                }
+
+                currentRow.add(createVoucherTag(label, maKM, txtVoucherInput));
+                count++;
             }
         }
         pnlVoucherTags.revalidate(); 
@@ -1086,15 +1098,22 @@ public class TaoHoaDon extends JDialog {
         pnlInput.add(txtVoucherInput, BorderLayout.CENTER);
         pnlInput.add(btnApply, BorderLayout.EAST);
 
-        pnlVoucherTags = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
+     // TẠO LAYOUT CHÍNH LÀ DỌC (TỪ TRÊN XUỐNG DƯỚI)
+        pnlVoucherTags = new JPanel();
+        pnlVoucherTags.setLayout(new BoxLayout(pnlVoucherTags, BoxLayout.Y_AXIS));
         pnlVoucherTags.setOpaque(false);
         
-
         BUS.BUS_KhuyenMai busKM = new BUS.BUS_KhuyenMai();
         java.util.List<Object[]> dsKM = busKM.layDanhSachKhuyenMaiHienThiTag();
         
         boolean hasVoucher = false;
         if(dsKhuyenMaiCache != null) dsKhuyenMaiCache.clear();
+
+        int count = 0;
+        // Tạo hàng ngang đầu tiên
+        JPanel currentRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
+        currentRow.setOpaque(false);
+        pnlVoucherTags.add(currentRow);
 
         for (Object[] row : dsKM) {
             hasVoucher = true;
@@ -1102,23 +1121,29 @@ public class TaoHoaDon extends JDialog {
             String tenKM = row[1] != null ? row[1].toString() : "";
             String moTa = row[2] != null ? row[2].toString() : "";
             String tenSanPhamYeuCau = row[3] != null ? row[3].toString() : "";
-            // String tenSanPhamTang = row[4] != null ? row[4].toString() : ""; (Sẵn sàng nếu sau này bạn dùng)
             
             dsKhuyenMaiCache.add(new Object[]{maKM});
 
-            // Ưu tiên hiển thị cột "moTa", nếu không có thì lấy cột "tenKhuyenMai"
             String hienThi = (moTa != null && !moTa.trim().isEmpty()) ? moTa : tenKM;
             if (hienThi == null || hienThi.trim().isEmpty()) {
                 hienThi = "Chương trình ưu đãi";
             }
 
-            // Nếu chưa có mô tả mà có SP yêu cầu thì in ra "Áp dụng cho: Paracetamol"
             if (hienThi.equals(tenKM) && !tenSanPhamYeuCau.isEmpty()) {
                 hienThi += " (Áp dụng cho " + tenSanPhamYeuCau + ")";
             }
 
             String labelStr = maKM + " (" + hienThi + ")";
-            pnlVoucherTags.add(createVoucherTag(labelStr, maKM, txtVoucherInput));
+
+            // LOGIC QUAN TRỌNG: Cứ đủ 5 thẻ thì tạo thêm hàng ngang mới
+            if (count == 5) {
+                currentRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
+                currentRow.setOpaque(false);
+                pnlVoucherTags.add(currentRow);
+                count = 0;
+            }
+            currentRow.add(createVoucherTag(labelStr, maKM, txtVoucherInput));
+            count++;
         }
         
         if(!hasVoucher) {
@@ -2356,13 +2381,17 @@ public class TaoHoaDon extends JDialog {
             }
 
             // Xử lý quét mã vạch GS1: (91)LOT-2026-0001(92)100...
-            final String text;
-            if (rawText.startsWith("(91)") && rawText.contains("(92)")) {
+            final String text; // BẮT BUỘC PHẢI KHAI BÁO FINAL TẠI ĐÂY
+            if (rawText.startsWith("(91)")) {
                 int start = rawText.indexOf("(91)") + 4;
                 int end = rawText.indexOf("(92)");
-                text = (start < end) ? rawText.substring(start, end) : rawText;
+                if (end != -1) {
+                    text = rawText.substring(start, end);
+                } else {
+                    text = rawText.substring(start);
+                }
             } else {
-                text = rawText;
+                text = rawText; // Gán lại thành rawText nếu không phải mã GS1
             }
 
             // FIX: Hủy Worker cũ nếu người dùng gõ quá nhanh
@@ -2497,13 +2526,15 @@ public class TaoHoaDon extends JDialog {
                     if (rawSearchText.isEmpty() || rawSearchText.contains("Tìm tên sản phẩm")) return;
 
                     // Xử lý quét mã vạch GS1: (91)LOT-2026-0001(92)100...
-                    final String searchText;
-                    if (rawSearchText.startsWith("(91)") && rawSearchText.contains("(92)")) {
+                    String searchText = rawSearchText;
+                    if (rawSearchText.startsWith("(91)")) {
                         int start = rawSearchText.indexOf("(91)") + 4;
                         int end = rawSearchText.indexOf("(92)");
-                        searchText = (start < end) ? rawSearchText.substring(start, end) : rawSearchText;
-                    } else {
-                        searchText = rawSearchText;
+                        if (end != -1) {
+                            searchText = rawSearchText.substring(start, end);
+                        } else {
+                            searchText = rawSearchText.substring(start);
+                        }
                     }
 
                     // Nếu có gợi ý đang mở và luồng tìm kiếm đã lấy được dữ liệu
@@ -3696,35 +3727,41 @@ public class TaoHoaDon extends JDialog {
             }
         }
         
-        // 2. Duyệt qua từng cái Thẻ (Tag) trên giao diện
-        for (Component comp : pnlVoucherTags.getComponents()) {
-            if (comp instanceof JPanel) {
-                JPanel pnl = (JPanel) comp;
-                String maKMTag = pnl.getName(); 
+        for (Component rowComp : pnlVoucherTags.getComponents()) {
+            if (rowComp instanceof JPanel) {
+                JPanel currentRow = (JPanel) rowComp;
                 
-                if (maKMTag != null && pnl.getComponentCount() > 0) {
-                    maKMTag = maKMTag.trim().toUpperCase();
-                    JLabel lblText = (JLabel) pnl.getComponent(0);
-                    
-                    // Nếu Thẻ này nằm trong danh sách ĐƯỢC ÁP DỤNG -> Tô màu xanh
-                    if (listApplied.contains(maKMTag)) {
-                        pnl.setBackground(Color.decode("#D1FAE5")); // Nền xanh ngọc
-                        pnl.setBorder(BorderFactory.createCompoundBorder(
-                            BorderFactory.createLineBorder(Color.decode("#10B981"), 1, true), // Viền xanh lá đậm
-                            new javax.swing.border.EmptyBorder(4, 8, 4, 8)
-                        ));
-                        lblText.setForeground(Color.decode("#047857")); // Chữ xanh lá thẫm
-                        lblText.setFont(new Font("Segoe UI", Font.BOLD, 12));
-                    } 
-                    // Nếu Thẻ này KHÔNG được áp dụng -> Đưa về màu xám nhạt như cũ
-                    else {
-                        pnl.setBackground(Color.WHITE);
-                        pnl.setBorder(BorderFactory.createCompoundBorder(
-                            BorderFactory.createLineBorder(Color.decode("#E5E7EB"), 1, true),
-                            new javax.swing.border.EmptyBorder(4, 8, 4, 8)
-                        ));
-                        lblText.setForeground(Color.decode("#4B5563"));
-                        lblText.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+                // Quét từng thẻ trong 1 hàng
+                for (Component comp : currentRow.getComponents()) {
+                    if (comp instanceof JPanel) {
+                        JPanel pnl = (JPanel) comp;
+                        String maKMTag = pnl.getName(); 
+                        
+                        if (maKMTag != null && pnl.getComponentCount() > 0) {
+                            maKMTag = maKMTag.trim().toUpperCase();
+                            JLabel lblText = (JLabel) pnl.getComponent(0);
+                            
+                            // Nếu mã đang chọn -> Tô màu xanh
+                            if (listApplied.contains(maKMTag)) {
+                                pnl.setBackground(Color.decode("#D1FAE5")); 
+                                pnl.setBorder(BorderFactory.createCompoundBorder(
+                                    BorderFactory.createLineBorder(Color.decode("#10B981"), 1, true), 
+                                    new javax.swing.border.EmptyBorder(4, 8, 4, 8)
+                                ));
+                                lblText.setForeground(Color.decode("#047857")); 
+                                lblText.setFont(new Font("Segoe UI", Font.BOLD, 12));
+                            } 
+                            // Nếu không chọn -> Về màu xám
+                            else {
+                                pnl.setBackground(Color.WHITE);
+                                pnl.setBorder(BorderFactory.createCompoundBorder(
+                                    BorderFactory.createLineBorder(Color.decode("#E5E7EB"), 1, true),
+                                    new javax.swing.border.EmptyBorder(4, 8, 4, 8)
+                                ));
+                                lblText.setForeground(Color.decode("#4B5563"));
+                                lblText.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+                            }
+                        }
                     }
                 }
             }
