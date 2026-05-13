@@ -19,7 +19,23 @@ public class DAO_SanPham {
 
     public DAO_SanPham() {
     }
-
+    public double layThueVATTheoTenSP(String tenSP) {
+        double vat = 0;
+        String sql = "SELECT thueVAT FROM SanPham WHERE ten = ?";
+        try (java.sql.Connection con = ConnectDB.getInstance().getConnection();
+             java.sql.PreparedStatement pst = con.prepareStatement(sql)) {
+             
+            pst.setString(1, tenSP);
+            try (java.sql.ResultSet rs = pst.executeQuery()) {
+                if (rs.next()) {
+                    vat = rs.getDouble("thueVAT");
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Lỗi lấy VAT theo tên SP: " + e.getMessage());
+        }
+        return vat;
+    }
     public List<Object[]> layDanhSachSanPhamChoBang() {
         List<Object[]> ds = new ArrayList<>();
         String sql = "SELECT id, ten, danhMuc, ISNULL(hoatChat, '') AS hoatChat, dang, " +
@@ -50,7 +66,7 @@ public class DAO_SanPham {
                         case "KEO_NGAM":       dang = "Kẹo ngậm";        break;
                         case "DUNG_DICH":      dang = "Dung dịch";       break;
                         case "HON_DICH":       dang = "Hỗn dịch";        break;
-                        case "THUOC_NHO_GIOT": dang = "Thuốc nhỏ giọt"; break;
+                        case "THUOC_NHO_GIOT": dang = "Thuốc nhỏ giọt"; 	break;
                         case "SUC_MIENG":      dang = "Súc miệng";       break;
                         default:               dang = "Viên nén";        break;
                     }
@@ -144,15 +160,21 @@ public class DAO_SanPham {
     public List<Object[]> timKiemSanPhamBan(String text) {
         List<Object[]> ds = new ArrayList<>();
         
-        // CẬP NHẬT 1: Thêm DISTINCT (chống trùng), LEFT JOIN DonViDoLuong và điều kiện dv.maVach = ?
-        String sql = "SELECT DISTINCT sp.id, sp.ten, sp.donViDoCoBan, sp.giaBan, " +
+        // ĐÃ FIX: Tự động lấy Đơn vị quy đổi LỚN NHẤT (Hộp/Thùng...) làm mặc định khi gõ tìm kiếm
+        String sql = "SELECT DISTINCT sp.id, sp.ten, " +
+                     "ISNULL((SELECT TOP 1 ten FROM DonViDoLuong WHERE sanPhamId = sp.id AND maVach = ?), " +
+                     "    ISNULL((SELECT TOP 1 ten FROM DonViDoLuong WHERE sanPhamId = sp.id ORDER BY chuyenDoiDonViCoBan DESC), sp.donViDoCoBan)" +
+                     ") AS donViHienThi, " +
+                     "ISNULL((SELECT TOP 1 gia FROM DonViDoLuong WHERE sanPhamId = sp.id AND maVach = ?), " +
+                     "    ISNULL((SELECT TOP 1 gia FROM DonViDoLuong WHERE sanPhamId = sp.id ORDER BY chuyenDoiDonViCoBan DESC), sp.giaBan)" +
+                     ") AS giaHienThi, " +
                      "lh.soLuongLoHang AS soLuongTon, sp.danhMuc, ISNULL(sp.thueVAT, 0) AS thueVAT, " +
                      "lh.soLoHang, lh.ngayHetHan " +
                      "FROM SanPham sp " +
                      "JOIN LoHang lh ON sp.id = lh.sanPhamId " +
                      "LEFT JOIN DonViDoLuong dv ON sp.id = dv.sanPhamId " +
                      "WHERE (sp.ten LIKE ? OR sp.tenVietTat LIKE ? OR sp.hoatChat LIKE ? " +
-                     "       OR sp.id LIKE ? OR lh.soLoHang LIKE ? OR dv.maVach = ?) " +
+                     "       OR sp.id LIKE ? OR lh.soLoHang LIKE ? OR dv.maVach = ? OR lh.maVachNoiBo = ?) " +
                      "AND ISNULL(lh.trangThai, '') != 'HET_HAN' " +
                      "AND lh.soLuongLoHang > 0 " +
                      "ORDER BY lh.ngayHetHan ASC";
@@ -160,14 +182,20 @@ public class DAO_SanPham {
         try (Connection con = ConnectDB.getInstance().getConnection();
              PreparedStatement pst = con.prepareStatement(sql)) {
              
+            // Truyền tham số cho câu lệnh SELECT (Lấy đúng tên đơn vị và giá)
+            pst.setString(1, text); 
+            pst.setString(2, text);
+            
+            // Truyền tham số cho câu lệnh WHERE (Tìm kiếm)
             String p = "%" + text + "%";
-            pst.setString(1, p); 
-            pst.setString(2, p);
-            pst.setString(3, p); 
-            pst.setString(4, p); 
-            pst.setString(5, p);
-            // CẬP NHẬT 2: Tham số thứ 6 dành cho mã vạch (tìm chính xác tuyệt đối, không có dấu %)
-            pst.setString(6, text);
+            pst.setString(3, p); // sp.ten
+            pst.setString(4, p); // sp.tenVietTat
+            pst.setString(5, p); // sp.hoatChat
+            pst.setString(6, p); // sp.id
+            pst.setString(7, p); // lh.soLoHang
+            
+            pst.setString(8, text); // dv.maVach (Quét mã siêu thị)
+            pst.setString(9, text); // lh.maVachNoiBo (Quét QR nội bộ MediWOW)
             
             try (ResultSet rs = pst.executeQuery()) {
                 while (rs.next()) {
@@ -187,9 +215,10 @@ public class DAO_SanPham {
                         hsdStr = new java.text.SimpleDateFormat("dd/MM/yyyy").format(dateHSD);
                     }
                     
+                    // Lấy ra donViHienThi và giaHienThi
                     ds.add(new Object[]{
                         rs.getString("id"), rs.getString("ten"),
-                        rs.getString("donViDoCoBan"), rs.getDouble("giaBan"),
+                        rs.getString("donViHienThi"), rs.getDouble("giaHienThi"), 
                         rs.getInt("soLuongTon"), loai, 
                         rs.getDouble("thueVAT"), loHang, hsdStr
                     });

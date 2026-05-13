@@ -127,12 +127,18 @@ public class BUS_NhanVien {
 
         // Bước 1: Lưu nhân viên
         if (daoNhanVien.themNhanVien(nv)) {
-            // Bước 2: Tạo đối tượng tài khoản và lưu
-            VaiTro vaiTro = (nv.getChucVu() == ChucVu.NGUOI_QUAN_LY) ? VaiTro.ADMIN : VaiTro.STAFF;
-            String idTK = "TK" + System.currentTimeMillis() % 10000; // Khởi tạo mã TK ngẫu nhiên
-            
-            // ⚠️ FIX: Tự động băm mật khẩu thô ngay lập tức trước khi set vào Tài Khoản
+            // Bước 2: Xác định vai trò dựa trên chức vụ
+            // Thêm kiểm tra nv.getChucVu() != null để tránh lỗi NullPointerException
+            ChucVu cv = nv.getChucVu();
+            VaiTro vaiTro = (cv != null && cv == ChucVu.NGUOI_QUAN_LY) ? VaiTro.ADMIN : VaiTro.STAFF;
+
+            // Khởi tạo mã TK (Sử dụng 4 số cuối của timestamp để giảm thiểu trùng lặp)
+            String idTK = "TK" + (System.currentTimeMillis() % 10000); 
+
+            // Mã hóa mật khẩu trước khi đưa vào đối tượng Tài Khoản
             String matKhauDaBam = PasswordUtils.hashPassword(matKhau);
+            
+            // Đảm bảo thứ tự tham số này khớp với Constructor trong file TaiKhoan.java của bạn
             TaiKhoan tk = new TaiKhoan(idTK, nv, vaiTro, tenDangNhap, matKhauDaBam);
             
             if (daoTaiKhoan.themTaiKhoan(tk)) {

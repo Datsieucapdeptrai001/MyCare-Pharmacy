@@ -100,46 +100,76 @@ public class DAO_HoaDon {
         }
         return ds;
     }
- // HÀM SINH MÃ TỰ ĐỘNG LIÊN TỤC KHÔNG BAO GIỜ TRÙNG
     public String phatSinhMaHoaDonTuDong() {
-        String maMoi = "";
-        int year = java.time.LocalDateTime.now().getYear();
-        
-        // Đã sửa lại thành "HD-" để khớp chính xác với hiển thị trên giao diện của bạn
+        int year = java.time.Year.now().getValue();
         String prefix = "HD-" + year + "-"; 
+        String maMoi = prefix + "1"; 
         
         String sql = "SELECT id FROM HoaDon WHERE id LIKE ?";
-        int maxStt = 0;
         
         try (Connection con = ConnectDB.getInstance().getConnection();
              PreparedStatement pst = con.prepareStatement(sql)) {
-            
+             
             pst.setString(1, prefix + "%");
             
             try (ResultSet rs = pst.executeQuery()) {
+                int maxStt = 0;
                 while (rs.next()) {
-                    String id = rs.getString("id");
-                    if (id != null && id.startsWith(prefix)) {
-                        try {
-                            // Lấy phần đuôi sau chữ "HD-2026-" để chuyển thành số
-                            int stt = Integer.parseInt(id.substring(prefix.length()));
-                            if (stt > maxStt) {
-                                maxStt = stt;
-                            }
-                        } catch (NumberFormatException e) {
-                            // Bỏ qua nếu lỗi
+                    String id = rs.getString("id"); // VD: HD-2026-1 hoặc HD-2026-1-LuuNhap
+                    if (id != null) {
+                        String[] parts = id.split("-");
+                        // Lấy phần tử số 3 (index 2) chính là số thứ tự
+                        if (parts.length >= 3) {
+                            try {
+                                int stt = Integer.parseInt(parts[2]);
+                                if (stt > maxStt) {
+                                    maxStt = stt;
+                                }
+                            } catch (Exception ignored) {}
                         }
                     }
+                }
+                
+                // Nếu đã có hóa đơn trong năm, cộng thêm 1 từ số đếm lớn nhất
+                if (maxStt > 0) {
+                    maMoi = String.format("HD-%d-%d", year, maxStt + 1);
                 }
             }
         } catch (SQLException e) {
             e.printStackTrace();
         }
-        
-        // Tạo mã mới (Ví dụ: HD-2026-1, HD-2026-2...)
-        maMoi = prefix + (maxStt + 1);
-        
         return maMoi;
+    }
+    public long tinhDoanhThuTienMatCaHienTai(String maNV, java.time.LocalDateTime thoiGianBatDau) {
+        long doanhThuTienMat = 0;
+        
+        // Hỗ trợ quét cả Enum kiểu số (0, 1) và kiểu chuỗi ('BAN_HANG', 'TRA_HANG')
+        String sql = "SELECT " +
+                     "ISNULL(SUM(CASE WHEN hd.loaiHD = 'BAN_HANG' OR hd.loaiHD = '0' THEN ct.soLuong * dv.gia ELSE 0 END), 0) - " + 
+                     "ISNULL(SUM(CASE WHEN hd.loaiHD = 'TRA_HANG' OR hd.loaiHD = '1' THEN ct.soLuong * dv.gia ELSE 0 END), 0) " +   
+                     "FROM ChiTietHoaDon ct " +
+                     "JOIN HoaDon hd ON ct.hoaDonId = hd.id " +
+                     "JOIN DonViDoLuong dv ON ct.donViDoLuongId = dv.id " +
+                     "WHERE hd.nhanVienId = ? " +
+                     "AND (hd.phuongThucThanhToan = 'TIEN_MAT' OR hd.phuongThucThanhToan = '0') " + 
+                     "AND hd.ngayLapHD >= ?";
+        
+        try (java.sql.Connection con = ConnectDB.getInstance().getConnection();
+             java.sql.PreparedStatement pst = con.prepareStatement(sql)) {
+            
+            pst.setString(1, maNV);
+            pst.setTimestamp(2, java.sql.Timestamp.valueOf(thoiGianBatDau));
+            
+            try (java.sql.ResultSet rs = pst.executeQuery()) {
+                if (rs.next()) {
+                    doanhThuTienMat = (long) rs.getDouble(1);
+                }
+            }
+        } catch (Exception ex) {
+            System.err.println("Lỗi tính tiền trong két DAO: " + ex.getMessage());
+        }
+        
+        return doanhThuTienMat;
     }
     public List<Object[]> layDanhSachHoaDonTheoNVHomNay(String maNV) {
         if (maNV == null || maNV.trim().isEmpty()) return null;
@@ -585,17 +615,50 @@ try {
 con = ConnectDB.getInstance().getConnection();
 con.setAutoCommit(false);
 
-// Xóa nháp cũ nếu tồn tại
-try (PreparedStatement pDel1 = con.prepareStatement("DELETE FROM ChiTietHoaDon WHERE hoaDonId = ?");
-PreparedStatement pDel2 = con.prepareStatement("DELETE FROM HoaDon WHERE id = ?")) {
-pDel1.setString(1, hd.getId()); pDel1.executeUpdate();
-pDel2.setString(1, hd.getId()); pDel2.executeUpdate();
-} catch (Exception ignored) {}
+// Xóa nháp cũ theo đúng thứ tự FK: PhanBoLoHang → ChiTietHoaDon → HoaDon
+// (Nếu xóa ChiTietHoaDon trước khi xóa PhanBoLoHang sẽ bị lỗi FK bị bắt im lặng, khiến bản ghi cũ còn lại)
+try (PreparedStatement pDelPB  = con.prepareStatement("DELETE FROM PhanBoLoHang WHERE hoaDonId = ?");
+     PreparedStatement pDelCT  = con.prepareStatement("DELETE FROM ChiTietHoaDon WHERE hoaDonId = ?");
+     PreparedStatement pDelHD  = con.prepareStatement("DELETE FROM HoaDon WHERE id = ?")) {
+    pDelPB.setString(1, hd.getId());  pDelPB.executeUpdate();
+    pDelCT.setString(1, hd.getId());  pDelCT.executeUpdate();
+    pDelHD.setString(1, hd.getId());  pDelHD.executeUpdate();
+} catch (Exception eDel) {
+    // Ghi log để dễ debug nếu có vấn đề với việc xóa nháp
+    System.err.println("[luuGiaoDich] Xóa nháp cũ: " + eDel.getMessage());
+}
 
 if (!themHoaDon(con, hd)) throw new Exception("Lỗi lưu hóa đơn");
 
-// 1. LƯU SẢN PHẨM KHÁCH MUA
-for (ChiTietHoaDon ct : dsCTHD) {
+// ==========================================
+// BƯỚC GỘP: GỘP QUÀ TẶNG VÀO SẢN PHẨM MUA ĐỂ CHỐNG LỖI TRÙNG KHÓA CHÍNH (PK)
+// ==========================================
+List<ChiTietHoaDon> dsTongGop = new ArrayList<>();
+
+java.util.function.Consumer<ChiTietHoaDon> addOrMerge = (newItem) -> {
+    for (ChiTietHoaDon existing : dsTongGop) {
+        if (existing.getSanPhamId().getId().trim().equals(newItem.getSanPhamId().getId().trim()) &&
+            existing.getDonViDoLuongId().getId().trim().equals(newItem.getDonViDoLuongId().getId().trim())) {
+            existing.setSoLuong(existing.getSoLuong() + newItem.getSoLuong());
+            return;
+        }
+    }
+    dsTongGop.add(newItem);
+};
+
+if (dsCTHD != null) {
+    for (ChiTietHoaDon ct : dsCTHD) {
+        addOrMerge.accept(ct);
+    }
+}
+if (dsQuaTang != null) {
+    for (ChiTietHoaDon qt : dsQuaTang) {
+        addOrMerge.accept(qt);
+    }
+}
+
+// 1. LƯU TẤT CẢ CHI TIẾT HÓA ĐƠN (ĐÃ GỘP) VÀO DATABASE
+for (ChiTietHoaDon ct : dsTongGop) {
 if (!daoCTHD.themCTHD(con, ct)) throw new Exception("Lỗi lưu chi tiết");
 
 List<LoHang> dsLo = daoLo.layLoTheoSP(con, ct.getSanPhamId().getId());
@@ -610,31 +673,6 @@ daoLo.capNhatSoLuongVaTrangThaiLo(con, lh.getId(), lh.getSoLuongLoHang() - layDu
 canLay -= layDuoc;
 }
 if (canLay > 0) throw new Exception("Kho không đủ hàng: " + ct.getSanPhamId().getId());
-}
-
-// 2. LƯU QUÀ TẶNG KÈM
-if (dsQuaTang != null) {
-for (ChiTietHoaDon ct : dsQuaTang) {
-
-// ==========================================
-// 💡 ĐÂY LÀ DÒNG CODE BẠN BỊ THIẾU CẦN THÊM VÀO
-// ==========================================
-if (!daoCTHD.themCTHD(con, ct)) throw new Exception("Lỗi lưu chi tiết quà tặng");
-// ==========================================
-
-List<LoHang> dsLo = daoLo.layLoTheoSP(con, ct.getSanPhamId().getId());
-int canLay = ct.getSoLuong();
-
-for (LoHang lh : dsLo) {
-if (canLay <= 0) break;
-int layDuoc = Math.min(lh.getSoLuongLoHang(), canLay);
-
-daoPB.themPhanBo(con, new PhanBoLoHang(hd, ct.getDonViDoLuongId(), ct.getSanPhamId(), lh, layDuoc));
-daoLo.capNhatSoLuongVaTrangThaiLo(con, lh.getId(), lh.getSoLuongLoHang() - layDuoc);
-canLay -= layDuoc;
-}
-if (canLay > 0) throw new Exception("Kho không đủ hàng quà tặng: " + ct.getSanPhamId().getId());
-}
 }
 
 con.commit();
@@ -768,6 +806,7 @@ try { if (con != null) con.setAutoCommit(true); } catch (SQLException e) { e.pri
             return false;
         }
     }
+    
     public Object[] layThongTinGiaTuHDGoc(String maHDGoc, String tenSP) {
         String dvt = "Hộp";
         double giaGocHienTai = 0.0, thueVAT = 0.0;
@@ -841,4 +880,191 @@ try { if (con != null) con.setAutoCommit(true); } catch (SQLException e) { e.pri
         } catch (Exception e) { e.printStackTrace(); }
         return new Object[]{dvt, 0.0};
     } 
+    public boolean thanhToanToanDien(HoaDon hd, List<ChiTietHoaDon> dsCTHD, List<ChiTietHoaDon> dsQuaTang, 
+            String maHDDangSua, KhachHang kh, int diemChenhLech) {
+    		Connection con = ConnectDB.getInstance().getConnection();
+    		if (con == null) return false;
+
+    		try {
+    			con.setAutoCommit(false); // BẮT ĐẦU TRANSACTION - Sống cùng sống, chết cùng chết
+
+    			// 1. Dọn dẹp hóa đơn nháp (nếu đang sửa)
+    			if (maHDDangSua != null && !maHDDangSua.isEmpty()) {
+    				try (PreparedStatement pstDelCT = con.prepareStatement("DELETE FROM ChiTietHoaDon WHERE hoaDonId = ?")) {
+    					pstDelCT.setString(1, maHDDangSua);
+    					pstDelCT.executeUpdate();
+    				}
+    				try (PreparedStatement pstDelHD = con.prepareStatement("DELETE FROM HoaDon WHERE id = ?")) {
+    					pstDelHD.setString(1, maHDDangSua);
+    					pstDelHD.executeUpdate();
+    				}
+    			}
+
+// 2. Insert Hóa Đơn (Tự viết câu lệnh Insert của ông vào đây)
+    			String sqlInsertHD = "INSERT INTO HoaDon (id, loaiHD, ngayLapHD, nhanVienId, khachHangId, phuongThucThanhToan, khuyenMaiId, ghiChu) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+				try (PreparedStatement pstHD = con.prepareStatement(sqlInsertHD)) {
+					pstHD.setString(1, hd.getId());
+					pstHD.setString(2, hd.getLoaiHD().toString());
+					pstHD.setTimestamp(3, Timestamp.valueOf(hd.getNgayLapHD()));
+					pstHD.setString(4, hd.getNhanVienId().getNhanVien());
+					pstHD.setString(5, hd.getKhachHangId() != null ? hd.getKhachHangId().getId() : null);
+					pstHD.setString(6, hd.getPhuongThucThanhToan().toString());
+					pstHD.setString(7, hd.getKhuyenMaiId() != null ? hd.getKhuyenMaiId().getId() : null);
+					pstHD.setString(8, hd.getGhiChu());
+					pstHD.executeUpdate();
+				}
+
+// 3. Insert Chi Tiết Hóa Đơn và Quà Tặng (Đã gộp trùng lặp)
+				String sqlInsertCT = "INSERT INTO ChiTietHoaDon (hoaDonId, sanPhamId, donViDoLuongId, soLuong) VALUES (?, ?, ?, ?)";
+				try (PreparedStatement pstCT = con.prepareStatement(sqlInsertCT)) {
+                    List<ChiTietHoaDon> dsTongGop = new ArrayList<>();
+                    java.util.function.Consumer<ChiTietHoaDon> addOrMerge = (newItem) -> {
+                        for (ChiTietHoaDon existing : dsTongGop) {
+                            if (existing.getSanPhamId().getId().trim().equals(newItem.getSanPhamId().getId().trim()) &&
+                                existing.getDonViDoLuongId().getId().trim().equals(newItem.getDonViDoLuongId().getId().trim())) {
+                                existing.setSoLuong(existing.getSoLuong() + newItem.getSoLuong());
+                                return;
+                            }
+                        }
+                        dsTongGop.add(newItem);
+                    };
+
+                    if (dsCTHD != null) {
+                        for (ChiTietHoaDon ct : dsCTHD) {
+                            addOrMerge.accept(ct);
+                        }
+                    }
+                    if (dsQuaTang != null) {
+                        for (ChiTietHoaDon qt : dsQuaTang) {
+                            addOrMerge.accept(qt);
+                        }
+                    }
+					for (ChiTietHoaDon ct : dsTongGop) {
+						pstCT.setString(1, hd.getId());
+						pstCT.setString(2, ct.getSanPhamId().getId());
+						pstCT.setString(3, ct.getDonViDoLuongId().getId());
+						pstCT.setInt(4, ct.getSoLuong());
+						pstCT.addBatch();
+					}
+					pstCT.executeBatch();
+				}
+
+				// 4. Cập nhật điểm Khách Hàng (nếu có)
+				if (kh != null && kh.getSdt() != null && diemChenhLech != 0) {
+					String sqlUpdateDiem = "UPDATE KhachHang SET diemTichLuy = ISNULL(diemTichLuy, 0) + ? WHERE sdt = ?";
+					try (PreparedStatement pstDiem = con.prepareStatement(sqlUpdateDiem)) {
+						pstDiem.setInt(1, diemChenhLech);
+						pstDiem.setString(2, kh.getSdt());
+						pstDiem.executeUpdate();
+					}
+				}
+
+				con.commit(); // NẾU MỌI THỨ OK -> LƯU THẬT VÀO DB
+				return true;
+    		} catch (Exception e) {
+    			try { con.rollback(); } catch (SQLException ex) { ex.printStackTrace(); } // LỖI LÀ HỦY TOÀN BỘ
+    			e.printStackTrace();
+    			return false;
+    		} finally {
+    			try { con.setAutoCommit(true); } catch (SQLException ex) { ex.printStackTrace(); }
+    		}
+    }
+    public String[] layMaSPVaMaDVT(String tenSP, String tenDVT) {
+        String sql = "SELECT sp.id AS MaSP, dv.id AS MaDVT FROM SanPham sp JOIN DonViDoLuong dv ON sp.id = dv.sanPhamId WHERE sp.ten = ? AND dv.ten = ?";
+        try (java.sql.Connection con = ConnectDB.getInstance().getConnection();
+             java.sql.PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setString(1, tenSP);
+            pst.setString(2, tenDVT);
+            try (java.sql.ResultSet rs = pst.executeQuery()) {
+                if(rs.next()) return new String[]{rs.getString("MaSP"), rs.getString("MaDVT")};
+            }
+        } catch (Exception e) { e.printStackTrace(); }
+        return null; 
+    }
+    public java.util.List<Object[]> layDanhSachKhuyenMaiFull() {
+        java.util.List<Object[]> result = new java.util.ArrayList<>();
+        String sql = "SELECT k.id, k.tenKhuyenMai, h.moTa, ISNULL(spYeuCau.ten, '') AS tenSanPhamYeuCau " +
+                     "FROM KhuyenMai k " +
+                     "JOIN HinhThucKhuyenMai h ON k.id = h.khuyenMaiId " +
+                     "LEFT JOIN SanPham spYeuCau ON h.spYeuCau = spYeuCau.id " +
+                     "WHERE k.trangThai = 1 " + 
+                     "AND CAST(k.ngayBatDau AS DATE) <= CAST(GETDATE() AS DATE) " +
+                     "AND (k.ngayKetThuc IS NULL OR CAST(k.ngayKetThuc AS DATE) >= CAST(GETDATE() AS DATE))";
+
+        try (java.sql.Connection con = ConnectDB.getInstance().getConnection();
+             java.sql.Statement st = con.createStatement();
+             java.sql.ResultSet rs = st.executeQuery(sql)) {
+             
+            while(rs.next()) {
+                Object[] row = new Object[6]; 
+                row[0] = rs.getString("id");               
+                row[1] = rs.getString("tenKhuyenMai");     
+                row[2] = rs.getString("moTa");             
+                row[3] = ""; 
+                row[4] = ""; 
+                row[5] = rs.getString("tenSanPhamYeuCau"); 
+                
+                result.add(row);
+            }
+        } catch(Exception e) {
+            e.printStackTrace();
+        }
+        return result;
+    }
+    
+    public boolean capNhatHoaDon(HoaDon hd) {
+        String sql = "UPDATE HoaDon SET khachHangId = ?, ghiChu = ?, ngayLapHD = ?, khuyenMaiId = ? WHERE id = ?";
+        try (Connection con = ConnectDB.getInstance().getConnection();
+             PreparedStatement pst = con.prepareStatement(sql)) {
+             
+            // Xử lý Khách Hàng
+            if (hd.getKhachHangId() != null && hd.getKhachHangId().getId() != null) {
+                pst.setString(1, hd.getKhachHangId().getId());
+            } else {
+                pst.setNull(1, java.sql.Types.NVARCHAR);
+            }
+            
+            pst.setString(2, hd.getGhiChu());
+            pst.setTimestamp(3, java.sql.Timestamp.valueOf(hd.getNgayLapHD()));
+            
+            // Xử lý Khuyến Mãi
+            if (hd.getKhuyenMaiId() != null && hd.getKhuyenMaiId().getId() != null) {
+                pst.setString(4, hd.getKhuyenMaiId().getId());
+            } else {
+                pst.setNull(4, java.sql.Types.NVARCHAR);
+            }
+            
+            pst.setString(5, hd.getId());
+            
+            return pst.executeUpdate() > 0;
+            
+        } catch (SQLException e) {
+            System.err.println("Lỗi khi cập nhật HoaDon: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
+    }
+    public boolean huyHoaDon(String maHD) {
+        String sql = "UPDATE HoaDon SET ghiChu = N'Đã hủy' WHERE id = ?"; 
+        try (Connection con = ConnectDB.getInstance().getConnection();
+             PreparedStatement pst = con.prepareStatement(sql)) {
+            
+            pst.setString(1, maHD);
+            return pst.executeUpdate() > 0;
+            
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+    public void xoaHoaDonNhap(String maHD) {
+        try (java.sql.Connection con = ConnectDB.getInstance().getConnection()) {
+            try (java.sql.PreparedStatement pst1 = con.prepareStatement("DELETE FROM ChiTietHoaDon WHERE hoaDonId = ?")) {
+                pst1.setString(1, maHD); pst1.executeUpdate();
+            }
+            try (java.sql.PreparedStatement pst2 = con.prepareStatement("DELETE FROM HoaDon WHERE id = ?")) {
+                pst2.setString(1, maHD); pst2.executeUpdate();
+            }
+        } catch (Exception e) { e.printStackTrace(); }
+    }
 }

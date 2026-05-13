@@ -38,7 +38,20 @@ public class DAO_ChiTietHoaDon {
             return false;
         }
     }
-
+    public boolean xoaChiTietTheoMaHD(String maHD) {
+        String sqlDel = "DELETE FROM ChiTietHoaDon WHERE hoaDonId = ?";
+        try (Connection con = ConnectDB.getInstance().getConnection();
+             PreparedStatement pstDel = con.prepareStatement(sqlDel)) {
+            
+            pstDel.setString(1, maHD);
+            return pstDel.executeUpdate() > 0;
+            
+        } catch (SQLException e) {
+            System.err.println("Lỗi khi xóa ChiTietHoaDon: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
+    }
     public List<Object[]> layDanhSachSanPhamTheoMaHD(String maHD) {
         List<Object[]> list = new ArrayList<>();
         Connection con = ConnectDB.getInstance().getConnection();
@@ -112,23 +125,35 @@ public class DAO_ChiTietHoaDon {
         return false;
     }
     
-    // HÀM 2:
+    // HÀM 2: Dùng MERGE (upsert) để tránh lỗi Duplicate PK nếu bản ghi cũ còn sót lại
     public boolean themCTHD(Connection con, ChiTietHoaDon cthd) throws SQLException {
         if (cthd == null || cthd.getHoaDonId() == null || cthd.getDonViDoLuongId() == null || cthd.getSanPhamId() == null) {
             return false;
         }
-        // ĐÃ FIX: Thêm donGiaThucTe và thanhTien
-        String sql = "INSERT INTO ChiTietHoaDon (hoaDonId, donViDoLuongId, sanPhamId, soLuong, donGiaThucTe, thanhTien) VALUES (?, ?, ?, ?, ?, ?)";
+        // Dùng MERGE thay cho INSERT để xử lý an toàn trường hợp bản ghi đã tồn tại
+     // Trong file DAO_ChiTietHoaDon.java, hàm themCTHD
+        String sql = "MERGE INTO ChiTietHoaDon AS Target " +
+                     "USING (SELECT ? AS hoaDonId, ? AS donViDoLuongId, ? AS sanPhamId, ? AS soLuong, ? AS donGiaThucTe, ? AS thanhTien) AS Source " +
+                     "ON Target.hoaDonId = Source.hoaDonId " +
+                     "   AND Target.donViDoLuongId = Source.donViDoLuongId " +
+                     "   AND Target.sanPhamId = Source.sanPhamId " +
+                     "WHEN MATCHED THEN " +
+                     "    UPDATE SET Target.soLuong = Target.soLuong + Source.soLuong, " + // FIX: Thêm Target. và Source.
+                     "               Target.thanhTien = Target.thanhTien + Source.thanhTien " +
+                     "WHEN NOT MATCHED THEN " +
+                     "    INSERT (hoaDonId, donViDoLuongId, sanPhamId, soLuong, donGiaThucTe, thanhTien) " +
+                     "    VALUES (Source.hoaDonId, Source.donViDoLuongId, Source.sanPhamId, Source.soLuong, Source.donGiaThucTe, Source.thanhTien);";
         try (PreparedStatement pst = con.prepareStatement(sql)) {
             pst.setString(1, cthd.getHoaDonId().getId());
             pst.setString(2, cthd.getDonViDoLuongId().getId());
             pst.setString(3, cthd.getSanPhamId().getId());
             pst.setInt(4, cthd.getSoLuong());
-            pst.setDouble(5, cthd.getDonGiaThucTe()); // Truyền giá gốc
-            pst.setDouble(6, cthd.getThanhTien());    // Truyền giá thực tế đã trừ KM
-            return pst.executeUpdate() > 0;
+            pst.setDouble(5, cthd.getDonGiaThucTe());
+            pst.setDouble(6, cthd.getThanhTien());
+            return pst.executeUpdate() >= 0;
         }
     }
+
 
     public List<Object[]> layDuLieuChoTaoHoaDon(String maHD) {
         List<Object[]> list = new ArrayList<>();

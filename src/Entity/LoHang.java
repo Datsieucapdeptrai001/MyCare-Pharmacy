@@ -8,19 +8,22 @@ public class LoHang {
     private String id;
     private String soLoHang;
     private int soLuongLoHang;
-    private int gia;
+    private double gia;
     private LocalDateTime ngayNhap;
     private LocalDateTime ngayHetHan;
     private TrangThaiLoHang trangThai;
     private SanPham sanPhamId;
     private KhoHang khoHangId;
 
+    // Thuộc tính mới thêm
+    private String maVachNoiBo;
+
     public LoHang() {
     }
 
-    public LoHang(String id, String soLoHang, int soLuongLoHang, int gia,
-                  LocalDateTime ngayNhap, LocalDateTime ngayHetHan,
-                  TrangThaiLoHang trangThai, SanPham sanPhamId, KhoHang khoHangId) {
+    public LoHang(String id, String soLoHang, int soLuongLoHang, double gia,
+            LocalDateTime ngayNhap, LocalDateTime ngayHetHan,
+            TrangThaiLoHang trangThai, SanPham sanPhamId, KhoHang khoHangId, String maVachNoiBo) {
         this.id = id;
         this.soLoHang = soLoHang;
         this.soLuongLoHang = soLuongLoHang;
@@ -30,6 +33,7 @@ public class LoHang {
         this.trangThai = trangThai;
         this.sanPhamId = sanPhamId;
         this.khoHangId = khoHangId;
+        this.maVachNoiBo = maVachNoiBo;
     }
 
     public String getId() {
@@ -56,11 +60,11 @@ public class LoHang {
         this.soLuongLoHang = soLuongLoHang;
     }
 
-    public int getGia() {
+    public double getGia() {
         return gia;
     }
 
-    public void setGia(int gia) {
+    public void setGia(double gia) {
         this.gia = gia;
     }
 
@@ -102,5 +106,14 @@ public class LoHang {
 
     public void setKhoHangId(KhoHang khoHangId) {
         this.khoHangId = khoHangId;
+    }
+
+    // Getter và Setter cho maVachNoiBo
+    public String getMaVachNoiBo() {
+        return maVachNoiBo;
+    }
+
+    public void setMaVachNoiBo(String maVachNoiBo) {
+        this.maVachNoiBo = maVachNoiBo;
     }
 }
