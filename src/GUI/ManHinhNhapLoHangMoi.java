@@ -28,8 +28,10 @@ import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 public class ManHinhNhapLoHangMoi extends JDialog {
 
@@ -82,11 +84,12 @@ public class ManHinhNhapLoHangMoi extends JDialog {
 
     private JLabel errSanPham, errMaLo, errSoLuong, errGiaNhap, errHanSuDung;
     private JLabel lblTongQuyDoi, lblGiaVonVien;
-
-    // Label động thay đổi theo đơn vị tính
     private JLabel lblTitleSoLuong, lblTitleGiaNhap;
 
     private final ReloadListener reloadListener;
+
+    // BỘ NHỚ ĐỆM LIÊN KẾT NHANH MÃ VẠCH (QUÉT LÀ DÍNH)
+    private Map<String, SanPham> mapLienKetTam = new HashMap<>();
 
     public ManHinhNhapLoHangMoi(Window owner, ReloadListener reloadListener) {
         super(owner, "Thêm lô hàng", ModalityType.APPLICATION_MODAL);
@@ -104,13 +107,10 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         setContentPane(createMainUI());
         registerKeyboardActions();
 
-        // ============================================================
         // TỰ ĐỘNG BẬT BẢNG QUÉT MÃ KHI VỪA MỞ CỬA SỔ
-        // ============================================================
         this.addWindowListener(new WindowAdapter() {
             @Override
             public void windowOpened(WindowEvent e) {
-                // Đợi render UI xong thì hiện Dialog quét
                 Timer timer = new Timer(150, evt -> showQRScannerDialog());
                 timer.setRepeats(false);
                 timer.start();
@@ -212,9 +212,6 @@ public class ManHinhNhapLoHangMoi extends JDialog {
 
         JPanel comboSanPhamWrapper = createProductSelectorField();
 
-        // --------------------------------------------------------------------------
-        // Đổi Gợi ý (Placeholder) theo ý ông, không điền tự động để user tự nhập
-        // --------------------------------------------------------------------------
         txtMaLo = createTextField("VD: LOT-2026-0001");
         txtSoLuong = createTextField("0");
         txtGiaNhap = createTextField("0");
@@ -252,9 +249,6 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         txtSoLuong.getDocument().addDocumentListener(calcListener);
         txtGiaNhap.getDocument().addDocumentListener(calcListener);
 
-        // --------------------------------------------------------------------------
-        // TẠO TIÊU ĐỀ ĐỘNG THAY ĐỔI THEO ĐƠN VỊ TÍNH (Thùng/Hộp/Viên)
-        // --------------------------------------------------------------------------
         lblTitleSoLuong = new JLabel("Số lượng nhập kho *");
         lblTitleSoLuong.setFont(FONT_LABEL);
         lblTitleSoLuong.setForeground(TEXT_PRIMARY);
@@ -271,11 +265,9 @@ public class ManHinhNhapLoHangMoi extends JDialog {
 
         gbc.gridy = 0;
         body.add(pnlQR, gbc);
-
         gbc.gridy = 1;
         body.add(createFullWidthField("Sản phẩm (Chọn hoặc nhập mới) *", comboSanPhamWrapper, errSanPham, "SEARCH"),
                 gbc);
-
         gbc.gridy = 2;
         body.add(createFullWidthField("Mã lô *", txtMaLo, errMaLo, "DOCUMENT"), gbc);
 
@@ -334,10 +326,8 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         } catch (Exception e) {
         }
 
-        // TỰ ĐỘNG ĐỔI TÊN LABEL THEO ĐƠN VỊ CỦA SẢN PHẨM ĐỂ NHÂN VIÊN NHẬP CHÍNH XÁC
         lblTitleSoLuong.setText("Số lượng nhập kho (" + currentDonViLon + ") *");
         lblTitleGiaNhap.setText("Giá nhập (của 1 " + currentDonViLon + ") *");
-
         calculateTotal();
     }
 
@@ -780,6 +770,7 @@ public class ManHinhNhapLoHangMoi extends JDialog {
             errSoLuong.setText("Số lượng phải > 0");
             valid = false;
         }
+
         int giaHop = 0;
         double giaVien = 0.0;
         try {
@@ -818,7 +809,7 @@ public class ManHinhNhapLoHangMoi extends JDialog {
             return;
         }
 
-        String idTuDong = taoMaLoHangTuDong(); // Dùng làm ID gốc nội bộ
+        String idTuDong = taoMaLoHangTuDong();
         String maVachNoiBo = "MV" + idTuDong.replace("-", "");
 
         LoHang loHang = new LoHang();
@@ -890,7 +881,7 @@ public class ManHinhNhapLoHangMoi extends JDialog {
     }
 
     // ==============================================================================
-    // BẢNG QUÉT MÃ QR/TEM (Có nút nhập tay giống như bên Xuất Kho)
+    // BẢNG QUÉT MÃ QR/TEM 2D
     // ==============================================================================
     private void showQRScannerDialog() {
         JDialog dialog = new JDialog(this, "YÊU CẦU QUÉT MÃ", Dialog.ModalityType.APPLICATION_MODAL);
@@ -903,11 +894,11 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         root.setBackground(Color.WHITE);
         root.setBorder(BorderFactory.createLineBorder(PRIMARY, 2));
 
-        JLabel lblIconScan = new JLabel(new MenuIcon("ADD", 40, PRIMARY)); // Icon Quét
+        JLabel lblIconScan = new JLabel(new MenuIcon("ADD", 40, PRIMARY));
         lblIconScan.setHorizontalAlignment(SwingConstants.CENTER);
         lblIconScan.setBorder(new EmptyBorder(20, 0, 0, 0));
 
-        JLabel lblInfo = new JLabel("Vui lòng đưa súng quét đọc mã lô in trên hộp...", SwingConstants.CENTER);
+        JLabel lblInfo = new JLabel("Vui lòng đưa súng quét đọc mã in trên hộp...", SwingConstants.CENTER);
         lblInfo.setFont(new Font("Segoe UI", Font.BOLD, 17));
         lblInfo.setForeground(TEXT_PRIMARY);
 
@@ -945,47 +936,254 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         });
         dialog.getRootPane().registerKeyboardAction(e -> dialog.dispose(),
                 KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), JComponent.WHEN_IN_FOCUSED_WINDOW);
-
         dialog.setContentPane(root);
         dialog.setVisible(true);
     }
 
+    // ==============================================================================
+    // XỬ LÝ CHUỖI QUÉT 2D/1D VÀ TÍCH HỢP LIÊN KẾT MÃ LẠ THÔNG MINH
+    // ==============================================================================
     private void processQRCodeData(String qrData) {
         try {
+            // ---------------------------------------------------------
+            // TRƯỜNG HỢP 1: QUÉT MÃ 2D (Chứa đầy đủ thông tin cách nhau bởi dấu | )
+            // ---------------------------------------------------------
             if (qrData.contains("|")) {
                 String[] parts = qrData.split("\\|");
                 if (parts.length >= 5) {
-                    String maSP = parts[0].trim();
-                    setSanPhamAutoFill(maSP);
-                    for (SanPham sp : dsTatCaSanPham) {
-                        if (sp.getId().equalsIgnoreCase(maSP) || sp.getTen().equalsIgnoreCase(maSP)) {
-                            selectedSanPham = sp;
-                            updateQuyCachTuSanPham(sp.getId());
-                            break;
+                    String maVachQuocTe = parts[0].trim();
+                    String maLo = parts[1].trim();
+                    String soLuong = parts[2].trim();
+                    String giaNhap = parts[3].trim();
+                    String hanDung = parts[4].trim();
+
+                    selectedSanPham = null;
+
+                    if (mapLienKetTam.containsKey(maVachQuocTe)) {
+                        selectedSanPham = mapLienKetTam.get(maVachQuocTe);
+                    } else {
+                        for (SanPham sp : dsTatCaSanPham) {
+                            String spMaVach = sp.getId();
+                            try {
+                                java.lang.reflect.Method method = sp.getClass().getMethod("getMaVach");
+                                Object val = method.invoke(sp);
+                                if (val != null && !val.toString().isEmpty()) {
+                                    spMaVach = val.toString();
+                                }
+                            } catch (Exception ignored) {
+                            }
+
+                            if (spMaVach.equalsIgnoreCase(maVachQuocTe) || sp.getId().equalsIgnoreCase(maVachQuocTe)) {
+                                selectedSanPham = sp;
+                                break;
+                            }
                         }
                     }
-                    txtMaLo.setText(parts[1].trim());
-                    txtSoLuong.setText(parts[2].trim());
-                    long parsedGiaNhap = Long.parseLong(getDigitsOnly(parts[3].trim()));
+
+                    if (selectedSanPham == null) {
+                        boolean daLienKet = moHopThoaiLienKetMaVach(maVachQuocTe);
+                        if (!daLienKet) {
+                            showModernAlert("Đã hủy quá trình liên kết mã vạch!", false);
+                            return;
+                        }
+                    }
+
+                    if (selectedSanPham != null) {
+                        setSanPhamAutoFill(selectedSanPham.getTen() + " (" + selectedSanPham.getId() + ")");
+                        updateQuyCachTuSanPham(selectedSanPham.getId());
+                    }
+
+                    txtMaLo.setText(maLo);
+                    txtSoLuong.setText(soLuong);
+                    long parsedGiaNhap = Long.parseLong(getDigitsOnly(giaNhap));
                     txtGiaNhap.setText(vnNumberFormat.format(parsedGiaNhap));
-                    txtHanSuDung.setText(parts[4].trim());
+                    txtHanSuDung.setText(hanDung);
+
                     clearErrors();
-                    showModernAlert("Đã điền tự động thông tin từ mã QR!", true);
-                } else
+                    showModernAlert("Đã quét và điền thông tin tự động!", true);
+                } else {
                     showModernAlert("Mã QR không đủ 5 trường dữ liệu!", false);
-            } else {
-                txtMaLo.setText(qrData);
-                clearErrors();
-                showModernAlert("Đã quét và điền Mã Lô: " + qrData, true);
+                }
+            }
+            // ---------------------------------------------------------
+            // TRƯỜNG HỢP 2: QUÉT MÃ 1D BÌNH THƯỜNG (Mã vạch SP hoặc Mã Lô)
+            // ---------------------------------------------------------
+            else {
+                // Mã vạch chuẩn quốc tế (GTIN/EAN) thường là chuỗi TOÀN SỐ và DÀI TỪ 8 -> 14 ký
+                // tự
+                boolean laMaVachSanPham = qrData.matches("\\d{8,14}");
+
+                if (laMaVachSanPham) {
+                    selectedSanPham = null;
+                    if (mapLienKetTam.containsKey(qrData)) {
+                        selectedSanPham = mapLienKetTam.get(qrData);
+                    } else {
+                        for (SanPham sp : dsTatCaSanPham) {
+                            String spMaVach = sp.getId();
+                            try {
+                                java.lang.reflect.Method method = sp.getClass().getMethod("getMaVach");
+                                Object val = method.invoke(sp);
+                                if (val != null && !val.toString().isEmpty()) {
+                                    spMaVach = val.toString();
+                                }
+                            } catch (Exception ignored) {
+                            }
+
+                            if (spMaVach.equalsIgnoreCase(qrData) || sp.getId().equalsIgnoreCase(qrData)) {
+                                selectedSanPham = sp;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (selectedSanPham == null) {
+                        boolean daLienKet = moHopThoaiLienKetMaVach(qrData);
+                        if (!daLienKet) {
+                            showModernAlert("Đã hủy liên kết mã Sản phẩm!", false);
+                            return;
+                        }
+                    }
+
+                    // Nếu tìm thấy / liên kết thành công -> Bắn ra tên SP và trỏ chuột vào ô Mã Lô
+                    // chờ quét tiếp
+                    if (selectedSanPham != null) {
+                        setSanPhamAutoFill(selectedSanPham.getTen() + " (" + selectedSanPham.getId() + ")");
+                        updateQuyCachTuSanPham(selectedSanPham.getId());
+
+                        txtMaLo.requestFocus();
+                        showModernAlert("Đã nhận diện Sản phẩm! Vui lòng nhập/quét tiếp Mã lô.", true);
+                    }
+                } else {
+                    // Có chữ (VD: LOT-PANA) hoặc định dạng khác -> Hiểu là quét MÃ LÔ
+                    txtMaLo.setText(qrData);
+                    txtSoLuong.requestFocus(); // Tự động trỏ chuột qua ô Số lượng
+                    clearErrors();
+                    showModernAlert("Đã quét Mã Lô: " + qrData, true);
+                }
             }
         } catch (Exception ex) {
-            showModernAlert("Lỗi xử lý dữ liệu QR!", false);
+            showModernAlert("Lỗi xử lý dữ liệu quét!", false);
         }
     }
 
     // ==============================================================================
-    // THÔNG BÁO XỊN XÒ TỪ XUẤT KHO SANG
+    // DIALOG LIÊN KẾT MÃ LẠ (LƯU VÀO CACHE & LƯU DB QUA BUS)
     // ==============================================================================
+    private boolean moHopThoaiLienKetMaVach(String maVachLa) {
+        final boolean[] result = { false };
+        JDialog dlgLink = new JDialog(this, "Liên Kết Mã Vạch", ModalityType.APPLICATION_MODAL);
+        dlgLink.setSize(480, 260);
+        dlgLink.setLocationRelativeTo(this);
+        dlgLink.setUndecorated(true);
+
+        JPanel pnl = new JPanel(new BorderLayout());
+        pnl.setBorder(BorderFactory.createLineBorder(WARNING, 2));
+        pnl.setBackground(Color.WHITE);
+
+        JLabel lblHeader = new JLabel(" PHÁT HIỆN MÃ VẠCH LẠ", SwingConstants.CENTER);
+        lblHeader.setOpaque(true);
+        lblHeader.setBackground(WARNING);
+        lblHeader.setForeground(Color.WHITE);
+        lblHeader.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        lblHeader.setPreferredSize(new Dimension(0, 45));
+        lblHeader.setIcon(new MenuIcon("WARNING", 20, Color.WHITE));
+        lblHeader.setIconTextGap(10);
+        pnl.add(lblHeader, BorderLayout.NORTH);
+
+        JPanel pnlBody = new JPanel(new GridBagLayout());
+        pnlBody.setBackground(Color.WHITE);
+        GridBagConstraints g = new GridBagConstraints();
+        g.fill = GridBagConstraints.HORIZONTAL;
+        g.insets = new Insets(10, 20, 10, 20);
+        g.weightx = 1.0;
+
+        String msg = "<html>Mã quét được <b>[" + maVachLa
+                + "]</b> chưa có trong CSDL.<br>Hãy chọn một Sản phẩm bên dưới để tiến hành liên kết:</html>";
+        JLabel lblMsg = new JLabel(msg);
+        lblMsg.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        lblMsg.setForeground(TEXT_PRIMARY);
+
+        JComboBox<String> cbChonSP = new JComboBox<>();
+        for (SanPham sp : dsTatCaSanPham) {
+            cbChonSP.addItem(sp.getTen() + " (" + sp.getId() + ")");
+        }
+        cbChonSP.setFont(new Font("Segoe UI", Font.PLAIN, 15));
+        cbChonSP.setPreferredSize(new Dimension(0, 40));
+        cbChonSP.setBackground(Color.WHITE);
+
+        g.gridy = 0;
+        pnlBody.add(lblMsg, g);
+        g.gridy = 1;
+        pnlBody.add(cbChonSP, g);
+        pnl.add(pnlBody, BorderLayout.CENTER);
+
+        JPanel pnlFoot = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 10));
+        pnlFoot.setBackground(Color.WHITE);
+        JButton btnHuy = createSecondaryButton("Hủy bỏ");
+        btnHuy.addActionListener(e -> dlgLink.dispose());
+        JButton btnXacNhan = createPrimaryButton("Xác nhận liên kết");
+        btnXacNhan.setBackground(PRIMARY);
+        btnXacNhan.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                btnXacNhan.setBackground(PRIMARY.darker());
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                btnXacNhan.setBackground(PRIMARY);
+            }
+        });
+
+        btnXacNhan.addActionListener(e -> {
+            int idx = cbChonSP.getSelectedIndex();
+            if (idx >= 0) {
+                SanPham spChon = dsTatCaSanPham.get(idx);
+
+                // 1. LƯU BỘ NHỚ ĐỆM TẠM THỜI (QUÉT LẠI DÍNH NGAY)
+                mapLienKetTam.put(maVachLa, spChon);
+
+                // 2. LƯU XUỐNG DATABASE VĨNH VIỄN
+                // Vì Entity SanPham của ông ko có cột Mã Vạch, mã vạch thực chất được lưu ở
+                // bảng DonViDoLuong.
+                // Do đó, ta cần lấy Đơn vị mặc định của nó ra, và gọi lệnh BUS Cập nhật kèm
+                // danh sách đơn vị.
+                List<Object[]> dsDonViMoi = new ArrayList<>();
+                // Tạo một bản ghi cập nhật: Tên đơn vị cơ bản | Tỷ lệ = 1 | Giá hiện tại (Mã
+                // vạch được xử lý ngầm ở DAO)
+                dsDonViMoi.add(new Object[] { spChon.getDonViDoCoBan(), 1.0, spChon.getGiaBan() });
+
+                busSanPham.capNhatSP(
+                        spChon.getId(),
+                        spChon.getDanhMuc() != null ? spChon.getDanhMuc().name() : "",
+                        spChon.getDang() != null ? spChon.getDang().name() : "",
+                        spChon.getTen(),
+                        spChon.getTenVietTat(),
+                        spChon.getNhaSanXuat(),
+                        spChon.getHoatChat(),
+                        spChon.getThueVAT(),
+                        spChon.getHamLuong(),
+                        spChon.getMoTa(),
+                        spChon.getDonViDoCoBan(),
+                        spChon.getGiaBan(),
+                        dsDonViMoi // Gọi xuống BUS để lưu Đơn Vị Đo Lường (Mã vạch)
+                );
+
+                selectedSanPham = spChon;
+                result[0] = true;
+                dlgLink.dispose();
+            }
+        });
+
+        pnlFoot.add(btnHuy);
+        pnlFoot.add(btnXacNhan);
+        pnl.add(pnlFoot, BorderLayout.SOUTH);
+        dlgLink.setContentPane(pnl);
+        dlgLink.setVisible(true);
+
+        return result[0];
+    }
+
     private void showModernAlert(String message, boolean isSuccess) {
         JDialog dialog = new JDialog(this, "Thông báo", Dialog.ModalityType.APPLICATION_MODAL);
         dialog.setUndecorated(true);
@@ -995,7 +1193,6 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         JPanel pnlMain = new JPanel(new BorderLayout());
         pnlMain.setBorder(BorderFactory.createLineBorder(themeColor, 2));
         pnlMain.setBackground(Color.WHITE);
-
         JPanel pnlHeader = new JPanel(new BorderLayout());
         pnlHeader.setBackground(themeColor);
         pnlHeader.setPreferredSize(new Dimension(0, 45));
@@ -1007,14 +1204,12 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         JPanel pnlBody = new JPanel(null);
         pnlBody.setBackground(Color.WHITE);
         pnlBody.setPreferredSize(new Dimension(420, 130));
-
         JPanel pnlIcon = new JPanel() {
             @Override
             protected void paintComponent(Graphics g) {
                 super.paintComponent(g);
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-
                 if (!isSuccess) {
                     g2.setColor(new Color(254, 226, 226));
                     g2.fillRoundRect(0, 0, 50, 50, 50, 50);
@@ -1035,7 +1230,6 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         };
         pnlIcon.setBounds(25, 25, 50, 50);
         pnlIcon.setOpaque(false);
-
         JTextArea msgArea = new JTextArea(message);
         msgArea.setFont(new Font("Segoe UI", Font.PLAIN, 15));
         msgArea.setWrapStyleWord(true);
@@ -1043,13 +1237,11 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         msgArea.setOpaque(false);
         msgArea.setEditable(false);
         msgArea.setFocusable(false);
-
         JScrollPane scroll = new JScrollPane(msgArea);
         scroll.setBounds(95, 20, 305, 95);
         scroll.setBorder(null);
         scroll.setOpaque(false);
         scroll.getViewport().setOpaque(false);
-
         pnlBody.add(pnlIcon);
         pnlBody.add(scroll);
 
@@ -1076,15 +1268,12 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         });
         btnClose.addActionListener(e -> dialog.dispose());
         pnlFooter.add(btnClose);
-
         pnlMain.add(pnlHeader, BorderLayout.NORTH);
         pnlMain.add(pnlBody, BorderLayout.CENTER);
         pnlMain.add(pnlFooter, BorderLayout.SOUTH);
-
         dialog.add(pnlMain);
         dialog.pack();
         dialog.setLocationRelativeTo(this);
-
         if (isSuccess)
             new Timer(1500, e -> dialog.dispose()).start();
         dialog.setVisible(true);

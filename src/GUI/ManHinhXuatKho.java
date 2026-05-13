@@ -12,6 +12,8 @@ import javax.swing.border.AbstractBorder;
 import javax.swing.border.EmptyBorder;
 import javax.swing.event.AncestorEvent;
 import javax.swing.event.AncestorListener;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
@@ -52,6 +54,13 @@ public class ManHinhXuatKho extends JPanel {
     private SanPham currentSanPham = null;
     private List<DonViDoLuong> currentDsDonVi = new ArrayList<>();
     private List<LoHang> cacheDanhSachLo = new ArrayList<>();
+
+    // Biến cho tính năng Auto-Suggest Mã Lô
+    private JPopupMenu popupSuggest;
+    private JList<String> listSuggest;
+    private DefaultListModel<String> modelSuggest;
+    private JScrollPane scrollSuggest; // Thêm biến này để ép kích thước động
+    private boolean isProgrammaticUpdate = false;
 
     public ManHinhXuatKho() {
         setLayout(new BorderLayout());
@@ -130,20 +139,16 @@ public class ManHinhXuatKho extends JPanel {
         gbc.insets = new Insets(0, 0, 18, 0);
 
         // =======================================================
-        // 1. Mã Lô & Nút chức năng (ĐÃ FIX LỖI ÉP XẸP LÉP)
+        // 1. Mã Lô & Nút chức năng
         // =======================================================
         txtMaLo = new JTextField();
         txtMaLo.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         txtMaLo.setPreferredSize(new Dimension(150, 40));
         txtMaLo.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(BORDER_COLOR),
                 new EmptyBorder(5, 10, 5, 10)));
-        txtMaLo.addKeyListener(new KeyAdapter() {
-            @Override
-            public void keyPressed(KeyEvent e) {
-                if (e.getKeyCode() == KeyEvent.VK_ENTER)
-                    kiemTraMaLo();
-            }
-        });
+
+        // Khởi tạo tính năng gợi ý thông minh
+        setupAutoSuggest();
 
         JButton btnKiemTra = createOutlineButton("Kiểm tra", "CHECK_CIRCLE", TEXT_PRIMARY);
         btnKiemTra.setPreferredSize(new Dimension(100, 40));
@@ -153,7 +158,6 @@ public class ManHinhXuatKho extends JPanel {
         btnScanQR.setPreferredSize(new Dimension(135, 40));
         btnScanQR.addActionListener(e -> showQRScannerDialog());
 
-        // Sử dụng GridBagLayout cho pnlMaLoBtns để linh hoạt hơn
         JPanel pnlMaLoBtns = new JPanel(new GridBagLayout());
         pnlMaLoBtns.setOpaque(false);
         GridBagConstraints gbcBtns = new GridBagConstraints();
@@ -189,7 +193,7 @@ public class ManHinhXuatKho extends JPanel {
         lblTenSP = new JLabel("-- Chưa chọn --");
         lblTenSP.setFont(new Font("Segoe UI", Font.ITALIC, 14));
         lblTenSP.setForeground(TEXT_SECONDARY);
-        lblTenSP.setBorder(new EmptyBorder(0, 24, 0, 0)); // Căn lề chuẩn khớp với Icon
+        lblTenSP.setBorder(new EmptyBorder(0, 24, 0, 0));
 
         JLabel lblT2 = new JLabel("Tồn kho hiện tại:");
         lblT2.setForeground(TEXT_SECONDARY);
@@ -199,7 +203,7 @@ public class ManHinhXuatKho extends JPanel {
         lblTonKhoHienTai = new JLabel("-- Chưa chọn --");
         lblTonKhoHienTai.setFont(new Font("Segoe UI", Font.ITALIC, 14));
         lblTonKhoHienTai.setForeground(TEXT_SECONDARY);
-        lblTonKhoHienTai.setBorder(new EmptyBorder(0, 24, 0, 0)); // Căn lề chuẩn khớp với Icon
+        lblTonKhoHienTai.setBorder(new EmptyBorder(0, 24, 0, 0));
 
         pnlInfoBox.add(lblT1);
         pnlInfoBox.add(lblTenSP);
@@ -210,7 +214,7 @@ public class ManHinhXuatKho extends JPanel {
         pnlInput.add(pnlInfoBox, gbc);
 
         // =======================================================
-        // 3. Số lượng & Đơn vị
+        // 3. Số lượng, Nút MAX & Đơn vị
         // =======================================================
         txtSoLuong = createTextField();
         txtSoLuong.addKeyListener(new KeyAdapter() {
@@ -221,6 +225,17 @@ public class ManHinhXuatKho extends JPanel {
             }
         });
 
+        // Nút Xuất MAX
+        JButton btnMax = createOutlineButton("MAX", null, PRIMARY_BLUE);
+        btnMax.setPreferredSize(new Dimension(65, 40));
+        btnMax.setToolTipText("Điền tự động tất cả số lượng còn lại trong kho");
+        btnMax.addActionListener(e -> chucNangXuatMax());
+
+        JPanel pnlSLInput = new JPanel(new BorderLayout(5, 0));
+        pnlSLInput.setOpaque(false);
+        pnlSLInput.add(txtSoLuong, BorderLayout.CENTER);
+        pnlSLInput.add(btnMax, BorderLayout.EAST);
+
         cbDonVi = new JComboBox<>();
         cbDonVi.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         cbDonVi.setBackground(Color.WHITE);
@@ -228,7 +243,7 @@ public class ManHinhXuatKho extends JPanel {
 
         JPanel pnlSL_DV = new JPanel(new BorderLayout(15, 0));
         pnlSL_DV.setOpaque(false);
-        pnlSL_DV.add(createFormGroup("Số lượng xuất", "PACKAGE", txtSoLuong), BorderLayout.CENTER);
+        pnlSL_DV.add(createFormGroup("Số lượng xuất", "PACKAGE", pnlSLInput), BorderLayout.CENTER);
         pnlSL_DV.add(createFormGroup("Đơn vị", "PILL", cbDonVi), BorderLayout.EAST);
 
         gbc.gridy = 2;
@@ -267,6 +282,161 @@ public class ManHinhXuatKho extends JPanel {
 
         pnlWrapper.add(pnlInput, BorderLayout.NORTH);
         return pnlWrapper;
+    }
+
+    // =======================================================================
+    // FIX TÍNH NĂNG GỢI Ý MÃ LÔ THÔNG MINH - ĐẢM BẢO KHÔNG BỊ DƯ KHOẢNG TRẮNG
+    // =======================================================================
+    private void setupAutoSuggest() {
+        popupSuggest = new JPopupMenu();
+        modelSuggest = new DefaultListModel<>();
+        listSuggest = new JList<>(modelSuggest);
+        listSuggest.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        listSuggest.setSelectionBackground(new Color(239, 246, 255));
+        listSuggest.setSelectionForeground(TEXT_PRIMARY);
+
+        // Chốt cứng mỗi dòng cao đúng 30px để nhân lên cho dễ
+        listSuggest.setFixedCellHeight(30);
+
+        scrollSuggest = new JScrollPane(listSuggest);
+        scrollSuggest.setBorder(null);
+        scrollSuggest.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+
+        popupSuggest.add(scrollSuggest);
+        popupSuggest.setBorder(BorderFactory.createLineBorder(PRIMARY_BLUE));
+
+        // Lắng nghe sự kiện gõ phím
+        txtMaLo.getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                updateSuggest();
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                updateSuggest();
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                updateSuggest();
+            }
+        });
+
+        // Click chuột vào list để chọn
+        listSuggest.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (e.getClickCount() == 1 || e.getClickCount() == 2)
+                    chonTuSuggest();
+            }
+        });
+
+        // Hỗ trợ phím mũi tên Lên/Xuống và Enter
+        txtMaLo.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+                if (e.getKeyCode() == KeyEvent.VK_DOWN && popupSuggest.isVisible()) {
+                    listSuggest.setSelectedIndex(0);
+                    listSuggest.requestFocus();
+                } else if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+                    if (popupSuggest.isVisible() && listSuggest.getSelectedIndex() != -1) {
+                        chonTuSuggest();
+                    } else {
+                        popupSuggest.setVisible(false);
+                        kiemTraMaLo();
+                    }
+                }
+            }
+        });
+
+        listSuggest.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+                if (e.getKeyCode() == KeyEvent.VK_ENTER)
+                    chonTuSuggest();
+            }
+        });
+    }
+
+    private void chonTuSuggest() {
+        String selected = listSuggest.getSelectedValue();
+        if (selected != null) {
+            isProgrammaticUpdate = true;
+            txtMaLo.setText(selected.split(" - ")[0]);
+            popupSuggest.setVisible(false);
+            isProgrammaticUpdate = false;
+            kiemTraMaLo();
+        }
+    }
+
+    private void updateSuggest() {
+        if (isProgrammaticUpdate)
+            return;
+        SwingUtilities.invokeLater(() -> {
+            String text = txtMaLo.getText().trim().toLowerCase();
+            modelSuggest.clear();
+            if (text.isEmpty()) {
+                popupSuggest.setVisible(false);
+                return;
+            }
+            int count = 0;
+            for (LoHang lh : cacheDanhSachLo) {
+                String maLo = lh.getSoLoHang() != null ? lh.getSoLoHang().toLowerCase() : "";
+                String tenSP = lh.getSanPhamId() != null ? lh.getSanPhamId().getTen().toLowerCase() : "";
+                if (maLo.contains(text) || tenSP.contains(text)) {
+                    modelSuggest.addElement(lh.getSoLoHang() + " - " + lh.getSanPhamId().getTen());
+                    count++;
+                }
+            }
+
+            if (count > 0) {
+                int displayCount = Math.min(count, 5); // Hiển thị tối đa 5 dòng
+                listSuggest.setVisibleRowCount(displayCount);
+
+                // CÔNG THỨC VÀNG: Ép cứng khung chứa list bằng pixel (số dòng * 30px)
+                int exactHeight = displayCount * 30;
+                scrollSuggest.setPreferredSize(new Dimension(340, exactHeight)); // Đảm bảo rộng rãi 340px
+
+                popupSuggest.pack(); // Bung theo đúng size ép cứng
+                popupSuggest.show(txtMaLo, 0, txtMaLo.getHeight());
+                txtMaLo.requestFocus();
+            } else {
+                popupSuggest.setVisible(false);
+            }
+        });
+    }
+
+    private void chucNangXuatMax() {
+        if (currentSanPham == null || currentTonKho <= 0)
+            return;
+
+        String tenDVChon = cbDonVi.getSelectedItem() != null ? cbDonVi.getSelectedItem().toString() : "";
+        DonViDoLuong dvChon = null;
+        for (DonViDoLuong dv : currentDsDonVi) {
+            if (dv.getTen().equals(tenDVChon)) {
+                dvChon = dv;
+                break;
+            }
+        }
+        if (dvChon == null)
+            return;
+
+        int tongDaCoTrongGio = 0;
+        String maLoHienTai = txtMaLo.getText().trim();
+        for (int i = 0; i < tableModel.getRowCount(); i++) {
+            if (tableModel.getValueAt(i, 0).toString().equalsIgnoreCase(maLoHienTai)) {
+                tongDaCoTrongGio += Integer.parseInt(tableModel.getValueAt(i, 7).toString());
+            }
+        }
+
+        int conLai = currentTonKho - tongDaCoTrongGio;
+        if (conLai > 0) {
+            int maxSL = (int) (conLai / dvChon.getChuyenDoiSangDonViCoBan());
+            txtSoLuong.setText(String.valueOf(maxSL));
+        } else {
+            txtSoLuong.setText("0");
+        }
     }
 
     private JPanel createFormGroup(String title, String iconName, JComponent comp) {
@@ -559,6 +729,10 @@ public class ManHinhXuatKho extends JPanel {
     }
 
     private void kiemTraMaLo() {
+        isProgrammaticUpdate = true;
+        popupSuggest.setVisible(false);
+        isProgrammaticUpdate = false;
+
         String maQuet = txtMaLo.getText().trim();
         if (maQuet.isEmpty())
             return;
@@ -597,7 +771,10 @@ public class ManHinhXuatKho extends JPanel {
         dsLoKhop.sort((a, b) -> a.getNgayHetHan().compareTo(b.getNgayHetHan()));
         loTimThay = dsLoKhop.get(0);
 
+        isProgrammaticUpdate = true;
         txtMaLo.setText(loTimThay.getSoLoHang());
+        isProgrammaticUpdate = false;
+
         lblTenSP.setText(loTimThay.getSanPhamId().getTen());
         lblTenSP.setForeground(PRIMARY_BLUE);
         lblTenSP.setFont(new Font("Segoe UI", Font.BOLD, 14));
@@ -696,11 +873,22 @@ public class ManHinhXuatKho extends JPanel {
 
             if ((slXuatQuyDoi + tongDaCoTrongGio) > currentTonKho) {
                 int conLaiCoTheXuat = currentTonKho - tongDaCoTrongGio;
+
+                String tenDVCoBan = "Đơn vị";
+                if (currentDsDonVi != null) {
+                    for (DonViDoLuong dv : currentDsDonVi) {
+                        if (dv.getChuyenDoiSangDonViCoBan() == 1.0) {
+                            tenDVCoBan = dv.getTen();
+                            break;
+                        }
+                    }
+                }
+
                 String msg = "Số lượng xuất lố tồn kho gốc!\n\n";
-                msg += "• Kho còn: " + currentTonKho + " ĐV cơ bản\n";
-                msg += "• Đang chờ xuất: " + tongDaCoTrongGio + " ĐV cơ bản\n";
+                msg += "• Kho còn: " + currentTonKho + " " + tenDVCoBan + "\n";
+                msg += "• Đang chờ xuất: " + tongDaCoTrongGio + " " + tenDVCoBan + "\n";
                 if (conLaiCoTheXuat > 0) {
-                    msg += "• Chỉ có thể xuất thêm tối đa: " + conLaiCoTheXuat + " ĐV cơ bản.";
+                    msg += "• Chỉ có thể xuất thêm tối đa: " + conLaiCoTheXuat + " " + tenDVCoBan + ".";
                 } else {
                     msg += "• Lô này đã được vét sạch vào giỏ.";
                 }
@@ -768,7 +956,10 @@ public class ManHinhXuatKho extends JPanel {
     }
 
     private void resetFormNhap() {
+        isProgrammaticUpdate = true;
         txtMaLo.setText("");
+        isProgrammaticUpdate = false;
+
         txtSoLuong.setText("");
         txtGhiChu.setText("");
         cbLyDo.setSelectedIndex(0);
