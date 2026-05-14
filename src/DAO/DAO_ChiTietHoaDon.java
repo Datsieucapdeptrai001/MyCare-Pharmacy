@@ -17,20 +17,29 @@ public class DAO_ChiTietHoaDon {
 
     public DAO_ChiTietHoaDon() {}
 
-    public boolean themChiTietDoiTra(String maHD, String tenSP, int soLuong, String ghiChu) {
-        // ĐÃ FIX: Thêm donGiaThucTe và thanhTien = 0 để chống lỗi ràng buộc NOT NULL của DB
+    public boolean themChiTietDoiTra(String maHD, String tenSP, String dvt, int soLuong, double donGia, String ghiChu) {
+        // Cú pháp 6 tham số để khớp với BUS và GUI của cậu
         String sql = "INSERT INTO ChiTietHoaDon (hoaDonId, sanPhamId, donViDoLuongId, soLuong, donGiaThucTe, thanhTien, ghiChu) " +
-                     "SELECT TOP 1 ?, sp.id, dv.id, ?, 0, 0, ? " +
+                     "SELECT TOP 1 ?, sp.id, dv.id, ?, ?, ?, ? " +
                      "FROM SanPham sp " +
-                     "LEFT JOIN DonViDoLuong dv ON sp.id = dv.sanPhamId " +
-                     "WHERE sp.ten = ?";
+                     "JOIN DonViDoLuong dv ON sp.id = dv.sanPhamId " +
+                     "WHERE sp.ten LIKE ? AND dv.ten LIKE ?";
                      
         try (Connection con = ConnectDB.getInstance().getConnection();
              PreparedStatement pst = con.prepareStatement(sql)) {
+            
             pst.setString(1, maHD);
             pst.setInt(2, soLuong);
-            pst.setString(3, ghiChu);
-            pst.setString(4, tenSP); 
+            pst.setDouble(3, donGia);             // Nhận giá tiền trực tiếp từ GUI
+            pst.setDouble(4, soLuong * donGia);   // Tự nhân ra Thành tiền
+            
+            // Ép chết lỗi NULL: Nếu ghiChu rỗng thì để mặc định
+            String note = (ghiChu == null || ghiChu.isEmpty()) ? "Hàng Đổi/Trả" : ghiChu;
+            pst.setString(5, note);
+            
+            // Dùng LIKE để chốt hạ vụ sai font, dư dấu cách
+            pst.setString(6, "%" + tenSP.trim() + "%");
+            pst.setString(7, "%" + dvt.trim() + "%");
             
             return pst.executeUpdate() > 0;
         } catch (Exception e) {

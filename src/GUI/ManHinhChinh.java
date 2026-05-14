@@ -45,6 +45,17 @@ public class ManHinhChinh extends JPanel {
     private JComboBox<String> cbxNhanVien;
     private List<String> listMaNV = new ArrayList<>();
 
+    private BUS.BUS_ThongKe.ThongKeFilter getHienTaiFilter() {
+        BUS.BUS_ThongKe.ThongKeFilter f = new BUS.BUS_ThongKe.ThongKeFilter();
+        f.maNV = filterMaNV;
+        if (!UserSession.getInstance().isAdmin() && UserSession.getInstance().getCaHienTai() != null) {
+            f.startTime = UserSession.getInstance().getCaHienTai().getThoiGianBatDau();
+        } else {
+            f.ca = (filterCa > 0) ? filterCa : null;
+        }
+        return f;
+    }
+
     public ManHinhChinh() {
         busThongKe = new BUS_ThongKe();
         busCaLamViec = new BUS_CaLamViec();
@@ -71,6 +82,14 @@ public class ManHinhChinh extends JPanel {
         loadCardPanels();
 
         add(cardPanel, BorderLayout.CENTER);
+    }
+
+    @Override
+    public void setVisible(boolean aFlag) {
+        if (aFlag) {
+            loadCardPanels();
+        }
+        super.setVisible(aFlag);
     }
 
     public void loadCardPanels() {
@@ -294,7 +313,34 @@ public class ManHinhChinh extends JPanel {
                         + titleCa + "</span></html>");
         root.add(title, BorderLayout.NORTH);
 
-        JPanel body = new JPanel();
+        class ScrollableBody extends JPanel implements Scrollable {
+            @Override
+            public Dimension getPreferredScrollableViewportSize() { return super.getPreferredSize(); }
+            @Override
+            public int getScrollableUnitIncrement(Rectangle v, int o, int d) { return 14; }
+            @Override
+            public int getScrollableBlockIncrement(Rectangle v, int o, int d) { return 50; }
+            @Override
+            public boolean getScrollableTracksViewportWidth() {
+                Container vp = SwingUtilities.getUnwrappedParent(this);
+                // Chỉ bóp nhỏ khi màn hình TO HƠN 1050px. Nhỏ hơn sẽ ngừng bóp và hiện cuộn ngang (Chống ép chữ)
+                return (vp instanceof JViewport) && (vp.getWidth() > 1050);
+            }
+            @Override
+            public boolean getScrollableTracksViewportHeight() {
+                Container vp = SwingUtilities.getUnwrappedParent(this);
+                // Tự động kéo dãn chiều cao lấp đầy khoảng trống bên dưới
+                return (vp instanceof JViewport) && (vp.getHeight() > super.getPreferredSize().height);
+            }
+            @Override
+            public Dimension getPreferredSize() {
+                Dimension d = super.getPreferredSize();
+                d.width = Math.max(1050, d.width); // Chốt chiều rộng tối thiểu 1050px
+                return d;
+            }
+        }
+
+        ScrollableBody body = new ScrollableBody();
         body.setLayout(new BoxLayout(body, BoxLayout.Y_AXIS));
         body.setBackground(BG);
 
@@ -319,6 +365,9 @@ public class ManHinhChinh extends JPanel {
 
         sc.getVerticalScrollBar().setUI(new Utils.ModernScrollBarUI());
         sc.getVerticalScrollBar().setPreferredSize(new Dimension(8, 0));
+        
+        sc.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        sc.getHorizontalScrollBar().setPreferredSize(new Dimension(0, 8));
 
         root.add(sc, BorderLayout.CENTER);
         return root;
@@ -376,89 +425,88 @@ public class ManHinhChinh extends JPanel {
         row.setOpaque(false);
         row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 130));
 
-        // FIX v2-1: Dược sĩ chỉ lấy dữ liệu CA HIỆN TẠI (qua filterMaNV + filterCa)
         boolean isAdminKPI = UserSession.getInstance().isAdmin();
-        // Dùng filterMaNV (đã set theo session) thay vì kpiMaNV riêng
-        String caFilterNV = filterMaNV;
+        BUS.BUS_ThongKe.ThongKeFilter caFilterNV = getHienTaiFilter();
         String kpiLabel = isAdminKPI ? "Toàn cửa hàng" : "Ca hiện tại";
-
-        int sp = busThongKe.getTongSanPham();
-        int hd = busThongKe.getHoaDonHomNay(filterMaNV, filterCa);
-        double dt = busThongKe.getDoanhThuThuanHomNay(filterMaNV, filterCa);
+        double[] kpiData = busThongKe.getKpiDoiChieu(caFilterNV);
+        List<Object[]> listTopSP = busThongKe.getTopSPTrongNgay(java.time.LocalDate.now().toString(), caFilterNV);
+        int sp = 0;
+        if (listTopSP != null) {
+            for (Object[] obj : listTopSP) {
+                sp += (int) obj[1]; 
+            }
+        }
+        
+        int hd = (int) kpiData[0];
         int kh = busThongKe.getTongKhachHang();
+        
+        double dtGopThucTe = (kpiData.length > 8) ? kpiData[8] : (kpiData[4] - kpiData[7]);
 
-        // KPI 1: Top SP — lọc theo ca/NV
+        // KPI 1: Top SP
         row.add(kpiCard("Top sản phẩm bán chạy trong ngày", String.valueOf(sp), kpiLabel, "#EEF2FF", "#3D52A0", "PILL",
                 () -> {
-                    DefaultTableModel model = new DefaultTableModel(
-                            new String[] { "Sản phẩm", "Số lượng", "Doanh thu" }, 0) {
-                        public boolean isCellEditable(int r, int c) {
-                            return false;
-                        }
+                    DefaultTableModel model = new DefaultTableModel(new String[] { "Sản phẩm", "Số lượng", "Doanh thu" }, 0) {
+                        public boolean isCellEditable(int r, int c) { return false; }
                     };
-                    List<Object[]> list = busThongKe.getTopSPTrongNgay(java.time.LocalDate.now().toString(),
-                            caFilterNV);
+                    List<Object[]> list = busThongKe.getTopSPTrongNgay(java.time.LocalDate.now().toString(), caFilterNV);
                     if (list != null)
                         for (Object[] obj : list)
-                            model.addRow(new Object[] { obj[0], obj[1],
-                                    formatMoney(Math.round((double) obj[2] * 1_000_000)) });
+                            model.addRow(new Object[] { obj[0], obj[1], formatMoney(Math.round((double) obj[2] * 1_000_000)) });
                     showKpiPopup(isAdminKPI ? "TOP SẢN PHẨM — TOÀN CỬA HÀNG" : "TOP SẢN PHẨM — CA CỦA BẠN", model);
                 }));
 
-        // KPI 2: Hóa đơn — lọc theo ca/NV
+        // KPI 2: Hóa đơn
         row.add(kpiCard("Hóa đơn hôm nay", String.valueOf(hd), "Đã lọc theo ca/NV", "#ECFDF5", "#00A76F", "DOCUMENT",
                 () -> {
-                    DefaultTableModel model = new DefaultTableModel(
-                            new String[] { "Mã HĐ", "Khách hàng", "Thực thu", "Giờ lập" }, 0) {
-                        public boolean isCellEditable(int r, int c) {
-                            return false;
-                        }
+                    DefaultTableModel model = new DefaultTableModel(new String[] { "Mã HĐ", "Loại", "Khách hàng", "Giao dịch", "Giờ lập" }, 0) {
+                        public boolean isCellEditable(int r, int c) { return false; }
                     };
-                    List<Object[]> hdList = busThongKe.getHoaDonGanNhat(filterMaNV, filterCa, 100);
+                    List<Object[]> hdList = busThongKe.getHoaDonGanNhat(caFilterNV, 100);
                     if (hdList != null)
-                        for (Object[] o : hdList)
-                            model.addRow(
-                                    new Object[] { o[0], o[1], formatMoney(Math.round((double) o[2] / 1.1)), o[3] });
-                    showKpiPopup("DANH SÁCH HÓA ĐƠN", model);
+                        for (Object[] o : hdList) {
+                            double tien = (Double) o[2];
+                            String loaiGoc = (String) o[4];
+                            String loaiHD = "Bán hàng";
+                            if ("TRA_HANG".equals(loaiGoc)) loaiHD = "Trả hàng";
+                            else if ("DOI_HANG".equals(o[4])) loaiHD = "Đổi hàng";
+                            
+                            String tienStr = formatMoney(Math.round(Math.abs(tien)));
+                            if (tien < 0) tienStr = "- " + tienStr; // Hiển thị dấu âm màu đỏ
+                            
+                            model.addRow(new Object[] { o[0], loaiHD, o[1], tienStr, o[3] });
+                        }
+                    showKpiPopup("DANH SÁCH GIAO DỊCH HÓA ĐƠN", model);
                 }));
 
-        // KPI 3: Doanh thu — lọc theo ca/NV
+        // KPI 3: Doanh thu
         String dtLabel = isAdminKPI ? "Toàn cửa hàng (VNĐ)" : "Ca hiện tại (VNĐ)";
-        row.add(kpiCard("Doanh thu", formatMoney(Math.round(dt)), dtLabel, "#FFF7ED", "#FF6B00", "TAB_DOLLAR",
+        row.add(kpiCard("Doanh thu", formatMoney(Math.round(dtGopThucTe)), dtLabel, "#FFF7ED", "#FF6B00", "TAB_DOLLAR",
                 () -> {
                     DefaultTableModel model = new DefaultTableModel(new String[] { "Giờ", "Doanh thu" }, 0) {
-                        public boolean isCellEditable(int r, int c) {
-                            return false;
-                        }
+                        public boolean isCellEditable(int r, int c) { return false; }
                     };
                     double[] dts = busThongKe.getDTTheoGioTrongNgay(java.time.LocalDate.now().toString(), caFilterNV);
                     double total = 0;
                     if (dts != null) {
                         for (int i = 0; i < dts.length; i++)
-                            if (dts[i] > 0) {
-                                model.addRow(new Object[] { i + ":00 - " + (i + 1) + ":00",
-                                        formatMoney(Math.round(dts[i] * 1_000_000)) });
+                            if (dts[i] != 0) {
+                                model.addRow(new Object[] { i + ":00 - " + (i + 1) + ":00", formatMoney(Math.round(dts[i] * 1_000_000)) });
                                 total += dts[i];
                             }
                         model.addRow(new Object[] { "TỔNG CỘNG", formatMoney(Math.round(total * 1_000_000)) });
                     }
-                    showKpiPopup(isAdminKPI ? "DOANH THU THEO GIỜ — TOÀN CỬA HÀNG" : "DOANH THU THEO GIỜ — CA CỦA BẠN",
-                            model);
+                    showKpiPopup(isAdminKPI ? "DOANH THU THEO GIỜ — TOÀN CỬA HÀNG" : "DOANH THU THEO GIỜ — CA CỦA BẠN", model);
                 }));
 
-        // KPI 4: Top KH — FIX v2-2: TOP 5 + ORDER BY diemTichLuy DESC
+        // KPI 4: Khách hàng
         row.add(kpiCard("Tổng khách hàng", String.valueOf(kh), "Cửa hàng", "#FFF0F0", "#FF5630", "USERS", () -> {
-            DefaultTableModel model = new DefaultTableModel(
-                    new String[] { "Tên khách hàng", "SĐT", "Số HĐ", "Doanh thu", "Điểm tích lũy" }, 0) {
-                public boolean isCellEditable(int r, int c) {
-                    return false;
-                }
+            DefaultTableModel model = new DefaultTableModel(new String[] { "Tên khách hàng", "SĐT", "Số HĐ", "Doanh thu", "Điểm tích lũy" }, 0) {
+                public boolean isCellEditable(int r, int c) { return false; }
             };
             List<Object[]> list = busThongKe.getTopKhachHangTheoDiem(5);
             if (list != null)
                 for (Object[] obj : list)
-                    model.addRow(new Object[] { obj[0], obj[1], obj[2],
-                            formatMoney(Math.round((double) obj[3] * 1_000_000)), obj[4] });
+                    model.addRow(new Object[] { obj[0], obj[1], obj[2], formatMoney(Math.round((double) obj[3] * 1_000_000)), obj[4] });
             showKpiPopup("TOP 5 KHÁCH HÀNG (Theo điểm tích lũy)", model);
         }));
         return row;
@@ -662,6 +710,10 @@ public class ManHinhChinh extends JPanel {
         private List<TickerItem> items;
         private int scrollX = 0, hoveredIdx = -1;
 
+        // Bổ sung biến để giữ Timer
+        private javax.swing.Timer scrollTimer;
+        private javax.swing.Timer reloadTimer;
+
         SmartTickerPanel() {
             setOpaque(false);
             setPreferredSize(new Dimension(0, 28));
@@ -698,32 +750,42 @@ public class ManHinhChinh extends JPanel {
                         return;
                     MainDashboard md = (MainDashboard) pw;
 
-                    // FIX v2-4: Điều hướng HĐ giá trị lớn → tab Bán hàng + auto mở chi tiết
                     if (item.navTab.equals("Bán hàng & Đổi trả") && item.navKey != null && !item.navKey.isEmpty()) {
-                        // Gán pending ID để ManHinhBanHang tự động mở popup chi tiết
                         ManHinhBanHang.pendingDraftIdToOpen = item.navKey;
                         md.switchTabAndFilter("Bán hàng & Đổi trả", "");
                         return;
                     }
-                    // FIX v2-4: Lô hàng → chuyển tab + auto điền tìm kiếm
                     if (item.navTab.equals("Lô hàng") && item.navKey != null && !item.navKey.isEmpty()) {
                         md.switchTabAndFilter("Lô hàng", item.navKey);
                         return;
                     }
-                    // Mặc định: chuyển tab
                     md.switchTabAndFilter(item.navTab, item.navKey != null ? item.navKey : "");
                 }
             });
-            new javax.swing.Timer(30, e -> {
+
+            // Gán Timer vào biến thay vì thả trôi
+            scrollTimer = new javax.swing.Timer(30, e -> {
                 scrollX -= 2;
                 repaint();
-            }).start();
-            javax.swing.Timer rt = new javax.swing.Timer(60_000, e -> {
+            });
+            scrollTimer.start();
+
+            reloadTimer = new javax.swing.Timer(60_000, e -> {
                 items = loadTickerData();
                 repaint();
             });
-            rt.setRepeats(true);
-            rt.start();
+            reloadTimer.setRepeats(true);
+            reloadTimer.start();
+        }
+
+        // TỰ ĐỘNG HỦY TIMER KHI PANEL BỊ XÓA (CHỐNG LAG/TRÀN RAM)
+        @Override
+        public void removeNotify() {
+            super.removeNotify();
+            if (scrollTimer != null)
+                scrollTimer.stop();
+            if (reloadTimer != null)
+                reloadTimer.stop();
         }
 
         private int iw(FontMetrics fm, TickerItem it) {
@@ -883,11 +945,12 @@ public class ManHinhChinh extends JPanel {
     private JPanel buildChartRow() {
         JPanel row = new JPanel(new GridLayout(1, 2, 12, 0));
         row.setOpaque(false);
-        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 230));
+        row.setPreferredSize(new Dimension(1050, 260));
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 350));
 
         int currentYear = java.time.Year.now().getValue();
         // condHD: xây từ filterMaNV và filterCa, đồng bộ với các hàm khác
-        String condHD = buildCondHD();
+        BUS.BUS_ThongKe.ThongKeFilter condHD = getHienTaiFilter();
         double[] monthly = busThongKe.getDoanhThu12Thang(currentYear, condHD);
         if (monthly == null)
             monthly = new double[12];
@@ -908,7 +971,8 @@ public class ManHinhChinh extends JPanel {
     private JPanel buildBottomRow() {
         JPanel row = new JPanel(new GridLayout(1, 2, 12, 0));
         row.setOpaque(false);
-        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 220));
+        row.setPreferredSize(new Dimension(1050, 260));
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
 
         JPanel inv = wCard();
         inv.setLayout(new BorderLayout(0, 8));
@@ -952,18 +1016,27 @@ public class ManHinhChinh extends JPanel {
             }
         });
 
-        List<Object[]> hdList = busThongKe.getHoaDonGanDayTrongCa(filterMaNV, filterCa);
+        List<Object[]> hdList = busThongKe.getHoaDonGanDayTrongCa(getHienTaiFilter());
         if (hdList != null && !hdList.isEmpty()) {
             for (Object[] o : hdList) {
                 String ptThanhToan = (String) o[3];
+                String loaiHD = (String) o[4]; // Nhận loại HD
                 String hienThiTT = "Khác";
                 if ("TIEN_MAT".equalsIgnoreCase(ptThanhToan)) {
                     hienThiTT = "Tiền mặt";
-                } else if ("CHUYEN_KHOAN_NGAN_HANG".equalsIgnoreCase(ptThanhToan)
-                        || "CHUYEN_KHOAN".equalsIgnoreCase(ptThanhToan)) {
+                } else if ("CHUYEN_KHOAN_NGAN_HANG".equalsIgnoreCase(ptThanhToan) || "CHUYEN_KHOAN".equalsIgnoreCase(ptThanhToan)) {
                     hienThiTT = "Chuyển khoản";
                 }
-                mInv.addRow(new Object[] { o[0], o[1], formatMoney(Math.round((double) o[2])), hienThiTT });
+                
+                double tien = (Double) o[2];
+                String tienStr = formatMoney(Math.round(Math.abs(tien)));
+                // Nếu là trả hàng (số tiền âm), thêm dấu trừ để Table Formatter hiện màu đỏ
+                if (tien < 0 || "TRA_HANG".equals(loaiHD)) {
+                    tienStr = "- " + tienStr;
+                    hienThiTT = "Hoàn " + hienThiTT.toLowerCase();
+                }
+                
+                mInv.addRow(new Object[] { o[0], o[1], tienStr, hienThiTT });
             }
         } else {
             mInv.addRow(new Object[] { "—", "Không có hóa đơn", "—", "—" });
@@ -1047,7 +1120,8 @@ public class ManHinhChinh extends JPanel {
     private JPanel buildExpiringPanel() {
         JPanel p = wCard();
         p.setLayout(new BorderLayout(0, 8));
-        p.setMaximumSize(new Dimension(Integer.MAX_VALUE, 270));
+        p.setPreferredSize(new Dimension(1050, 260));
+        p.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
         int cnt = busThongKe.getSoLoHangSapHetHanKhoang(90);
         JPanel h2 = new JPanel(new BorderLayout());
         h2.setOpaque(false);
@@ -1139,58 +1213,47 @@ public class ManHinhChinh extends JPanel {
         root.add(topRow, BorderLayout.NORTH);
 
         boolean isAdmin = UserSession.getInstance().isAdmin();
-
-        // GUI chỉ nhận kết quả đã tính từ BUS — không tự tính toán
-        // FIX #4: Mở rộng KPI lên 8 fields: soHD, tHang, tKM, tTT, tMat, tCK, tVAT,
-        // tThuan
-        double[] kpi = busThongKe.getKpiDoiChieu(filterMaNV, filterCa);
+        double[] kpi = busThongKe.getKpiDoiChieu(getHienTaiFilter());
         int soHD = (int) kpi[0];
-        double tHang = kpi[1];
-        double tKhuyenMai = kpi[2];
-        double tThanhToan = kpi[3];
-        double tMat = kpi[4];
-        double ck = kpi[5];
-        double tVAT = kpi[6];
-        double tThuan = kpi[7];
+        double tHangBanDau = (kpi.length > 1) ? kpi[1] : 0;
+        double tKhuyenMai  = (kpi.length > 2) ? kpi[2] : 0;
+        double tVAT        = (kpi.length > 3) ? kpi[3] : 0;
+        double tThanhToanBanHang = (kpi.length > 4) ? kpi[4] : 0;
+        double tMat        = (kpi.length > 5) ? kpi[5] : 0;
+        double ck          = (kpi.length > 6) ? kpi[6] : 0;
+        double tHoanTra    = (kpi.length > 7) ? kpi[7] : 0;
+        double tThuan      = (kpi.length > 8) ? kpi[8] : (tThanhToanBanHang - tHoanTra);
 
         JPanel body = new JPanel(new GridLayout(1, 3, 12, 0));
         body.setBackground(BG);
 
-        // ═══════════ CỘT 1: KẾT QUẢ ĐÃ LỌC (theo ca/NV) ═══════════
+     // TÌM ĐOẠN NÀY TRONG ManHinhChinh.java (Khoảng dòng 480) VÀ THAY THẾ
         JPanel c1 = wCard();
         c1.setLayout(new BoxLayout(c1, BoxLayout.Y_AXIS));
         addLine(c1, "CHART", "KẾT QUẢ ĐÃ LỌC THEO CA", null, BLUE, true);
-        addLine(c1, "Số hóa đơn:", String.valueOf(soHD), Color.BLACK, false);
+        addLine(c1, "Số hóa đơn bán:", String.valueOf(soHD), Color.BLACK, false);
 
-        // FIX #4: Cấu trúc lại UI — hiển thị minh bạch giống bill
         c1.add(box(4));
         addLine(c1, "DOCUMENT", "CHI TIẾT TÍNH TOÁN", null, Color.decode("#637381"), true);
-        addLine(c1, "  Tiền hàng (Tạm tính):", formatMoney(Math.round(tHang)), Color.BLACK, false);
-        addLine(c1, "  (+) Thuế VAT:", "+" + formatMoney(Math.round(tVAT)), Color.decode("#FF6B00"), false);
-        addLine(c1, "  Thành tiền:", formatMoney(Math.round(tHang + tVAT)), Color.BLACK, true);
+        addLine(c1, "  Giá gốc (Chưa thuế):", formatMoney(Math.round(tHangBanDau)), Color.BLACK, false);
         addLine(c1, "  (-) Khuyến mãi:", "-" + formatMoney(Math.round(tKhuyenMai)), GREEN, false);
-        c1.add(new JSeparator() {
-            {
-                setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
-            }
-        });
-        addLine(c1, "  (=) Tổng thanh toán:", formatMoney(Math.round(tThanhToan)), BLUE, true);
+        addLine(c1, "  (=) Doanh thu thuần:", formatMoney(Math.round(tThuan)), Color.BLACK, true);
+        addLine(c1, "  (+) Thuế VAT (5% - 10%):", "+" + formatMoney(Math.round(tVAT)), Color.decode("#FF6B00"), false);
 
+        c1.add(new JSeparator() { { setMaximumSize(new Dimension(Integer.MAX_VALUE, 1)); } });
+        addLine(c1, "  (A) TỔNG DOANH THU BÁN RA:", formatMoney(Math.round(tThanhToanBanHang)), BLUE, true);
+        addLine(c1, "  (B) CHI TIỀN NHẬN TRẢ HÀNG:", "-" + formatMoney(Math.round(tHoanTra)), RED, true); 
         c1.add(box(8));
+        addLine(c1, "ĐỐI CHIẾU THU CHI (A - B)", null, Color.GRAY, false);
+        double tMatThucTe = Math.max(0, tMat - tHoanTra); // Quỹ tiền mặt thực tế
+        addLine(c1, "  ↔ Tiền mặt thu về:", formatMoney(Math.round(tMatThucTe)), Color.BLACK, false);
+        addLine(c1, "  ↔ Chuyển khoản/Thẻ:", formatMoney(Math.round(ck)), Color.BLACK, false);
 
-        addLine(c1, "ĐỐI CHIẾU THU CHI", null, Color.GRAY, false);
-        addLine(c1, "  ↔ Tiền mặt thực thu:", formatMoney(Math.round(tMat)), Color.BLACK, false);
-        addLine(c1, "  ↔ Chuyển khoản:", formatMoney(Math.round(ck)), Color.BLACK, false);
-        c1.add(new JSeparator() {
-            {
-                setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
-            }
-        });
-        addLine(c1, "  Tổng thực thu:", formatMoney(Math.round(tThanhToan)), BLUE, true);
+        c1.add(new JSeparator() { { setMaximumSize(new Dimension(Integer.MAX_VALUE, 1)); } });
+        addLine(c1, "  TỔNG THỰC THU TRONG CA:", formatMoney(Math.round(tThanhToanBanHang - tHoanTra)), GREEN, true);
 
         body.add(c1);
 
-        // ═══════════ CỘT 2: SO SÁNH 7 NGÀY QUA ═══════════
         JPanel c2 = wCard();
         c2.setLayout(new BoxLayout(c2, BoxLayout.Y_AXIS));
         addLine(c2, "CHART", "SO SÁNH — 7 NGÀY QUA", null, BLUE, true);
@@ -1205,36 +1268,33 @@ public class ManHinhChinh extends JPanel {
             c2.add(lk);
             c2.add(Box.createVerticalGlue());
         } else {
-            // FIX #4: Hiển thị chi tiết 7 ngày qua đồng bộ với cột 1
-            double[] kpi7 = busThongKe.getKpiDoiChieu7NgayQua(filterMaNV);
+        	double[] kpi7 = busThongKe.getKpiDoiChieu7NgayQua(filterMaNV);
             int hd7 = (int) kpi7[0];
-            double tHang7 = kpi7[1];
-            double tKM7 = kpi7[2];
-            double tTT7 = kpi7[3];
-            double tVAT7 = kpi7[4];
-            double tThuan7 = kpi7[5];
+            double tHangBanDau7 = (kpi7.length > 1) ? kpi7[1] : 0;
+            double tKM7         = (kpi7.length > 2) ? kpi7[2] : 0;
+            double tVAT7        = (kpi7.length > 3) ? kpi7[3] : 0;
+            double tThanhToanBanHang7 = (kpi7.length > 4) ? kpi7[4] : 0;
+            double tHoanTra7    = (kpi7.length > 7) ? kpi7[7] : 0;
+            double tThuan7      = (kpi7.length > 8) ? kpi7[8] : (tThanhToanBanHang7 - tHoanTra7);
 
-            addLine(c2, "Số hóa đơn:", String.valueOf(hd7), Color.BLACK, false);
+            addLine(c2, "Số hóa đơn bán:", String.valueOf(hd7), Color.BLACK, false);
             c2.add(box(4));
-            addLine(c2, "DOCUMENT", "CHI TIẾT TÍNH TOÁN", null, Color.decode("#637381"), true);
-            addLine(c2, "  Tiền hàng (Tạm tính):", formatMoney(Math.round(tHang7)), Color.BLACK, false);
-            addLine(c2, "  (+) Thuế VAT:", "+" + formatMoney(Math.round(tVAT7)), Color.decode("#FF6B00"), false);
-            addLine(c2, "  Thành tiền:", formatMoney(Math.round(tHang7 + tVAT7)), Color.BLACK, true);
+            addLine(c2, "DOCUMENT", "CHI TIẾT TÍNH TOÁN (HĐ BÁN)", null, Color.decode("#637381"), true);
+            addLine(c2, "  Giá gốc (chưa VAT):", formatMoney(Math.round(tHangBanDau7)), Color.BLACK, false);
             addLine(c2, "  (-) Khuyến mãi:", "-" + formatMoney(Math.round(tKM7)), GREEN, false);
-            c2.add(new JSeparator() {
-                {
-                    setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
-                }
-            });
-            addLine(c2, "  (=) Tổng thanh toán:", formatMoney(Math.round(tTT7)), BLUE, true);
+            addLine(c2, "  (=) Doanh thu thuần:", formatMoney(Math.round(tThuan7)), Color.BLACK, true);
+            addLine(c2, "  (+) Thuế VAT:", "+" + formatMoney(Math.round(tVAT7)), Color.decode("#FF6B00"), false);
+            c2.add(new JSeparator() { { setMaximumSize(new Dimension(Integer.MAX_VALUE, 1)); } });
+            addLine(c2, "  Tổng tiền khách trả:", formatMoney(Math.round(tThanhToanBanHang7)), BLUE, true);
+            addLine(c2, "  (-) Chi hoàn trả khách:", "-" + formatMoney(Math.round(tHoanTra7)), RED, true);
         }
         body.add(c2);
 
         JPanel c3 = wCard();
         c3.setLayout(new BoxLayout(c3, BoxLayout.Y_AXIS));
         addLine(c3, "RETURN", "ĐỔI / TRẢ HÀNG", null, RED, true);
-        int tongPhieu = busThongKe.getTongPhieuDoiTra();
-        int choXuLy = busThongKe.getPhieuDoiTraChoXuLy();
+        int tongPhieu = busThongKe.getTongPhieuDoiTra(getHienTaiFilter());
+        int choXuLy = busThongKe.getPhieuDoiTraChoXuLy(getHienTaiFilter());        
         addLine(c3, "Tổng phiếu:", String.valueOf(tongPhieu), Color.BLACK, false);
         addLine(c3, "Chờ xử lý:", String.valueOf(choXuLy), RED, false);
         body.add(c3);
@@ -1253,9 +1313,8 @@ public class ManHinhChinh extends JPanel {
         }
 
         double dtCa = busThongKe.getDoanhThuTheoCa(maNV, ca.getThoiGianBatDau());
-        double tmBanHang = busThongKe.getDoanhThuTienMatTheoCa(maNV, ca.getThoiGianBatDau());
-
-        // ĐÃ FIX: Tính tiền hoàn trả từ Database thay vì gán bằng 0
+        
+        double tmBanHang = busThongKe.getTienMatBanHangTheoCa(maNV, ca.getThoiGianBatDau());
         double tmHoanTra = busThongKe.getTienHoanTraTheoCa(maNV, ca.getThoiGianBatDau());
 
         Window pw = SwingUtilities.getWindowAncestor(this);

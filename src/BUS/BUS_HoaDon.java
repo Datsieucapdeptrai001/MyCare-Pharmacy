@@ -207,7 +207,7 @@ public class BUS_HoaDon {
                 String tenSP = spTra[0].toString();
                 int soLuong = (int) spTra[1];
                 // Gọi DAO chi tiết (Gắn nhãn 'TRA_LAI')
-                daoCTHD.themChiTietDoiTra(hdDoiTra.getId(), tenSP, soLuong, "TRA_LAI");
+                daoCTHD.themChiTietDoiTra(hdDoiTra.getId(), tenSP, "Hộp", soLuong, 0.0, "TRA_LAI");
             }
         }
 
@@ -217,14 +217,14 @@ public class BUS_HoaDon {
                 String tenSP = spDoi[0].toString();
                 int soLuong = (int) spDoi[1];
                 // Gọi DAO chi tiết (Gắn nhãn 'DOI_LAY')
-                daoCTHD.themChiTietDoiTra(hdDoiTra.getId(), tenSP, soLuong, "DOI_LAY");
+                daoCTHD.themChiTietDoiTra(hdDoiTra.getId(), tenSP, "Hộp", soLuong, 0.0, "DOI_LAY");
             }
         }
         
         return true; // Thành công toàn bộ
     }
+    
     public boolean taoPhieuDoiTra(HoaDon hdDoiTra) {
-        
         return daoHD.themHoaDon(hdDoiTra);
     }
     public List<String> timGoiYHoaDonHoanThanh(String tuKhoa) {
