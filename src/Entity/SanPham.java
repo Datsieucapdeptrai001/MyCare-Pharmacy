@@ -19,113 +19,55 @@ public class SanPham {
     private String donViDoCoBan;
     private LocalDateTime ngayTao;
     private double giaBan;
+    private String maVach;
+    private String nhomBenhLy;
 
     public SanPham() {
     }
+    public String getId() { return id; }
+    public void setId(String id) { this.id = id; }
 
-    public String getId() {
-        return id;
-    }
+    public DanhMucSanPham getDanhMuc() { return danhMuc; }
+    public void setDanhMuc(DanhMucSanPham danhMuc) { this.danhMuc = danhMuc; }
 
-    public void setId(String id) {
-        this.id = id;
-    }
+    public DangBaoChe getDang() { return dang; }
+    public void setDang(DangBaoChe dang) { this.dang = dang; }
 
-    public DanhMucSanPham getDanhMuc() {
-        return danhMuc;
-    }
+    public String getTen() { return ten; }
+    public void setTen(String ten) { this.ten = ten; }
 
-    public void setDanhMuc(DanhMucSanPham danhMuc) {
-        this.danhMuc = danhMuc;
-    }
+    public String getTenVietTat() { return tenVietTat; }
+    public void setTenVietTat(String tenVietTat) { this.tenVietTat = tenVietTat; }
 
-    public DangBaoChe getDang() {
-        return dang;
-    }
+    public String getNhaSanXuat() { return nhaSanXuat; }
+    public void setNhaSanXuat(String nhaSanXuat) { this.nhaSanXuat = nhaSanXuat; }
 
-    public void setDang(DangBaoChe dang) {
-        this.dang = dang;
-    }
+    public String getHoatChat() { return hoatChat; }
+    public void setHoatChat(String hoatChat) { this.hoatChat = hoatChat; }
 
-    public String getTen() {
-        return ten;
-    }
+    public double getThueVAT() { return thueVAT; }
+    public void setThueVAT(double thueVAT) { this.thueVAT = thueVAT; }
 
-    public void setTen(String ten) {
-        this.ten = ten;
-    }
+    public String getHamLuong() { return hamLuong; }
+    public void setHamLuong(String hamLuong) { this.hamLuong = hamLuong; }
 
-    public String getTenVietTat() {
-        return tenVietTat;
-    }
+    public String getMoTa() { return moTa; }
+    public void setMoTa(String moTa) { this.moTa = moTa; }
 
-    public void setTenVietTat(String tenVietTat) {
-        this.tenVietTat = tenVietTat;
-    }
+    public String getDonViDoCoBan() { return donViDoCoBan; }
+    public void setDonViDoCoBan(String donViDoCoBan) { this.donViDoCoBan = donViDoCoBan; }
 
-    public String getNhaSanXuat() {
-        return nhaSanXuat;
-    }
+    public LocalDateTime getNgayTao() { return ngayTao; }
+    public void setNgayTao(LocalDateTime ngayTao) { this.ngayTao = ngayTao; }
 
-    public void setNhaSanXuat(String nhaSanXuat) {
-        this.nhaSanXuat = nhaSanXuat;
-    }
+    public double getGiaBan() { return giaBan; }
+    public void setGiaBan(double giaBan) { this.giaBan = giaBan; }
 
-    public String getHoatChat() {
-        return hoatChat;
-    }
+    public String getMaVach() { return maVach; }
+    public void setMaVach(String maVach) { this.maVach = maVach; }
 
-    public void setHoatChat(String hoatChat) {
-        this.hoatChat = hoatChat;
-    }
-
-    public double getThueVAT() {
-        return thueVAT;
-    }
-
-    public void setThueVAT(double thueVAT) {
-        this.thueVAT = thueVAT;
-    }
-
-    public String getHamLuong() {
-        return hamLuong;
-    }
-
-    public void setHamLuong(String hamLuong) {
-        this.hamLuong = hamLuong;
-    }
-
-    public String getMoTa() {
-        return moTa;
-    }
-
-    public void setMoTa(String moTa) {
-        this.moTa = moTa;
-    }
-
-    public String getDonViDoCoBan() {
-        return donViDoCoBan;
-    }
-
-    public void setDonViDoCoBan(String donViDoCoBan) {
-        this.donViDoCoBan = donViDoCoBan;
-    }
-
-    public LocalDateTime getNgayTao() {
-        return ngayTao;
-    }
-
-    public void setNgayTao(LocalDateTime ngayTao) {
-        this.ngayTao = ngayTao;
-    }
-
-    public double getGiaBan() {
-        return giaBan;
-    }
-
-    public void setGiaBan(double giaBan) {
-        this.giaBan = giaBan;
-    }
+    public String getNhomBenhLy() { return nhomBenhLy; }
+    public void setNhomBenhLy(String nhomBenhLy) { this.nhomBenhLy = nhomBenhLy; }
 
     @Override
     public String toString() {
