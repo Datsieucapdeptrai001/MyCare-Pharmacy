@@ -1,8 +1,8 @@
 package GUI;
 
+import BUS.BUS_DonViDoLuong;
 import BUS.BUS_Kho;
 import BUS.BUS_SanPham;
-import BUS.BUS_DonViDoLuong;
 import Entity.DonViDoLuong;
 import Entity.KhoHang;
 import Entity.LoHang;
@@ -77,6 +77,8 @@ public class ManHinhNhapLoHangMoi extends JDialog {
     private DefaultListModel<SanPham> modelSanPham;
     private boolean isFiltering = false;
 
+    private JComboBox<KhoHang> cbKhoHang;
+
     private double currentQuyCach = 1.0;
     private String currentDonViNho = "ĐV cơ bản";
     private String currentDonViLon = "Đơn vị";
@@ -86,14 +88,21 @@ public class ManHinhNhapLoHangMoi extends JDialog {
     private HintTextField txtGiaNhap;
     private HintTextField txtHanSuDung;
 
-    private JLabel errSanPham, errMaLo, errSoLuong, errGiaNhap, errHanSuDung;
-    private JLabel lblTongQuyDoi, lblGiaVonVien;
-    private JLabel lblTitleSoLuong, lblTitleGiaNhap;
+    private JLabel errSanPham;
+    private JLabel errKhoHang;
+    private JLabel errMaLo;
+    private JLabel errSoLuong;
+    private JLabel errGiaNhap;
+    private JLabel errHanSuDung;
+
+    private JLabel lblTongQuyDoi;
+    private JLabel lblGiaVonVien;
+    private JLabel lblTitleSoLuong;
+    private JLabel lblTitleGiaNhap;
 
     private final ReloadListener reloadListener;
 
-    // Bộ nhớ tạm liên kết mã vạch lạ trong phiên làm việc hiện tại
-    private Map<String, SanPham> mapLienKetTam = new HashMap<>();
+    private final Map<String, SanPham> mapLienKetTam = new HashMap<>();
 
     public ManHinhNhapLoHangMoi(Window owner, ReloadListener reloadListener) {
         super(owner, "Thêm lô hàng", ModalityType.APPLICATION_MODAL);
@@ -104,14 +113,14 @@ public class ManHinhNhapLoHangMoi extends JDialog {
 
         setUndecorated(true);
         setBackground(BG_TRANSPARENT);
-        setSize(600, 680);
+        setSize(600, 740);
         setLocationRelativeTo(owner);
-
         setShape(new RoundRectangle2D.Double(0, 0, getWidth(), getHeight(), 16, 16));
+
         setContentPane(createMainUI());
         registerKeyboardActions();
 
-        this.addWindowListener(new WindowAdapter() {
+        addWindowListener(new WindowAdapter() {
             @Override
             public void windowOpened(WindowEvent e) {
                 Timer timer = new Timer(150, evt -> showQRScannerDialog());
@@ -165,6 +174,7 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         btnClose.setContentAreaFilled(false);
         btnClose.setForeground(new Color(255, 255, 255, 180));
         btnClose.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btnClose.addActionListener(e -> dispose());
 
         btnClose.addMouseListener(new MouseAdapter() {
             @Override
@@ -178,10 +188,9 @@ public class ManHinhNhapLoHangMoi extends JDialog {
             }
         });
 
-        btnClose.addActionListener(e -> dispose());
-
         MouseAdapter dragWindow = new MouseAdapter() {
-            int x, y;
+            int x;
+            int y;
 
             @Override
             public void mousePressed(MouseEvent e) {
@@ -200,6 +209,7 @@ public class ManHinhNhapLoHangMoi extends JDialog {
 
         header.add(left, BorderLayout.WEST);
         header.add(btnClose, BorderLayout.EAST);
+
         return header;
     }
 
@@ -212,6 +222,7 @@ public class ManHinhNhapLoHangMoi extends JDialog {
             dsTatCaSanPham = busSanPham.getDsThuoc();
         } catch (Exception e) {
             e.printStackTrace();
+            dsTatCaSanPham = new ArrayList<>();
         }
 
         JPanel pnlQR = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
@@ -224,6 +235,31 @@ public class ManHinhNhapLoHangMoi extends JDialog {
 
         JPanel comboSanPhamWrapper = createProductSelectorField();
 
+        cbKhoHang = new JComboBox<>();
+        cbKhoHang.setFont(FONT_TEXT);
+        cbKhoHang.setBackground(Color.WHITE);
+        cbKhoHang.setPreferredSize(new Dimension(100, 44));
+        cbKhoHang.setRenderer(new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(
+                    JList<?> list,
+                    Object value,
+                    int index,
+                    boolean isSelected,
+                    boolean cellHasFocus) {
+                JLabel lb = (JLabel) super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                lb.setFont(FONT_TEXT);
+                lb.setBorder(new EmptyBorder(8, 12, 8, 12));
+
+                if (value instanceof KhoHang kho) {
+                    lb.setText(kho.getId());
+                }
+
+                return lb;
+            }
+        });
+        loadDanhSachKhoHang();
+
         txtMaLo = createTextField("VD: LOT-2026-0001");
         txtSoLuong = createTextField("0");
         txtGiaNhap = createTextField("0");
@@ -233,6 +269,7 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         addCurrencyFormatting(txtGiaNhap);
 
         errSanPham = createErrorLabel();
+        errKhoHang = createErrorLabel();
         errMaLo = createErrorLabel();
         errSoLuong = createErrorLabel();
         errGiaNhap = createErrorLabel();
@@ -247,14 +284,17 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         lblGiaVonVien.setForeground(WARNING);
 
         DocumentListener calcListener = new DocumentListener() {
+            @Override
             public void insertUpdate(DocumentEvent e) {
                 calculateTotal();
             }
 
+            @Override
             public void removeUpdate(DocumentEvent e) {
                 calculateTotal();
             }
 
+            @Override
             public void changedUpdate(DocumentEvent e) {
                 calculateTotal();
             }
@@ -285,9 +325,12 @@ public class ManHinhNhapLoHangMoi extends JDialog {
                 gbc);
 
         gbc.gridy = 2;
-        body.add(createFullWidthField("Mã lô *", txtMaLo, errMaLo, "DOCUMENT"), gbc);
+        body.add(createFullWidthField("Kho nhập *", cbKhoHang, errKhoHang, "BOX"), gbc);
 
         gbc.gridy = 3;
+        body.add(createFullWidthField("Mã lô *", txtMaLo, errMaLo, "DOCUMENT"), gbc);
+
+        gbc.gridy = 4;
         JPanel pnlCol1 = createFullWidthFieldWithLabel(lblTitleSoLuong, txtSoLuong, errSoLuong, "BOX");
         JPanel pnlCol2 = createFullWidthFieldWithLabel(lblTitleGiaNhap, txtGiaNhap, errGiaNhap, "TAB_DOLLAR");
 
@@ -297,11 +340,11 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         rowPanel.add(pnlCol2);
         body.add(rowPanel, gbc);
 
-        gbc.gridy = 4;
+        gbc.gridy = 5;
         JPanel dateFieldWrapper = createDatePickerField();
         body.add(createFullWidthField("Hạn sử dụng (dd/MM/yyyy) *", dateFieldWrapper, errHanSuDung, "TIME"), gbc);
 
-        gbc.gridy = 5;
+        gbc.gridy = 6;
         gbc.insets = new Insets(10, 0, 10, 0);
 
         JPanel pnlTong = new JPanel(new GridLayout(2, 1, 0, 8));
@@ -319,11 +362,29 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         pnlTong.add(row2);
         body.add(pnlTong, gbc);
 
-        gbc.gridy = 6;
+        gbc.gridy = 7;
         gbc.weighty = 1.0;
         body.add(Box.createVerticalGlue(), gbc);
 
         return body;
+    }
+
+    private void loadDanhSachKhoHang() {
+        cbKhoHang.removeAllItems();
+
+        try {
+            List<KhoHang> dsKho = busKho.layDanhSachKhoHang();
+
+            if (dsKho != null) {
+                for (KhoHang kho : dsKho) {
+                    if (kho != null && kho.getId() != null && !kho.getId().trim().isEmpty()) {
+                        cbKhoHang.addItem(kho);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     private void updateQuyCachTuSanPham(String maSP) {
@@ -333,6 +394,7 @@ public class ManHinhNhapLoHangMoi extends JDialog {
 
         try {
             List<DonViDoLuong> dsDVDL = busDonVi.getDSTheoMaSP(maSP);
+
             if (dsDVDL != null && !dsDVDL.isEmpty()) {
                 for (DonViDoLuong dv : dsDVDL) {
                     if (dv.getChuyenDoiSangDonViCoBan() == 1.0) {
@@ -355,15 +417,20 @@ public class ManHinhNhapLoHangMoi extends JDialog {
 
         lblTitleSoLuong.setText("Số lượng nhập kho (" + currentDonViLon + ") *");
         lblTitleGiaNhap.setText("Giá nhập (của 1 " + currentDonViLon + ") *");
+
         calculateTotal();
     }
 
     private void calculateTotal() {
         try {
-            long sl = txtSoLuong.getText().trim().isEmpty() ? 0 : Long.parseLong(txtSoLuong.getText().trim());
+            long sl = txtSoLuong.getText().trim().isEmpty()
+                    ? 0
+                    : Long.parseLong(txtSoLuong.getText().trim());
+
             long tong = (long) (sl * currentQuyCach);
 
             String textTong = "Tổng nhập kho: " + vnNumberFormat.format(tong) + " " + currentDonViNho;
+
             if (currentQuyCach > 1.0) {
                 textTong += " (Quy cách 1 " + currentDonViLon + " = " + (int) currentQuyCach + " " + currentDonViNho
                         + ")";
@@ -371,9 +438,11 @@ public class ManHinhNhapLoHangMoi extends JDialog {
 
             lblTongQuyDoi.setText(textTong);
 
-            long giaNhap = txtGiaNhap.getText().trim().isEmpty() ? 0
+            long giaNhap = txtGiaNhap.getText().trim().isEmpty()
+                    ? 0
                     : Long.parseLong(getDigitsOnly(txtGiaNhap.getText()));
-            double giaVien = (currentQuyCach > 0) ? ((double) giaNhap / currentQuyCach) : 0;
+
+            double giaVien = currentQuyCach > 0 ? ((double) giaNhap / currentQuyCach) : 0;
 
             lblGiaVonVien.setText("Giá vốn quy đổi: ~ " + vnNumberFormat.format(giaVien) + " đ/" + currentDonViNho);
         } catch (Exception e) {
@@ -409,6 +478,7 @@ public class ManHinhNhapLoHangMoi extends JDialog {
                 popupSanPham.setVisible(false);
             } else {
                 txtTimSanPham.requestFocus();
+
                 isFiltering = true;
                 modelSanPham.clear();
 
@@ -453,16 +523,16 @@ public class ManHinhNhapLoHangMoi extends JDialog {
 
                 if (e.getKeyCode() == KeyEvent.VK_DOWN) {
                     index++;
-                    if (index >= modelSanPham.getSize()) {
+                    if (index >= modelSanPham.getSize())
                         index = 0;
-                    }
+
                     listSanPham.setSelectedIndex(index);
                     listSanPham.ensureIndexIsVisible(index);
                 } else if (e.getKeyCode() == KeyEvent.VK_UP) {
                     index--;
-                    if (index < 0) {
+                    if (index < 0)
                         index = modelSanPham.getSize() - 1;
-                    }
+
                     listSanPham.setSelectedIndex(index);
                     listSanPham.ensureIndexIsVisible(index);
                 }
@@ -498,9 +568,14 @@ public class ManHinhNhapLoHangMoi extends JDialog {
 
         listSanPham.setCellRenderer(new DefaultListCellRenderer() {
             @Override
-            public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected,
+            public Component getListCellRendererComponent(
+                    JList<?> list,
+                    Object value,
+                    int index,
+                    boolean isSelected,
                     boolean cellHasFocus) {
                 JLabel lb = (JLabel) super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+
                 lb.setBorder(new EmptyBorder(10, 14, 10, 14));
                 lb.setFont(FONT_TEXT);
 
@@ -540,11 +615,11 @@ public class ManHinhNhapLoHangMoi extends JDialog {
     }
 
     private void filterSanPham(JPanel anchorPanel) {
-        if (isFiltering) {
+        if (isFiltering)
             return;
-        }
 
         String kw = txtTimSanPham.getText().trim().toLowerCase();
+
         modelSanPham.clear();
 
         if (kw.isEmpty()) {
@@ -553,8 +628,16 @@ public class ManHinhNhapLoHangMoi extends JDialog {
             }
         } else {
             for (SanPham sp : dsTatCaSanPham) {
-                if ((sp.getTen() != null && sp.getTen().toLowerCase().contains(kw))
-                        || (sp.getId() != null && sp.getId().toLowerCase().contains(kw))) {
+                boolean match = false;
+
+                if (sp.getTen() != null && sp.getTen().toLowerCase().contains(kw))
+                    match = true;
+                if (sp.getId() != null && sp.getId().toLowerCase().contains(kw))
+                    match = true;
+                if (sp.getMaVach() != null && sp.getMaVach().toLowerCase().contains(kw))
+                    match = true;
+
+                if (match) {
                     modelSanPham.addElement(sp);
                 }
             }
@@ -578,7 +661,7 @@ public class ManHinhNhapLoHangMoi extends JDialog {
             if (screenLoc.y + yPos + popupHeight > screenSize.height - 40) {
                 yPos = -popupHeight - 2;
             }
-        } catch (Exception e) {
+        } catch (Exception ignored) {
         }
 
         popupSanPham.setPopupSize(anchorPanel.getWidth(), popupHeight + 4);
@@ -651,6 +734,7 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         JLabel lblTitle = new JLabel(title);
         lblTitle.setFont(FONT_LABEL);
         lblTitle.setForeground(TEXT_PRIMARY);
+
         return createFullWidthFieldWithLabel(lblTitle, field, error, iconName);
     }
 
@@ -745,6 +829,7 @@ public class ManHinhNhapLoHangMoi extends JDialog {
 
     private JButton createPrimaryButton(String text) {
         JButton btn = new JButton(text);
+
         btn.setFocusPainted(false);
         btn.setForeground(Color.WHITE);
         btn.setBackground(SUCCESS);
@@ -770,6 +855,7 @@ public class ManHinhNhapLoHangMoi extends JDialog {
 
     private JButton createSecondaryButton(String text) {
         JButton btn = new JButton(text);
+
         btn.setFocusPainted(false);
         btn.setForeground(TEXT_SECONDARY);
         btn.setBackground(Color.WHITE);
@@ -800,6 +886,7 @@ public class ManHinhNhapLoHangMoi extends JDialog {
             @Override
             public void focusLost(FocusEvent e) {
                 String digits = getDigitsOnly(field.getText());
+
                 if (!digits.isEmpty()) {
                     try {
                         field.setText(vnNumberFormat.format(Long.parseLong(digits)));
@@ -827,7 +914,8 @@ public class ManHinhNhapLoHangMoi extends JDialog {
             }
         }, KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), JComponent.WHEN_IN_FOCUSED_WINDOW);
 
-        rootPane.registerKeyboardAction(e -> dispose(),
+        rootPane.registerKeyboardAction(
+                e -> dispose(),
                 KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0),
                 JComponent.WHEN_IN_FOCUSED_WINDOW);
     }
@@ -846,7 +934,6 @@ public class ManHinhNhapLoHangMoi extends JDialog {
 
         boolean valid = true;
 
-        // 1. Kiểm tra sản phẩm: bắt buộc chọn sản phẩm có sẵn
         if (spText.isEmpty() || spText.equals("Nhập tên, mã SP hoặc bấm ▼ để chọn...")) {
             errSanPham.setText("Vui lòng chọn sản phẩm");
             valid = false;
@@ -855,6 +942,7 @@ public class ManHinhNhapLoHangMoi extends JDialog {
 
             for (SanPham sp : dsTatCaSanPham) {
                 String displayText = sp.getTen() + " (" + sp.getId() + ")";
+
                 if (spText.equalsIgnoreCase(displayText)
                         || spText.equalsIgnoreCase(sp.getTen())
                         || spText.equalsIgnoreCase(sp.getId())) {
@@ -871,7 +959,16 @@ public class ManHinhNhapLoHangMoi extends JDialog {
             }
         }
 
-        // 2. Kiểm tra mã lô
+        KhoHang khoDuocChon = (KhoHang) cbKhoHang.getSelectedItem();
+
+        if (khoDuocChon == null || khoDuocChon.getId() == null || khoDuocChon.getId().trim().isEmpty()) {
+            errKhoHang.setText("Vui lòng chọn kho nhập");
+            valid = false;
+        } else if (!busKho.tonTaiKho(khoDuocChon.getId())) {
+            errKhoHang.setText("Kho không tồn tại trong CSDL");
+            valid = false;
+        }
+
         if (maLo.isEmpty()) {
             errMaLo.setText("Số lô không được bỏ trống");
             valid = false;
@@ -880,8 +977,8 @@ public class ManHinhNhapLoHangMoi extends JDialog {
             valid = false;
         }
 
-        // 3. Kiểm tra số lượng
         long soLuongLon = 0;
+
         try {
             String soLuongText = txtSoLuong.getText().trim();
 
@@ -910,7 +1007,6 @@ public class ManHinhNhapLoHangMoi extends JDialog {
 
         int tongSoLuongQuyDoi = (int) tongSoLuongQuyDoiLong;
 
-        // 4. Kiểm tra giá nhập
         long giaNhapDonViLon = 0;
         double giaVonDonViNho = 0.0;
 
@@ -925,7 +1021,7 @@ public class ManHinhNhapLoHangMoi extends JDialog {
                     errGiaNhap.setText("Giá nhập phải > 0");
                     valid = false;
                 } else {
-                    giaVonDonViNho = (currentQuyCach > 0) ? ((double) giaNhapDonViLon / currentQuyCach) : 0;
+                    giaVonDonViNho = currentQuyCach > 0 ? ((double) giaNhapDonViLon / currentQuyCach) : 0;
                 }
             }
         } catch (Exception e) {
@@ -933,7 +1029,6 @@ public class ManHinhNhapLoHangMoi extends JDialog {
             valid = false;
         }
 
-        // 5. Kiểm tra hạn sử dụng
         LocalDate ngayHSD = null;
         boolean canHan = false;
 
@@ -960,13 +1055,11 @@ public class ManHinhNhapLoHangMoi extends JDialog {
             return;
         }
 
-        // 6. Không cho trùng mã lô đang hoạt động
         if (busKho.tonTaiMaLoDangHoatDong(maLo)) {
             errMaLo.setText("Mã lô đã tồn tại trong kho");
             return;
         }
 
-        // 7. Cảnh báo cận hạn
         if (canHan) {
             int confirm = JOptionPane.showConfirmDialog(
                     this,
@@ -981,7 +1074,6 @@ public class ManHinhNhapLoHangMoi extends JDialog {
             }
         }
 
-        // 8. Cảnh báo giá nhập > giá bán
         if (selectedSanPham != null && selectedSanPham.getGiaBan() > 0) {
             double giaBanCoBan = selectedSanPham.getGiaBan();
 
@@ -1018,15 +1110,8 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         loHang.setSanPhamId(selectedSanPham);
         loHang.setMaVachNoiBo(maVachNoiBo);
 
-        String maKhoMacDinh = "KHO-0001";
-
-        if (!busKho.tonTaiKho(maKhoMacDinh)) {
-            showModernAlert("Kho mặc định KHO-0001 chưa tồn tại trong CSDL!", false);
-            return;
-        }
-
         KhoHang kho = new KhoHang();
-        kho.setId(maKhoMacDinh);
+        kho.setId(khoDuocChon.getId().trim());
         loHang.setKhoHangId(kho);
 
         boolean laTaiSuDung = busKho.tonTaiMaLoDaAn(maLo);
@@ -1059,18 +1144,16 @@ public class ManHinhNhapLoHangMoi extends JDialog {
             int max = 0;
 
             for (LoHang lh : dsLo) {
-                if (lh == null || lh.getId() == null) {
+                if (lh == null || lh.getId() == null)
                     continue;
-                }
 
                 String id = lh.getId().trim().toUpperCase().replace("-", "");
 
                 if (id.startsWith("LH")) {
                     try {
                         int so = Integer.parseInt(id.substring(2));
-                        if (so > max) {
+                        if (so > max)
                             max = so;
-                        }
                     } catch (Exception ignored) {
                     }
                 }
@@ -1087,6 +1170,7 @@ public class ManHinhNhapLoHangMoi extends JDialog {
     private String taoMaVachNoiBoKhongTrung(String idLoHang) {
         String base = "MV" + idLoHang.replace("-", "");
         String ma = base;
+
         int i = 1;
 
         while (busKho.tonTaiMaVachNoiBo(ma)) {
@@ -1099,15 +1183,13 @@ public class ManHinhNhapLoHangMoi extends JDialog {
 
     private void clearErrors() {
         errSanPham.setText(" ");
+        errKhoHang.setText(" ");
         errMaLo.setText(" ");
         errSoLuong.setText(" ");
         errGiaNhap.setText(" ");
         errHanSuDung.setText(" ");
     }
 
-    // ==============================================================================
-    // BẢNG QUÉT MÃ QR/TEM 2D
-    // ==============================================================================
     private void showQRScannerDialog() {
         JDialog dialog = new JDialog(this, "YÊU CẦU QUÉT MÃ", Dialog.ModalityType.APPLICATION_MODAL);
         dialog.setSize(450, 180);
@@ -1183,15 +1265,11 @@ public class ManHinhNhapLoHangMoi extends JDialog {
     }
 
     private Parsed2DDataMatrix parse2DDataMatrix(String raw) {
-        if (raw == null || raw.trim().isEmpty()) {
+        if (raw == null || raw.trim().isEmpty())
             return null;
-        }
 
         String data = raw.trim();
 
-        // Format test dễ dùng:
-        // GTIN|SOLO|HSD
-        // Ví dụ: 8931234567890|LOT001|31/12/2026
         if (data.contains("|")) {
             String[] parts = data.split("\\|", -1);
 
@@ -1208,8 +1286,6 @@ public class ManHinhNhapLoHangMoi extends JDialog {
             return null;
         }
 
-        // Format GS1 có ngoặc:
-        // (01)GTIN(10)SOLO(17)YYMMDD
         if (data.contains("(01)") || data.contains("(10)") || data.contains("(17)")) {
             String gtin = getAIWithParentheses(data, "01");
             String soLo = getAIWithParentheses(data, "10");
@@ -1224,9 +1300,6 @@ public class ManHinhNhapLoHangMoi extends JDialog {
             return null;
         }
 
-        // Format GS1 raw:
-        // 01 + GTIN 14 số + 17 + YYMMDD + 10 + số lô
-        // hoặc 01 + GTIN + 10 + số lô + 17 + YYMMDD
         String normalized = data.replace('\u001D', '|');
 
         if (normalized.startsWith("01") && normalized.length() >= 16) {
@@ -1249,10 +1322,12 @@ public class ManHinhNhapLoHangMoi extends JDialog {
                     int endLot = remain.length();
 
                     int sep = remain.indexOf("|", startLot);
+
                     if (sep >= 0) {
                         endLot = sep;
                     } else {
                         int next17 = remain.indexOf("17", startLot);
+
                         if (next17 > startLot) {
                             endLot = next17;
                         }
@@ -1288,25 +1363,21 @@ public class ManHinhNhapLoHangMoi extends JDialog {
     }
 
     private LocalDate parseNgayHanDung(String text) {
-        if (text == null || text.trim().isEmpty()) {
+        if (text == null || text.trim().isEmpty())
             return null;
-        }
 
         String s = text.trim();
 
-        // dd/MM/yyyy
         try {
             return LocalDate.parse(s, DATE_FORMAT);
         } catch (Exception ignored) {
         }
 
-        // yyyy-MM-dd
         try {
             return LocalDate.parse(s);
         } catch (Exception ignored) {
         }
 
-        // GS1 AI 17: YYMMDD
         if (s.matches("\\d{6}")) {
             try {
                 int yy = Integer.parseInt(s.substring(0, 2));
@@ -1326,9 +1397,8 @@ public class ManHinhNhapLoHangMoi extends JDialog {
     }
 
     private SanPham timSanPhamTheoMaVachHoacId(String maQuet) {
-        if (maQuet == null || maQuet.trim().isEmpty()) {
+        if (maQuet == null || maQuet.trim().isEmpty())
             return null;
-        }
 
         String ma = maQuet.trim();
 
@@ -1336,22 +1406,20 @@ public class ManHinhNhapLoHangMoi extends JDialog {
             return mapLienKetTam.get(ma);
         }
 
-        // 1. Tìm theo mã vạch chính trong SanPham.maVach
         for (SanPham sp : dsTatCaSanPham) {
             if (sp.getMaVach() != null && sp.getMaVach().trim().equalsIgnoreCase(ma)) {
                 return sp;
             }
         }
 
-        // 2. Tìm theo mã sản phẩm
         for (SanPham sp : dsTatCaSanPham) {
             if (sp.getId() != null && sp.getId().trim().equalsIgnoreCase(ma)) {
                 return sp;
             }
         }
 
-        // 3. Tìm theo mã vạch đơn vị đo lường nếu có
         DonViDoLuong dv = busDonVi.layDonViTheoMaVach(ma);
+
         if (dv != null && dv.getSanPhamId() != null && dv.getSanPhamId().getId() != null) {
             String maSP = dv.getSanPhamId().getId();
 
@@ -1370,6 +1438,7 @@ public class ManHinhNhapLoHangMoi extends JDialog {
 
         if (selectedSanPham == null) {
             boolean daLienKet = moHopThoaiLienKetMaVach(maQuet);
+
             if (!daLienKet) {
                 return false;
             }
@@ -1385,9 +1454,8 @@ public class ManHinhNhapLoHangMoi extends JDialog {
     }
 
     private void canhBaoCanHanNeuCo(LocalDate hsd) {
-        if (hsd == null) {
+        if (hsd == null)
             return;
-        }
 
         if (!hsd.isBefore(LocalDate.now()) && !hsd.isAfter(LocalDate.now().plusDays(SO_NGAY_CAN_HAN))) {
             JOptionPane.showMessageDialog(
@@ -1408,7 +1476,6 @@ public class ManHinhNhapLoHangMoi extends JDialog {
 
             qrData = qrData.trim();
 
-            // 1. Quét 2D DataMatrix: lấy GTIN, số lô, hạn dùng
             Parsed2DDataMatrix parsed = parse2DDataMatrix(qrData);
 
             if (parsed != null) {
@@ -1428,9 +1495,6 @@ public class ManHinhNhapLoHangMoi extends JDialog {
 
                 txtMaLo.setText(soLo);
                 txtHanSuDung.setText(hsd.format(DATE_FORMAT));
-
-                // Mã 2D không chứa số lượng và giá nhập
-                // Nhân viên nhập thủ công 2 ô này
                 txtSoLuong.requestFocus();
 
                 calculateTotal();
@@ -1441,7 +1505,6 @@ public class ManHinhNhapLoHangMoi extends JDialog {
                 return;
             }
 
-            // 2. Quét mã vạch sản phẩm 1D
             boolean laMaVachSanPham = qrData.matches("\\d{8,14}");
 
             if (laMaVachSanPham) {
@@ -1455,7 +1518,6 @@ public class ManHinhNhapLoHangMoi extends JDialog {
                 return;
             }
 
-            // 3. Còn lại xem là số lô
             txtMaLo.setText(qrData.toUpperCase());
             txtSoLuong.requestFocus();
             clearErrors();
@@ -1467,9 +1529,6 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         }
     }
 
-    // ==============================================================================
-    // DIALOG LIÊN KẾT MÃ LẠ
-    // ==============================================================================
     private boolean moHopThoaiLienKetMaVach(String maVachLa) {
         final boolean[] result = { false };
 
@@ -1502,13 +1561,14 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         g.weightx = 1.0;
 
         String msg = "<html>Mã quét được <b>[" + maVachLa
-                + "]</b> chưa có trong CSDL.<br>Hãy chọn Sản phẩm tương ứng để liên kết GTIN/mã vạch này:</html>";
+                + "]</b> chưa có trong CSDL.<br>Hãy chọn sản phẩm tương ứng để liên kết mã này:</html>";
 
         JLabel lblMsg = new JLabel(msg);
         lblMsg.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         lblMsg.setForeground(TEXT_PRIMARY);
 
         JComboBox<String> cbChonSP = new JComboBox<>();
+
         for (SanPham sp : dsTatCaSanPham) {
             cbChonSP.addItem(sp.getTen() + " (" + sp.getId() + ")");
         }
@@ -1549,24 +1609,33 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         btnXacNhan.addActionListener(e -> {
             int idx = cbChonSP.getSelectedIndex();
 
-            if (idx >= 0) {
-                SanPham spChon = dsTatCaSanPham.get(idx);
-
-                boolean ok = busSanPham.capNhatMaVachSanPham(
-                        spChon.getId(),
-                        maVachLa);
-
-                if (!ok) {
-                    showModernAlert("Không thể lưu mã vạch vào sản phẩm!", false);
-                    return;
-                }
-
-                spChon.setMaVach(maVachLa);
-                mapLienKetTam.put(maVachLa, spChon);
-                selectedSanPham = spChon;
-                result[0] = true;
-                dlgLink.dispose();
+            if (idx < 0) {
+                showModernAlert("Vui lòng chọn sản phẩm để liên kết!", false);
+                return;
             }
+
+            SanPham spChon = dsTatCaSanPham.get(idx);
+
+            System.out.println("=== DEBUG LIEN KET MA VACH ===");
+            System.out.println("Ma vach la: " + maVachLa);
+            System.out.println("San pham chon: " + spChon.getId() + " - " + spChon.getTen());
+
+            boolean okSanPham = busSanPham.capNhatMaVachSanPham(spChon.getId(), maVachLa);
+
+            System.out.println("Ket qua cap nhat SanPham.maVach = " + okSanPham);
+
+            if (!okSanPham) {
+                showModernAlert("Không thể lưu mã vạch vào sản phẩm! Không liên kết tạm.", false);
+                return;
+            }
+
+            spChon.setMaVach(maVachLa);
+            mapLienKetTam.put(maVachLa, spChon);
+            selectedSanPham = spChon;
+            result[0] = true;
+
+            showModernAlert("Đã liên kết mã vạch vào sản phẩm!", true);
+            dlgLink.dispose();
         });
 
         pnlFoot.add(btnHuy);
@@ -1597,7 +1666,6 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         JLabel lblTitle = new JLabel(isSuccess ? "THÀNH CÔNG" : "THÔNG BÁO LỖI", SwingConstants.CENTER);
         lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 16));
         lblTitle.setForeground(Color.WHITE);
-
         pnlHeader.add(lblTitle, BorderLayout.CENTER);
 
         JPanel pnlBody = new JPanel(null);
@@ -1748,6 +1816,7 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         @Override
         public void paintBorder(Component c, Graphics g, int x, int y, int width, int height) {
             Graphics2D g2 = (Graphics2D) g.create();
+
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             g2.setColor(focused ? BORDER_FOCUS : BORDER);
             g2.setStroke(new BasicStroke(focused ? 1.5f : 1f));
@@ -1766,19 +1835,16 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         @Override
         public void insertString(FilterBypass fb, int offset, String string, AttributeSet attr)
                 throws BadLocationException {
-            if (string == null) {
+            if (string == null)
                 return;
-            }
-
             replace(fb, offset, 0, string, attr);
         }
 
         @Override
         public void replace(FilterBypass fb, int offset, int length, String text, AttributeSet attrs)
                 throws BadLocationException {
-            if (text == null) {
+            if (text == null)
                 return;
-            }
 
             String current = fb.getDocument().getText(0, fb.getDocument().getLength());
             String next = current.substring(0, offset) + text + current.substring(offset + length);
@@ -1799,19 +1865,16 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         @Override
         public void insertString(FilterBypass fb, int offset, String string, AttributeSet attr)
                 throws BadLocationException {
-            if (string == null) {
+            if (string == null)
                 return;
-            }
-
             replace(fb, offset, 0, string, attr);
         }
 
         @Override
         public void replace(FilterBypass fb, int offset, int length, String text, AttributeSet attrs)
                 throws BadLocationException {
-            if (text == null) {
+            if (text == null)
                 return;
-            }
 
             String current = fb.getDocument().getText(0, fb.getDocument().getLength());
             String next = current.substring(0, offset) + text + current.substring(offset + length);
@@ -1858,6 +1921,7 @@ public class ManHinhNhapLoHangMoi extends JDialog {
             btnNext.addActionListener(e -> changeMonth(1));
 
             String[] monthNames = new String[12];
+
             for (int i = 0; i < 12; i++) {
                 monthNames[i] = "Tháng " + (i + 1);
             }
@@ -1898,6 +1962,7 @@ public class ManHinhNhapLoHangMoi extends JDialog {
             weekHeader.setBackground(Color.WHITE);
 
             String[] days = { "T2", "T3", "T4", "T5", "T6", "T7", "CN" };
+
             for (String d : days) {
                 JLabel lb = new JLabel(d, SwingConstants.CENTER);
                 lb.setFont(new Font("Segoe UI", Font.BOLD, 11));
@@ -1947,7 +2012,7 @@ public class ManHinhNhapLoHangMoi extends JDialog {
                 if (yPos + popupHeight > screenSize.height - 40) {
                     yPos = screenLoc.y - popupHeight - 2;
                 }
-            } catch (Exception ex) {
+            } catch (Exception ignored) {
             }
 
             setLocation(screenLoc.x, yPos);

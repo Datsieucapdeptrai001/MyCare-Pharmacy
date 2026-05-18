@@ -216,6 +216,10 @@ public class DAO_SanPham {
         try (Connection con = ConnectDB.getInstance().getConnection();
                 PreparedStatement pst = con.prepareStatement(sql)) {
 
+            System.out.println("=== DEBUG DAO_SanPham.capNhatMaVachSanPham ===");
+            System.out.println("maSP = [" + maSP + "]");
+            System.out.println("maVachMoi = [" + maVachMoi + "]");
+
             if (maVachMoi == null || maVachMoi.trim().isEmpty()) {
                 pst.setNull(1, java.sql.Types.NVARCHAR);
             } else {
@@ -224,7 +228,11 @@ public class DAO_SanPham {
 
             pst.setString(2, maSP.trim());
 
-            return pst.executeUpdate() > 0;
+            int row = pst.executeUpdate();
+
+            System.out.println("row update SanPham = " + row);
+
+            return row > 0;
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -615,6 +623,11 @@ public class DAO_SanPham {
 
                     if (danhMucStr != null && !danhMucStr.isEmpty()) {
                         sp.setDanhMuc(DanhMucSanPham.valueOf(danhMucStr));
+                    }
+
+                    try {
+                        sp.setMaVach(rs.getString("maVach"));
+                    } catch (Exception ignored) {
                     }
 
                     ds.add(sp);

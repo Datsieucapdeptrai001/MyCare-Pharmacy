@@ -181,11 +181,20 @@ public class BUS_SanPham {
     }
 
     public boolean capNhatMaVachSanPham(String maSP, String maVachMoi) {
+        System.out.println("=== DEBUG BUS_SanPham.capNhatMaVachSanPham ===");
+        System.out.println("maSP = [" + maSP + "]");
+        System.out.println("maVachMoi = [" + maVachMoi + "]");
+
         if (isBlank(maSP) || isBlank(maVachMoi)) {
+            System.out.println("BUS result = false vì maSP hoặc maVachMoi rỗng");
             return false;
         }
 
-        return daoSanPham.capNhatMaVachSanPham(maSP.trim(), maVachMoi.trim());
+        boolean ok = daoSanPham.capNhatMaVachSanPham(maSP.trim(), maVachMoi.trim());
+
+        System.out.println("BUS result = " + ok);
+
+        return ok;
     }
 
     public boolean xoaSP(String id) {
