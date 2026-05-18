@@ -15,25 +15,25 @@ public class BUS_TaiKhoan {
     // 1. XÁC THỰC + TỰ ĐỘNG BĂM MẬT KHẨU THÔ KHI ĐĂNG NHẬP (thay thế MigrationTool)
     public boolean authenticate(String tenDangNhap, String matKhauNhapVao) {
         TaiKhoan tk = daoTaiKhoan.getTaiKhoan(tenDangNhap);
-        if (tk == null) return false;
+        if (tk == null || tk.getMatKhau() == null) {
+            return false;
+        }
 
         String matKhauDB = tk.getMatKhau();
-
-        // Phát hiện mật khẩu THÔ (chưa băm) - bcrypt hash luôn bắt đầu bằng "$2"
-        // và có độ dài >= 60. Nếu không thỏa => mật khẩu thô -> băm ngay và lưu lại.
-        boolean laMKTho = !matKhauDB.startsWith("$2") || matKhauDB.length() < 60;
+        boolean laMKTho = !matKhauDB.contains(":");
+        
         if (laMKTho) {
-            // Kiểm tra mật khẩu nhập vào khớp với mật khẩu thô trong DB
             if (!matKhauDB.equals(matKhauNhapVao)) {
                 return false;
             }
-            // Khớp rồi -> băm và lưu lại ngay lập tức (tự migration)
-            String matKhauDaBam = PasswordUtils.hashPassword(matKhauNhapVao);
-            daoTaiKhoan.capNhatMatKhau(tenDangNhap, matKhauDaBam);
+            
+            String mkBam = PasswordUtils.hashPassword(matKhauNhapVao);
+            String idNV = tk.getNhanVienId() != null ? tk.getNhanVienId().getNhanVien() : "";
+            
+            daoTaiKhoan.capNhatTaiKhoanTheoMaNV(idNV, tk.getTenDangNhap(), mkBam);
             return true;
         }
 
-        // Mật khẩu đã được băm -> verify bình thường
         return PasswordUtils.verifyPassword(matKhauNhapVao, matKhauDB);
     }
 
