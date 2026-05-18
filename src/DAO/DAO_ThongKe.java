@@ -156,9 +156,9 @@ public class DAO_ThongKe {
         return list;
     }
 
-    public String getPTTT(Connection con, String hdId) {
+    public String getPTTT(String hdId) {
         String sql = "SELECT phuongThucThanhToan FROM HoaDon WHERE id=?";
-        try (PreparedStatement ps = con.prepareStatement(sql)) {
+        try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setString(1, hdId);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next())
@@ -574,32 +574,59 @@ public class DAO_ThongKe {
     // =====================================================================
 
     public double[] getChiPhi12Thang(int year, BUS.BUS_ThongKe.ThongKeFilter filter) {
-        double[] result = new double[12];
-        StringBuilder sql = new StringBuilder("SELECT MONTH(hd.ngayLapHD) AS thang, "
-                + "       SUM(pblh.soLuong * lh.gia) AS chiPhi "
-                + "FROM HoaDon hd "
-                + "JOIN PhanBoLoHang pblh ON pblh.hoaDonId = hd.id "
-                + "JOIN LoHang lh         ON pblh.loHangId = lh.id "
-                + "WHERE YEAR(hd.ngayLapHD) = ? "
-                + "  AND hd.loaiHD = 'BAN_HANG' ");
-        List<Object> params = new ArrayList<>();
-        params.add(year);
-        applyFilter(filter, sql, params, "hd.ngayLapHD", "hd.nhanVienId");
-        sql.append(" GROUP BY MONTH(hd.ngayLapHD)");
-
-        try (PreparedStatement ps = getConn().prepareStatement(sql.toString())) {
-            for (int i = 0; i < params.size(); i++)
-                ps.setObject(i + 1, params.get(i));
+        double[] data = new double[12];
+        
+        // A. Tính tổng giá vốn bán hàng
+        StringBuilder sqlBan = new StringBuilder(
+            "SELECT MONTH(hd.ngayLapHD) as m, SUM(ISNULL(pbl_cost.giaVon, 0)) as cp " +
+            "FROM HoaDon hd " +
+            "JOIN ChiTietHoaDon ct ON ct.hoaDonId = hd.id " +
+            "JOIN (SELECT pbl.hoaDonId, pbl.sanPhamId, pbl.donViDoLuongId, SUM(pbl.soLuong * lh.gia) as giaVon " +
+            "      FROM PhanBoLoHang pbl JOIN LoHang lh ON lh.id = pbl.loHangId GROUP BY pbl.hoaDonId, pbl.sanPhamId, pbl.donViDoLuongId) pbl_cost " +
+            "ON pbl_cost.hoaDonId = ct.hoaDonId AND pbl_cost.sanPhamId = ct.sanPhamId AND pbl_cost.donViDoLuongId = ct.donViDoLuongId " +
+            "WHERE YEAR(hd.ngayLapHD) = ? AND hd.loaiHD = 'BAN_HANG' "
+        );
+        List<Object> paramsBan = new ArrayList<>();
+        paramsBan.add(year);
+        applyFilter(filter, sqlBan, paramsBan, "hd.ngayLapHD", "hd.nhanVienId");
+        sqlBan.append(" GROUP BY MONTH(hd.ngayLapHD)");
+        
+        try (PreparedStatement ps = getConn().prepareStatement(sqlBan.toString())) {
+            for (int i=0; i<paramsBan.size(); i++) ps.setObject(i+1, paramsBan.get(i));
             ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                int thang = rs.getInt("thang");
-                if (thang >= 1 && thang <= 12)
-                    result[thang - 1] = rs.getDouble("chiPhi") / 1_000_000.0;
+            while(rs.next()) {
+                int m = rs.getInt("m");
+                if (m >= 1 && m <= 12) data[m-1] += rs.getDouble("cp") / 1_000_000.0;
             }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return result;
+        } catch (Exception e) { e.printStackTrace(); }
+
+        // B. Trừ đi giá vốn của hàng Đổi/Trả
+        StringBuilder sqlTra = new StringBuilder(
+            "SELECT MONTH(hd.ngayLapHD) as m, SUM(ISNULL(pbl_cost.giaVon, 0)) as cp " +
+            "FROM HoaDon hd " +
+            "JOIN ChiTietHoaDon ct ON ct.hoaDonId = hd.id " +
+            "JOIN (SELECT pbl.hoaDonId, pbl.sanPhamId, pbl.donViDoLuongId, SUM(pbl.soLuong * lh.gia) as giaVon " +
+            "      FROM PhanBoLoHang pbl JOIN LoHang lh ON lh.id = pbl.loHangId GROUP BY pbl.hoaDonId, pbl.sanPhamId, pbl.donViDoLuongId) pbl_cost " +
+            "ON pbl_cost.hoaDonId = ct.hoaDonId AND pbl_cost.sanPhamId = ct.sanPhamId AND pbl_cost.donViDoLuongId = ct.donViDoLuongId " +
+            "WHERE YEAR(hd.ngayLapHD) = ? AND hd.loaiHD IN ('TRA_HANG', 'DOI_HANG') AND hd.ghiChu LIKE N'%Hoàn thành%' " +
+            "AND (hd.loaiHD = 'TRA_HANG' OR ct.soLuong < 0) "
+        );
+        List<Object> paramsTra = new ArrayList<>();
+        paramsTra.add(year);
+        applyFilter(filter, sqlTra, paramsTra, "hd.ngayLapHD", "hd.nhanVienId");
+        sqlTra.append(" GROUP BY MONTH(hd.ngayLapHD)");
+
+        try (PreparedStatement ps = getConn().prepareStatement(sqlTra.toString())) {
+            for (int i=0; i<paramsTra.size(); i++) ps.setObject(i+1, paramsTra.get(i));
+            ResultSet rs = ps.executeQuery();
+            while(rs.next()) {
+                int m = rs.getInt("m");
+                if (m >= 1 && m <= 12) data[m-1] -= rs.getDouble("cp") / 1_000_000.0;
+            }
+        } catch (Exception e) { e.printStackTrace(); }
+
+        for (int i = 0; i < 12; i++) data[i] = Math.max(0, data[i]);
+        return data;
     }
 
     // =====================================================================
@@ -670,13 +697,17 @@ public class DAO_ThongKe {
 
     public List<Object[]> getTopSanPham(int year, BUS.BUS_ThongKe.ThongKeFilter filter) {
         List<Object[]> result = new ArrayList<>();
-        StringBuilder sql = new StringBuilder("SELECT sp.ten, sp.danhMuc, SUM(ct.soLuong) AS sl, "
-                + "SUM(ROUND(ABS(ct.thanhTien) / (1 + ISNULL(sp.thueVAT, 0)/100.0), 0)) AS dtThuan "
+        StringBuilder sql = new StringBuilder("SELECT sp.ten, sp.danhMuc, "
+                + "SUM(CASE WHEN hd.loaiHD = 'BAN_HANG' THEN ct.soLuong ELSE -ABS(ct.soLuong) END) AS sl, "
+                + "SUM(CASE WHEN hd.loaiHD = 'BAN_HANG' "
+                + "THEN ROUND(ABS(ct.thanhTien) / (1 + ISNULL(sp.thueVAT, 0)/100.0), 0) "
+                + "ELSE -ROUND(ABS(ct.thanhTien) / (1 + ISNULL(sp.thueVAT, 0)/100.0), 0) END) AS dtThuan "
                 + "FROM ChiTietHoaDon ct "
                 + "JOIN HoaDon hd ON hd.id = ct.hoaDonId "
                 + "JOIN SanPham sp ON sp.id = ct.sanPhamId "
                 + "JOIN DonViDoLuong dvl ON dvl.sanPhamId = ct.sanPhamId AND dvl.id = ct.donViDoLuongId "
-                + "WHERE YEAR(hd.ngayLapHD) = ? AND hd.loaiHD = 'BAN_HANG'");
+                + "WHERE YEAR(hd.ngayLapHD) = ? "
+                + "AND (hd.loaiHD = 'BAN_HANG' OR (hd.loaiHD IN ('TRA_HANG','DOI_HANG') AND hd.ghiChu LIKE N'%Hoàn thành%')) ");
         List<Object> params = new ArrayList<>();
         params.add(year);
         applyFilter(filter, sql, params, "hd.ngayLapHD", "hd.nhanVienId");
@@ -697,13 +728,17 @@ public class DAO_ThongKe {
 
     public List<Object[]> getVATReport(int year, BUS.BUS_ThongKe.ThongKeFilter filter) {
         List<Object[]> result = new ArrayList<>();
+        // Pủn Fix: Dùng CASE WHEN tương tự Top Sản Phẩm để bóc tách VAT bị trừ
         StringBuilder sql = new StringBuilder("SELECT sp.id AS spId, sp.ten, sp.danhMuc, ISNULL(sp.thueVAT, 0) AS vatPct, "
-                + "SUM(ROUND(ABS(ct.thanhTien) * (ISNULL(sp.thueVAT,0)/100.0) / (1 + ISNULL(sp.thueVAT,0)/100.0), 0)) AS tienThue "
+                + "SUM(CASE WHEN hd.loaiHD = 'BAN_HANG' "
+                + "THEN ROUND(ABS(ct.thanhTien) * (ISNULL(sp.thueVAT,0)/100.0) / (1 + ISNULL(sp.thueVAT,0)/100.0), 0) "
+                + "ELSE -ROUND(ABS(ct.thanhTien) * (ISNULL(sp.thueVAT,0)/100.0) / (1 + ISNULL(sp.thueVAT,0)/100.0), 0) END) AS tienThue "
                 + "FROM ChiTietHoaDon ct "
                 + "JOIN HoaDon hd ON hd.id = ct.hoaDonId "
                 + "JOIN SanPham sp ON sp.id = ct.sanPhamId "
                 + "JOIN DonViDoLuong dvl ON dvl.sanPhamId = ct.sanPhamId AND dvl.id = ct.donViDoLuongId "
-                + "WHERE YEAR(hd.ngayLapHD) = ? AND hd.loaiHD = 'BAN_HANG'");
+                + "WHERE YEAR(hd.ngayLapHD) = ? "
+                + "AND (hd.loaiHD = 'BAN_HANG' OR (hd.loaiHD IN ('TRA_HANG','DOI_HANG') AND hd.ghiChu LIKE N'%Hoàn thành%')) ");
         List<Object> params = new ArrayList<>();
         params.add(year);
         applyFilter(filter, sql, params, "hd.ngayLapHD", "hd.nhanVienId");
@@ -722,15 +757,6 @@ public class DAO_ThongKe {
         return result;
     }
 
-    // =====================================================================
-    // SẢN PHẨM SẮP HẾT HẠN
-    // =====================================================================
-
-    /**
-     * Lô hàng còn hàng, hết hạn trong 6 tháng tới.
-     * Mỗi Object[5]: {soLoHang, tenSP, maKho, soLuong(int), ngayHetHan(String
-     * dd/MM/yyyy)}
-     */
     public List<Object[]> getSpSapHetHan() {
         List<Object[]> result = new ArrayList<>();
         String sql = "SELECT lh.soLoHang, sp.ten, kh.id AS Kho, lh.soLuongLoHang, lh.ngayHetHan "
@@ -1077,7 +1103,7 @@ public class DAO_ThongKe {
     }
 
     public int getTongPhieuDoiTra(BUS.BUS_ThongKe.ThongKeFilter filter) {
-        StringBuilder sql = new StringBuilder("SELECT COUNT(*) FROM HoaDon hd WHERE hd.loaiHD IN ('TRA_HANG', 'DOI_HANG')");
+        StringBuilder sql = new StringBuilder("SELECT COUNT(*) FROM HoaDon hd WHERE hd.loaiHD IN ('TRA_HANG', 'DOI_HANG') AND hd.ghiChu LIKE N'%Hoàn thành%'");
         List<Object> params = new ArrayList<>();
         applyFilter(filter, sql, params, "hd.ngayLapHD", "hd.nhanVienId");
         try (PreparedStatement ps = getConn().prepareStatement(sql.toString())) {
@@ -1457,5 +1483,123 @@ public class DAO_ThongKe {
             e.printStackTrace(); 
         }
         return result;
+    }
+    
+    public List<Object[]> getRawHDDoiTra30Ngay(BUS.BUS_ThongKe.ThongKeFilter filter) {
+        List<Object[]> result = new ArrayList<>();
+        StringBuilder sql = new StringBuilder(
+            "SELECT CONVERT(NVARCHAR,CAST(hd.ngayLapHD AS DATE),103) d, "
+            + "SUM(ROUND(ABS(ct.thanhTien) / (1 + ISNULL(sp.thueVAT, 0)/100.0), 0)) as netRefund_chuaVAT "
+            + "FROM HoaDon hd "
+            + "JOIN ChiTietHoaDon ct ON ct.hoaDonId=hd.id "
+            + "JOIN SanPham sp ON ct.sanPhamId = sp.id "
+            + "WHERE hd.loaiHD IN ('TRA_HANG','DOI_HANG') AND hd.ghiChu LIKE N'%Hoàn thành%' "
+            + "AND (hd.loaiHD = 'TRA_HANG' OR ct.ghiChu = 'TRA_LAI' OR ct.soLuong < 0) "
+            + "AND CAST(hd.ngayLapHD AS DATE) >= DATEADD(DAY,-29,CAST(GETDATE() AS DATE))");
+        List<Object> params = new ArrayList<>();
+        applyFilter(filter, sql, params, "hd.ngayLapHD", "hd.nhanVienId");
+        sql.append(" GROUP BY CAST(hd.ngayLapHD AS DATE), CONVERT(NVARCHAR,CAST(hd.ngayLapHD AS DATE),103)");
+        try (PreparedStatement ps = getConn().prepareStatement(sql.toString())) {
+            for (int i = 0; i < params.size(); i++) ps.setObject(i + 1, params.get(i));
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) result.add(new Object[] { rs.getString("d"), rs.getDouble("netRefund_chuaVAT") });
+        } catch (Exception e) { e.printStackTrace(); }
+        return result;
+    }
+ 
+    public double[] getTienVaGiaVonHangTra(BUS.BUS_ThongKe.ThongKeFilter filter) {
+        // [0] = Tiền hoàn khách (CoVAT), [1] = Tiền hoàn khách (Chưa VAT), [2] = Giá vốn hoàn lại kho
+        double[] kq = new double[]{0, 0, 0};
+        
+        // Pủn Fix: Dùng Sub-query (pbl_cost) Gom nhóm PhanBoLoHang lại trước khi JOIN
+        // Đảm bảo ct.thanhTien tuyệt đối không bị nhân bản nếu hàng xuất từ nhiều lô!
+        StringBuilder sql = new StringBuilder(
+            "SELECT " +
+            "SUM(ABS(ct.thanhTien)) as tienHoanCoVAT, " +
+            "SUM(ROUND(ABS(ct.thanhTien) / (1 + ISNULL(sp.thueVAT, 0)/100.0), 0)) as tienHoanChuaVAT, " +
+            "SUM(ISNULL(pbl_cost.giaVon, 0)) as giaVonHoan " +
+            "FROM HoaDon hd " +
+            "JOIN ChiTietHoaDon ct ON ct.hoaDonId = hd.id " +
+            "JOIN SanPham sp ON ct.sanPhamId = sp.id " +
+            "LEFT JOIN (" +
+            "    SELECT pbl.hoaDonId, pbl.sanPhamId, pbl.donViDoLuongId, SUM(pbl.soLuong * lh.gia) as giaVon " +
+            "    FROM PhanBoLoHang pbl " +
+            "    JOIN LoHang lh ON lh.id = pbl.loHangId " +
+            "    GROUP BY pbl.hoaDonId, pbl.sanPhamId, pbl.donViDoLuongId" +
+            ") pbl_cost ON pbl_cost.hoaDonId = ct.hoaDonId AND pbl_cost.sanPhamId = ct.sanPhamId AND pbl_cost.donViDoLuongId = ct.donViDoLuongId " +
+            "WHERE hd.loaiHD IN ('TRA_HANG', 'DOI_HANG') AND hd.ghiChu LIKE N'%Hoàn thành%' " +
+            "AND (hd.loaiHD = 'TRA_HANG' OR ct.soLuong < 0)"
+        );
+        
+        List<Object> params = new ArrayList<>();
+        applyFilter(filter, sql, params, "hd.ngayLapHD", "hd.nhanVienId");
+
+        try (PreparedStatement ps = getConn().prepareStatement(sql.toString())) {
+            for (int i = 0; i < params.size(); i++) ps.setObject(i + 1, params.get(i));
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                kq[0] = rs.getDouble("tienHoanCoVAT");
+                kq[1] = rs.getDouble("tienHoanChuaVAT");
+                kq[2] = rs.getDouble("giaVonHoan");
+            }
+        } catch (Exception e) { e.printStackTrace(); }
+        return kq;
+    }
+    
+    public double getTienHoanTraTheoCa(String maNV, LocalDateTime start) {
+        double tongHoanTra = 0;
+        String sql = "SELECT id, loaiHD, ghiChu FROM HoaDon "
+                + "WHERE nhanVienId = ? AND ngayLapHD >= ? AND loaiHD IN ('TRA_HANG','DOI_HANG') "
+                + "AND ghiChu LIKE N'%Hoàn thành%'";
+        try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, maNV);
+            ps.setTimestamp(2, Timestamp.valueOf(start));
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                String loai = rs.getString("loaiHD");
+                String ghiChu = rs.getString("ghiChu");
+                if (ghiChu != null && ghiChu.contains("|")) {
+                    String[] parts = ghiChu.split("\\|");
+                    if ("TRA_HANG".equals(loai) && parts.length >= 3) {
+                        String s = parts[2].trim().replaceAll("[^0-9]", "");
+                        if (!s.isEmpty()) tongHoanTra += Double.parseDouble(s);
+                    } else if ("DOI_HANG".equals(loai) && parts.length >= 4) {
+                        String chenhLech = parts[3].trim();
+                        if (chenhLech.contains("Hoàn")) {
+                            String s = chenhLech.replaceAll("[^0-9]", "");
+                            if (!s.isEmpty()) tongHoanTra += Double.parseDouble(s);
+                        }
+                    }
+                }
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return tongHoanTra;
+    }
+    
+    public double[] getThongKeTraHangNV(String nvId, int year, BUS.BUS_ThongKe.ThongKeFilter filter) {
+        double[] res = {0, 0};
+        StringBuilder sql = new StringBuilder(
+            "SELECT COUNT(DISTINCT hd.id) as soHD, " +
+            "SUM(ROUND(ABS(ct.thanhTien) / (1 + ISNULL(sp.thueVAT, 0)/100.0), 0)) as tienHoan " +
+            "FROM HoaDon hd " +
+            "JOIN ChiTietHoaDon ct ON ct.hoaDonId = hd.id " +
+            "JOIN SanPham sp ON ct.sanPhamId = sp.id " +
+            "WHERE hd.nhanVienId = ? AND YEAR(hd.ngayLapHD) = ? " +
+            "AND hd.loaiHD IN ('TRA_HANG', 'DOI_HANG') AND hd.ghiChu LIKE N'%Hoàn thành%' " +
+            "AND (hd.loaiHD = 'TRA_HANG' OR ct.soLuong < 0)"
+        );
+        List<Object> params = new ArrayList<>();
+        params.add(nvId); params.add(year);
+        applyFilter(filter, sql, params, "hd.ngayLapHD", "hd.nhanVienId");
+        
+        try (PreparedStatement ps = getConn().prepareStatement(sql.toString())) {
+            for (int i=0; i<params.size(); i++) ps.setObject(i+1, params.get(i));
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                res[0] = rs.getInt("soHD");
+                res[1] = rs.getDouble("tienHoan");
+            }
+        } catch (Exception e) { e.printStackTrace(); }
+        return res;
     }
 }
