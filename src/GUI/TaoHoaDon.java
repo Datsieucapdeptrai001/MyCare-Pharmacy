@@ -328,6 +328,21 @@ public class TaoHoaDon extends JDialog {
         
         java.util.Map<String, Entity.ChiTietHoaDon> mapFinal = new java.util.HashMap<>();
 
+        // Lấy kmRatioGlobal từ BUS — không đọc từ cột giao diện
+        java.util.List<long[]> dsSPTmp = new java.util.ArrayList<>();
+        for (int i = 0; i < productModel.getRowCount(); i++) {
+            try {
+                String ten = productModel.getValueAt(i, 0).toString();
+                if (ten.startsWith("[QUÀ TẶNG]")) continue;
+                int sl = Integer.parseInt(productModel.getValueAt(i, 3).toString().trim());
+                long dg = Long.parseLong(productModel.getValueAt(i, 4).toString().replaceAll("[^0-9]", ""));
+                long vat = Long.parseLong(productModel.getValueAt(i, 8).toString().replace("%","").trim());
+                dsSPTmp.add(new long[]{sl, dg, vat});
+            } catch (Exception ignored) {}
+        }
+        BUS.BUS_HoaDon.KetQuaHoaDon kqSave = busHD.tinhToanTienHoaDon(dsSPTmp, false, 0, this.tienGiamGia);
+        double kmRatioGlobal = kqSave.kmRatioGlobal;
+
         for (int i = 0; i < productModel.getRowCount(); i++) {
             String tenRow = productModel.getValueAt(i, 0).toString().trim();
             boolean isGift = tenRow.startsWith("[QUÀ TẶNG]");
@@ -346,17 +361,49 @@ public class TaoHoaDon extends JDialog {
 
             if (isGift) {
                 strGifts.append(" | TANG:").append(tenSP).append(";").append(soLuongMua).append(";").append(tenDVT);
+                continue; // [FIX Bug 1]: Quà tặng chỉ ghi vào ghiChu, không lưu vào ChiTietHoaDon
             }
 
             if (mapFinal.containsKey(key)) {
                 Entity.ChiTietHoaDon existing = mapFinal.get(key);
                 existing.setSoLuong(existing.getSoLuong() + soLuongMua);
+                // Cập nhật lại thanhTien khi gộp số lượng
+                long donGiaEx = 0;
+                double vatRateEx = 0;
+                try {
+                    donGiaEx = Long.parseLong(productModel.getValueAt(i, 4).toString().replaceAll("[^0-9]", ""));
+                    Object vatValEx = productModel.getColumnCount() >= 9 ? productModel.getValueAt(i, 8) : null;
+                    if (vatValEx != null && !vatValEx.toString().trim().isEmpty())
+                        vatRateEx = Double.parseDouble(vatValEx.toString().replace("%", "").trim());
+                } catch (Exception ex2) {}
+                double donGiaSauKMEx = donGiaEx * (1.0 - kmRatioGlobal);
+                long thanhTienEx = Math.round(existing.getSoLuong() * donGiaSauKMEx * (1.0 + vatRateEx / 100.0));
+                existing.setDonGiaThucTe(donGiaSauKMEx);
+                existing.setThanhTien(thanhTienEx);
             } else {
                 Entity.ChiTietHoaDon ct = new Entity.ChiTietHoaDon();
                 ct.setHoaDonId(hd);
                 Entity.SanPham sp = new Entity.SanPham(); sp.setId(maSP); ct.setSanPhamId(sp);
                 Entity.DonViDoLuong dv = new Entity.DonViDoLuong(); dv.setId(maDVT); ct.setDonViDoLuongId(dv);
                 ct.setSoLuong(soLuongMua);
+
+                // === LỖI 2 FIX: Set donGiaThucTe và thanhTien ===
+                long donGia = 0;
+                double vatRate = 0;
+                try {
+                    donGia   = Long.parseLong(productModel.getValueAt(i, 4).toString().replaceAll("[^0-9]", ""));
+                    // Lấy VAT% từ cột ẩn (cột 8)
+                    Object vatVal = productModel.getColumnCount() >= 9 ? productModel.getValueAt(i, 8) : null;
+                    if (vatVal != null && !vatVal.toString().trim().isEmpty()) {
+                        vatRate = Double.parseDouble(vatVal.toString().replace("%", "").trim());
+                    }
+                } catch (Exception exCalc) {}
+                double donGiaSauKM = donGia * (1.0 - kmRatioGlobal);
+                long thanhTienRow  = Math.round(soLuongMua * donGiaSauKM * (1.0 + vatRate / 100.0));
+                ct.setDonGiaThucTe(donGiaSauKM);
+                ct.setThanhTien(thanhTienRow);
+                // ================================================
+
                 mapFinal.put(key, ct);
             }
         }
@@ -1010,9 +1057,16 @@ public class TaoHoaDon extends JDialog {
                 // Bỏ qua hàng Quà tặng khi tính tiền
                 if (tenSp.startsWith("[QUÀ TẶNG]")) continue;
 
-                int sl = Integer.parseInt(getSafeValue(productModel, i, 2).toString().trim());
-                long donGia = Long.parseLong(getSafeValue(productModel, i, 3).toString().replaceAll("\\D+", ""));
-                long vatPercent = Long.parseLong(getSafeValue(productModel, i, 4).toString().replace("%", "").replaceAll("\\s+", ""));
+                int sl = Integer.parseInt(getSafeValue(productModel, i, 3).toString().trim());
+                long donGia = Long.parseLong(getSafeValue(productModel, i, 4).toString().replaceAll("\\D+", ""));
+                // Đọc VAT% từ cột ẩn (cột 8), không còn đọc từ cột 5 (nay là KM%)
+                long vatPercent = 0;
+                try {
+                    Object vatVal = getSafeValue(productModel, i, 8);
+                    if (vatVal != null && !vatVal.toString().trim().isEmpty()) {
+                        vatPercent = Long.parseLong(vatVal.toString().replace("%", "").replaceAll("\\s+", ""));
+                    }
+                } catch (Exception ex) {}
                 
                 danhSachSP.add(new long[]{sl, donGia, vatPercent});
             } catch (Exception ex) {}
@@ -1030,6 +1084,14 @@ public class TaoHoaDon extends JDialog {
         
         // Khuyến mãi vẫn tạm để đây do liên quan giao diện
         tuDongApDungKhuyenMai(); 
+
+        // [FIX LỖI 3]: Tính lại kq sau khi tuDongApDungKhuyenMai() đã cập nhật tienGiamGia,
+        // tránh hiển thị kết quả cũ (trước khuyến mãi) lên UI
+        kq = busHD.tinhToanTienHoaDon(danhSachSP, isDungDiem, diemHienTaiKH, tienGiamGia);
+        this.tamTinh        = kq.tamTinh;
+        this.vat            = kq.tongVat;
+        this.tienGiamTuDiem = kq.tienGiamTuDiem;
+        this.tongHoaDon     = kq.tongThanhToan;
 
         // 2. GUI nhận kết quả từ BUS và Đổ lên màn hình (Chỉ setText)
         if (lblTotalItems != null) lblTotalItems.setText(String.format("Tổng sản phẩm: %d", kq.tongSoLuongSP));
@@ -1889,7 +1951,7 @@ public class TaoHoaDon extends JDialog {
 
         pnl.add(pnlSearchWrapper, BorderLayout.NORTH);
 
-        String[] cols = {"Sản phẩm", "ĐVT", "Lô / HSD", "SL", "Đơn giá", "VAT%", "Thành tiền", ""};
+        String[] cols = {"Sản phẩm", "ĐVT", "Lô / HSD", "SL", "Đơn giá", "KM%", "Thành tiền", "", "_VAT"};
         productModel = new DefaultTableModel(cols, 0) {
             @Override
             public boolean isCellEditable(int r, int c) {
@@ -1992,16 +2054,15 @@ public class TaoHoaDon extends JDialog {
                             long donGia = 0;
                             try { donGia = Long.parseLong(giaStr); } catch (Exception ex) {}
 
-                            // --- SỬA: LẤY VÀ TÍNH VAT từ Cột 5 ---
-                            double vatPercent = 0;
+                            // --- SỬA: LẤY KM% từ Cột 5 (cột này giờ là KM%, không còn là VAT%) ---
+                            double kmPercent = 0;
                             try {
-                                String vatStr = productModel.getValueAt(row, 5).toString().replace("%", "").trim();
-                                vatPercent = Double.parseDouble(vatStr) / 100.0;
+                                String kmStr = productModel.getValueAt(row, 5).toString().replace("%", "").trim();
+                                kmPercent = Double.parseDouble(kmStr) / 100.0;
                             } catch (Exception ex) {}
 
-                            // --- SỬA: Tính lại Thành tiền và ghi vào Cột 6 ---
-                            long tienHang = sl * donGia;
-                            long thanhTien = tienHang + (long)(tienHang * vatPercent);
+                            // --- SỬA: Thành tiền = sau KM, chưa VAT (VAT tính ở tổng hóa đơn) ---
+                            long thanhTien = Math.round(sl * donGia * (1.0 - kmPercent));
                             productModel.setValueAt(String.format("%,d", thanhTien).replace(',', '.') + "đ", row, 6);
                             
                             recalculateTotals(); 
@@ -2101,9 +2162,14 @@ public class TaoHoaDon extends JDialog {
         tbl.getColumnModel().getColumn(2).setPreferredWidth(195); // Lô / HSD (Tăng từ 120 lên 195 để hiện đủ ngày)
         tbl.getColumnModel().getColumn(3).setPreferredWidth(50);  // SL
         tbl.getColumnModel().getColumn(4).setPreferredWidth(90);  // Đơn giá
-        tbl.getColumnModel().getColumn(5).setPreferredWidth(45);  // VAT
+        tbl.getColumnModel().getColumn(5).setPreferredWidth(45);  // KM%
         tbl.getColumnModel().getColumn(6).setPreferredWidth(95);  // Thành tiền
         tbl.getColumnModel().getColumn(7).setPreferredWidth(40);  // Thùng rác
+        // Cột 8 (_VAT) là cột ẩn – lưu VAT% gốc để dùng khi lưu DB
+        tbl.getColumnModel().getColumn(8).setMinWidth(0);
+        tbl.getColumnModel().getColumn(8).setMaxWidth(0);
+        tbl.getColumnModel().getColumn(8).setWidth(0);
+        tbl.getColumnModel().getColumn(8).setResizable(false);
         tbl.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
 
         // --- BỔ SUNG RENDERER TẠO THẺ BO GÓC XANH CHO CỘT LÔ/HSD ---
@@ -2673,36 +2739,30 @@ public class TaoHoaDon extends JDialog {
             // SỬA: Set Số lượng vào cột 3
             productModel.setValueAt(String.valueOf(currentQty), rowIndex, 3);
             
-            // TÍNH LẠI THÀNH TIỀN CÓ VAT
-            double vat = 0;
+            // TÍNH LẠI THÀNH TIỀN: (sl * donGia * (1 - KM%)), KM% lấy từ cột 5
+            double kmV = 0;
             try {
-                // SỬA: Lấy VAT từ cột 5 (Index cũ là 4)
-                String vatStr = productModel.getValueAt(rowIndex, 5).toString().replace("%", "").trim();
-                vat = Double.parseDouble(vatStr) / 100.0;
+                // SỬA: Lấy KM% từ cột 5 (không còn là VAT%)
+                String kmStr = productModel.getValueAt(rowIndex, 5).toString().replace("%", "").trim();
+                kmV = Double.parseDouble(kmStr) / 100.0;
             } catch (Exception ex) {}
             
-            long tienHang = giaBan * currentQty;
-            long thanhTien = tienHang + (long)(tienHang * vat);
+            long thanhTien = Math.round(giaBan * currentQty * (1.0 - kmV));
             
             // SỬA: Set Thành tiền vào cột 6 (Index cũ là 5)
             productModel.setValueAt(String.format("%,d", thanhTien).replace(',', '.') + "đ", rowIndex, 6);
         } else {
-            // TÍNH THÀNH TIỀN CÓ VAT CHO SẢN PHẨM MỚI
-            double vatValue = 0;
-            try {
-                String vatStr = thueVat.replace("%", "").trim();
-                vatValue = Double.parseDouble(vatStr) / 100.0;
-            } catch (Exception ex) {}
-            
-            long thanhTien = giaBan + (long)(giaBan * vatValue);
+            // TÍNH THÀNH TIỀN CHO SẢN PHẨM MỚI: sl=1, KM=0% → thành tiền = đơn giá
+            long thanhTien = giaBan; // KM% = 0% mặc định khi thêm mới
             
             // --- FIX: SỬA TÊN BIẾN VÀ BỔ SUNG BIẾN FORMAT ---
             String thanhTienFormatted = String.format("%,d", thanhTien).replace(',', '.') + "đ"; 
             String giaFormatted = String.format("%,d", giaBan).replace(',', '.') + "đ";
 
-            // Nhét thông tin Lô được chọn vào vị trí Cột 2, và để trống Cột Thùng rác
+            // Nhét thông tin Lô được chọn vào vị trí Cột 2
+            // Cột 5 = KM% = "0%" (mặc định), Cột 8 = VAT% ẩn (lưu DB)
             productModel.addRow(new Object[]{
-                    name, unit, loHsdText, "1", giaFormatted, thueVat, thanhTienFormatted, "" 
+                    name, unit, loHsdText, "1", giaFormatted, "0%", thanhTienFormatted, "", thueVat 
                 });
         } // --- FIX: BỔ SUNG DẤU ĐÓNG NGOẶC BỊ THIẾU ---
             
@@ -2796,14 +2856,15 @@ public class TaoHoaDon extends JDialog {
         lblSubtotalValue = createWhiteLabel("0đ", SwingConstants.RIGHT);
         pnlFinal.add(lblSubtotalValue);
         
-        pnlFinal.add(createWhiteLabel("VAT:")); 
-        lblVatValue = createWhiteLabel("+0đ", SwingConstants.RIGHT);
-        pnlFinal.add(lblVatValue);
-        
+        // LỖI 3 FIX: Đặt Giảm khuyến mãi TRƯỚC VAT
         pnlFinal.add(createWhiteLabel("Giảm khuyến mãi:")); 
         lblDiscountValue = createWhiteLabel("-0đ", SwingConstants.RIGHT);
         lblDiscountValue.setForeground(Color.decode("#FCA5A5")); 
         pnlFinal.add(lblDiscountValue);
+        
+        pnlFinal.add(createWhiteLabel("VAT:")); 
+        lblVatValue = createWhiteLabel("+0đ", SwingConstants.RIGHT);
+        pnlFinal.add(lblVatValue);
         
         pnlFinal.add(createWhiteLabel("Dùng điểm:")); 
         lblDungDiemValue = createWhiteLabel("-0đ", SwingConstants.RIGHT);
@@ -3653,11 +3714,11 @@ public class TaoHoaDon extends JDialog {
                         long donGia = 0;
                         try { donGia = Long.parseLong(productModel.getValueAt(rowIndex, 4).toString().replaceAll("[^0-9]", "")); } catch(Exception ex){}
                         
-                        double vatValue = 0;
-                        try { vatValue = Double.parseDouble(productModel.getValueAt(rowIndex, 5).toString().replace("%", "").trim()) / 100.0; } catch (Exception ex) {}
+                        // SỬA: Đọc KM% từ cột 5, không còn là VAT%
+                        double kmValue = 0;
+                        try { kmValue = Double.parseDouble(productModel.getValueAt(rowIndex, 5).toString().replace("%", "").trim()) / 100.0; } catch (Exception ex) {}
                         
-                        long tienHang = donGia * currentQty;
-                        long thanhTien = tienHang + (long)(tienHang * vatValue);
+                        long thanhTien = Math.round(donGia * currentQty * (1.0 - kmValue));
                         productModel.setValueAt(String.format("%,d", thanhTien).replace(',', '.') + "đ", rowIndex, 6);
                     } else {
                         long donGiaChuan = Long.parseLong(price);
@@ -3676,13 +3737,12 @@ public class TaoHoaDon extends JDialog {
 
                         String giaFormatted = String.format("%,d", donGiaChuan).replace(',', '.') + "đ";
 
-                        double vatValue = 0;
-                        try { vatValue = Double.parseDouble(vat.replace("%", "").trim()) / 100.0; } catch (Exception ex) {}
-                        long thanhTienCoVat = donGiaChuan + (long)(donGiaChuan * vatValue);
-                        String thanhTienFormatted = String.format("%,d", thanhTienCoVat).replace(',', '.') + "đ";
+                        // SỬA: Thành tiền mới = đơn giá * 1 * (1 - 0%) = đơn giá (KM=0% mặc định)
+                        // VAT% (tham số vat) được lưu vào cột ẩn (cột 8), không hiển thị
+                        String thanhTienFormatted = giaFormatted;
 
                         productModel.addRow(new Object[]{
-                                name, unit, finalLoHsdText, "1", giaFormatted, vat, thanhTienFormatted, "" 
+                                name, unit, finalLoHsdText, "1", giaFormatted, "0%", thanhTienFormatted, "", vat 
                             });
                     }
                     lblCount.setText("[" + currentQty + "]"); 
@@ -3695,10 +3755,10 @@ public class TaoHoaDon extends JDialog {
                             productModel.setValueAt(String.valueOf(currentQty), rowIndex, 3);
                             long donGia = 0;
                             try { donGia = Long.parseLong(productModel.getValueAt(rowIndex, 4).toString().replaceAll("[^0-9]", "")); } catch(Exception ex){}
-                            double vatValue = 0;
-                            try { vatValue = Double.parseDouble(productModel.getValueAt(rowIndex, 5).toString().replace("%", "").trim()) / 100.0; } catch (Exception ex) {}
-                            long tienHang = donGia * currentQty;
-                            long thanhTien = tienHang + (long)(tienHang * vatValue);
+                            // SỬA: Đọc KM% từ cột 5
+                            double kmValue = 0;
+                            try { kmValue = Double.parseDouble(productModel.getValueAt(rowIndex, 5).toString().replace("%", "").trim()) / 100.0; } catch (Exception ex) {}
+                            long thanhTien = Math.round(donGia * currentQty * (1.0 - kmValue));
                             productModel.setValueAt(String.format("%,d", thanhTien).replace(',', '.') + "đ", rowIndex, 6);
                             lblCount.setText("[" + currentQty + "]"); 
                         } else {
@@ -4129,14 +4189,14 @@ public class TaoHoaDon extends JDialog {
                                 unitToGive, 
                                 "", // Cột Lô/HSD
                                 String.valueOf(soLuongTangThucTe), 
-                                "0đ", "0%", "0đ", "Hàng tặng"
+                                "0đ", "0%", "0đ", "Hàng tặng", "0%"
                             });
                         }
                     }
                 } else {
                     long tienGiamTamTinh = 0;
                     if (loaiKM.contains("PHAN_TRAM") || loaiKM.contains("%")) {
-                        tienGiamTamTinh = (long) (tongTienBill * (giaTriGiam / 100.0));
+                        tienGiamTamTinh = (long) (this.tamTinh * (giaTriGiam / 100.0)); // [FIX]: Giảm giá áp lên giá CHƯA VAT (theo luật thuế VN)
                     } else tienGiamTamTinh = (long) giaTriGiam;
 
                     if (tienGiamTamTinh > maxTienGiam) {
@@ -4176,7 +4236,42 @@ public class TaoHoaDon extends JDialog {
         // [FIX]: Lấy số lượng từ cột 3
         for (Object[] q : danhSachQuaTang) totalSp += Integer.parseInt(q[3].toString());
         if (lblTotalItems != null) lblTotalItems.setText(String.format("Tổng sản phẩm: %d", totalSp));
-        
+
+        // Lấy kmRatio từ BUS (không tự tính trong GUI)
+        BUS.BUS_HoaDon busHDTmp = new BUS.BUS_HoaDon();
+        java.util.List<long[]> dsTmp = new java.util.ArrayList<>();
+        for (int i = 0; i < productModel.getRowCount(); i++) {
+            try {
+                String ten = productModel.getValueAt(i, 0).toString();
+                if (ten.startsWith("[QUÀ TẶNG]")) continue;
+                int sl = Integer.parseInt(productModel.getValueAt(i, 3).toString().trim());
+                long dg = Long.parseLong(productModel.getValueAt(i, 4).toString().replaceAll("[^0-9]", ""));
+                long vat = Long.parseLong(productModel.getValueAt(i, 8).toString().replace("%","").trim());
+                dsTmp.add(new long[]{sl, dg, vat});
+            } catch (Exception ignored) {}
+        }
+        BUS.BUS_HoaDon.KetQuaHoaDon kqTmp = busHDTmp.tinhToanTienHoaDon(dsTmp, false, 0, this.tienGiamGia);
+        double kmRatioDisplay = kqTmp.kmRatioGlobal;
+        String kmPercentStr = (kmRatioDisplay > 0)
+            ? String.format("%.0f%%", kmRatioDisplay * 100.0)
+            : "0%";
+
+        isTableUpdating = true;
+        try {
+            for (int i = 0; i < productModel.getRowCount(); i++) {
+                String ten = productModel.getValueAt(i, 0).toString();
+                if (ten.startsWith("[QUÀ TẶNG]")) continue;
+                productModel.setValueAt(kmPercentStr, i, 5); // Cập nhật KM%
+                // Thành tiền hiển thị = SL × donGia × (1 - KM%) — chưa VAT
+                int sl = Integer.parseInt(productModel.getValueAt(i, 3).toString().trim());
+                long dg = Long.parseLong(productModel.getValueAt(i, 4).toString().replaceAll("[^0-9]", ""));
+                long thanhTienDisplay = Math.round(sl * dg * (1.0 - kmRatioDisplay));
+                productModel.setValueAt(String.format("%,d", thanhTienDisplay).replace(',', '.') + "đ", i, 6);
+            }
+        } finally {
+            isTableUpdating = false;
+        }
+
         updateVoucherTagsUI(); 
     }
 
@@ -4191,6 +4286,19 @@ public class TaoHoaDon extends JDialog {
             BorderFactory.createLineBorder(Color.decode("#DFE3E8"), 1),
             new javax.swing.border.EmptyBorder(0, 10, 0, 10)
         ));
+        isTableUpdating = true;
+        try {
+            for (int i = 0; i < productModel.getRowCount(); i++) {
+                String ten = productModel.getValueAt(i, 0).toString();
+                if (ten.startsWith("[QUÀ TẶNG]")) continue;
+                productModel.setValueAt("0%", i, 5);
+                int sl = Integer.parseInt(productModel.getValueAt(i, 3).toString().trim());
+                long dg = Long.parseLong(productModel.getValueAt(i, 4).toString().replaceAll("[^0-9]", ""));
+                productModel.setValueAt(String.format("%,d", sl * dg).replace(',', '.') + "đ", i, 6);
+            }
+        } finally {
+            isTableUpdating = false;
+        }
     }
     private void styleButton(JButton btn, Color color) {
         btn.setBackground(color);

@@ -434,23 +434,22 @@ public class BUS_ThongKe {
     public double[] getDTTheoGioTrongNgay(String dateYMD, ThongKeFilter filter) {
         if (dateYMD == null || dateYMD.isEmpty()) return new double[24];
         double[] data = new double[24];
-        
+
+        // row[1] = tienThucThu (có VAT, sau KM)
         List<Object[]> rawList = dao.getRawHDGioTrongNgay(dateYMD, filter);
         for (Object[] row : rawList) {
             int h = (Integer) row[0];
-            if (h >= 0 && h < 24) {
+            if (h >= 0 && h < 24)
                 data[h] += (Double) row[1] / 1_000_000.0;
-            }
         }
 
-        // Trừ đi tiền khách trả hàng
+        // Trừ tiền hoàn trả — dùng coVAT để nhất quán với sales
         List<Object[]> doiTraList = dao.getRawHDDoiTraGio("CAST(hd.ngayLapHD AS DATE)='" + dateYMD + "'", filter);
         for (Object[] row : doiTraList) {
             int h = (Integer) row[2];
-            double chuaVATRefund = (row.length >= 4 && row[3] instanceof Double) ? (Double) row[3] : 0;
-            if (h >= 0 && h < 24 && chuaVATRefund > 0) {
-                data[h] -= chuaVATRefund / 1_000_000.0;
-            }
+            double coVATRefund = (row.length >= 4 && row[3] instanceof Double) ? (Double) row[3] : 0;
+            if (h >= 0 && h < 24 && coVATRefund > 0)
+                data[h] -= coVATRefund / 1_000_000.0;
         }
         return data;
     }

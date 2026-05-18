@@ -76,40 +76,25 @@ public class DAO_ThongKe {
         return soLuong;
     }
 
-    /**
-     * Doanh thu thuần cho khoảng thời gian — dùng bởi legacy BUS methods.
-     *
-     * Công thức đúng: Doanh thu = (thực thu sau KM) / 1.1
-     * - Bước 1: Query từng HĐ lấy tongGocCoVAT (giá gốc có VAT) và ghiChu.
-     * - Bước 2: Với mỗi HĐ, parse ghiChu để tính tiền giảm KM (giống
-     * BUS.tinhTienThucTe).
-     * - Bước 3: thucTe = max(0, tongGocCoVAT - tongTienGiam) → doanhThu += thucTe /
-     * 1.1
-     *
-     * Trước đây sai vì: SUM(thanhTien) / 1.1 — bỏ qua KM ghi trong ghiChu.
-     */
     public double tinhDoanhThu(LocalDateTime tuNgay, LocalDateTime denNgay) {
         double doanhThu = 0;
-        // Lấy từng HĐ: tongGocCoVAT và ghiChu để BUS-level logic có thể tính KM
-        String sql = "SELECT SUM(ct.soLuong * dvl.gia * (1 + ISNULL(sp.thueVAT, 0)/100.0)) AS tongGocCoVAT, hd.ghiChu "
+        // ct.thanhTien đã bao gồm KM baked-in → chỉ cần bóc VAT đúng từng sản phẩm
+        String sql = "SELECT hd.ghiChu, "
+                + "SUM(ROUND(ABS(ct.thanhTien) / (1 + ISNULL(sp.thueVAT, 0)/100.0), 0)) AS doanhThuThuan "
                 + "FROM HoaDon hd "
                 + "JOIN ChiTietHoaDon ct ON hd.id = ct.hoaDonId "
-                + "JOIN DonViDoLuong dvl ON ct.donViDoLuongId = dvl.id AND ct.sanPhamId = dvl.sanPhamId "
                 + "JOIN SanPham sp ON ct.sanPhamId = sp.id "
                 + "WHERE hd.ngayLapHD BETWEEN ? AND ? AND hd.loaiHD = 'BAN_HANG' "
                 + "GROUP BY hd.id, hd.ghiChu";
-        try (Connection con = getConn();
-                PreparedStatement pst = con.prepareStatement(sql)) {
+        try (PreparedStatement pst = getConn().prepareStatement(sql)) {
             pst.setTimestamp(1, Timestamp.valueOf(tuNgay));
             pst.setTimestamp(2, Timestamp.valueOf(denNgay));
             try (ResultSet rs = pst.executeQuery()) {
                 while (rs.next()) {
-                    double tongGocCoVAT = rs.getDouble("tongGocCoVAT");
-                    String ghiChu = rs.getString("ghiChu");
-                    // Tính tiền giảm KM từ ghiChu (mirror BUS.tinhTienThucTe)
-                    double tongTienGiam = tinhTongTienGiamInline(con, tongGocCoVAT, ghiChu);
-                    double thucTe = Math.max(0, tongGocCoVAT - tongTienGiam);
-                    doanhThu += thucTe / 1.1;
+                    double dtThuan = rs.getDouble("doanhThuThuan");
+                    // Chỉ trừ điểm thưởng — KM% đã baked vào ct.thanhTien, KHÔNG trừ lại
+                    double tienDiemTru = tinhTienDiemTruInline(rs.getString("ghiChu"));
+                    doanhThu += Math.max(0, dtThuan - tienDiemTru);
                 }
             }
         } catch (SQLException e) {
@@ -118,52 +103,19 @@ public class DAO_ThongKe {
         return doanhThu;
     }
 
-    /**
-     * Tính tổng tiền giảm từ chuỗi ghiChu của 1 hóa đơn.
-     *
-     * Đây là bản sao logic của BUS_ThongKe.tinhTienThucTe() dùng riêng cho
-     * tinhDoanhThu() (legacy method trong DAO, không thể gọi sang BUS để tránh
-     * circular dependency). Hai phương thức PHẢI được giữ đồng bộ với nhau.
-     *
-     * @param con          Connection đang dùng (tránh mở connection mới)
-     * @param tongGocCoVAT Tổng giá gốc có VAT (để tính % KM)
-     * @param ghiChu       Chuỗi ghi chú hóa đơn (phân cách bởi |)
-     * @return Tổng tiền giảm (>= 0)
-     */
-    private double tinhTongTienGiamInline(Connection con, double tongGocCoVAT, String ghiChu) {
-        double tongTienGiam = 0;
-        if (ghiChu == null || ghiChu.isEmpty())
-            return 0;
+    private double tinhTienDiemTruInline(String ghiChu) {
+        double tienDiemTru = 0;
+        if (ghiChu == null || ghiChu.isEmpty()) return 0;
         String[] parts = ghiChu.split("\\|");
         for (String p : parts) {
             p = p.trim();
             if (p.startsWith("Dùng điểm: -") || p.contains("KM_GIAM:")) {
                 try {
-                    tongTienGiam += Long.parseLong(p.replaceAll("[^0-9]", ""));
-                } catch (Exception ignored) {
-                }
-            } else if (p.startsWith("KM:")) {
-                String[] mks = p.substring(3).trim().split(",");
-                for (String mk : mks) {
-                    String sqlKM = "SELECT loaiHinhThuc, giaTri FROM HinhThucKhuyenMai WHERE khuyenMaiId = ?";
-                    try (PreparedStatement ps = con.prepareStatement(sqlKM)) {
-                        ps.setString(1, mk.trim());
-                        try (ResultSet rsKM = ps.executeQuery()) {
-                            if (rsKM.next()) {
-                                String loai = rsKM.getString("loaiHinhThuc");
-                                double val = rsKM.getDouble("giaTri");
-                                if (loai.contains("PHAN_TRAM") || loai.contains("%"))
-                                    tongTienGiam += tongGocCoVAT * (val / 100.0);
-                                else if (loai.contains("TIEN_MAT"))
-                                    tongTienGiam += val;
-                            }
-                        }
-                    } catch (Exception ignored) {
-                    }
-                }
+                    tienDiemTru += Long.parseLong(p.replaceAll("[^0-9]", ""));
+                } catch (Exception ignored) {}
             }
         }
-        return tongTienGiam;
+        return tienDiemTru;
     }
 
     public double tinhLoiNhuan(LocalDateTime tuNgay, LocalDateTime denNgay) {
@@ -332,6 +284,7 @@ public class DAO_ThongKe {
                 + "FROM HoaDon hd "
                 + "JOIN ChiTietHoaDon ct ON hd.id = ct.hoaDonId "
                 + "JOIN DonViDoLuong dvl ON ct.donViDoLuongId = dvl.id AND ct.sanPhamId = dvl.sanPhamId "
+                + "JOIN SanPham sp ON ct.sanPhamId = sp.id "
                 + "WHERE YEAR(hd.ngayLapHD) = ? AND hd.loaiHD = 'BAN_HANG'");
         List<Object> params = new ArrayList<>();
         params.add(year);
@@ -399,34 +352,24 @@ public class DAO_ThongKe {
         return result;
     }
 
-    // =====================================================================
-    // RAW DATA — NHÓM DOANH THU THEO GIỜ TRONG NGÀY
-    // Trả về: List<Object[]> = { hour(int), tongGocCoVAT(double), ghiChu(String) }
-    // =====================================================================
-
-    /**
-     * Raw HĐ bán hàng theo giờ trong 1 ngày cụ thể.
-     *
-     * @param dateYMD định dạng yyyy-MM-dd
-     * @param condNV  điều kiện NV + ca (có thể rỗng)
-     */
     public List<Object[]> getRawHDGioTrongNgay(String dateYMD, BUS.BUS_ThongKe.ThongKeFilter filter) {
         List<Object[]> result = new ArrayList<>();
         StringBuilder sql = new StringBuilder("SELECT DATEPART(HOUR, hd.ngayLapHD) AS h, "
-                + "SUM(ROUND(ABS(ct.thanhTien) / (1 + ISNULL(sp.thueVAT, 0)/100.0), 0)) AS doanhThuThuan "
+                // SUM(ABS(ct.thanhTien)) = tiền thực thu có VAT, sau KM baked-in
+                + "SUM(ABS(ct.thanhTien)) AS tienThucThu "
                 + "FROM HoaDon hd "
                 + "JOIN ChiTietHoaDon ct ON hd.id = ct.hoaDonId "
-                + "JOIN DonViDoLuong dvl ON ct.donViDoLuongId = dvl.id AND ct.sanPhamId = dvl.sanPhamId "
                 + "WHERE hd.loaiHD = 'BAN_HANG' AND CAST(hd.ngayLapHD AS DATE) = ? ");
         List<Object> params = new ArrayList<>();
         params.add(dateYMD);
         applyFilter(filter, sql, params, "hd.ngayLapHD", "hd.nhanVienId");
         sql.append(" GROUP BY DATEPART(HOUR, hd.ngayLapHD)");
-        
+
         try (PreparedStatement ps = getConn().prepareStatement(sql.toString())) {
             for (int i = 0; i < params.size(); i++) ps.setObject(i + 1, params.get(i));
             ResultSet rs = ps.executeQuery();
-            while (rs.next()) result.add(new Object[] { rs.getInt("h"), rs.getDouble("doanhThuThuan") });
+            while (rs.next())
+                result.add(new Object[]{rs.getInt("h"), rs.getDouble("tienThucThu")});
         } catch (Exception e) { e.printStackTrace(); }
         return result;
     }
@@ -539,7 +482,7 @@ public class DAO_ThongKe {
         String gioCol = includeGio ? ", FORMAT(hd.ngayLapHD, 'HH:mm') AS gio" : "";
         
         StringBuilder sql = new StringBuilder("SELECT " + topStr + "hd.id, ISNULL(kh.hoVaTen, N'Khách lẻ') AS kh, "
-                + "ISNULL(SUM(ct.soLuong * dvl.gia * (1 + ISNULL(sp.thueVAT, 0)/100.0)), 0) AS tongGocCoVAT, "
+                + "ISNULL(SUM(ABS(ct.thanhTien)), 0) AS tongGocCoVAT, "
                 + "hd.ghiChu, hd.phuongThucThanhToan AS pttt " + gioCol + ", hd.loaiHD " 
                 + "FROM HoaDon hd "
                 + "LEFT JOIN KhachHang kh ON hd.khachHangId = kh.id "
@@ -570,7 +513,7 @@ public class DAO_ThongKe {
     public List<Object[]> getRawHDDoiTraGio(String dateCondition, BUS.BUS_ThongKe.ThongKeFilter filter) {
         List<Object[]> result = new ArrayList<>();
         StringBuilder sql = new StringBuilder("SELECT hd.loaiHD, hd.ghiChu, DATEPART(HOUR, hd.ngayLapHD) AS h, "
-                + "SUM(ABS(ct.thanhTien) / (1 + ISNULL(sp.thueVAT, 0) / 100.0)) AS netRefund_chuaVAT "
+                + "SUM(ABS(ct.thanhTien)) AS netRefund_coVAT "
                 + "FROM HoaDon hd "
                 + "JOIN ChiTietHoaDon ct ON hd.id = ct.hoaDonId "
                 + "JOIN SanPham sp ON ct.sanPhamId = sp.id "
@@ -585,7 +528,7 @@ public class DAO_ThongKe {
             for (int i = 0; i < params.size(); i++) ps.setObject(i + 1, params.get(i));
             ResultSet rs = ps.executeQuery();
             while (rs.next())
-                result.add(new Object[] { rs.getString("loaiHD"), rs.getString("ghiChu"), rs.getInt("h"), rs.getDouble("netRefund_chuaVAT") });
+            	result.add(new Object[] { rs.getString("loaiHD"), rs.getString("ghiChu"), rs.getInt("h"), rs.getDouble("netRefund_coVAT") });
         } catch (Exception e) { e.printStackTrace(); }
         return result;
     }
@@ -852,40 +795,37 @@ public class DAO_ThongKe {
 
     public List<Object[]> getThongKeTuan(String weekStartYMD) {
         List<Object[]> result = new ArrayList<>();
-        // Query per-(ngày, HĐ) để tính KM chính xác từng hóa đơn
+        // Dùng ct.thanhTien (đã baked KM) và bóc VAT đúng từng sản phẩm
         String sql = "SELECT CONVERT(NVARCHAR,CAST(hd.ngayLapHD AS DATE),103) AS d, "
-                + "CAST(hd.ngayLapHD AS DATE) AS rawDate, "
                 + "hd.id AS hdId, hd.ghiChu, "
-                + "ISNULL(SUM(ct.soLuong * dvl.gia * (1 + ISNULL(sp.thueVAT, 0)/100.0)),0) AS tongGocCoVAT "
+                + "ISNULL(SUM(ROUND(ABS(ct.thanhTien) / (1 + ISNULL(sp.thueVAT, 0)/100.0), 0)),0) AS doanhThuThuan "
                 + "FROM HoaDon hd "
                 + "JOIN ChiTietHoaDon ct ON ct.hoaDonId=hd.id "
-                + "JOIN DonViDoLuong dvl ON dvl.id=ct.donViDoLuongId AND dvl.sanPhamId=ct.sanPhamId "
                 + "JOIN SanPham sp ON ct.sanPhamId = sp.id "
                 + "WHERE hd.loaiHD='BAN_HANG' "
                 + "AND CAST(hd.ngayLapHD AS DATE) BETWEEN ? AND DATEADD(DAY,6,CAST(? AS DATE)) "
                 + "GROUP BY CAST(hd.ngayLapHD AS DATE), CONVERT(NVARCHAR,CAST(hd.ngayLapHD AS DATE),103), hd.id, hd.ghiChu "
                 + "ORDER BY CAST(hd.ngayLapHD AS DATE), hd.id";
-        // Gom per-HĐ theo ngày (dd/MM/yyyy) — dùng LinkedHashMap giữ thứ tự ngày tăng
-        // dần
-        Map<String, double[]> dayMap = new java.util.LinkedHashMap<>(); // d → [soHD, dt]
-        try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql)) {
+
+        Map<String, double[]> dayMap = new java.util.LinkedHashMap<>();
+        try (PreparedStatement ps = getConn().prepareStatement(sql)) {
             ps.setString(1, weekStartYMD);
             ps.setString(2, weekStartYMD);
             ResultSet rs = ps.executeQuery();
             while (rs.next()) {
                 String d = rs.getString("d");
-                String ghiChu = rs.getString("ghiChu");
-                double goc = rs.getDouble("tongGocCoVAT");
-                double giam = tinhTongTienGiamInline(con, goc, ghiChu);
-                double dt = Math.max(0, goc - giam) / 1.1;
-                double[] cur = dayMap.computeIfAbsent(d, k -> new double[] { 0, 0 });
-                cur[0]++; // soHD
+                double dtThuan = rs.getDouble("doanhThuThuan");
+                // Chỉ trừ điểm thưởng — KHÔNG gọi tinhTongTienGiamInline (double KM)
+                double tienDiemTru = tinhTienDiemTruInline(rs.getString("ghiChu"));
+                double dt = Math.max(0, dtThuan - tienDiemTru);
+                double[] cur = dayMap.computeIfAbsent(d, k -> new double[]{0, 0});
+                cur[0]++;       // soHD
                 cur[1] += dt;
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
-        dayMap.forEach((d, v) -> result.add(new Object[] { d, (int) v[0], v[1] / 1_000_000.0 }));
+        dayMap.forEach((d, v) -> result.add(new Object[]{d, (int) v[0], v[1] / 1_000_000.0}));
         return result;
     }
 
@@ -935,29 +875,29 @@ public class DAO_ThongKe {
     public List<Object[]> getTopKhachHangTheoDiem(int limit) {
         List<Object[]> result = new ArrayList<>();
         try (Connection con = getConn()) {
-            // Bước 1: tính per-HĐ, gom theo khachHangId
-            Map<String, double[]> purchaseMap = new HashMap<>(); // khId → [soHD, dt]
-            String sqlP = "SELECT kh.id AS khId, hd.id AS hdId, hd.ghiChu, "
-                    + "ISNULL(SUM(ct.soLuong * dvl.gia * (1 + ISNULL(sp.thueVAT, 0)/100.0)),0) AS tongGocCoVAT "
-                    + "FROM HoaDon hd "
-                    + "JOIN KhachHang kh ON kh.id=hd.khachHangId "
-                    + "LEFT JOIN ChiTietHoaDon ct ON ct.hoaDonId=hd.id "
-                    + "LEFT JOIN DonViDoLuong dvl ON dvl.id=ct.donViDoLuongId AND dvl.sanPhamId=ct.sanPhamId "
-                    + "LEFT JOIN SanPham sp ON sp.id=ct.sanPhamId "
-                    + "WHERE hd.loaiHD='BAN_HANG' "
-                    + "GROUP BY kh.id, hd.id, hd.ghiChu";
-            try (PreparedStatement ps = con.prepareStatement(sqlP); ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    String khId = rs.getString("khId");
-                    double goc = rs.getDouble("tongGocCoVAT");
-                    String ghiChu = rs.getString("ghiChu");
-                    double giam = tinhTongTienGiamInline(con, goc, ghiChu);
-                    double dt = Math.max(0, goc - giam) / 1.1;
-                    double[] cur = purchaseMap.computeIfAbsent(khId, k -> new double[] { 0, 0 });
-                    cur[0]++; // soHD
-                    cur[1] += dt;
-                }
-            }
+        	// Bước 1: tính per-HĐ doanh thu thuần, gom theo khachHangId
+        	Map<String, double[]> purchaseMap = new HashMap<>();
+        	String sqlP = "SELECT kh.id AS khId, hd.id AS hdId, hd.ghiChu, "
+        	        + "ISNULL(SUM(ROUND(ABS(ct.thanhTien) / (1 + ISNULL(sp.thueVAT, 0)/100.0), 0)),0) AS doanhThuThuan "
+        	        + "FROM HoaDon hd "
+        	        + "JOIN KhachHang kh ON kh.id=hd.khachHangId "
+        	        + "LEFT JOIN ChiTietHoaDon ct ON ct.hoaDonId=hd.id "
+        	        + "LEFT JOIN SanPham sp ON sp.id=ct.sanPhamId "
+        	        + "WHERE hd.loaiHD='BAN_HANG' "
+        	        + "GROUP BY kh.id, hd.id, hd.ghiChu";
+        	try (PreparedStatement ps = con.prepareStatement(sqlP); ResultSet rs = ps.executeQuery()) {
+        	    while (rs.next()) {
+        	        String khId = rs.getString("khId");
+        	        double dtThuan = rs.getDouble("doanhThuThuan");
+        	        // Chỉ trừ điểm thưởng — KM% đã baked vào ct.thanhTien
+        	        double tienDiemTru = tinhTienDiemTruInline(rs.getString("ghiChu"));
+        	        double dt = Math.max(0, dtThuan - tienDiemTru);
+        	        double[] cur = purchaseMap.computeIfAbsent(khId, k -> new double[]{0, 0});
+        	        cur[0]++; // soHD
+        	        cur[1] += dt;
+        	    }
+        	}
+        	// Bước 2: giữ nguyên — query top KH theo điểm rồi merge
             // Bước 2: query top KH theo điểm, merge với dữ liệu mua hàng
             String sqlKH = "SELECT TOP " + limit + " id, hoVaTen, ISNULL(sdt,'') AS sdt, diemTichLuy "
                     + "FROM KhachHang ORDER BY diemTichLuy DESC";

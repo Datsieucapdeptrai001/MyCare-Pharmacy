@@ -2023,7 +2023,7 @@ public class ManHinhThongKe extends JPanel {
                 g2.drawString(dateLabel, gx, h - 12);
             }
 
-            if (hoverDay >= 0 && tooltipPt != null) {
+            if (hoverDay >= 0 && hoverDay < n && tooltipPt != null) {
                 int d = hoverDay;
                 StringBuilder sb = new StringBuilder("Ngày " + DATES_10[d] + ": ");
                 if (filterIdx >= 0 && filterIdx < NV_SHORT.length) {

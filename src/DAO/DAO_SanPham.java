@@ -408,10 +408,8 @@ public class DAO_SanPham {
         List<LoHang> dsLoHang = new ArrayList<>();
 
         String sql = "SELECT * FROM LoHang WHERE sanPhamId = ? " +
-                "AND ISNULL(trangThai,'CON_HANG') = 'CON_HANG' " +
-                "AND ISNULL(soLuongLoHang,0) > 0 " +
-                "AND (ngayHetHan IS NULL OR ngayHetHan >= GETDATE()) " +
-                "ORDER BY ngayHetHan ASC";
+                "AND soLuongLoHang > 0 AND ISNULL(trangThai, 'CON_HANG') <> 'AN' " +
+                "ORDER BY ngayNhap ASC";
 
         try (Connection con = ConnectDB.getInstance().getConnection();
                 PreparedStatement pst = con.prepareStatement(sql)) {
@@ -426,17 +424,17 @@ public class DAO_SanPham {
                     lh.setSoLoHang(rs.getString("soLoHang"));
                     lh.setSoLuongLoHang(rs.getInt("soLuongLoHang"));
                     lh.setGia(rs.getInt("gia"));
+                    try {
+                        lh.setMaVachNoiBo(rs.getString("maVachNoiBo"));
+                    } catch (Exception ignored) {}
 
+                    // Chỉ để lại ĐÚNG 1 khối if check trạng thái này thôi
                     if (rs.getString("trangThai") != null) {
                         lh.setTrangThai(TrangThaiLoHang.valueOf(rs.getString("trangThai")));
                     }
 
                     if (rs.getTimestamp("ngayHetHan") != null) {
                         lh.setNgayHetHan(rs.getTimestamp("ngayHetHan").toLocalDateTime());
-                    }
-
-                    if (rs.getTimestamp("ngayNhap") != null) {
-                        lh.setNgayNhap(rs.getTimestamp("ngayNhap").toLocalDateTime());
                     }
 
                     SanPham sp = new SanPham();
@@ -503,6 +501,9 @@ public class DAO_SanPham {
                     lh.setSoLoHang(rs.getString("soLoHang"));
                     lh.setSoLuongLoHang(rs.getInt("soLuongLoHang"));
                     lh.setGia(rs.getInt("gia"));
+                    try {
+                        lh.setMaVachNoiBo(rs.getString("maVachNoiBo"));
+                    } catch (Exception ignored) {}
 
                     if (rs.getString("trangThai") != null) {
                         lh.setTrangThai(TrangThaiLoHang.valueOf(rs.getString("trangThai")));
@@ -510,10 +511,6 @@ public class DAO_SanPham {
 
                     if (rs.getTimestamp("ngayHetHan") != null) {
                         lh.setNgayHetHan(rs.getTimestamp("ngayHetHan").toLocalDateTime());
-                    }
-
-                    if (rs.getTimestamp("ngayNhap") != null) {
-                        lh.setNgayNhap(rs.getTimestamp("ngayNhap").toLocalDateTime());
                     }
 
                     SanPham sp = new SanPham();

@@ -639,6 +639,23 @@ ALTER TABLE [dbo].[PhanBoLoHang] ADD CONSTRAINT [FK_PhanBoLoHang_ChiTietHoaDon] 
 ALTER TABLE [dbo].[PhanBoLoHang] ADD CONSTRAINT [FK_PhanBoLoHang_LoHang] FOREIGN KEY([loHangId]) REFERENCES [dbo].[LoHang] ([id])
 ALTER TABLE [dbo].[TaiKhoan] ADD CONSTRAINT [FK_TaiKhoan_NhanVien] FOREIGN KEY([nhanVienId]) REFERENCES [dbo].[NhanVien] ([id]) ON UPDATE CASCADE ON DELETE SET NULL
 GO
+USE [MYCAREPHARMACY];
+GO
+
+-- 1. Thêm 1 mã gốc phụ cho sản phẩm Amoxicillin (Mã chính + Mã phụ)
+UPDATE [dbo].[SanPham] 
+SET [maVach] = N'8934663100017,8934663100018' 
+WHERE [id] = N'SP2024-0001';
+
+-- 2. Thêm mã QR vào cột maVachNoiBo cho 2 lô hàng của Amoxicillin
+UPDATE [dbo].[LoHang] 
+SET [maVachNoiBo] = N'L01-AMOX-QR-TEST' 
+WHERE [id] = N'LH-0001';
+
+UPDATE [dbo].[LoHang] 
+SET [maVachNoiBo] = N'L02-AMOX-QR-TEST' 
+WHERE [id] = N'LH-0002';
+GO
 
 -- ==============================================================================
 -- CẬP NHẬT giaBan THEO ĐƠN VỊ CƠ BẢN
