@@ -482,7 +482,7 @@ public class DAO_ThongKe {
         String gioCol = includeGio ? ", FORMAT(hd.ngayLapHD, 'HH:mm') AS gio" : "";
         
         StringBuilder sql = new StringBuilder("SELECT " + topStr + "hd.id, ISNULL(kh.hoVaTen, N'Khách lẻ') AS kh, "
-                + "ISNULL(SUM(ct.soLuong * dvl.gia * (1 + ISNULL(sp.thueVAT, 0)/100.0)), 0) AS tongGocCoVAT, "
+                + "ISNULL(SUM(ABS(ct.thanhTien)), 0) AS tongGocCoVAT, "
                 + "hd.ghiChu, hd.phuongThucThanhToan AS pttt " + gioCol + ", hd.loaiHD " 
                 + "FROM HoaDon hd "
                 + "LEFT JOIN KhachHang kh ON hd.khachHangId = kh.id "
@@ -528,7 +528,7 @@ public class DAO_ThongKe {
             for (int i = 0; i < params.size(); i++) ps.setObject(i + 1, params.get(i));
             ResultSet rs = ps.executeQuery();
             while (rs.next())
-                result.add(new Object[] { rs.getString("loaiHD"), rs.getString("ghiChu"), rs.getInt("h"), rs.getDouble("netRefund_chuaVAT") });
+            	result.add(new Object[] { rs.getString("loaiHD"), rs.getString("ghiChu"), rs.getInt("h"), rs.getDouble("netRefund_coVAT") });
         } catch (Exception e) { e.printStackTrace(); }
         return result;
     }
