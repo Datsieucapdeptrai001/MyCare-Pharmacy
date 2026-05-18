@@ -89,17 +89,15 @@ public class DAO_ChiTietHoaDon {
                         vatPercent = vatPercent * 100;
                     }
 
-                    double tienChuaVAT = sl * donGia;
-                    double tienVAT = tienChuaVAT * (vatPercent / 100);
-                    double thanhTien = tienChuaVAT + tienVAT;
-
+                    // Trả về giá gốc chưa VAT — GUI (ChiTietHoaDon.java) sẽ áp KM và VAT đúng thứ tự pháp lý
+                    double tienGoc = sl * donGia; // chưa KM, chưa VAT
                     String strDonGia = String.format("%,d", (long)donGia).replace(',', '.') + "đ";
-                    String strThanhTien = String.format("%,d", (long)thanhTien).replace(',', '.') + "đ";
-                    String strVAT = (int)vatPercent + "%"; 
+                    String strThanhTienGoc = String.format("%,d", (long)tienGoc).replace(',', '.') + "đ";
+                    String strVAT = (int)vatPercent + "%"; // Giữ VAT% để GUI dùng tính VAT sau KM
 
                     Object[] row = new Object[]{
                         String.valueOf(stt++), tenSP, dvt, String.valueOf(sl),
-                        strDonGia, strVAT, strThanhTien
+                        strDonGia, strVAT, strThanhTienGoc  // sp[6] = tienGoc (chưa KM, chưa VAT)
                     };
                     
                     list.add(row);
