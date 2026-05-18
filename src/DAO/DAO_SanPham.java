@@ -216,21 +216,23 @@ public class DAO_SanPham {
         try (Connection con = ConnectDB.getInstance().getConnection();
                 PreparedStatement pst = con.prepareStatement(sql)) {
 
-            if (maVachMoi == null || maVachMoi.trim().isEmpty()) {
-                pst.setNull(1, java.sql.Types.NVARCHAR);
-            } else {
-                pst.setString(1, maVachMoi.trim());
-            }
+            System.out.println("=== DEBUG DAO_SanPham.capNhatMaVachSanPham ===");
+            System.out.println("maSP = [" + maSP + "]");
+            System.out.println("maVachMoi = [" + maVachMoi + "]");
 
+            pst.setString(1, maVachMoi.trim());
             pst.setString(2, maSP.trim());
 
-            return pst.executeUpdate() > 0;
+            int row = pst.executeUpdate();
+
+            System.out.println("row update SanPham.maVach = " + row);
+
+            return row > 0;
 
         } catch (Exception e) {
             e.printStackTrace();
+            return false;
         }
-
-        return false;
     }
 
     public List<SanPham> getDsThuoc() {
@@ -422,7 +424,8 @@ public class DAO_SanPham {
                     lh.setGia(rs.getInt("gia"));
                     try {
                         lh.setMaVachNoiBo(rs.getString("maVachNoiBo"));
-                    } catch (Exception ignored) {}
+                    } catch (Exception ignored) {
+                    }
 
                     // Chỉ để lại ĐÚNG 1 khối if check trạng thái này thôi
                     if (rs.getString("trangThai") != null) {
@@ -499,7 +502,8 @@ public class DAO_SanPham {
                     lh.setGia(rs.getInt("gia"));
                     try {
                         lh.setMaVachNoiBo(rs.getString("maVachNoiBo"));
-                    } catch (Exception ignored) {}
+                    } catch (Exception ignored) {
+                    }
 
                     if (rs.getString("trangThai") != null) {
                         lh.setTrangThai(TrangThaiLoHang.valueOf(rs.getString("trangThai")));
@@ -616,6 +620,11 @@ public class DAO_SanPham {
 
                     if (danhMucStr != null && !danhMucStr.isEmpty()) {
                         sp.setDanhMuc(DanhMucSanPham.valueOf(danhMucStr));
+                    }
+
+                    try {
+                        sp.setMaVach(rs.getString("maVach"));
+                    } catch (Exception ignored) {
                     }
 
                     ds.add(sp);
