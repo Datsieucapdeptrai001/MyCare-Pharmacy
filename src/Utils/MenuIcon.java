@@ -14,32 +14,33 @@ public class MenuIcon implements Icon {
     // =========================================================
 
     // --- Dùng trong ManHinhChinh ---
-    public static final MenuIcon IC_TAB_CHART  = new MenuIcon("TAB_CHART");
+    public static final MenuIcon IC_TAB_CHART = new MenuIcon("TAB_CHART");
     public static final MenuIcon IC_TAB_DOLLAR = new MenuIcon("TAB_DOLLAR");
-    public static final MenuIcon IC_DOT_FILL   = new MenuIcon("DOT_FILL");
-    public static final MenuIcon IC_STOP       = new MenuIcon("STOP");
-    public static final MenuIcon IC_ADD        = new MenuIcon("ADD");
-    public static final MenuIcon IC_CLOSE      = new MenuIcon("CLOSE");
-    public static final MenuIcon IC_LOCK       = new MenuIcon("LOCK");
-    public static final MenuIcon IC_RETURN     = new MenuIcon("RETURN");
-    public static final MenuIcon IC_WARNING    = new MenuIcon("WARNING");
+    public static final MenuIcon IC_DOT_FILL = new MenuIcon("DOT_FILL");
+    public static final MenuIcon IC_STOP = new MenuIcon("STOP");
+    public static final MenuIcon IC_ADD = new MenuIcon("ADD");
+    public static final MenuIcon IC_CLOSE = new MenuIcon("CLOSE");
+    public static final MenuIcon IC_LOCK = new MenuIcon("LOCK");
+    public static final MenuIcon IC_RETURN = new MenuIcon("RETURN");
+    public static final MenuIcon IC_WARNING = new MenuIcon("WARNING");
 
     // --- Dùng trong ManHinhThongKe ---
-    public static final MenuIcon IC_CHART      = new MenuIcon("CHART");
-    public static final MenuIcon IC_CALENDAR   = new MenuIcon("CALENDAR");
-    public static final MenuIcon IC_CART       = new MenuIcon("CART");
-    public static final MenuIcon IC_GIFT       = new MenuIcon("GIFT");
-    public static final MenuIcon IC_PILL       = new MenuIcon("PILL");
-    public static final MenuIcon IC_DOCUMENT   = new MenuIcon("DOCUMENT");
-    public static final MenuIcon IC_USERS      = new MenuIcon("USERS");
+    public static final MenuIcon IC_CHART = new MenuIcon("CHART");
+    public static final MenuIcon IC_CALENDAR = new MenuIcon("CALENDAR");
+    public static final MenuIcon IC_CART = new MenuIcon("CART");
+    public static final MenuIcon IC_GIFT = new MenuIcon("GIFT");
+    public static final MenuIcon IC_PILL = new MenuIcon("PILL");
+    public static final MenuIcon IC_DOCUMENT = new MenuIcon("DOCUMENT");
+    public static final MenuIcon IC_USERS = new MenuIcon("USERS");
 
     // --- Dùng trong SmartTickerPanel ---
-    public static final MenuIcon IC_FIRE       = new MenuIcon("FIRE");
-    public static final MenuIcon IC_ALERT      = new MenuIcon("ALERT");
+    public static final MenuIcon IC_FIRE = new MenuIcon("FIRE");
+    public static final MenuIcon IC_ALERT = new MenuIcon("ALERT");
     public static final MenuIcon IC_CLOCK_WARN = new MenuIcon("CLOCK_WARN");
-    public static final MenuIcon IC_MONEY_BAG  = new MenuIcon("MONEY_BAG");
-    public static final MenuIcon IC_STAR_FILL  = new MenuIcon("STAR_FILL");
-    public static final MenuIcon IC_CHECK_OK   = new MenuIcon("CHECK_OK");
+    public static final MenuIcon IC_MONEY_BAG = new MenuIcon("MONEY_BAG");
+    public static final MenuIcon IC_STAR_FILL = new MenuIcon("STAR_FILL");
+    public static final MenuIcon IC_CHECK_OK = new MenuIcon("CHECK_OK");
+
     /**
      * Factory: tạo icon với size tùy chỉnh.
      * Dùng khi cần kích thước khác mặc định (22px).
@@ -62,7 +63,9 @@ public class MenuIcon implements Icon {
         this.size = size;
     }
 
-    /** Constructor dùng khi cần màu tùy chỉnh (ví dụ: LEGEND_DOT, EXCEL, XUAT_KHO) */
+    /**
+     * Constructor dùng khi cần màu tùy chỉnh (ví dụ: LEGEND_DOT, EXCEL, XUAT_KHO)
+     */
     public MenuIcon(String type, int size, Color color) {
         this.type = type;
         this.size = size;
@@ -94,25 +97,26 @@ public class MenuIcon implements Icon {
             g2d.setColor(Color.GRAY);
         }
         g2d.setStroke(new BasicStroke(2, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-        
+
         switch (type) {
             // ================= CÁC ICON CƠ BẢN =================
             case "ADD":
                 g2d.drawLine(x + 5, y + 11, x + 17, y + 11);
                 g2d.drawLine(x + 11, y + 5, x + 11, y + 17);
                 break;
-            case "HOME": 
-                g2d.drawPolygon(new int[]{x + 11, x + 20, x + 2}, new int[]{y + 4, y + 12, y + 12}, 3);
+            case "HOME":
+                g2d.drawPolygon(new int[] { x + 11, x + 20, x + 2 }, new int[] { y + 4, y + 12, y + 12 }, 3);
                 g2d.drawRect(x + 5, y + 12, 12, 8);
                 break;
             case "SEARCH":
                 g2d.drawOval(x + 5, y + 5, 9, 9);
                 g2d.drawLine(x + 12, y + 12, x + 18, y + 18);
                 break;
-            case "TRASH": 
-                g2d.drawLine(x + 6, y + 6, x + 18, y + 6); 
-                g2d.drawRect(x + 10, y + 3, 4, 3);        
-                g2d.drawPolyline(new int[]{x + 7, x + 8, x + 16, x + 17}, new int[]{y + 6, y + 19, y + 19, y + 6}, 4);    
+            case "TRASH":
+                g2d.drawLine(x + 6, y + 6, x + 18, y + 6);
+                g2d.drawRect(x + 10, y + 3, 4, 3);
+                g2d.drawPolyline(new int[] { x + 7, x + 8, x + 16, x + 17 }, new int[] { y + 6, y + 19, y + 19, y + 6 },
+                        4);
                 g2d.drawLine(x + 10, y + 9, x + 10, y + 16);
                 g2d.drawLine(x + 14, y + 9, x + 14, y + 16);
                 break;
@@ -130,44 +134,43 @@ public class MenuIcon implements Icon {
                 g2d.drawLine(x + 6, y + 6, x + 16, y + 16);
                 g2d.drawLine(x + 16, y + 6, x + 6, y + 16);
                 break;
-            case "CANCEL": 
-                g2d.drawOval(x + 3, y + 3, 16, 16); 
-                g2d.drawLine(x + 8, y + 8, x + 14, y + 14); 
-                g2d.drawLine(x + 14, y + 8, x + 8, y + 14); 
-                break;             
-            case "REFRESH": 
+            case "CANCEL":
+                g2d.drawOval(x + 3, y + 3, 16, 16);
+                g2d.drawLine(x + 8, y + 8, x + 14, y + 14);
+                g2d.drawLine(x + 14, y + 8, x + 8, y + 14);
+                break;
+            case "REFRESH":
                 g2d.drawArc(x + 4, y + 4, 14, 14, 90, -270);
-                g2d.drawPolyline(new int[]{x + 1, x + 4, x + 7}, new int[]{y + 14, y + 11, y + 14}, 3);
+                g2d.drawPolyline(new int[] { x + 1, x + 4, x + 7 }, new int[] { y + 14, y + 11, y + 14 }, 3);
                 break;
             case "WARNING":
-                g2d.drawPolygon(new int[]{x + 11, x + 20, x + 2}, new int[]{y + 3, y + 18, y + 18}, 3);
+                g2d.drawPolygon(new int[] { x + 11, x + 20, x + 2 }, new int[] { y + 3, y + 18, y + 18 }, 3);
                 g2d.drawLine(x + 11, y + 8, x + 11, y + 13);
                 g2d.fillOval(x + 10, y + 15, 2, 2);
                 break;
             case "CHECK_CIRCLE":
             case "CORRECT":
                 g2d.setStroke(new BasicStroke(2.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-                g2d.drawPolyline(new int[]{x + 5, x + 10, x + 18}, new int[]{y + 12, y + 16, y + 6}, 3);
+                g2d.drawPolyline(new int[] { x + 5, x + 10, x + 18 }, new int[] { y + 12, y + 16, y + 6 }, 3);
                 break;
             case "HELP":
                 g2d.drawOval(x + 2, y + 2, 18, 18);
                 g2d.setFont(new Font("Segoe UI", Font.BOLD, 12));
                 g2d.drawString("?", x + 8, y + 16);
                 break;
-            case "INFO_CIRCLE": 
-                g2d.drawOval(x + 2, y + 2, 18, 18);                          
-                g2d.fillOval(x + 10, y + 6, 2, 2);                           
+            case "INFO_CIRCLE":
+                g2d.drawOval(x + 2, y + 2, 18, 18);
+                g2d.fillOval(x + 10, y + 6, 2, 2);
                 g2d.setStroke(new BasicStroke(2.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-                g2d.drawLine(x + 11, y + 10, x + 11, y + 16);               
+                g2d.drawLine(x + 11, y + 10, x + 11, y + 16);
                 break;
 
             // ================= CÁC ICON QUẢN LÝ / NGHIỆP VỤ =================
             case "CART":
                 g2d.drawPolyline(
-                        new int[]{x + 2, x + 4, x + 7, x + 18, x + 16, x + 6, x + 4},
-                        new int[]{y + 3, y + 3, y + 13, y + 13, y + 7, y + 7, y + 3},
-                        7
-                );
+                        new int[] { x + 2, x + 4, x + 7, x + 18, x + 16, x + 6, x + 4 },
+                        new int[] { y + 3, y + 3, y + 13, y + 13, y + 7, y + 7, y + 3 },
+                        7);
                 g2d.drawOval(x + 6, y + 15, 3, 3);
                 g2d.drawOval(x + 14, y + 15, 3, 3);
                 break;
@@ -178,51 +181,52 @@ public class MenuIcon implements Icon {
                 g2d.drawLine(x + 11, y + 10, x + 11, y + 18);
                 break;
             case "PACKAGE":
-                int[] hexX = {x + 11, x + 18, x + 18, x + 11, x + 4, x + 4};
-                int[] hexY = {y + 3, y + 7, y + 15, y + 19, y + 15, y + 7};
+                int[] hexX = { x + 11, x + 18, x + 18, x + 11, x + 4, x + 4 };
+                int[] hexY = { y + 3, y + 7, y + 15, y + 19, y + 15, y + 7 };
                 g2d.drawPolygon(hexX, hexY, 6);
-                g2d.drawLine(x + 11, y + 11, x + 4, y + 7);  
-                g2d.drawLine(x + 11, y + 11, x + 18, y + 7); 
-                g2d.drawLine(x + 11, y + 11, x + 11, y + 19); 
+                g2d.drawLine(x + 11, y + 11, x + 4, y + 7);
+                g2d.drawLine(x + 11, y + 11, x + 18, y + 7);
+                g2d.drawLine(x + 11, y + 11, x + 11, y + 19);
                 g2d.drawLine(x + 7, y + 5, x + 15, y + 9);
                 break;
-            case "XUAT_KHO": 
+            case "XUAT_KHO":
             case "MINUS": // Có thể dùng tạm cho nút trừ
                 int padX = size / 6;
-                g2d.drawLine(x + padX, y + size/2, x + padX, y + size - padX); 
-                g2d.drawLine(x + padX, y + size - padX, x + size - padX, y + size - padX); 
-                g2d.drawLine(x + size - padX, y + size - padX, x + size - padX, y + size/2); 
+                g2d.drawLine(x + padX, y + size / 2, x + padX, y + size - padX);
+                g2d.drawLine(x + padX, y + size - padX, x + size - padX, y + size - padX);
+                g2d.drawLine(x + size - padX, y + size - padX, x + size - padX, y + size / 2);
                 int cX = x + size / 2;
                 int topY = y + padX;
                 int botY = y + size - padX - 4;
                 g2d.drawLine(cX, botY, cX, topY); // Mũi tên hướng lên
-                g2d.drawLine(cX - 4, topY + 4, cX, topY); 
-                g2d.drawLine(cX + 4, topY + 4, cX, topY); 
+                g2d.drawLine(cX - 4, topY + 4, cX, topY);
+                g2d.drawLine(cX + 4, topY + 4, cX, topY);
                 break;
-            case "NHAP_KHO": 
+            case "NHAP_KHO":
                 int padN = size / 6;
-                g2d.drawLine(x + padN, y + size/2, x + padN, y + size - padN); 
-                g2d.drawLine(x + padN, y + size - padN, x + size - padN, y + size - padN); 
-                g2d.drawLine(x + size - padN, y + size - padN, x + size - padN, y + size/2); 
+                g2d.drawLine(x + padN, y + size / 2, x + padN, y + size - padN);
+                g2d.drawLine(x + padN, y + size - padN, x + size - padN, y + size - padN);
+                g2d.drawLine(x + size - padN, y + size - padN, x + size - padN, y + size / 2);
                 int cN = x + size / 2;
                 int topN = y + padN;
                 int botN = y + size - padN - 4;
                 g2d.drawLine(cN, topN, cN, botN); // Mũi tên hướng xuống
-                g2d.drawLine(cN - 4, botN - 4, cN, botN); 
-                g2d.drawLine(cN + 4, botN - 4, cN, botN); 
+                g2d.drawLine(cN - 4, botN - 4, cN, botN);
+                g2d.drawLine(cN + 4, botN - 4, cN, botN);
                 break;
-            case "BARCODE": 
+            case "BARCODE":
                 g2d.fillRect(x + 2, y + 5, 2, 12);
                 g2d.fillRect(x + 6, y + 5, 4, 12);
                 g2d.fillRect(x + 12, y + 5, 2, 12);
                 g2d.fillRect(x + 16, y + 5, 4, 12);
-                if (customColor == null) g2d.setColor(new Color(239, 68, 68)); 
+                if (customColor == null)
+                    g2d.setColor(new Color(239, 68, 68));
                 g2d.drawLine(x, y + 11, x + 22, y + 11);
                 break;
-            case "RETURN": 
-                g2d.drawArc(x + 3, y + 5, 14, 10, 0, 180);      
-                g2d.drawLine(x + 3, y + 10, x + 3, y + 15);     
-                g2d.drawPolyline(new int[]{x + 1, x + 4, x + 7}, new int[]{y + 13, y + 16, y + 13}, 3);
+            case "RETURN":
+                g2d.drawArc(x + 3, y + 5, 14, 10, 0, 180);
+                g2d.drawLine(x + 3, y + 10, x + 3, y + 15);
+                g2d.drawPolyline(new int[] { x + 1, x + 4, x + 7 }, new int[] { y + 13, y + 16, y + 13 }, 3);
                 break;
             case "GIFT":
             case "QUA_TANG":
@@ -244,8 +248,8 @@ public class MenuIcon implements Icon {
                 g2d.drawOval(x + 5, y + 2, 8, 8);
                 g2d.drawArc(x + 2, y + 11, 14, 8, 0, 180);
                 g2d.setStroke(new BasicStroke(1.5f));
-                g2d.drawLine(x + 15, y + 5, x + 19, y + 5); 
-                g2d.drawLine(x + 17, y + 3, x + 17, y + 7); 
+                g2d.drawLine(x + 15, y + 5, x + 19, y + 5);
+                g2d.drawLine(x + 17, y + 3, x + 17, y + 7);
                 break;
             case "USERS":
                 g2d.drawOval(x + 11, y + 2, 6, 6);
@@ -254,38 +258,40 @@ public class MenuIcon implements Icon {
                 g2d.setColor(bg);
                 g2d.fillOval(x + 3, y + 4, 8, 8);
                 g2d.fillArc(x - 1, y + 12, 16, 16, 0, 180);
-                if (customColor != null) g2d.setColor(customColor);
-                else g2d.setColor((c != null) ? c.getForeground() : Color.GRAY);
+                if (customColor != null)
+                    g2d.setColor(customColor);
+                else
+                    g2d.setColor((c != null) ? c.getForeground() : Color.GRAY);
                 g2d.drawOval(x + 3, y + 4, 8, 8);
                 g2d.drawArc(x - 1, y + 12, 16, 16, 0, 180);
                 break;
             case "LOGOUT":
                 g2d.drawRect(x + 4, y + 3, 10, 16);
                 g2d.drawLine(x + 14, y + 11, x + 20, y + 11);
-                g2d.drawPolyline(new int[]{x + 17, x + 20, x + 17}, new int[]{y + 8, y + 11, y + 14}, 3);
+                g2d.drawPolyline(new int[] { x + 17, x + 20, x + 17 }, new int[] { y + 8, y + 11, y + 14 }, 3);
                 break;
-            case "LOCK": 
-                g2d.drawRoundRect(x + 4, y + 10, 14, 10, 3, 3); 
-                g2d.drawArc(x + 7, y + 3, 8, 10, 0, 180);       
-                g2d.drawLine(x + 7, y + 8, x + 7, y + 10);      
-                g2d.drawLine(x + 15, y + 8, x + 15, y + 10);    
-                g2d.fillOval(x + 10, y + 14, 2, 2);             
+            case "LOCK":
+                g2d.drawRoundRect(x + 4, y + 10, 14, 10, 3, 3);
+                g2d.drawArc(x + 7, y + 3, 8, 10, 0, 180);
+                g2d.drawLine(x + 7, y + 8, x + 7, y + 10);
+                g2d.drawLine(x + 15, y + 8, x + 15, y + 10);
+                g2d.fillOval(x + 10, y + 14, 2, 2);
                 break;
 
             // ================= ICON FILE / DỮ LIỆU / BÁO CÁO =================
-            case "DOCUMENT": 
-                g2d.drawRect(x + 5, y + 2, 12, 18); 
-                g2d.drawLine(x + 8, y + 6, x + 14, y + 6); 
-                g2d.drawLine(x + 8, y + 10, x + 14, y + 10); 
-                g2d.drawLine(x + 8, y + 14, x + 12, y + 14); 
+            case "DOCUMENT":
+                g2d.drawRect(x + 5, y + 2, 12, 18);
+                g2d.drawLine(x + 8, y + 6, x + 14, y + 6);
+                g2d.drawLine(x + 8, y + 10, x + 14, y + 10);
+                g2d.drawLine(x + 8, y + 14, x + 12, y + 14);
                 break;
-            case "EXCEL": 
-                g2d.drawRect(x + 3, y + 2, 14, 18);          
-                g2d.drawLine(x + 3, y + 7, x + 17, y + 7);   
-                g2d.drawLine(x + 8, y + 2, x + 8, y + 19);   
+            case "EXCEL":
+                g2d.drawRect(x + 3, y + 2, 14, 18);
+                g2d.drawLine(x + 3, y + 7, x + 17, y + 7);
+                g2d.drawLine(x + 8, y + 2, x + 8, y + 19);
                 g2d.setStroke(new BasicStroke(2.5f));
-                g2d.drawLine(x + 11, y + 11, x + 15, y + 15); 
-                g2d.drawLine(x + 15, y + 11, x + 11, y + 15); 
+                g2d.drawLine(x + 11, y + 11, x + 15, y + 15);
+                g2d.drawLine(x + 15, y + 11, x + 11, y + 15);
                 break;
             case "PRINT":
                 g2d.drawRect(x + 6, y + 3, 10, 5);
@@ -295,36 +301,36 @@ public class MenuIcon implements Icon {
                 g2d.drawLine(x + 8, y + 15, x + 14, y + 15);
                 g2d.drawLine(x + 8, y + 17, x + 14, y + 17);
                 break;
-            case "IMPORT": 
-                g2d.drawLine(x + 11, y + 2, x + 11, y + 14); 
-                g2d.drawLine(x + 7, y + 10, x + 11, y + 14); 
-                g2d.drawLine(x + 15, y + 10, x + 11, y + 14); 
-                g2d.drawLine(x + 4, y + 18, x + 18, y + 18); 
-                g2d.drawLine(x + 4, y + 15, x + 4, y + 18); 
-                g2d.drawLine(x + 18, y + 15, x + 18, y + 18); 
-                break;                
-            case "EXPORT": 
-                g2d.drawLine(x + 11, y + 14, x + 11, y + 2); 
-                g2d.drawLine(x + 7, y + 6, x + 11, y + 2); 
-                g2d.drawLine(x + 15, y + 6, x + 11, y + 2); 
-                g2d.drawLine(x + 4, y + 18, x + 18, y + 18); 
-                g2d.drawLine(x + 4, y + 15, x + 4, y + 18); 
-                g2d.drawLine(x + 18, y + 15, x + 18, y + 18); 
+            case "IMPORT":
+                g2d.drawLine(x + 11, y + 2, x + 11, y + 14);
+                g2d.drawLine(x + 7, y + 10, x + 11, y + 14);
+                g2d.drawLine(x + 15, y + 10, x + 11, y + 14);
+                g2d.drawLine(x + 4, y + 18, x + 18, y + 18);
+                g2d.drawLine(x + 4, y + 15, x + 4, y + 18);
+                g2d.drawLine(x + 18, y + 15, x + 18, y + 18);
                 break;
-            case "DOWNLOAD": 
-                g2d.drawLine(x + 11, y + 2, x + 11, y + 13); 
-                g2d.drawPolyline(new int[]{x + 6, x + 11, x + 16}, new int[]{y + 8, y + 13, y + 8}, 3); 
-                g2d.drawPolyline(new int[]{x + 4, x + 4, x + 18, x + 18}, new int[]{y + 14, y + 18, y + 18, y + 14}, 4); 
+            case "EXPORT":
+                g2d.drawLine(x + 11, y + 14, x + 11, y + 2);
+                g2d.drawLine(x + 7, y + 6, x + 11, y + 2);
+                g2d.drawLine(x + 15, y + 6, x + 11, y + 2);
+                g2d.drawLine(x + 4, y + 18, x + 18, y + 18);
+                g2d.drawLine(x + 4, y + 15, x + 4, y + 18);
+                g2d.drawLine(x + 18, y + 15, x + 18, y + 18);
                 break;
-            case "FILTER": 
+            case "DOWNLOAD":
+                g2d.drawLine(x + 11, y + 2, x + 11, y + 13);
+                g2d.drawPolyline(new int[] { x + 6, x + 11, x + 16 }, new int[] { y + 8, y + 13, y + 8 }, 3);
+                g2d.drawPolyline(new int[] { x + 4, x + 4, x + 18, x + 18 },
+                        new int[] { y + 14, y + 18, y + 18, y + 14 }, 4);
+                break;
+            case "FILTER":
                 g2d.drawPolygon(
-                    new int[]{x + 2, x + 20, x + 13, x + 13, x + 9, x + 9},
-                    new int[]{y + 4, y + 4, y + 12, y + 18, y + 15, y + 12},
-                    6
-                );
+                        new int[] { x + 2, x + 20, x + 13, x + 13, x + 9, x + 9 },
+                        new int[] { y + 4, y + 4, y + 12, y + 18, y + 15, y + 12 },
+                        6);
                 g2d.drawLine(x + 5, y + 8, x + 17, y + 8);
                 break;
-            case "SETTING_SLIDERS": 
+            case "SETTING_SLIDERS":
                 g2d.drawLine(x + 4, y + 6, x + 18, y + 6);
                 g2d.drawOval(x + 6, y + 4, 4, 4);
                 g2d.drawLine(x + 4, y + 12, x + 18, y + 12);
@@ -340,52 +346,52 @@ public class MenuIcon implements Icon {
                 g2d.drawLine(x + 11, y + 6, x + 11, y + 11);
                 g2d.drawLine(x + 11, y + 11, x + 15, y + 11);
                 break;
-            case "CALENDAR": 
-                g2d.drawRoundRect(x + 2, y + 4, 18, 15, 3, 3);  
-                g2d.drawLine(x + 2, y + 8, x + 20, y + 8);      
-                g2d.drawLine(x + 7,  y + 2, x + 7,  y + 6);     
-                g2d.drawLine(x + 15, y + 2, x + 15, y + 6);     
-                g2d.fillOval(x + 5,  y + 11, 2, 2);
+            case "CALENDAR":
+                g2d.drawRoundRect(x + 2, y + 4, 18, 15, 3, 3);
+                g2d.drawLine(x + 2, y + 8, x + 20, y + 8);
+                g2d.drawLine(x + 7, y + 2, x + 7, y + 6);
+                g2d.drawLine(x + 15, y + 2, x + 15, y + 6);
+                g2d.fillOval(x + 5, y + 11, 2, 2);
                 g2d.fillOval(x + 10, y + 11, 2, 2);
                 g2d.fillOval(x + 15, y + 11, 2, 2);
-                g2d.fillOval(x + 5,  y + 15, 2, 2);
+                g2d.fillOval(x + 5, y + 15, 2, 2);
                 g2d.fillOval(x + 10, y + 15, 2, 2);
                 g2d.fillOval(x + 15, y + 15, 2, 2);
                 break;
-            case "SHIFT_MORNING": 
+            case "SHIFT_MORNING":
                 g2d.drawOval(x + 7, y + 7, 8, 8);
-                g2d.drawLine(x + 11, y + 2, x + 11, y + 5);  
-                g2d.drawLine(x + 11, y + 17, x + 11, y + 20); 
-                g2d.drawLine(x + 2, y + 11, x + 5, y + 11);   
-                g2d.drawLine(x + 17, y + 11, x + 20, y + 11); 
-                g2d.drawLine(x + 4, y + 4, x + 6, y + 6);     
-                g2d.drawLine(x + 16, y + 4, x + 18, y + 6);   
-                g2d.drawLine(x + 4, y + 18, x + 6, y + 16);   
-                g2d.drawLine(x + 16, y + 18, x + 18, y + 16); 
+                g2d.drawLine(x + 11, y + 2, x + 11, y + 5);
+                g2d.drawLine(x + 11, y + 17, x + 11, y + 20);
+                g2d.drawLine(x + 2, y + 11, x + 5, y + 11);
+                g2d.drawLine(x + 17, y + 11, x + 20, y + 11);
+                g2d.drawLine(x + 4, y + 4, x + 6, y + 6);
+                g2d.drawLine(x + 16, y + 4, x + 18, y + 6);
+                g2d.drawLine(x + 4, y + 18, x + 6, y + 16);
+                g2d.drawLine(x + 16, y + 18, x + 18, y + 16);
                 break;
-            case "SHIFT_AFTERNOON": 
+            case "SHIFT_AFTERNOON":
                 g2d.drawLine(x + 2, y + 14, x + 20, y + 14);
                 g2d.drawArc(x + 6, y + 7, 10, 10, 0, 180);
-                g2d.drawLine(x + 11, y + 3, x + 11, y + 6);   
-                g2d.drawLine(x + 5, y + 5, x + 7, y + 8);     
-                g2d.drawLine(x + 17, y + 5, x + 15, y + 8);   
-                g2d.drawLine(x + 2, y + 9, x + 5, y + 11);    
-                g2d.drawLine(x + 20, y + 9, x + 17, y + 11);  
+                g2d.drawLine(x + 11, y + 3, x + 11, y + 6);
+                g2d.drawLine(x + 5, y + 5, x + 7, y + 8);
+                g2d.drawLine(x + 17, y + 5, x + 15, y + 8);
+                g2d.drawLine(x + 2, y + 9, x + 5, y + 11);
+                g2d.drawLine(x + 20, y + 9, x + 17, y + 11);
                 g2d.drawArc(x + 2, y + 15, 6, 4, 180, -180);
                 g2d.drawArc(x + 8, y + 15, 6, 4, 180, -180);
                 g2d.drawArc(x + 14, y + 15, 6, 4, 180, -180);
                 break;
-            case "SHIFT_NIGHT": 
-                g2d.drawArc(x + 5, y + 3, 14, 16, 90, 180);   
-                g2d.drawArc(x + 8, y + 5, 10, 12, 90, 180);   
+            case "SHIFT_NIGHT":
+                g2d.drawArc(x + 5, y + 3, 14, 16, 90, 180);
+                g2d.drawArc(x + 8, y + 5, 10, 12, 90, 180);
                 g2d.fillOval(x + 15, y + 3, 2, 2);
                 g2d.fillOval(x + 17, y + 8, 2, 2);
                 g2d.fillOval(x + 14, y + 12, 2, 2);
                 break;
 
             // ================= BIỂU ĐỒ / THỐNG KÊ =================
-            case "CHART": 
-                g2d.drawLine(x + 2, y + 18, x + 20, y + 18); 
+            case "CHART":
+                g2d.drawLine(x + 2, y + 18, x + 20, y + 18);
                 g2d.drawRect(x + 4, y + 10, 4, 8);
                 g2d.drawRect(x + 9, y + 5, 4, 13);
                 g2d.drawRect(x + 14, y + 12, 4, 6);
@@ -404,15 +410,15 @@ public class MenuIcon implements Icon {
             case "LEGEND_DOT":
                 g2d.fillOval(x + 6, y + 6, 10, 10);
                 break;
-            case "TROPHY": 
-                g2d.drawArc(x + 5, y + 2, 12, 12, 0, 180);      
-                g2d.drawLine(x + 5,  y + 8,  x + 5,  y + 12);  
-                g2d.drawLine(x + 17, y + 8,  x + 17, y + 12);  
-                g2d.drawArc(x + 8, y + 10, 6, 6, 180, 180);    
-                g2d.drawLine(x + 11, y + 16, x + 11, y + 18);  
-                g2d.drawLine(x + 7,  y + 18, x + 15, y + 18);  
-                g2d.drawArc(x + 1,  y + 4, 6, 6, 90,  180);   
-                g2d.drawArc(x + 15, y + 4, 6, 6, 270, 180);   
+            case "TROPHY":
+                g2d.drawArc(x + 5, y + 2, 12, 12, 0, 180);
+                g2d.drawLine(x + 5, y + 8, x + 5, y + 12);
+                g2d.drawLine(x + 17, y + 8, x + 17, y + 12);
+                g2d.drawArc(x + 8, y + 10, 6, 6, 180, 180);
+                g2d.drawLine(x + 11, y + 16, x + 11, y + 18);
+                g2d.drawLine(x + 7, y + 18, x + 15, y + 18);
+                g2d.drawArc(x + 1, y + 4, 6, 6, 90, 180);
+                g2d.drawArc(x + 15, y + 4, 6, 6, 270, 180);
                 break;
 
             // ================= ICON Y TẾ / SẢN PHẨM =================
@@ -421,19 +427,19 @@ public class MenuIcon implements Icon {
                 g2d.drawLine(x + 11, y + 6, x + 11, y + 16);
                 break;
             case "MEDICAL_TOOL":
-                g2d.drawRoundRect(x + 5, y + 7, 14, 10, 2, 2); 
-                g2d.fillRect(x + 11, y + 9, 2, 6);             
-                g2d.fillRect(x + 9, y + 11, 6, 2);             
+                g2d.drawRoundRect(x + 5, y + 7, 14, 10, 2, 2);
+                g2d.fillRect(x + 11, y + 9, 2, 6);
+                g2d.fillRect(x + 9, y + 11, 6, 2);
                 break;
             case "COSMETIC":
-                g2d.fillRoundRect(x + 8, y + 10, 8, 10, 2, 2); 
-                g2d.fillRect(x + 10, y + 6, 4, 4);             
-                g2d.drawLine(x + 7, y + 10, x + 17, y + 10);           
+                g2d.fillRoundRect(x + 8, y + 10, 8, 10, 2, 2);
+                g2d.fillRect(x + 10, y + 6, 4, 4);
+                g2d.drawLine(x + 7, y + 10, x + 17, y + 10);
                 break;
             case "LEAF":
                 g2d.fillOval(x + 7, y + 6, 10, 12);
-                g2d.drawArc(x + 7, y + 6, 10, 12, 45, 90); 
-                g2d.drawLine(x + 12, y + 18, x + 12, y + 20);          
+                g2d.drawArc(x + 7, y + 6, 10, 12, 45, 90);
+                g2d.drawLine(x + 12, y + 18, x + 12, y + 20);
                 break;
 
             // ================= ICON THÔNG TIN LIÊN HỆ =================
@@ -453,7 +459,7 @@ public class MenuIcon implements Icon {
                 break;
 
             // ================= CÁC ICON TIỆN ÍCH KHÁC =================
-            case "LIST": 
+            case "LIST":
                 g2d.drawLine(x + 8, y + 6, x + 18, y + 6);
                 g2d.drawOval(x + 3, y + 5, 2, 2);
                 g2d.drawLine(x + 8, y + 11, x + 18, y + 11);
@@ -461,13 +467,13 @@ public class MenuIcon implements Icon {
                 g2d.drawLine(x + 8, y + 16, x + 18, y + 16);
                 g2d.drawOval(x + 3, y + 15, 2, 2);
                 break;
-            case "BELL": 
-                g2d.drawLine(x + 11, y + 1, x + 11, y + 4);                 
-                g2d.drawArc(x + 4, y + 3, 14, 12, 0, 180);                  
-                g2d.drawLine(x + 4,  y + 9,  x + 4,  y + 15);              
-                g2d.drawLine(x + 18, y + 9,  x + 18, y + 15);              
-                g2d.drawLine(x + 2,  y + 15, x + 20, y + 15);              
-                g2d.drawArc(x + 8, y + 15, 6, 4, 180, 180);                 
+            case "BELL":
+                g2d.drawLine(x + 11, y + 1, x + 11, y + 4);
+                g2d.drawArc(x + 4, y + 3, 14, 12, 0, 180);
+                g2d.drawLine(x + 4, y + 9, x + 4, y + 15);
+                g2d.drawLine(x + 18, y + 9, x + 18, y + 15);
+                g2d.drawLine(x + 2, y + 15, x + 20, y + 15);
+                g2d.drawArc(x + 8, y + 15, 6, 4, 180, 180);
                 break;
             case "EYE":
                 g2d.drawOval(x + 2, y + 7, 18, 8);
@@ -483,14 +489,14 @@ public class MenuIcon implements Icon {
                 g2d.drawOval(x + 4, y + 4, 14, 14);
                 g2d.fillOval(x + 9, y + 9, 4, 4);
                 break;
-            case "STOP": 
+            case "STOP":
                 g2d.fillRoundRect(x + 5, y + 5, 12, 12, 3, 3);
                 break;
             case "CHEVRON_LEFT":
-                g2d.drawPolyline(new int[]{x + 13, x + 8, x + 13}, new int[]{y + 6, y + 11, y + 16}, 3);
+                g2d.drawPolyline(new int[] { x + 13, x + 8, x + 13 }, new int[] { y + 6, y + 11, y + 16 }, 3);
                 break;
             case "CHEVRON_RIGHT":
-                g2d.drawPolyline(new int[]{x + 9, x + 14, x + 9}, new int[]{y + 6, y + 11, y + 16}, 3);
+                g2d.drawPolyline(new int[] { x + 9, x + 14, x + 9 }, new int[] { y + 6, y + 11, y + 16 }, 3);
                 break;
 
             // ================= ICON TICKER THÔNG MINH =================
@@ -501,14 +507,14 @@ public class MenuIcon implements Icon {
                 g2d.setColor(customColor != null ? customColor.brighter() : new Color(255, 193, 7));
                 g2d.fillOval(x + 8, y + 11, 6, 8);
                 g2d.setColor(customColor != null ? customColor : new Color(255, 107, 0));
-                int[] flameX = {x + 11, x + 7, x + 9, x + 11, x + 13, x + 15, x + 11};
-                int[] flameY = {y + 2, y + 10, y + 8, y + 5, y + 8, y + 10, y + 2};
+                int[] flameX = { x + 11, x + 7, x + 9, x + 11, x + 13, x + 15, x + 11 };
+                int[] flameY = { y + 2, y + 10, y + 8, y + 5, y + 8, y + 10, y + 2 };
                 g2d.fillPolygon(flameX, flameY, 7);
                 break;
             case "ALERT":
                 // Tam giác cảnh báo ⚠
                 g2d.setColor(customColor != null ? customColor : new Color(255, 152, 0));
-                g2d.fillPolygon(new int[]{x + 11, x + 20, x + 2}, new int[]{y + 3, y + 19, y + 19}, 3);
+                g2d.fillPolygon(new int[] { x + 11, x + 20, x + 2 }, new int[] { y + 3, y + 19, y + 19 }, 3);
                 g2d.setColor(Color.WHITE);
                 g2d.setStroke(new BasicStroke(2.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
                 g2d.drawLine(x + 11, y + 9, x + 11, y + 14);
@@ -536,8 +542,8 @@ public class MenuIcon implements Icon {
             case "STAR_FILL":
                 // Ngôi sao ⭐
                 g2d.setColor(customColor != null ? customColor : new Color(26, 115, 232));
-                int[] starX = {x+11, x+13, x+19, x+14, x+16, x+11, x+6, x+8, x+3, x+9};
-                int[] starY = {y+2, y+8, y+8, y+12, y+18, y+15, y+18, y+12, y+8, y+8};
+                int[] starX = { x + 11, x + 13, x + 19, x + 14, x + 16, x + 11, x + 6, x + 8, x + 3, x + 9 };
+                int[] starY = { y + 2, y + 8, y + 8, y + 12, y + 18, y + 15, y + 18, y + 12, y + 8, y + 8 };
                 g2d.fillPolygon(starX, starY, 10);
                 break;
             case "CHECK_OK":
@@ -546,7 +552,7 @@ public class MenuIcon implements Icon {
                 g2d.fillOval(x + 2, y + 2, 18, 18);
                 g2d.setColor(Color.WHITE);
                 g2d.setStroke(new BasicStroke(2.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-                g2d.drawPolyline(new int[]{x + 6, x + 10, x + 16}, new int[]{y + 11, y + 15, y + 7}, 3);
+                g2d.drawPolyline(new int[] { x + 6, x + 10, x + 16 }, new int[] { y + 11, y + 15, y + 7 }, 3);
                 break;
         }
         g2d.dispose();
