@@ -18,54 +18,55 @@ import java.util.Date;
 public class ManHinhMoCa extends JDialog {
 
     // ======================== CONSTANTS ========================
-    private static final Color COLOR_GREEN   = Color.decode("#00A76F");
-    private static final Color COLOR_ORANGE  = Color.decode("#FF6B00");
-    private static final Color COLOR_INDIGO  = Color.decode("#3D52A0");
-    private static final Color COLOR_HEADER  = Color.decode("#00A76F");
-    private static final Color COLOR_BG      = Color.decode("#F8FAFB");
-    private static final Color COLOR_CARD    = Color.WHITE;
-    private static final Color COLOR_BORDER  = Color.decode("#E5E9EF");
+    private static final Color COLOR_GREEN = Color.decode("#00A76F");
+    private static final Color COLOR_ORANGE = Color.decode("#FF6B00");
+    private static final Color COLOR_INDIGO = Color.decode("#3D52A0");
+    private static final Color COLOR_HEADER = Color.decode("#00A76F");
+    private static final Color COLOR_BG = Color.decode("#F8FAFB");
+    private static final Color COLOR_CARD = Color.WHITE;
+    private static final Color COLOR_BORDER = Color.decode("#E5E9EF");
     private static final Color COLOR_CONFIRM = Color.decode("#00A76F");
 
-    private static final String[] CA_LABELS  = { "Ca Sáng", "Ca Chiều", "Ca Tối" };
-    private static final String[] CA_TIMES   = { "06:00 – 14:00", "14:00 – 22:00", "22:00 – 06:00" };
+    private static final String[] CA_LABELS = { "Ca Sáng", "Ca Chiều", "Ca Tối" };
+    private static final String[] CA_TIMES = { "06:00 – 14:00", "14:00 – 22:00", "22:00 – 06:00" };
     private static final String[] CA_ICON_TYPES = { "SHIFT_MORNING", "SHIFT_AFTERNOON", "SHIFT_NIGHT" };
     // Màu NỀN của 3 Ca (Sáng - Chiều - Tối)
-    private static final Color[]  CA_BG = {
-        Color.decode("#FFF3E0"), // Màu cam nhạt (Ca Sáng)
-        Color.decode("#FFF8F0"), // Màu cam siêu nhạt (Ca Chiều)
-        Color.decode("#EEF2FF")  // Màu xanh dương nhạt (Ca Tối)
+    private static final Color[] CA_BG = {
+            Color.decode("#FFF3E0"), // Màu cam nhạt (Ca Sáng)
+            Color.decode("#FFF8F0"), // Màu cam siêu nhạt (Ca Chiều)
+            Color.decode("#EEF2FF") // Màu xanh dương nhạt (Ca Tối)
     };
     // Màu CHỮ & VIỀN của 3 Ca
-    private static final Color[]  CA_FG = {
-        Color.decode("#E65100"), // Cam đậm
-        Color.decode("#BF360C"), // Đỏ cam
-        Color.decode("#3D52A0")  // Xanh dương đậm
+    private static final Color[] CA_FG = {
+            Color.decode("#E65100"), // Cam đậm
+            Color.decode("#BF360C"), // Đỏ cam
+            Color.decode("#3D52A0") // Xanh dương đậm
     };
 
     // Mệnh giá VND
-    private static final long[]   MENH_GIA     = { 500000, 200000, 100000, 50000, 20000, 10000, 5000, 2000, 1000 };
-    private static final String[] MENH_GIA_STR = { "500.000đ","200.000đ","100.000đ","50.000đ","20.000đ","10.000đ","5.000đ","2.000đ","1.000đ" };
-    private static final Color[]  BOX_COLORS   = {
-        Color.decode("#1A73E8"), Color.decode("#9C27B0"), Color.decode("#4CAF50"),
-        Color.decode("#FF9800"), Color.decode("#F44336"), Color.decode("#E91E63"),
-        Color.decode("#FF7043"), Color.decode("#1A73E8"), Color.decode("#607D8B")
+    private static final long[] MENH_GIA = { 500000, 200000, 100000, 50000, 20000, 10000, 5000, 2000, 1000 };
+    private static final String[] MENH_GIA_STR = { "500.000đ", "200.000đ", "100.000đ", "50.000đ", "20.000đ", "10.000đ",
+            "5.000đ", "2.000đ", "1.000đ" };
+    private static final Color[] BOX_COLORS = {
+            Color.decode("#1A73E8"), Color.decode("#9C27B0"), Color.decode("#4CAF50"),
+            Color.decode("#FF9800"), Color.decode("#F44336"), Color.decode("#E91E63"),
+            Color.decode("#FF7043"), Color.decode("#1A73E8"), Color.decode("#607D8B")
     };
 
     // ======================== STATE ========================
-    private int selectedCa = 0;          // 0=sáng,1=chiều,2=tối
-    private int[] soLuong  = new int[9]; // số tờ mỗi mệnh giá
+    private int selectedCa = 0; // 0=sáng,1=chiều,2=tối
+    private int[] soLuong = new int[9]; // số tờ mỗi mệnh giá
     private boolean confirmed = false;
 
     // ======================== UI REFS ========================
-    private JButton[] btnCa      = new JButton[3];
-    private JLabel[]  lblCount   = new JLabel[9];
-    private JLabel    lblTongTien;
-    private JLabel    lblCaSubInfo;
+    private JButton[] btnCa = new JButton[3];
+    private JLabel[] lblCount = new JLabel[9];
+    private JLabel lblTongTien;
+    private JLabel lblCaSubInfo;
     private CardLayout stepCard;
-    private JPanel    stepPanel;
+    private JPanel stepPanel;
     private CardLayout footerCardLayout;
-    private JPanel     footerSwitcher;
+    private JPanel footerSwitcher;
 
     // ======================== CONSTRUCTOR ========================
     public ManHinhMoCa(Frame parent) {
@@ -79,7 +80,8 @@ public class ManHinhMoCa extends JDialog {
 
     private void buildUI() {
         JPanel root = new JPanel(new BorderLayout()) {
-            @Override protected void paintComponent(Graphics g) {
+            @Override
+            protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 // shadow
@@ -96,7 +98,7 @@ public class ManHinhMoCa extends JDialog {
 
         root.add(buildHeader(), BorderLayout.NORTH);
 
-        stepCard  = new CardLayout();
+        stepCard = new CardLayout();
         stepPanel = new JPanel(stepCard);
         stepPanel.setOpaque(false);
         stepPanel.add(buildStep1(), "step1");
@@ -104,17 +106,18 @@ public class ManHinhMoCa extends JDialog {
         root.add(stepPanel, BorderLayout.CENTER);
 
         footerCardLayout = new CardLayout();
-        footerSwitcher   = new JPanel(footerCardLayout);
+        footerSwitcher = new JPanel(footerCardLayout);
         footerSwitcher.setOpaque(false);
         footerSwitcher.add(buildStep1Footer(), "step1");
         footerSwitcher.add(buildStep2Footer(), "step2");
         root.add(footerSwitcher, BorderLayout.SOUTH);
     }
 
- // ─── HEADER ──────────────────────────────────────────────
+    // ─── HEADER ──────────────────────────────────────────────
     private JPanel buildHeader() {
         JPanel hdr = new JPanel(new BorderLayout()) {
-            @Override protected void paintComponent(Graphics g) {
+            @Override
+            protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setPaint(new GradientPaint(0, 0,
@@ -133,7 +136,8 @@ public class ManHinhMoCa extends JDialog {
         left.setOpaque(false);
 
         JPanel logoBox = new JPanel() {
-            @Override protected void paintComponent(Graphics g) {
+            @Override
+            protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setColor(new Color(255, 255, 255, 60));
@@ -166,8 +170,8 @@ public class ManHinhMoCa extends JDialog {
 
         // User badge
         String initials = UserSession.getInstance().getInitials();
-        String tenNV    = UserSession.getInstance().getTenHienThi();
-        String chucVu   = UserSession.getInstance().getChucVuHienThi();
+        String tenNV = UserSession.getInstance().getTenHienThi();
+        String chucVu = UserSession.getInstance().getChucVuHienThi();
 
         JLabel avatar = new JLabel(initials, SwingConstants.CENTER);
         avatar.setFont(new Font("Segoe UI", Font.BOLD, 12));
@@ -201,8 +205,13 @@ public class ManHinhMoCa extends JDialog {
             dispose();
         });
         btnClose.addMouseListener(new MouseAdapter() {
-            public void mouseEntered(MouseEvent e) { btnClose.setForeground(Color.decode("#FFD666")); }
-            public void mouseExited(MouseEvent e) { btnClose.setForeground(Color.WHITE); }
+            public void mouseEntered(MouseEvent e) {
+                btnClose.setForeground(Color.decode("#FFD666"));
+            }
+
+            public void mouseExited(MouseEvent e) {
+                btnClose.setForeground(Color.WHITE);
+            }
         });
 
         right.add(btnClose);
@@ -216,7 +225,7 @@ public class ManHinhMoCa extends JDialog {
         return wrapper;
     }
 
- // ─── STEP 1: Chọn Ca ─────────────────────────────────────
+    // ─── STEP 1: Chọn Ca ─────────────────────────────────────
     private JPanel buildStep1() {
         // ---- ĐÃ FIX: Xác định Ca theo giờ ngay từ đầu TRƯỚC KHI vẽ giao diện ----
         int currentHour = java.time.LocalDateTime.now().getHour();
@@ -284,12 +293,12 @@ public class ManHinhMoCa extends JDialog {
         leftInfo.setLayout(new BoxLayout(leftInfo, BoxLayout.Y_AXIS));
         JLabel lblTongLabel = new JLabel("Tổng tiền đầu ca:");
         lblTongLabel.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        
+
         // Cập nhật lại dòng chữ nhỏ xíu bên dưới chuẩn theo Ca
         lblCaSubInfo = new JLabel(CA_LABELS[selectedCa] + " · " + CA_TIMES[selectedCa]);
         lblCaSubInfo.setFont(new Font("Segoe UI", Font.PLAIN, 11));
         lblCaSubInfo.setForeground(Color.GRAY);
-        
+
         leftInfo.add(lblTongLabel);
         leftInfo.add(lblCaSubInfo);
 
@@ -322,7 +331,7 @@ public class ManHinhMoCa extends JDialog {
     private JPanel buildStep2() {
         JPanel pnl = new JPanel(new BorderLayout());
         pnl.setBackground(COLOR_BG);
-        pnl.setBorder(new EmptyBorder(20, 0, 20, 0)); 
+        pnl.setBorder(new EmptyBorder(20, 0, 20, 0));
 
         JPanel card = new JPanel(new BorderLayout()) {
             @Override
@@ -332,7 +341,8 @@ public class ManHinhMoCa extends JDialog {
                 return d;
             }
 
-            @Override protected void paintComponent(Graphics g) {
+            @Override
+            protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setColor(Color.decode("#E6F7F2"));
@@ -343,7 +353,7 @@ public class ManHinhMoCa extends JDialog {
             }
         };
         card.setOpaque(false);
-        card.setBorder(new EmptyBorder(16, 24, 16, 24)); 
+        card.setBorder(new EmptyBorder(16, 24, 16, 24));
 
         JPanel contentWrap = new JPanel();
         contentWrap.setLayout(new BoxLayout(contentWrap, BoxLayout.Y_AXIS));
@@ -351,7 +361,7 @@ public class ManHinhMoCa extends JDialog {
 
         JLabel lblTitle = new JLabel("PHIẾU XÁC NHẬN MỞ CA", SwingConstants.CENTER);
         lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 17));
-        lblTitle.setForeground(Color.decode("#006250")); 
+        lblTitle.setForeground(Color.decode("#006250"));
         lblTitle.setAlignmentX(CENTER_ALIGNMENT);
         contentWrap.add(lblTitle);
         contentWrap.add(Box.createRigidArea(new Dimension(0, 4)));
@@ -361,40 +371,41 @@ public class ManHinhMoCa extends JDialog {
         lblTime.setForeground(Color.decode("#00A76F"));
         lblTime.setAlignmentX(CENTER_ALIGNMENT);
         contentWrap.add(lblTime);
-        contentWrap.add(Box.createRigidArea(new Dimension(0, 12))); 
+        contentWrap.add(Box.createRigidArea(new Dimension(0, 12)));
         contentWrap.add(createDashedLine());
-        contentWrap.add(Box.createRigidArea(new Dimension(0, 12))); 
+        contentWrap.add(Box.createRigidArea(new Dimension(0, 12)));
 
-        JPanel nvRow = buildConfirmRow("USER", UserSession.getInstance().getTenHienThi() + "  •  " + UserSession.getInstance().getChucVuHienThi());
-        nvRow.setMaximumSize(new Dimension(450, 40)); 
+        JPanel nvRow = buildConfirmRow("USER",
+                UserSession.getInstance().getTenHienThi() + "  •  " + UserSession.getInstance().getChucVuHienThi());
+        nvRow.setMaximumSize(new Dimension(450, 40));
         nvRow.setAlignmentX(CENTER_ALIGNMENT);
         contentWrap.add(nvRow);
-        contentWrap.add(Box.createRigidArea(new Dimension(0, 8))); 
+        contentWrap.add(Box.createRigidArea(new Dimension(0, 8)));
 
         JPanel caRow = buildConfirmCaRow();
-        caRow.setMaximumSize(new Dimension(450, 40)); 
+        caRow.setMaximumSize(new Dimension(450, 40));
         caRow.setAlignmentX(CENTER_ALIGNMENT);
         contentWrap.add(caRow);
-        contentWrap.add(Box.createRigidArea(new Dimension(0, 12))); 
-        
+        contentWrap.add(Box.createRigidArea(new Dimension(0, 12)));
+
         contentWrap.add(createDashedLine());
-        contentWrap.add(Box.createRigidArea(new Dimension(0, 12))); 
+        contentWrap.add(Box.createRigidArea(new Dimension(0, 12)));
 
         JPanel chiTietHeader = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
         chiTietHeader.setOpaque(false);
-        chiTietHeader.setMaximumSize(new Dimension(450, 20)); 
+        chiTietHeader.setMaximumSize(new Dimension(450, 20));
         chiTietHeader.setAlignmentX(CENTER_ALIGNMENT);
-        
+
         JLabel lblChiTiet = new JLabel("CHI TIẾT MỆNH GIÁ:");
         lblChiTiet.setFont(new Font("Segoe UI", Font.BOLD, 12));
         lblChiTiet.setForeground(Color.decode("#637381"));
         chiTietHeader.add(lblChiTiet);
         contentWrap.add(chiTietHeader);
-        contentWrap.add(Box.createRigidArea(new Dimension(0, 8))); 
+        contentWrap.add(Box.createRigidArea(new Dimension(0, 8)));
 
         JPanel chiTietPanel = new JPanel();
         chiTietPanel.setLayout(new BoxLayout(chiTietPanel, BoxLayout.Y_AXIS));
-        chiTietPanel.setOpaque(false); 
+        chiTietPanel.setOpaque(false);
         chiTietPanel.setAlignmentX(CENTER_ALIGNMENT);
 
         long tongTien = 0;
@@ -403,24 +414,24 @@ public class ManHinhMoCa extends JDialog {
                 long subtotal = soLuong[i] * MENH_GIA[i];
                 tongTien += subtotal;
                 JPanel row = new JPanel(new BorderLayout());
-                row.setOpaque(false); 
-                row.setMaximumSize(new Dimension(450, 22)); 
-                
+                row.setOpaque(false);
+                row.setMaximumSize(new Dimension(450, 22));
+
                 JLabel lLeft = new JLabel(MENH_GIA_STR[i] + "  ×  " + soLuong[i] + " tờ");
-                lLeft.setFont(new Font("Segoe UI", Font.PLAIN, 13)); 
+                lLeft.setFont(new Font("Segoe UI", Font.PLAIN, 13));
                 lLeft.setForeground(Color.decode("#212B36"));
-                
+
                 JLabel lRight = new JLabel(formatMoney(subtotal), SwingConstants.RIGHT);
-                lRight.setFont(new Font("Segoe UI", Font.BOLD, 13)); 
+                lRight.setFont(new Font("Segoe UI", Font.BOLD, 13));
                 lRight.setForeground(Color.decode("#212B36"));
-                
+
                 row.add(lLeft, BorderLayout.WEST);
                 row.add(lRight, BorderLayout.EAST);
                 chiTietPanel.add(row);
-                chiTietPanel.add(Box.createRigidArea(new Dimension(0, 4))); 
+                chiTietPanel.add(Box.createRigidArea(new Dimension(0, 4)));
             }
         }
-        
+
         if (tongTien == 0) {
             JLabel empty = new JLabel("(Không có tiền mặt đầu ca)");
             empty.setForeground(Color.GRAY);
@@ -431,23 +442,23 @@ public class ManHinhMoCa extends JDialog {
 
         contentWrap.add(chiTietPanel);
 
-        contentWrap.add(Box.createRigidArea(new Dimension(0, 8))); 
+        contentWrap.add(Box.createRigidArea(new Dimension(0, 8)));
         contentWrap.add(createDashedLine());
-        contentWrap.add(Box.createRigidArea(new Dimension(0, 12))); 
+        contentWrap.add(Box.createRigidArea(new Dimension(0, 12)));
 
         JPanel totalRow = new JPanel(new BorderLayout());
         totalRow.setOpaque(false);
         totalRow.setAlignmentX(CENTER_ALIGNMENT);
-        totalRow.setMaximumSize(new Dimension(450, 35)); 
-        
-        JLabel lTotal  = new JLabel("TỔNG TIỀN ĐẦU CA:");
-        lTotal.setFont(new Font("Segoe UI", Font.BOLD, 13)); 
+        totalRow.setMaximumSize(new Dimension(450, 35));
+
+        JLabel lTotal = new JLabel("TỔNG TIỀN ĐẦU CA:");
+        lTotal.setFont(new Font("Segoe UI", Font.BOLD, 13));
         lTotal.setForeground(Color.decode("#212B36"));
-        
+
         JLabel lAmount = new JLabel(formatMoney(tongTien), SwingConstants.RIGHT);
-        lAmount.setFont(new Font("Segoe UI", Font.BOLD, 22)); 
+        lAmount.setFont(new Font("Segoe UI", Font.BOLD, 22));
         lAmount.setForeground(Color.decode("#006250"));
-        
+
         totalRow.add(lTotal, BorderLayout.WEST);
         totalRow.add(lAmount, BorderLayout.EAST);
         contentWrap.add(totalRow);
@@ -512,7 +523,7 @@ public class ManHinhMoCa extends JDialog {
         });
 
         footer.add(btnReset, BorderLayout.WEST);
-        footer.add(btnNext,  BorderLayout.EAST);
+        footer.add(btnNext, BorderLayout.EAST);
         return footer;
     }
 
@@ -535,9 +546,9 @@ public class ManHinhMoCa extends JDialog {
         btnSua.addActionListener(e -> {
             stepCard.show(stepPanel, "step1");
             footerCardLayout.show(footerSwitcher, "step1");
-            
+
             // TRẢ LẠI FORM GỐC: Bung cửa sổ to ra lại thành 680x680
-            setSize(680, 680); 
+            setSize(680, 680);
             setLocationRelativeTo(getParent());
         });
 
@@ -554,7 +565,7 @@ public class ManHinhMoCa extends JDialog {
             dispose();
         });
 
-        footer.add(btnSua,     BorderLayout.WEST);
+        footer.add(btnSua, BorderLayout.WEST);
         footer.add(btnXacNhan, BorderLayout.EAST);
         return footer;
     }
@@ -573,7 +584,8 @@ public class ManHinhMoCa extends JDialog {
 
     private JButton buildCaButton(int idx) {
         JButton btn = new JButton() {
-            @Override protected void paintComponent(Graphics g) {
+            @Override
+            protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 boolean sel = (selectedCa == idx);
@@ -596,19 +608,26 @@ public class ManHinhMoCa extends JDialog {
         btn.setContentAreaFilled(false);
         btn.setBorderPainted(false);
         btn.setFocusPainted(false);
-        
+
         // ---- ĐÃ SỬA: Đổi con trỏ chuột về mặc định vì không cho phép bấm nữa ----
-        btn.setCursor(new Cursor(Cursor.DEFAULT_CURSOR)); 
+        btn.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
         // -----------------------------------------------------------------------
-        
+
         btn.setPreferredSize(new Dimension(0, 90));
 
         JLabel icon = new JLabel("", SwingConstants.CENTER);
         icon.setIcon(new MenuIcon(CA_ICON_TYPES[idx]) {
-            @Override public int getIconWidth()  { return 28; }
-            @Override public int getIconHeight() { return 28; }
+            @Override
+            public int getIconWidth() {
+                return 28;
+            }
+
+            @Override
+            public int getIconHeight() {
+                return 28;
+            }
         });
-        
+
         // Làm mờ màu icon nếu không phải ca được chọn
         if (selectedCa == idx) {
             icon.setForeground(CA_FG[idx]);
@@ -635,13 +654,14 @@ public class ManHinhMoCa extends JDialog {
 
         // ---- ĐÃ XÓA MẤT DÒNG addActionListener ĐỂ ÉP CỨNG KHÔNG CHO BẤM ----
         // (Nhân viên chỉ được nhìn chứ không được đổi ca)
-        
+
         return btn;
     }
 
     private JPanel buildMoneyBox(int idx) {
         JPanel box = new JPanel(new BorderLayout(0, 4)) {
-            @Override protected void paintComponent(Graphics g) {
+            @Override
+            protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setColor(Color.WHITE);
@@ -667,16 +687,18 @@ public class ManHinhMoCa extends JDialog {
         lblTip.setFont(new Font("Segoe UI", Font.PLAIN, 9));
         lblTip.setForeground(Color.LIGHT_GRAY);
 
-        box.add(lblGia,   BorderLayout.NORTH);
+        box.add(lblGia, BorderLayout.NORTH);
         box.add(lblCount[idx], BorderLayout.CENTER);
-        box.add(lblTip,   BorderLayout.SOUTH);
+        box.add(lblTip, BorderLayout.SOUTH);
 
         box.addMouseListener(new MouseAdapter() {
-            @Override public void mouseClicked(MouseEvent e) {
+            @Override
+            public void mouseClicked(MouseEvent e) {
                 if (SwingUtilities.isLeftMouseButton(e)) {
                     soLuong[idx]++;
                 } else if (SwingUtilities.isRightMouseButton(e)) {
-                    if (soLuong[idx] > 0) soLuong[idx]--;
+                    if (soLuong[idx] > 0)
+                        soLuong[idx]--;
                 }
                 lblCount[idx].setText(String.valueOf(soLuong[idx]));
                 refreshTotal();
@@ -718,7 +740,7 @@ public class ManHinhMoCa extends JDialog {
         lRight.setFont(new Font("Segoe UI", Font.BOLD, 13));
         lRight.setForeground(CA_FG[selectedCa]);
 
-        row.add(lLeft,  BorderLayout.WEST);
+        row.add(lLeft, BorderLayout.WEST);
         row.add(lRight, BorderLayout.EAST);
         return row;
     }
@@ -745,7 +767,8 @@ public class ManHinhMoCa extends JDialog {
 
     private void refreshTotal() {
         long tong = 0;
-        for (int i = 0; i < 9; i++) tong += soLuong[i] * MENH_GIA[i];
+        for (int i = 0; i < 9; i++)
+            tong += soLuong[i] * MENH_GIA[i];
         lblTongTien.setText(formatMoney(tong));
     }
 
@@ -756,22 +779,37 @@ public class ManHinhMoCa extends JDialog {
 
     // ─── PUBLIC API ──────────────────────────────────────────
 
-    public boolean isConfirmed()    { return confirmed; }
-    public int     getSelectedCa()  { return selectedCa; }
-    public String  getCaLabel()     { return CA_LABELS[selectedCa]; }
-    public String  getCaTimes()     { return CA_TIMES[selectedCa]; }
+    public boolean isConfirmed() {
+        return confirmed;
+    }
+
+    public int getSelectedCa() {
+        return selectedCa;
+    }
+
+    public String getCaLabel() {
+        return CA_LABELS[selectedCa];
+    }
+
+    public String getCaTimes() {
+        return CA_TIMES[selectedCa];
+    }
+
     public long getTongTienDauCa() {
         long t = 0;
-        for (int i = 0; i < 9; i++) t += soLuong[i] * MENH_GIA[i];
+        for (int i = 0; i < 9; i++)
+            t += soLuong[i] * MENH_GIA[i];
         return t;
     }
- // Tao duong ke dut (dashed line) giong bien lai
+
+    // Tao duong ke dut (dashed line) giong bien lai
     private JComponent createDashedLine() {
         JPanel line = new JPanel() {
-            @Override protected void paintComponent(Graphics g) {
+            @Override
+            protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setColor(COLOR_BORDER);
-                g2.setStroke(new BasicStroke(1, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL, 0, new float[]{5}, 0));
+                g2.setStroke(new BasicStroke(1, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL, 0, new float[] { 5 }, 0));
                 g2.drawLine(0, getHeight() / 2, getWidth(), getHeight() / 2);
                 g2.dispose();
             }

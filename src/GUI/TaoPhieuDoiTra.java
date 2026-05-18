@@ -1609,8 +1609,6 @@ public class TaoPhieuDoiTra extends JDialog {
             showCustomNotification("CẢNH BÁO", "Vui lòng tìm kiếm hóa đơn hợp lệ trước khi tạo phiếu!", "WARNING"); return;
         }
 
-        // ĐÃ XÓA LỆNH CHẶN Ở ĐÂY ĐỂ ĐƯỢC PHÉP LƯU PHIẾU TỪ CHỐI/0Đ VÀO HỆ THỐNG
-
         String loai = btnTraHang.getBackground().equals(Color.WHITE) ? "Trả hàng" : "Đổi hàng";
         if (loai.equals("Đổi hàng") && spMoiModel.getRowCount() == 0) {
             showCustomNotification("CẢNH BÁO", "Vui lòng tìm và chọn sản phẩm mới muốn đổi sang!", "WARNING"); return;
@@ -1727,12 +1725,48 @@ public class TaoPhieuDoiTra extends JDialog {
             hdDoiTra.setHoaDonGocId(hdGoc);
             
             if (busHD.taoPhieuDoiTra(hdDoiTra)) {
+                
+            	BUS.BUS_ChiTietHoaDon busCT = new BUS.BUS_ChiTietHoaDon();
+
+            	for (int i = 0; i < chiTietModel.getRowCount(); i++) {
+            	    Object val = chiTietModel.getValueAt(i, 0);
+            	    if (val != null && (boolean) val) {
+            	        String ten = chiTietModel.getValueAt(i, 1).toString().trim();
+            	        String dvt = chiTietModel.getValueAt(i, 2).toString().trim();
+            	        int sl = Integer.parseInt(chiTietModel.getValueAt(i, 3).toString());
+            	        String strGia = chiTietModel.getValueAt(i, 4).toString().replaceAll("[^0-9]", "");
+            	        double gia = Double.parseDouble(strGia);
+            	        busCT.themChiTietDoiTra(maPhieu, ten, dvt, sl, gia, "Hàng khách trả");
+            	    }
+            	}
+
+            	if (loai.equals("Đổi hàng") && spMoiModel.getRowCount() > 0) {
+            	    for (int i = 0; i < spMoiModel.getRowCount(); i++) {
+            	        String ten = spMoiModel.getValueAt(i, 0).toString().trim();
+            	        String dvt = spMoiModel.getValueAt(i, 1).toString().trim();
+            	        int sl = Integer.parseInt(spMoiModel.getValueAt(i, 2).toString());
+            	        String strGia = spMoiModel.getValueAt(i, 3).toString().replaceAll("[^0-9]", "");
+            	        double gia = Double.parseDouble(strGia);
+            	        busCT.themChiTietDoiTra(maPhieu, ten, dvt, sl, gia, "Hàng khách đổi mới");
+            	    }
+            	}
+
+                // Cập nhật giao diện sau khi lưu xong
                 mainModel.addRow(new Object[]{
                     maPhieu, maHDGoc, khach, loai, lyDoFull, colHoanTien, colChenhLech, "Chờ xử lý", ngayTao, formatGhiChu
                 });
                 
                 isTaoThanhCong = true;
                 maPhieuMoi = maPhieu;
+
+                SwingUtilities.invokeLater(() -> {
+                    Window owner = getOwner();
+                    if (owner instanceof MainDashboard) {
+                        MainDashboard md = (MainDashboard) owner;
+                        md.lamMoiManHinhChinh();
+                    }
+                });
+
                 dispose(); 
             } else {
                 showCustomNotification("LỖI CƠ SỞ DỮ LIỆU", "Lỗi! Không thể ghi nhận phiếu vào Database.", "ERROR");
