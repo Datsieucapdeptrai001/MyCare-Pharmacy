@@ -6,7 +6,7 @@ import Entity.DonViDoLuong;
 import Entity.LoHang;
 import Enumeration.TrangThaiLoHang;
 import Utils.MenuIcon;
-
+import Utils.TelexFix;
 import javax.swing.*;
 import javax.swing.border.AbstractBorder;
 import javax.swing.border.EmptyBorder;
@@ -71,7 +71,8 @@ public class ManHinhLoHang extends JPanel {
     private JButton btnTatCa, btnDuocBan, btnHetHan, btnTamNgung;
     private JTable table;
     private DefaultTableModel tableModel;
-
+    private JPanel pnlChiTietLo;
+    private BatchItem selectedDetailItem = null;
     private TrangThaiFilter filter = TrangThaiFilter.TAT_CA;
 
     public ManHinhLoHang() {
@@ -80,6 +81,7 @@ public class ManHinhLoHang extends JPanel {
         setBorder(new EmptyBorder(8, 8, 8, 8));
 
         add(createMainCard(), BorderLayout.CENTER);
+        TelexFix.applyDeep(this);
         loadDataFromDatabase();
     }
 
@@ -185,14 +187,14 @@ public class ManHinhLoHang extends JPanel {
             wrapper.requestFocus();
         });
 
-        JButton btnLichSu = createHoverButton("Lịch sử", new Color(248, 250, 252), new Color(226, 232, 240),
+        JButton btnLichSu = createHoverButton("Nhật ký", new Color(248, 250, 252), new Color(226, 232, 240),
                 TEXT_PRIMARY);
         btnLichSu.setIcon(new MenuIcon("LIST"));
         btnLichSu.setBorder(new RoundedLineBorder(BORDER_COLOR, 1, 8));
-        btnLichSu.setPreferredSize(new Dimension(100, 38));
-        btnLichSu.setMaximumSize(new Dimension(100, 38));
+        btnLichSu.setPreferredSize(new Dimension(110, 38));
+        btnLichSu.setMaximumSize(new Dimension(110, 38));
         btnLichSu.setMinimumSize(new Dimension(40, 38));
-        btnLichSu.addActionListener(e -> moManHinhLichSuXuat());
+        btnLichSu.addActionListener(e -> moManHinhNhatKyKho());
 
         JButton btnXuatKho = createHoverButton("Xuất / Hủy Kho", WARNING, new Color(234, 88, 12), Color.WHITE);
         btnXuatKho.setIcon(new MenuIcon("MINUS"));
@@ -490,24 +492,37 @@ public class ManHinhLoHang extends JPanel {
                 int row = table.rowAtPoint(e.getPoint());
                 int col = table.columnAtPoint(e.getPoint());
 
-                if (row >= 0 && col == 9) {
+                if (row < 0) {
+                    return;
+                }
+
+                String maLo = String.valueOf(table.getValueAt(row, 1));
+                BatchItem item = timBatchTheoSoLo(maLo);
+
+                if (item == null) {
+                    return;
+                }
+
+                // Cột thao tác: Ẩn / Khôi phục
+                if (col == 9) {
                     if (isStaffRole) {
-                        showCustomNotification("Từ chối thao tác",
-                                "Nhân viên Dược sĩ không có quyền Ẩn hoặc Khôi phục lô hàng!", "WARNING");
+                        showCustomNotification(
+                                "Từ chối thao tác",
+                                "Nhân viên Dược sĩ không có quyền Ẩn hoặc Khôi phục lô hàng!",
+                                "WARNING");
                         return;
                     }
-
-                    String maLo = String.valueOf(table.getValueAt(row, 1));
-                    BatchItem item = timBatchTheoSoLo(maLo);
-                    if (item == null)
-                        return;
 
                     if ("Đã ẩn".equals(item.trangThai)) {
                         khoiPhucLoHang(item.soLo);
                     } else {
                         anLoHang(item.soLo);
                     }
+                    return;
                 }
+
+                // Click các cột còn lại: xổ chi tiết lô hàng
+                toggleChiTietLo(item);
             }
         });
 
@@ -523,6 +538,11 @@ public class ManHinhLoHang extends JPanel {
         scroll.getHorizontalScrollBar().setPreferredSize(new Dimension(0, 12));
 
         wrap.add(scroll, BorderLayout.CENTER);
+
+        pnlChiTietLo = createChiTietLoPanel();
+        pnlChiTietLo.setVisible(false);
+        wrap.add(pnlChiTietLo, BorderLayout.SOUTH);
+
         return wrap;
     }
 
@@ -539,7 +559,7 @@ public class ManHinhLoHang extends JPanel {
 
                     String id = safe(lh.getId());
                     String soLo = safe(lh.getSoLoHang());
-
+                    String maVachNoiBo = safe(lh.getMaVachNoiBo());
                     String maSP = "";
                     String tenSP = "";
                     String donVi = "Chưa có";
@@ -622,7 +642,8 @@ public class ManHinhLoHang extends JPanel {
 
                     dsTatCa.add(new BatchItem(id, soLo, maSP, tenSP, donVi, donViCoBan, soLuong, tonKhoHienThi, gia,
                             hanSuDung,
-                            trangThai));
+                            trangThai,
+                            maVachNoiBo));
                 }
             }
             updateStats();
@@ -665,8 +686,24 @@ public class ManHinhLoHang extends JPanel {
         }
     }
 
+    private void moManHinhNhatKyKho() {
+        Window owner = SwingUtilities.getWindowAncestor(this);
+
+        JDialog dialog = new JDialog(owner, "Nhật ký lịch sử kho", Dialog.ModalityType.APPLICATION_MODAL);
+        dialog.setContentPane(new ManHinhNhatKyKho());
+        dialog.setSize(1150, 650);
+        dialog.setLocationRelativeTo(owner);
+        dialog.setVisible(true);
+    }
+
     private void refreshTable() {
         String keyword = txtSearch.getText().trim().toLowerCase();
+        if (pnlChiTietLo != null && selectedDetailItem != null) {
+            // Nếu đang tìm kiếm/lọc lại thì đóng chi tiết để tránh hiển thị lô không còn
+            // trên bảng
+            pnlChiTietLo.setVisible(false);
+            selectedDetailItem = null;
+        }
         List<BatchItem> filtered = new ArrayList<>();
 
         for (BatchItem item : dsTatCa) {
@@ -1144,16 +1181,274 @@ public class ManHinhLoHang extends JPanel {
         TAT_CA, DUOC_BAN, HET_HAN, GAN_HET_HAN_90, HET_HANG
     }
 
+    private JPanel createChiTietLoPanel() {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBackground(Color.WHITE);
+        panel.setBorder(new CompoundRoundBorder(
+                new RoundedLineBorder(BORDER_COLOR, 1, 10),
+                new Insets(14, 18, 14, 18)));
+        return panel;
+    }
+
+    private void toggleChiTietLo(BatchItem item) {
+        if (item == null) {
+            return;
+        }
+
+        if (selectedDetailItem != null && safe(selectedDetailItem.soLo).equalsIgnoreCase(safe(item.soLo))) {
+            selectedDetailItem = null;
+            pnlChiTietLo.setVisible(false);
+            pnlChiTietLo.revalidate();
+            pnlChiTietLo.repaint();
+            return;
+        }
+
+        selectedDetailItem = item;
+        capNhatChiTietLoPanel(item);
+        pnlChiTietLo.setVisible(true);
+        pnlChiTietLo.revalidate();
+        pnlChiTietLo.repaint();
+    }
+
+    private void capNhatChiTietLoPanel(BatchItem item) {
+        pnlChiTietLo.removeAll();
+
+        JPanel root = new JPanel(new BorderLayout(16, 12));
+        root.setOpaque(false);
+
+        JPanel header = new JPanel(new BorderLayout());
+        header.setOpaque(false);
+
+        JPanel leftHeader = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        leftHeader.setOpaque(false);
+
+        JLabel lblTitle = new JLabel("Chi tiết lô " + item.soLo);
+        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 17));
+        lblTitle.setForeground(TEXT_PRIMARY);
+
+        JLabel lblSub = new JLabel("Mã hệ thống: " + item.id);
+        lblSub.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        lblSub.setForeground(TEXT_SECONDARY);
+
+        leftHeader.add(lblTitle);
+        leftHeader.add(lblSub);
+
+        JPanel rightHeader = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        rightHeader.setOpaque(false);
+
+        JButton btnInTem = createHoverButton("Xem / In tem", Color.WHITE, new Color(241, 245, 249), PRIMARY_BLUE);
+        btnInTem.setBorder(new RoundedLineBorder(PRIMARY_BLUE, 1, 8));
+        btnInTem.setPreferredSize(new Dimension(125, 36));
+        btnInTem.addActionListener(e -> moLaiTemMaVach(item));
+
+        JButton btnDong = createHoverButton("Đóng", new Color(248, 250, 252), new Color(226, 232, 240), TEXT_PRIMARY);
+        btnDong.setBorder(new RoundedLineBorder(BORDER_COLOR, 1, 8));
+        btnDong.setPreferredSize(new Dimension(85, 36));
+        btnDong.addActionListener(e -> {
+            selectedDetailItem = null;
+            pnlChiTietLo.setVisible(false);
+        });
+
+        rightHeader.add(btnInTem);
+
+        if (!isStaffRole) {
+            JButton btnAnKhoiPhuc;
+
+            if ("Đã ẩn".equals(item.trangThai)) {
+                btnAnKhoiPhuc = createHoverButton("Khôi phục", PRIMARY_BLUE, PRIMARY_BLUE_HOVER, Color.WHITE);
+                btnAnKhoiPhuc.addActionListener(e -> khoiPhucLoHang(item.soLo));
+            } else {
+                btnAnKhoiPhuc = createHoverButton("Ẩn lô", DANGER, DANGER_HOVER, Color.WHITE);
+                btnAnKhoiPhuc.addActionListener(e -> anLoHang(item.soLo));
+            }
+
+            btnAnKhoiPhuc.setPreferredSize(new Dimension(105, 36));
+            rightHeader.add(btnAnKhoiPhuc);
+        }
+
+        rightHeader.add(btnDong);
+
+        header.add(leftHeader, BorderLayout.WEST);
+        header.add(rightHeader, BorderLayout.EAST);
+
+        JPanel body = new JPanel(new BorderLayout(18, 0));
+        body.setOpaque(false);
+
+        JPanel productBox = new JPanel();
+        productBox.setLayout(new BoxLayout(productBox, BoxLayout.Y_AXIS));
+        productBox.setOpaque(false);
+
+        JLabel lblSanPhamTitle = new JLabel("Sản phẩm");
+        lblSanPhamTitle.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        lblSanPhamTitle.setForeground(TEXT_SECONDARY);
+
+        JLabel lblSanPham = new JLabel(
+                "<html><b>" + safe(item.maSanPham) + "</b> - " + safe(item.tenSanPham) + "</html>");
+        lblSanPham.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        lblSanPham.setForeground(TEXT_PRIMARY);
+
+        JLabel lblDonVi = new JLabel("Đơn vị: " + safe(item.donVi));
+        lblDonVi.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        lblDonVi.setForeground(TEXT_SECONDARY);
+
+        productBox.add(lblSanPhamTitle);
+        productBox.add(Box.createVerticalStrut(8));
+        productBox.add(lblSanPham);
+        productBox.add(Box.createVerticalStrut(8));
+        productBox.add(lblDonVi);
+
+        JPanel infoGrid = new JPanel(new GridLayout(2, 3, 12, 12));
+        infoGrid.setOpaque(false);
+
+        infoGrid.add(createInfoCard("Tồn kho", item.tonKhoHienThi, PRIMARY_BLUE, new Color(240, 249, 255)));
+        infoGrid.add(createInfoCard("Giá vốn",
+                formatCurrency(item.giaNhap) + (item.donViCoBan.isEmpty() ? "" : " / " + item.donViCoBan), WARNING,
+                WARNING_SOFT));
+        infoGrid.add(createInfoCard("Hạn sử dụng", item.hanSuDung, TEXT_PRIMARY, new Color(248, 250, 252)));
+        infoGrid.add(createInfoCard("Còn lại", item.getConLai(), getMauConLai(item), getNenConLai(item)));
+        infoGrid.add(createInfoCard("Trạng thái", item.trangThai, getMauTrangThai(item.trangThai),
+                getNenTrangThai(item.trangThai)));
+        infoGrid.add(createInfoCard("Mã vạch lô", safe(item.maVachNoiBo).isEmpty() ? "Chưa có" : item.maVachNoiBo,
+                PRIMARY_BLUE, new Color(240, 249, 255)));
+
+        body.add(productBox, BorderLayout.WEST);
+        body.add(infoGrid, BorderLayout.CENTER);
+
+        root.add(header, BorderLayout.NORTH);
+        root.add(body, BorderLayout.CENTER);
+
+        pnlChiTietLo.add(root, BorderLayout.CENTER);
+    }
+
+    private JPanel createInfoCard(String title, String value, Color valueColor, Color bgColor) {
+        JPanel card = new JPanel(new BorderLayout(0, 6));
+        card.setBackground(bgColor);
+        card.setBorder(new CompoundRoundBorder(
+                new RoundedLineBorder(new Color(0, 0, 0, 0), 0, 10),
+                new Insets(10, 12, 10, 12)));
+
+        JLabel lblTitle = new JLabel(title.toUpperCase());
+        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        lblTitle.setForeground(TEXT_SECONDARY);
+
+        JLabel lblValue = new JLabel(value);
+        lblValue.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        lblValue.setForeground(valueColor);
+
+        card.add(lblTitle, BorderLayout.NORTH);
+        card.add(lblValue, BorderLayout.CENTER);
+
+        return card;
+    }
+
+    private Color getMauTrangThai(String trangThai) {
+        if ("Được bán".equals(trangThai)) {
+            return SUCCESS;
+        }
+        if ("Hết hạn".equals(trangThai)) {
+            return DANGER;
+        }
+        if ("Hết hàng".equals(trangThai)) {
+            return TEXT_SECONDARY;
+        }
+        if ("Đã ẩn".equals(trangThai)) {
+            return HIDDEN;
+        }
+        return TEXT_SECONDARY;
+    }
+
+    private Color getNenTrangThai(String trangThai) {
+        if ("Được bán".equals(trangThai)) {
+            return SUCCESS_SOFT;
+        }
+        if ("Hết hạn".equals(trangThai)) {
+            return DANGER_SOFT;
+        }
+        if ("Hết hàng".equals(trangThai)) {
+            return HIDDEN_SOFT;
+        }
+        if ("Đã ẩn".equals(trangThai)) {
+            return HIDDEN_SOFT;
+        }
+        return new Color(248, 250, 252);
+    }
+
+    private Color getMauConLai(BatchItem item) {
+        String conLai = item.getConLai();
+
+        if (conLai.startsWith("Quá")) {
+            return DANGER;
+        }
+
+        int days = parseDays(conLai);
+
+        if (days <= 30) {
+            return WARNING;
+        }
+
+        if (days <= 90) {
+            return GOLD;
+        }
+
+        return SUCCESS;
+    }
+
+    private Color getNenConLai(BatchItem item) {
+        String conLai = item.getConLai();
+
+        if (conLai.startsWith("Quá")) {
+            return DANGER_SOFT;
+        }
+
+        int days = parseDays(conLai);
+
+        if (days <= 30) {
+            return WARNING_SOFT;
+        }
+
+        if (days <= 90) {
+            return GOLD_SOFT;
+        }
+
+        return SUCCESS_SOFT;
+    }
+
+    private void moLaiTemMaVach(BatchItem item) {
+        if (item == null) {
+            return;
+        }
+
+        if (safe(item.maVachNoiBo).isEmpty()) {
+            showCustomNotification(
+                    "Không có mã vạch",
+                    "Lô hàng này chưa có mã vạch nội bộ để in lại!",
+                    "WARNING");
+            return;
+        }
+
+        Window owner = SwingUtilities.getWindowAncestor(this);
+
+        String maSP = safe(item.maSanPham).isEmpty() ? "N/A" : item.maSanPham;
+        String tenSP = safe(item.tenSanPham).isEmpty() ? "Sản phẩm không tên" : item.tenSanPham;
+
+        DialogInMaVach dialogMaVach = new DialogInMaVach(
+                owner,
+                item.maVachNoiBo,
+                maSP,
+                tenSP);
+
+        dialogMaVach.setVisible(true);
+    }
+
     private class BatchItem {
         // Cập nhật thêm donViCoBan
-        String id, soLo, maSanPham, tenSanPham, donVi, donViCoBan, hanSuDung, trangThai, tonKhoHienThi;
+        String id, soLo, maSanPham, tenSanPham, donVi, donViCoBan, hanSuDung, trangThai, tonKhoHienThi, maVachNoiBo;
         int tonKho;
         double giaNhap;
 
         // Cập nhật hàm tạo
         BatchItem(String i, String sl, String msp, String tsp, String dv, String dvcb, int tk, String tkHienThi,
-                double gn,
-                String hsd, String tt) {
+                double gn, String hsd, String tt, String mvnb) {
             id = i;
             soLo = sl;
             maSanPham = msp;
@@ -1165,6 +1460,7 @@ public class ManHinhLoHang extends JPanel {
             giaNhap = gn;
             hanSuDung = hsd;
             trangThai = tt;
+            maVachNoiBo = mvnb;
         }
 
         String getConLai() {
@@ -1300,7 +1596,8 @@ public class ManHinhLoHang extends JPanel {
                 lbl.setText("");
                 if (isStaffRole) {
                     lbl.setIcon(null);
-                    lbl.setToolTipText("Không có quyền thao tác");
+                    lbl.setForeground(TEXT_SECONDARY);
+                    lbl.setToolTipText("Chỉ quản lý được ẩn/khôi phục lô hàng");
                 } else {
                     if ("Đã ẩn".equals(trangThaiRow)) {
                         lbl.setIcon(new MenuIcon("REFRESH"));
@@ -1506,15 +1803,41 @@ public class ManHinhLoHang extends JPanel {
     public void setReadOnly(boolean readOnly) {
         this.isStaffRole = readOnly;
 
-        if (!readOnly)
-            return;
-        disableButtonsByText(this, "Thêm mới", "Nhập lô hàng", "Xuất / Hủy Kho", "Lịch sử", "Nhập Excel", "Thêm", "Xóa",
-                "Sửa", "Lưu");
+        /*
+         * readOnly = true: Nhân viên / Dược sĩ
+         * - Được xem lô hàng
+         * - Được tìm kiếm, lọc lô
+         * - Được nhập lô hàng
+         * - Được xuất / hủy kho
+         * - Được xem lịch sử
+         * - Không được xem lô ẩn
+         * - Không được ẩn / khôi phục lô hàng
+         *
+         * readOnly = false: Quản lý
+         * - Toàn quyền trên màn hình lô hàng
+         */
 
-        if (table != null) {
-            javax.swing.table.TableColumn columnThaoTac = table.getColumnModel().getColumn(9);
-            table.removeColumn(columnThaoTac);
+        // Nhân viên không được xem lô ẩn
+        if (chkShowHidden != null) {
+            chkShowHidden.setSelected(false);
+            chkShowHidden.setVisible(!readOnly);
         }
+
+        hienLoAn = false;
+
+        if (readOnly) {
+            filter = TrangThaiFilter.TAT_CA;
+            setActiveFilterButton(btnTatCa);
+        }
+
+        // Không ẩn các nút nghiệp vụ hằng ngày:
+        // Nhập lô hàng, Xuất / Hủy Kho, Lịch sử vẫn cho nhân viên dùng.
+        // Không remove cột thao tác để tránh lỗi lệch index cột.
+        if (table != null) {
+            table.repaint();
+        }
+
+        loadDataFromDatabase();
     }
 
     private void disableButtonsByText(Container container, String... texts) {
