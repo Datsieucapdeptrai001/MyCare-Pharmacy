@@ -15,7 +15,20 @@ GO
 USE [MYCAREPHARMACY];
 GO
 
+CREATE TABLE [dbo].[LieuMau](
+    [id] [nvarchar](50) NOT NULL PRIMARY KEY,
+    [tenLieu] [nvarchar](150) NOT NULL,
+    [nhomBenh] [nvarchar](100) NULL,
+    [moTa] [nvarchar](255) NULL
+);
 
+CREATE TABLE [dbo].[ChiTietLieuMau](
+    [lieuMauId] [nvarchar](50) NOT NULL,
+    [sanPhamId] [nvarchar](50) NOT NULL,
+    [soLuong] [int] NOT NULL,
+    CONSTRAINT [PK_ChiTietLieuMau] PRIMARY KEY CLUSTERED ([lieuMauId] ASC, [sanPhamId] ASC)
+);
+GO
 CREATE TABLE [dbo].[ApDungKhuyenMai](
 	[id] [nvarchar](50) NOT NULL PRIMARY KEY,
 	[khuyenMaiId] [nvarchar](50) NOT NULL,
@@ -254,12 +267,35 @@ ALTER TABLE [dbo].[NhanVien] ADD CONSTRAINT [CK_NhanVien_TrangThaiLamViec] CHECK
 ALTER TABLE [dbo].[SanPham] ADD CONSTRAINT [CK_SanPham_Dang] CHECK (([dang]=N'VIEN_NEN' OR [dang]=N'VIEN_NANG' OR [dang]=N'VIEN_SUI' OR [dang]=N'THUOC_BOT' OR [dang]=N'KEO_NGAM' OR [dang]=N'DUNG_DICH' OR [dang]=N'HON_DICH' OR [dang]=N'THUOC_NHO_GIOT' OR [dang]=N'SUC_MIENG'))
 ALTER TABLE [dbo].[SanPham] ADD CONSTRAINT [CK_SanPham_DanhMuc] CHECK (([danhMuc]=N'MY_PHAM' OR [danhMuc]=N'THUOC_KE_DON' OR [danhMuc]=N'THUOC_KHONG_KE_DON' OR [danhMuc]=N'THUC_PHAM_CHUC_NANG'))
 ALTER TABLE [dbo].[TaiKhoan] ADD CONSTRAINT [CK_TaiKhoan_VaiTro] CHECK (([vaiTro]=N'STAFF' OR [vaiTro]=N'ADMIN'))
+ALTER TABLE [dbo].[ChiTietLieuMau] ADD CONSTRAINT [FK_ChiTietLieuMau_LieuMau] FOREIGN KEY([lieuMauId]) REFERENCES [dbo].[LieuMau] ([id]) ON DELETE CASCADE;
+ALTER TABLE [dbo].[ChiTietLieuMau] ADD CONSTRAINT [FK_ChiTietLieuMau_SanPham] FOREIGN KEY([sanPhamId]) REFERENCES [dbo].[SanPham] ([id]) ON DELETE CASCADE ON UPDATE CASCADE;
 GO
-
-
 -- ==============================================================================
 -- 5. CHÈN DỮ LIỆU ĐÚNG THỨ TỰ CHA - CON
 -- ==============================================================================
+-- 5. TỰ ĐỘNG DÒ TÌM ID THUỐC TRONG MÁY BẠN VÀ ĐƯA VÀO LIỀU (Tuyệt đối không báo lỗi FK)
+DECLARE @sp1 NVARCHAR(50) = (SELECT TOP 1 id FROM [dbo].[SanPham] WHERE ten LIKE N'%Amoxicillin%');
+DECLARE @sp2 NVARCHAR(50) = (SELECT TOP 1 id FROM [dbo].[SanPham] WHERE ten LIKE N'%Cetirizine%');
+DECLARE @sp3 NVARCHAR(50) = (SELECT TOP 1 id FROM [dbo].[SanPham] WHERE ten LIKE N'%Siro Ho%');
+DECLARE @sp4 NVARCHAR(50) = (SELECT TOP 1 id FROM [dbo].[SanPham] WHERE ten LIKE N'%Smecta%');
+DECLARE @sp5 NVARCHAR(50) = (SELECT TOP 1 id FROM [dbo].[SanPham] WHERE ten LIKE N'%Oresol%');
+
+-- Nếu không tìm thấy theo tên, lấy ngẫu nhiên thuốc bất kỳ đang có để thế mạng
+IF @sp1 IS NULL SET @sp1 = (SELECT id FROM (SELECT id, ROW_NUMBER() OVER(ORDER BY id) as rn FROM SanPham WHERE ISNULL(trangThai,'') != 'AN') t WHERE rn=1);
+IF @sp2 IS NULL SET @sp2 = (SELECT id FROM (SELECT id, ROW_NUMBER() OVER(ORDER BY id) as rn FROM SanPham WHERE ISNULL(trangThai,'') != 'AN') t WHERE rn=2);
+IF @sp3 IS NULL SET @sp3 = (SELECT id FROM (SELECT id, ROW_NUMBER() OVER(ORDER BY id) as rn FROM SanPham WHERE ISNULL(trangThai,'') != 'AN') t WHERE rn=3);
+IF @sp4 IS NULL SET @sp4 = (SELECT id FROM (SELECT id, ROW_NUMBER() OVER(ORDER BY id) as rn FROM SanPham WHERE ISNULL(trangThai,'') != 'AN') t WHERE rn=4);
+IF @sp5 IS NULL SET @sp5 = (SELECT id FROM (SELECT id, ROW_NUMBER() OVER(ORDER BY id) as rn FROM SanPham WHERE ISNULL(trangThai,'') != 'AN') t WHERE rn=5);
+
+-- Chèn thuốc vào Liều 1
+IF @sp1 IS NOT NULL INSERT INTO [dbo].[ChiTietLieuMau] VALUES (N'LM-0001', @sp1, 6);
+IF @sp2 IS NOT NULL INSERT INTO [dbo].[ChiTietLieuMau] VALUES (N'LM-0001', @sp2, 3);
+IF @sp3 IS NOT NULL INSERT INTO [dbo].[ChiTietLieuMau] VALUES (N'LM-0001', @sp3, 1);
+
+-- Chèn thuốc vào Liều 2
+IF @sp4 IS NOT NULL INSERT INTO [dbo].[ChiTietLieuMau] VALUES (N'LM-0002', @sp4, 6);
+IF @sp5 IS NOT NULL INSERT INTO [dbo].[ChiTietLieuMau] VALUES (N'LM-0002', @sp5, 3);
+GO
 
 -- A. BẢNG KHÔNG CHỨA KHÓA NGOẠI
 INSERT [dbo].[NhanVien] VALUES (N'DS-0001', N'Nguyễn Tuấn Đạt', N'CCHN-DS-2021-001', N'0912345678', N'dat@mycarepharmacy.vn', N'DUOC_SI', N'DANG_LAM_VIEC', N'Nam', CAST(N'1990-01-01' AS Date), N'TP.HCM', N'079090000001')
@@ -337,7 +373,34 @@ INSERT [dbo].[SanPham] VALUES (N'SP2024-0037', N'THUOC_KHONG_KE_DON', N'KEO_NGAM
 INSERT [dbo].[SanPham] VALUES (N'SP2024-0038', N'THUOC_KHONG_KE_DON', N'VIEN_SUI', N'Efferalgan 500mg', N'Efferalgan', N'UPSA', N'Paracetamol', CAST(5.00 AS Decimal(18, 2)), N'500mg', N'Hạ sốt nhanh', N'Viên', GETDATE(), N'HOAT_DONG', CAST(62000.00 AS Decimal(18, 2)), N'8934673100182', N'Thần kinh – Giảm đau')
 INSERT [dbo].[SanPham] VALUES (N'SP2024-0039', N'THUOC_KHONG_KE_DON', N'THUOC_BOT', N'Hapacol 150', N'Hapacol 150', N'DHG Pharma', N'Paracetamol', CAST(5.00 AS Decimal(18, 2)), N'150mg', N'Hạ sốt cho trẻ', N'Gói', GETDATE(), N'HOAT_DONG', CAST(68000.00 AS Decimal(18, 2)), N'8934673100199', N'Vitamin – Bổ sung')
 INSERT [dbo].[SanPham] VALUES (N'SP2024-0040', N'THUOC_KE_DON', N'HON_DICH', N'Phosphalugel', N'Chữ P', N'Astellas', N'Aluminum phosphate', CAST(5.00 AS Decimal(18, 2)), N'20%', N'Kháng axit dạ dày', N'Gói', GETDATE(), N'HOAT_DONG', CAST(110000.00 AS Decimal(18, 2)), N'8934673100212', N'Tiêu hóa – Dạ dày')
+-- ... (Các dòng INSERT [dbo].[SanPham] ...)
+INSERT [dbo].[SanPham] VALUES (N'SP2024-0039', N'THUOC_KHONG_KE_DON', N'THUOC_BOT', N'Hapacol 150', N'Hapacol 150', N'DHG Pharma', N'Paracetamol', CAST(5.00 AS Decimal(18, 2)), N'150mg', N'Hạ sốt cho trẻ', N'Gói', GETDATE(), N'HOAT_DONG', CAST(68000.00 AS Decimal(18, 2)), N'8934673100199', N'Vitamin – Bổ sung')
+INSERT [dbo].[SanPham] VALUES (N'SP2024-0040', N'THUOC_KE_DON', N'HON_DICH', N'Phosphalugel', N'Chữ P', N'Astellas', N'Aluminum phosphate', CAST(5.00 AS Decimal(18, 2)), N'20%', N'Kháng axit dạ dày', N'Gói', GETDATE(), N'HOAT_DONG', CAST(110000.00 AS Decimal(18, 2)), N'8934673100212', N'Tiêu hóa – Dạ dày')
+GO
 
+-- ==============================================================================
+-- CHÈN LIỀU MẪU VÀ CHI TIẾT LIỀU MẪU (Phải đặt SAU KHI đã có SanPham)
+-- ==============================================================================
+INSERT INTO [dbo].[LieuMau] VALUES 
+(N'LM-0001', N'Liều ho có đờm, sổ mũi', N'Hô hấp', N'Uống 3 ngày: Kháng sinh, Dị ứng, Siro'),
+(N'LM-0002', N'Liều tiêu chảy, bù nước', N'Tiêu hóa', N'Cầm tiêu chảy, bù nước điện giải');
+GO
+
+-- Chi tiết Liều LM-0001
+INSERT INTO [dbo].[ChiTietLieuMau] VALUES 
+(N'LM-0001', N'SP2024-0001', 6), -- Amoxicillin 500mg
+(N'LM-0001', N'SP2024-0012', 3), -- Cetirizine 10mg
+(N'LM-0001', N'SP2024-0017', 1); -- Siro Ho BP
+
+-- Chi tiết Liều LM-0002
+INSERT INTO [dbo].[ChiTietLieuMau] VALUES 
+(N'LM-0002', N'SP2024-0018', 6), -- Smecta 3g Bột
+(N'LM-0002', N'SP2024-0013', 3); -- Oresol Cam
+GO
+
+-- ==============================================================================
+-- B. BẢNG CÓ KHÓA NGOẠI
+-- ...
 -- ==============================================================================
 -- B. BẢNG CÓ KHÓA NGOẠI
 -- tenDangNhap = mã nhân viên (QL-0001, DS-0001, ...)
@@ -694,7 +757,11 @@ FROM SanPham sp
 INNER JOIN DonViDoLuong dvl ON dvl.sanPhamId = sp.id AND dvl.ten = sp.donViDoCoBan
 WHERE sp.giaBan != dvl.gia;
 GO
-
+UPDATE sp SET sp.giaBan = dvl.gia
+FROM SanPham sp
+INNER JOIN DonViDoLuong dvl ON dvl.sanPhamId = sp.id AND dvl.ten = sp.donViDoCoBan
+WHERE sp.giaBan != dvl.gia;
+GO
 USE [master]
 GO
 ALTER DATABASE [MYCAREPHARMACY] SET READ_WRITE
