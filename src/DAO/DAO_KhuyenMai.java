@@ -25,7 +25,7 @@ public class DAO_KhuyenMai {
 
     public List<String> layDanhSachMaKMCoHieuLuc() {
         List<String> dsMa = new ArrayList<>();
-        String sql = "SELECT id FROM KhuyenMai WHERE ngayBatDau <= ? AND ngayKetThuc >= ? AND trangThai = 1";
+        String sql = "SELECT id FROM KhuyenMai WHERE ngayBatDau <= ? AND ngayKetThuc >= ? AND trangThai = 'HOAT_DONG'";
         Connection con = ConnectDB.getInstance().getConnection();
         try (PreparedStatement pst = con.prepareStatement(sql)) {
             Timestamp bayGio = Timestamp.valueOf(LocalDateTime.now());
@@ -140,7 +140,7 @@ public class DAO_KhuyenMai {
                      "FROM KhuyenMai k " +
                      "JOIN HinhThucKhuyenMai h ON k.id = h.khuyenMaiId " +
                      "LEFT JOIN SanPham spYeuCau ON h.spYeuCau = spYeuCau.id " +
-                     "WHERE k.trangThai = 1 " + 
+                     "WHERE k.trangThai = 'HOAT_DONG' " + 
                      "AND CAST(k.ngayBatDau AS DATE) <= CAST(GETDATE() AS DATE) " +
                      "AND (k.ngayKetThuc IS NULL OR CAST(k.ngayKetThuc AS DATE) >= CAST(GETDATE() AS DATE))";
 
@@ -186,7 +186,8 @@ public class DAO_KhuyenMai {
                 Timestamp endDB = rs.getTimestamp("ngayKetThuc");
                 String hinhThucDB = rs.getString("loaiHinhThuc");
                 
-                boolean trangThaiDB = rs.getBoolean("trangThai");
+                String trangThaiStr = rs.getString("trangThai");
+                boolean trangThaiDB = "HOAT_DONG".equals(trangThaiStr);
 
                 double mucGiamDB = rs.getDouble("mucGiam");
                 double giamToiDaDB = rs.getDouble("giamToiDa"); 
@@ -257,7 +258,7 @@ public class DAO_KhuyenMai {
         String sql = "UPDATE KhuyenMai SET trangThai = ? WHERE id = ?";
         Connection con = ConnectDB.getInstance().getConnection();
         try (PreparedStatement pst = con.prepareStatement(sql)) {
-            pst.setBoolean(1, trangThai); 
+            pst.setString(1, trangThai ? "HOAT_DONG" : "KHONG_HOAT_DONG"); 
             pst.setString(2, maKM); 
             return pst.executeUpdate() > 0;
         } catch (SQLException e) { 
@@ -318,7 +319,7 @@ public class DAO_KhuyenMai {
                          "JOIN HinhThucKhuyenMai h ON k.id = h.khuyenMaiId " +
                          "LEFT JOIN SanPham spYeuCau ON h.spYeuCau = spYeuCau.id " +
                          "LEFT JOIN SanPham spTang ON h.spTang = spTang.id " +
-                         "WHERE k.trangThai = 1 " + 
+                         "WHERE k.trangThai = 'HOAT_DONG' " + 
                          "AND CAST(k.ngayBatDau AS DATE) <= CAST(GETDATE() AS DATE) " +
                          "AND (k.ngayKetThuc IS NULL OR CAST(k.ngayKetThuc AS DATE) >= CAST(GETDATE() AS DATE))";
                          
@@ -350,7 +351,7 @@ public class DAO_KhuyenMai {
                 "LEFT JOIN DieuKienKhuyenMai d ON k.id = d.khuyenMaiId " +
                 "LEFT JOIN SanPham spYeuCau ON h.spYeuCau = spYeuCau.id " +
                 "LEFT JOIN SanPham spTang ON h.spTang = spTang.id " +
-                "WHERE k.trangThai = 1 " + 
+                "WHERE k.trangThai = 'HOAT_DONG' " + 
                 "AND CAST(k.ngayBatDau AS DATE) <= CAST(GETDATE() AS DATE) " +
                 "AND (k.ngayKetThuc IS NULL OR CAST(k.ngayKetThuc AS DATE) >= CAST(GETDATE() AS DATE))";
 

@@ -2639,19 +2639,46 @@ public class TaoHoaDon extends JDialog {
                         // TRƯỜNG HỢP QUÉT MÃ VẠCH (Tốc độ rất nhanh, Popup chưa kịp hiện)
                     	BUS.BUS_SanPham busSP = new BUS.BUS_SanPham(); // Gọi qua BUS
                         java.util.List<Object[]> ketQua = busSP.timKiemSanPhamBan(searchText);
+                        
                         if (ketQua != null && !ketQua.isEmpty()) {
-                            // Ưu tiên tìm đúng mã sản phẩm hoặc lô hàng
-                            Object[] spCanThem = ketQua.get(0);
+                            // Mặc định lấy lô hàng cũ nhất (gần hết hạn nhất)
+                            Object[] spCanThem = ketQua.get(0); 
+
+                            // --- [TÍNH NĂNG MỚI]: ƯU TIÊN CHỌN LÔ CÓ HSD >= 6 THÁNG ĐỂ ĐẨY THẲNG XUỐNG BẢNG ---
+                            java.time.LocalDate today = java.time.LocalDate.now();
+                            java.time.LocalDate anToan = today.plusMonths(6);
+                            java.time.format.DateTimeFormatter fmt = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
                             for (Object[] row : ketQua) {
-                                // Kiểm tra mã SP ở cột 0 hoặc số lô ở cột 7
-                                String maSP = row[0] != null ? row[0].toString() : "";
-                                String soLo = row.length > 7 && row[7] != null ? row[7].toString() : "";
-                                if (maSP.equalsIgnoreCase(searchText) || soLo.equalsIgnoreCase(searchText)) {
-                                    spCanThem = row;
-                                    break;
+                                String hsdStr = (row.length > 8 && row[8] != null) ? row[8].toString() : "";
+                                if (!hsdStr.isEmpty()) {
+                                    try {
+                                        java.time.LocalDate hsd = java.time.LocalDate.parse(hsdStr, fmt);
+                                        // Nếu HSD của lô này từ 6 tháng trở lên -> Chọn ngay lô này để không bị hiện cảnh báo
+                                        if (!hsd.isBefore(anToan)) {
+                                            spCanThem = row;
+                                            break;
+                                        }
+                                    } catch (Exception ex) {
+                                        // Bỏ qua lỗi parse ngày
+                                    }
                                 }
                             }
+                            
+                            if (searchText.length() < 8) {
+                                for (Object[] row : ketQua) {
+                                    String maSP = row[0] != null ? row[0].toString() : "";
+                                    String soLo = row.length > 7 && row[7] != null ? row[7].toString() : "";
+                                    if (maSP.equalsIgnoreCase(searchText) || soLo.equalsIgnoreCase(searchText)) {
+                                        spCanThem = row;
+                                        break;
+                                    }
+                                }
+                            }
+                            
+                          
                             xyLyThemSanPhamNhanh(spCanThem, suggestionPopup, txtSearchProduct);
+                            
                         } else {
                             showCustomNotification("KHÔNG TÌM THẤY", "Không tìm thấy sản phẩm với mã: " + searchText, "WARNING");
                             txtSearchProduct.setText("");

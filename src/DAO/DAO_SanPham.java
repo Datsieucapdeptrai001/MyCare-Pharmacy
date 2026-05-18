@@ -303,12 +303,13 @@ public class DAO_SanPham {
     public List<Object[]> timKiemSanPhamBan(String text) {
         List<Object[]> ds = new ArrayList<>();
 
+        // ĐÃ FIX: Sửa lại maVach = ? thành maVach LIKE ? ở cả SELECT phụ và WHERE
         String sql = "SELECT DISTINCT sp.id, sp.ten, " +
-                "ISNULL((SELECT TOP 1 ten FROM DonViDoLuong WHERE sanPhamId = sp.id AND maVach = ?), " +
+                "ISNULL((SELECT TOP 1 ten FROM DonViDoLuong WHERE sanPhamId = sp.id AND maVach LIKE ?), " +
                 "    ISNULL((SELECT TOP 1 ten FROM DonViDoLuong WHERE sanPhamId = sp.id ORDER BY chuyenDoiDonViCoBan DESC), sp.donViDoCoBan)"
                 +
                 ") AS donViHienThi, " +
-                "ISNULL((SELECT TOP 1 gia FROM DonViDoLuong WHERE sanPhamId = sp.id AND maVach = ?), " +
+                "ISNULL((SELECT TOP 1 gia FROM DonViDoLuong WHERE sanPhamId = sp.id AND maVach LIKE ?), " +
                 "    ISNULL((SELECT TOP 1 gia FROM DonViDoLuong WHERE sanPhamId = sp.id ORDER BY chuyenDoiDonViCoBan DESC), sp.giaBan)"
                 +
                 ") AS giaHienThi, " +
@@ -319,8 +320,8 @@ public class DAO_SanPham {
                 "LEFT JOIN DonViDoLuong dv ON sp.id = dv.sanPhamId " +
                 "WHERE (sp.ten LIKE ? OR sp.tenVietTat LIKE ? OR sp.hoatChat LIKE ? " +
                 "       OR sp.id LIKE ? OR lh.soLoHang LIKE ? " +
-                "       OR dv.maVach = ? OR lh.maVachNoiBo = ? " +
-                "       OR sp.maVach = ?) " +
+                "       OR dv.maVach LIKE ? OR lh.maVachNoiBo = ? " +
+                "       OR sp.maVach LIKE ?) " +
                 "AND ISNULL(lh.trangThai,'CON_HANG') = 'CON_HANG' " +
                 "AND lh.soLuongLoHang > 0 " +
                 "AND (lh.ngayHetHan IS NULL OR lh.ngayHetHan >= GETDATE()) " +
@@ -329,19 +330,22 @@ public class DAO_SanPham {
         try (Connection con = ConnectDB.getInstance().getConnection();
                 PreparedStatement pst = con.prepareStatement(sql)) {
 
-            pst.setString(1, text);
-            pst.setString(2, text);
-
+            // ĐÃ FIX: Dùng biến p (chứa %...%) cho tất cả các cột cần quét (trừ mã QR nội bộ)
             String p = "%" + text + "%";
 
-            pst.setString(3, p);
-            pst.setString(4, p);
-            pst.setString(5, p);
-            pst.setString(6, p);
-            pst.setString(7, p);
-            pst.setString(8, text);
-            pst.setString(9, text);
-            pst.setString(10, text);
+            pst.setString(1, p); // Tìm mã vạch quy đổi đơn vị hiển thị
+            pst.setString(2, p); // Tìm mã vạch quy đổi giá tiền
+            pst.setString(3, p); // sp.ten
+            pst.setString(4, p); // sp.tenVietTat
+            pst.setString(5, p); // sp.hoatChat
+            pst.setString(6, p); // sp.id
+            pst.setString(7, p); // lh.soLoHang
+            pst.setString(8, p); // dv.maVach (Mã vạch Đơn vị tính)
+            
+            // Riêng mã QR nội bộ thường cần khớp chính xác tuyệt đối nên giữ nguyên text
+            pst.setString(9, text); 
+            
+            pst.setString(10, p); // sp.maVach (Mã vạch sản phẩm chung)
 
             try (ResultSet rs = pst.executeQuery()) {
                 while (rs.next()) {
@@ -373,7 +377,7 @@ public class DAO_SanPham {
 
         return ds;
     }
-
+    
     public double layThueVATTheoTenSP(String tenSP) {
         double vat = 0;
 
