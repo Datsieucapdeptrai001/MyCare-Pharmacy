@@ -44,31 +44,9 @@ public class BUS_ThongKe {
                     }
                 } 
                 // 2. Xử lý giảm giá theo % Khuyến mãi
-                else if (p.startsWith("KM:")) {
-                    String[] mks = p.substring(3).trim().split(",");
-                    for (String mk : mks) {
-                        String sqlKM = "SELECT loaiHinhThuc, giaTri FROM HinhThucKhuyenMai WHERE khuyenMaiId = ?";
-                        try (PreparedStatement pstKM = con.prepareStatement(sqlKM)) {
-                            pstKM.setString(1, mk.trim());
-                            try (ResultSet rsKM = pstKM.executeQuery()) {
-                                if (rsKM.next()) {
-                                    String loaiKM = rsKM.getString("loaiHinhThuc");
-                                    double val = rsKM.getDouble("giaTri");
-                                    
-                                    if (loaiKM.contains("PHAN_TRAM") || loaiKM.contains("%")) {
-                                        double uocTinhChuaVAT = tongGocCoVAT / 1.08; // Giả định mức thuế bình quân 8% hoặc dùng ratio phù hợp
-                                        double tienGiamChuaVAT = uocTinhChuaVAT * (val / 100.0);
-                                      
-                                        tongTienGiam += Math.round(tienGiamChuaVAT * 1.08); 
-                                    } else if (loaiKM.contains("TIEN_MAT")) {
-                                        tongTienGiam += val;
-                                    }
-                                }
-                            }
-                        } catch (Exception ignored) {
-                        }
-                    }
-                }
+                // "KM: campaignId" chi mang tinh thong tin
+                // ct.thanhTien da baked vao dung gia sau KM roi, khong can ap dung lai
+                // else if (p.startsWith("KM:")) { /* bo qua */ }
             }
         }
         return Math.max(0, tongGocCoVAT - tongTienGiam);
@@ -343,29 +321,20 @@ public class BUS_ThongKe {
                 String ghiChu = (String) row[2];
                 
                 // --- BẮT ĐẦU ÁP DỤNG LUẬT BÓC TÁCH LINE-ITEM TỪNG DÒNG ---
-                double phanTramKM = dao.getPercentKhuyenMai(hdId);
+                // it[3] = ABS(ct.thanhTien): da bao gom KM + co VAT — extract pre-VAT dung per-product
                 List<Object[]> lineItems = dao.getRawLineItems(hdId);
-                
                 double doanhThuThuanHD = 0;
-                
                 for (Object[] item : lineItems) {
-                    int soLuong = (int) item[0];
-                    double giaNiemyet = (double) item[1];
-                    
-                    // Toán học chuẩn: Tính tiền gốc -> Tiền giảm -> Làm tròn thành tiền chưa thuế
-                    double tienGocDong = soLuong * giaNiemyet;
-                    double tienGiamDong = tienGocDong * (phanTramKM / 100.0);
-                    double thanhTienChuaThue = Math.round(tienGocDong - tienGiamDong);
-                    
-                    doanhThuThuanHD += thanhTienChuaThue;
+                    double thanhTien = (double) item[3]; // ABS(ct.thanhTien)
+                    double vatRate   = (double) item[2]; // sp.thueVAT tung san pham
+                    doanhThuThuanHD += Math.round(thanhTien / (1.0 + vatRate / 100.0));
                 }
-                
-                // Trừ thêm điểm tích lũy khách dùng (Trừ trực tiếp vào doanh thu thuần vì là khoản giảm trừ)
+                // Tru diem thuong (khoan giam tren tong HD, luu trong ghiChu)
                 double tienDiemTru = 0;
-                if (ghiChu != null && ghiChu.contains("Dùng điểm: -")) {
+                if (ghiChu != null && ghiChu.contains("m: -")) {
                     try {
-                        String diemStr = ghiChu.substring(ghiChu.indexOf("-") + 1).replaceAll("[^0-9]", "");
-                        tienDiemTru = Double.parseDouble(diemStr);
+                        String diemStr = ghiChu.substring(ghiChu.lastIndexOf("-") + 1).replaceAll("[^0-9]", "");
+                        if (!diemStr.isEmpty()) tienDiemTru = Double.parseDouble(diemStr);
                     } catch (Exception ignored) {}
                 }
                 
@@ -696,26 +665,23 @@ public class BUS_ThongKe {
                 String hdId = (String) row[0];
                 String pttt = dao.getPTTT(con, hdId);
                 
-                double phanTramKM = dao.getPercentKhuyenMai(hdId);
+                double phanTramKM = 0; // KM da baked vao ct.thanhTien
                 List<Object[]> lineItems = dao.getRawLineItems(hdId);
-                
-                double tienGocHD = 0;
-                double doanhThuThuanHD = 0;
-                double vatHD = 0;
+                double tienGocHD = 0, doanhThuThuanHD = 0, vatHD = 0;
 
                 for (Object[] item : lineItems) {
-                    int soLuong = (int) item[0];
-                    double giaNiemyet = (double) item[1]; 
-                    double thueSuat = (double) item[2];   
+                    double giaGoc    = (double) item[1];
+                    double thueSuat  = (double) item[2];
+                    double thanhTien = (double) item[3]; // ABS(ct.thanhTien)
+                    int sl           = (int)    item[0];
 
-                    double tienGocDong = soLuong * giaNiemyet;
-                    double tienGiamDong = tienGocDong * (phanTramKM / 100.0);
-                    double thanhTienChuaThue = Math.round(tienGocDong - tienGiamDong);
-                    double tienVATCuaDong = Math.round(thanhTienChuaThue * (thueSuat / 100.0));
+                    double thuanDong = Math.round(thanhTien / (1.0 + thueSuat / 100.0));
+                    double vatDong   = Math.round(thanhTien - thuanDong);
+                    double gocDong   = sl * giaGoc;
 
-                    tienGocHD += tienGocDong;
-                    doanhThuThuanHD += thanhTienChuaThue;
-                    vatHD += tienVATCuaDong;
+                    tienGocHD       += gocDong;
+                    doanhThuThuanHD += thuanDong;
+                    vatHD           += vatDong;
                 }
                 
                 double tienDiemTru = 0;
@@ -775,26 +741,20 @@ public class BUS_ThongKe {
             for (Object[] row : rows) {
                 String hdId = (String) row[0];
                 
-                double phanTramKM = dao.getPercentKhuyenMai(hdId);
                 List<Object[]> lineItems = dao.getRawLineItems(hdId);
-                
-                double gocHD = 0;
-                double doanhThuThuanHD = 0;
-                double vatHD = 0;
+                double gocHD = 0, doanhThuThuanHD = 0, vatHD = 0;
 
                 for (Object[] item : lineItems) {
-                    int soLuong = (int) item[0];
-                    double giaNiemyet = (double) item[1];
-                    double thueSuat = (double) item[2];
+                    double giaGoc    = (double) item[1];
+                    double thueSuat  = (double) item[2];
+                    double thanhTien = (double) item[3];
+                    int    sl        = (int)    item[0];
 
-                    double tienGocDong = soLuong * giaNiemyet;
-                    double tienGiamDong = tienGocDong * (phanTramKM / 100.0);
-                    double thanhTienChuaThue = Math.round(tienGocDong - tienGiamDong);
-                    double tienVATCuaDong = Math.round(thanhTienChuaThue * (thueSuat / 100.0));
-
-                    gocHD += tienGocDong;
-                    doanhThuThuanHD += thanhTienChuaThue;
-                    vatHD += tienVATCuaDong;
+                    double thuanDong = Math.round(thanhTien / (1.0 + thueSuat / 100.0));
+                    double vatDong   = Math.round(thanhTien - thuanDong);
+                    gocHD           += sl * giaGoc;
+                    doanhThuThuanHD += thuanDong;
+                    vatHD           += vatDong;
                 }
                 
                 double tienDiemTru = 0;
@@ -995,33 +955,16 @@ public class BUS_ThongKe {
     }
 
     public double[] tinhToanTaiChinhHoaDon(String hdId) {
-        // 1. Gọi DAO lấy dữ liệu thô
-        double phanTramKM = dao.getPercentKhuyenMai(hdId);
         List<Object[]> rawItems = dao.getRawLineItems(hdId);
-
-        double tongDoanhThuThuan = 0; // Tổng chưa thuế
-        double tongTienThueVAT = 0;   // Tổng tiền thuế
-
-        // 2. Thực hiện Business Logic trên từng dòng (Line-Item)
+        double tongDoanhThuThuan = 0, tongTienThueVAT = 0;
         for (Object[] item : rawItems) {
-            int soLuong = (int) item[0];
-            double giaNiemyet = (double) item[1];
-            double thueSuat = (double) item[2];
-
-            // Công thức tính trên từng dòng theo đúng luật
-            double thanhTienChuaThue = Math.round((soLuong * giaNiemyet) * (1 - phanTramKM / 100.0));
-            double tienVATCuaDong = Math.round(thanhTienChuaThue * (thueSuat / 100.0));
-
-            tongDoanhThuThuan += thanhTienChuaThue;
-            tongTienThueVAT += tienVATCuaDong;
+            double thanhTien = (double) item[3]; // ABS(ct.thanhTien)
+            double thueSuat  = (double) item[2]; // sp.thueVAT tung san pham
+            double thuanDong = Math.round(thanhTien / (1.0 + thueSuat / 100.0));
+            tongDoanhThuThuan += thuanDong;
+            tongTienThueVAT   += Math.round(thanhTien - thuanDong);
         }
-
-        // Trả về mảng: [Doanh thu thuần, Tổng VAT, Tổng thanh toán]
-        return new double[] { 
-            tongDoanhThuThuan, 
-            tongTienThueVAT, 
-            tongDoanhThuThuan + tongTienThueVAT 
-        };
+        return new double[] { tongDoanhThuThuan, tongTienThueVAT, tongDoanhThuThuan + tongTienThueVAT };
     }
     public double[] getKpiTongQuat(ThongKeFilter f) {
         // 1. Lấy danh sách ID hóa đơn thô dựa theo bộ lọc (Ngày/Tháng/NV/Ca)
@@ -1033,26 +976,39 @@ public class BUS_ThongKe {
         try (Connection con = getConn()) {
             for (Object[] row : rows) {
                 String hdId = (String) row[0];
-                double phanTramKM = dao.getPercentKhuyenMai(hdId);
+                // it[3] = ABS(ct.thanhTien): da bao gom KM + co VAT — extract pre-VAT dung per-product
                 List<Object[]> items = dao.getRawLineItems(hdId);
+                double thuanHD = 0, vatHD = 0;
 
                 for (Object[] it : items) {
-                    int sl = (int) it[0];
-                    double gia = (double) it[1];
-                    double vatRate = (double) it[2];
+                    double giaGoc    = (double) it[1]; // dvl.gia chua VAT
+                    double vatRate   = (double) it[2]; // sp.thueVAT tung san pham
+                    double thanhTien = (double) it[3]; // ABS(ct.thanhTien) sau KM, co VAT
 
-                    double gocDong = sl * gia;
-                    double giamDong = gocDong * (phanTramKM / 100.0);
-                    double thuanDong = Math.round(gocDong - giamDong);
-                    double vatDong = Math.round(thuanDong * (vatRate / 100.0));
+                    double thuanDong = Math.round(thanhTien / (1.0 + vatRate / 100.0));
+                    double vatDong   = Math.round(thanhTien - thuanDong);
+                    double gocDong   = (int) it[0] * giaGoc;
+                    double gocCoVAT  = gocDong * (1.0 + vatRate / 100.0);
 
                     tGoc += gocDong;
-                    tKM += giamDong;
+                    tKM  += Math.max(0, gocCoVAT - thanhTien); // KM thuc te
                     tThuannChuaVAT += thuanDong;
                     tVAT += vatDong;
+                    thuanHD += thuanDong;
+                    vatHD   += vatDong;
                 }
-                // Tiền khách đưa thực tế (sau điểm thưởng)
-                tThucThu += tinhTienThucTe(con, (tThuannChuaVAT + tVAT), (String)row[2]);
+                // Tru diem thuong (giam gia tren tong HD, khong the baked vao ct.thanhTien)
+                String ghiChuHD = (String) row[2];
+                if (ghiChuHD != null && ghiChuHD.contains("m: -")) {
+                    try {
+                        String ds = ghiChuHD.substring(ghiChuHD.lastIndexOf("-") + 1).replaceAll("[^0-9]", "");
+                        if (!ds.isEmpty()) {
+                            double diem = Double.parseDouble(ds);
+                            tThuannChuaVAT = Math.max(0, tThuannChuaVAT - diem);
+                        }
+                    } catch (Exception ignored) {}
+                }
+                tThucThu += tinhTienThucTe(con, thuanHD + vatHD, ghiChuHD);
             }
         } catch (Exception e) { e.printStackTrace(); }
 

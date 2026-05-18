@@ -220,8 +220,8 @@ public class DAO_ThongKe {
     public List<Object[]> getRawHDHomNay(BUS.BUS_ThongKe.ThongKeFilter filter, String pttt) {
         List<Object[]> result = new ArrayList<>();
         StringBuilder sql = new StringBuilder("SELECT hd.id, hd.ghiChu, "
-                + "SUM(ct.soLuong * dvl.gia * (1 + ISNULL(sp.thueVAT, 0)/100.0)) as tongGocCoVAT, "
-                + "SUM(ct.soLuong * dvl.gia) as tongGocChuaVAT " // <-- ÉP TÍNH GỐC CHƯA VAT
+                + "SUM(ABS(ct.thanhTien)) as tongGocCoVAT, "
+                + "SUM(ROUND(ABS(ct.thanhTien) / (1 + ISNULL(sp.thueVAT, 0)/100.0), 0)) as tongGocChuaVAT "
                 + "FROM HoaDon hd "
                 + "JOIN ChiTietHoaDon ct ON hd.id=ct.hoaDonId "
                 + "JOIN DonViDoLuong dvl ON ct.donViDoLuongId=dvl.id AND ct.sanPhamId=dvl.sanPhamId "
@@ -255,8 +255,8 @@ public class DAO_ThongKe {
     public List<Object[]> getRawHD7NgayQua(BUS.BUS_ThongKe.ThongKeFilter filter, String pttt) {
         List<Object[]> result = new ArrayList<>();
         StringBuilder sql = new StringBuilder("SELECT hd.id, hd.ghiChu, "
-                + "SUM(ct.soLuong * dvl.gia * (1 + ISNULL(sp.thueVAT, 0)/100.0)) as tongGocCoVAT, "
-                + "SUM(ct.soLuong * dvl.gia) as tongGocChuaVAT "
+                + "SUM(ABS(ct.thanhTien)) as tongGocCoVAT, "
+                + "SUM(ROUND(ABS(ct.thanhTien) / (1 + ISNULL(sp.thueVAT, 0)/100.0), 0)) as tongGocChuaVAT "
                 + "FROM HoaDon hd "
                 + "JOIN ChiTietHoaDon ct ON hd.id=ct.hoaDonId "
                 + "JOIN DonViDoLuong dvl ON ct.donViDoLuongId=dvl.id AND ct.sanPhamId=dvl.sanPhamId "
@@ -285,8 +285,8 @@ public class DAO_ThongKe {
     public List<Object[]> getRawHDByDateRange(LocalDateTime tuNgay, LocalDateTime denNgay) {
         List<Object[]> result = new ArrayList<>();
         String sql = "SELECT hd.ghiChu, "
-                + "SUM(ct.soLuong * dvl.gia * (1 + ISNULL(sp.thueVAT, 0)/100.0)) as tongGocCoVAT, "
-                + "SUM(ct.soLuong * dvl.gia) as tongGocChuaVAT " // <-- THÊM
+                + "SUM(ABS(ct.thanhTien)) as tongGocCoVAT, "
+                + "SUM(ROUND(ABS(ct.thanhTien) / (1 + ISNULL(sp.thueVAT, 0)/100.0), 0)) as tongGocChuaVAT "
                 + "FROM HoaDon hd "
                 + "JOIN ChiTietHoaDon ct ON hd.id=ct.hoaDonId "
                 + "JOIN DonViDoLuong dvl ON ct.donViDoLuongId=dvl.id AND ct.sanPhamId=dvl.sanPhamId "
@@ -307,8 +307,8 @@ public class DAO_ThongKe {
         List<Object[]> result = new ArrayList<>();
         String ptttCond = (pttt != null && !pttt.isEmpty()) ? " AND hd.phuongThucThanhToan='" + pttt + "'" : "";
         String sql = "SELECT hd.id, hd.ghiChu, "
-                + "SUM(ct.soLuong * dvl.gia * (1 + ISNULL(sp.thueVAT, 0)/100.0)) as tongGocCoVAT, "
-                + "SUM(ct.soLuong * dvl.gia) as tongGocChuaVAT " // <-- THÊM
+                + "SUM(ABS(ct.thanhTien)) as tongGocCoVAT, "
+                + "SUM(ROUND(ABS(ct.thanhTien) / (1 + ISNULL(sp.thueVAT, 0)/100.0), 0)) as tongGocChuaVAT "
                 + "FROM HoaDon hd "
                 + "JOIN ChiTietHoaDon ct ON hd.id=ct.hoaDonId "
                 + "JOIN DonViDoLuong dvl ON ct.donViDoLuongId=dvl.id AND ct.sanPhamId=dvl.sanPhamId "
@@ -328,11 +328,10 @@ public class DAO_ThongKe {
     public List<Object[]> getRawHD12Thang(int year, BUS.BUS_ThongKe.ThongKeFilter filter) {
         List<Object[]> result = new ArrayList<>();
         StringBuilder sql = new StringBuilder("SELECT MONTH(hd.ngayLapHD) m, "
-                + "SUM(ROUND((ct.soLuong * dvl.gia) * (1 - ISNULL(km_ht.giaTri, 0)/100.0), 0)) AS doanhThuThuan "
+                + "SUM(ROUND(ABS(ct.thanhTien) / (1 + ISNULL(sp.thueVAT, 0)/100.0), 0)) AS doanhThuThuan "
                 + "FROM HoaDon hd "
                 + "JOIN ChiTietHoaDon ct ON hd.id = ct.hoaDonId "
                 + "JOIN DonViDoLuong dvl ON ct.donViDoLuongId = dvl.id AND ct.sanPhamId = dvl.sanPhamId "
-                + "LEFT JOIN HinhThucKhuyenMai km_ht ON hd.khuyenMaiId = km_ht.khuyenMaiId AND km_ht.loaiHinhThuc = 'GIAM_THEO_PHAN_TRAM' "
                 + "WHERE YEAR(hd.ngayLapHD) = ? AND hd.loaiHD = 'BAN_HANG'");
         List<Object> params = new ArrayList<>();
         params.add(year);
@@ -350,13 +349,12 @@ public class DAO_ThongKe {
         List<Object[]> result = new ArrayList<>();
         StringBuilder sql = new StringBuilder(
                 "SELECT CONVERT(NVARCHAR,CAST(hd.ngayLapHD AS DATE),103) d, hd.id, hd.ghiChu, "
-                        + "SUM(ct.soLuong * dvl.gia * (1 + ISNULL(sp.thueVAT, 0)/100.0)) as tongGocCoVAT, "
-                        + "SUM(ROUND(ct.soLuong * dvl.gia * (1 - ISNULL(km_ht.giaTri, 0)/100.0), 0)) as tongGocChuaVAT " 
+                        + "SUM(ABS(ct.thanhTien)) as tongGocCoVAT, "
+                + "SUM(ROUND(ABS(ct.thanhTien) / (1 + ISNULL(sp.thueVAT, 0)/100.0), 0)) as tongGocChuaVAT " 
                         + "FROM HoaDon hd "
                         + "JOIN ChiTietHoaDon ct ON ct.hoaDonId=hd.id "
                         + "JOIN DonViDoLuong dvl ON dvl.id=ct.donViDoLuongId AND dvl.sanPhamId=ct.sanPhamId "
                         + "JOIN SanPham sp ON ct.sanPhamId = sp.id "
-                        + "LEFT JOIN HinhThucKhuyenMai km_ht ON hd.khuyenMaiId = km_ht.khuyenMaiId AND km_ht.loaiHinhThuc = 'GIAM_THEO_PHAN_TRAM' "
                         + "WHERE hd.loaiHD='BAN_HANG' "
                         + "AND CAST(hd.ngayLapHD AS DATE)>=DATEADD(DAY,-29,CAST(GETDATE() AS DATE))");
         List<Object> params = new ArrayList<>();
@@ -415,11 +413,10 @@ public class DAO_ThongKe {
     public List<Object[]> getRawHDGioTrongNgay(String dateYMD, BUS.BUS_ThongKe.ThongKeFilter filter) {
         List<Object[]> result = new ArrayList<>();
         StringBuilder sql = new StringBuilder("SELECT DATEPART(HOUR, hd.ngayLapHD) AS h, "
-                + "SUM(ROUND((ct.soLuong * dvl.gia) * (1 - ISNULL(km_ht.giaTri, 0)/100.0), 0)) AS doanhThuThuan "
+                + "SUM(ROUND(ABS(ct.thanhTien) / (1 + ISNULL(sp.thueVAT, 0)/100.0), 0)) AS doanhThuThuan "
                 + "FROM HoaDon hd "
                 + "JOIN ChiTietHoaDon ct ON hd.id = ct.hoaDonId "
                 + "JOIN DonViDoLuong dvl ON ct.donViDoLuongId = dvl.id AND ct.sanPhamId = dvl.sanPhamId "
-                + "LEFT JOIN HinhThucKhuyenMai km_ht ON hd.khuyenMaiId = km_ht.khuyenMaiId AND km_ht.loaiHinhThuc = 'GIAM_THEO_PHAN_TRAM' "
                 + "WHERE hd.loaiHD = 'BAN_HANG' AND CAST(hd.ngayLapHD AS DATE) = ? ");
         List<Object> params = new ArrayList<>();
         params.add(dateYMD);
@@ -437,8 +434,8 @@ public class DAO_ThongKe {
     public List<Object[]> getRawHDForTopSP(String dateYMD, BUS.BUS_ThongKe.ThongKeFilter filter) {
         List<Object[]> result = new ArrayList<>();
         StringBuilder sql = new StringBuilder("SELECT hd.id, hd.ghiChu, "
-                + "SUM(ct.soLuong * dvl.gia * (1 + ISNULL(sp.thueVAT, 0)/100.0)) as tongGocCoVAT, "
-                + "SUM(ct.soLuong * dvl.gia) as tongGocChuaVAT " // <-- THÊM
+                + "SUM(ABS(ct.thanhTien)) as tongGocCoVAT, "
+                + "SUM(ROUND(ABS(ct.thanhTien) / (1 + ISNULL(sp.thueVAT, 0)/100.0), 0)) as tongGocChuaVAT "
                 + "FROM HoaDon hd "
                 + "JOIN ChiTietHoaDon ct ON hd.id=ct.hoaDonId "
                 + "JOIN DonViDoLuong dvl ON ct.donViDoLuongId=dvl.id AND ct.sanPhamId=dvl.sanPhamId "
@@ -460,12 +457,11 @@ public class DAO_ThongKe {
     public List<Object[]> getRawCTHD(String hdId) {
         List<Object[]> result = new ArrayList<>();
         String sql = "SELECT sp.ten, ct.soLuong, "
-                + "ROUND((ct.soLuong * dvl.gia) * (1 - ISNULL(km_ht.giaTri, 0)/100.0), 0) AS doanhThuThuan "
+                + "ROUND(ABS(ct.thanhTien) / (1 + ISNULL(sp.thueVAT, 0)/100.0), 0) AS doanhThuThuan "
                 + "FROM ChiTietHoaDon ct "
                 + "JOIN HoaDon hd ON ct.hoaDonId = hd.id "
                 + "JOIN SanPham sp ON sp.id = ct.sanPhamId "
                 + "JOIN DonViDoLuong dvl ON dvl.sanPhamId = ct.sanPhamId AND dvl.id = ct.donViDoLuongId "
-                + "LEFT JOIN HinhThucKhuyenMai km_ht ON hd.khuyenMaiId = km_ht.khuyenMaiId AND km_ht.loaiHinhThuc = 'GIAM_THEO_PHAN_TRAM' "
                 + "WHERE ct.hoaDonId = ?";
         try (PreparedStatement ps = getConn().prepareStatement(sql)) {
             ps.setString(1, hdId);
@@ -483,8 +479,8 @@ public class DAO_ThongKe {
                 : "AND DATEPART(HOUR,hd.ngayLapHD) BETWEEN " + startHour + " AND " + endHour;
 
         StringBuilder sql = new StringBuilder("SELECT hd.id, hd.ghiChu, "
-                + "SUM(ct.soLuong * dvl.gia * (1 + ISNULL(sp.thueVAT, 0)/100.0)) as tongGocCoVAT, "
-                + "SUM(ct.soLuong * dvl.gia) as tongGocChuaVAT " // <-- THÊM
+                + "SUM(ABS(ct.thanhTien)) as tongGocCoVAT, "
+                + "SUM(ROUND(ABS(ct.thanhTien) / (1 + ISNULL(sp.thueVAT, 0)/100.0), 0)) as tongGocChuaVAT "
                 + "FROM HoaDon hd "
                 + "JOIN ChiTietHoaDon ct ON ct.hoaDonId=hd.id "
                 + "JOIN DonViDoLuong dvl ON dvl.id=ct.donViDoLuongId AND dvl.sanPhamId=ct.sanPhamId "
@@ -506,8 +502,8 @@ public class DAO_ThongKe {
     public List<Object[]> getRawKHHD(int year, BUS.BUS_ThongKe.ThongKeFilter filter) {
         List<Object[]> result = new ArrayList<>();
         StringBuilder sql = new StringBuilder("SELECT kh.hoVaTen, kh.diemTichLuy, hd.ghiChu, "
-                + "SUM(ct.soLuong * dvl.gia * (1 + ISNULL(sp.thueVAT, 0)/100.0)) as tongGocCoVAT, "
-                + "SUM(ct.soLuong * dvl.gia) as tongGocChuaVAT " // <-- THÊM
+                + "SUM(ABS(ct.thanhTien)) as tongGocCoVAT, "
+                + "SUM(ROUND(ABS(ct.thanhTien) / (1 + ISNULL(sp.thueVAT, 0)/100.0), 0)) as tongGocChuaVAT "
                 + "FROM KhachHang kh "
                 + "JOIN HoaDon hd ON hd.khachHangId=kh.id "
                 + "JOIN ChiTietHoaDon ct ON ct.hoaDonId=hd.id "
@@ -732,12 +728,11 @@ public class DAO_ThongKe {
     public List<Object[]> getTopSanPham(int year, BUS.BUS_ThongKe.ThongKeFilter filter) {
         List<Object[]> result = new ArrayList<>();
         StringBuilder sql = new StringBuilder("SELECT sp.ten, sp.danhMuc, SUM(ct.soLuong) AS sl, "
-                + "SUM(ROUND(ct.soLuong * dvl.gia * (1 - ISNULL(km_ht.giaTri, 0)/100.0), 0)) AS dtThuan "
+                + "SUM(ROUND(ABS(ct.thanhTien) / (1 + ISNULL(sp.thueVAT, 0)/100.0), 0)) AS dtThuan "
                 + "FROM ChiTietHoaDon ct "
                 + "JOIN HoaDon hd ON hd.id = ct.hoaDonId "
                 + "JOIN SanPham sp ON sp.id = ct.sanPhamId "
                 + "JOIN DonViDoLuong dvl ON dvl.sanPhamId = ct.sanPhamId AND dvl.id = ct.donViDoLuongId "
-                + "LEFT JOIN HinhThucKhuyenMai km_ht ON hd.khuyenMaiId = km_ht.khuyenMaiId AND km_ht.loaiHinhThuc = 'GIAM_THEO_PHAN_TRAM' "
                 + "WHERE YEAR(hd.ngayLapHD) = ? AND hd.loaiHD = 'BAN_HANG'");
         List<Object> params = new ArrayList<>();
         params.add(year);
@@ -760,12 +755,11 @@ public class DAO_ThongKe {
     public List<Object[]> getVATReport(int year, BUS.BUS_ThongKe.ThongKeFilter filter) {
         List<Object[]> result = new ArrayList<>();
         StringBuilder sql = new StringBuilder("SELECT sp.id AS spId, sp.ten, sp.danhMuc, ISNULL(sp.thueVAT, 0) AS vatPct, "
-                + "SUM(ROUND(ROUND(ct.soLuong * dvl.gia * (1 - ISNULL(km_ht.giaTri, 0)/100.0), 0) * (ISNULL(sp.thueVAT, 0)/100.0), 0)) AS tienThue "
+                + "SUM(ROUND(ABS(ct.thanhTien) * (ISNULL(sp.thueVAT,0)/100.0) / (1 + ISNULL(sp.thueVAT,0)/100.0), 0)) AS tienThue "
                 + "FROM ChiTietHoaDon ct "
                 + "JOIN HoaDon hd ON hd.id = ct.hoaDonId "
                 + "JOIN SanPham sp ON sp.id = ct.sanPhamId "
                 + "JOIN DonViDoLuong dvl ON dvl.sanPhamId = ct.sanPhamId AND dvl.id = ct.donViDoLuongId "
-                + "LEFT JOIN HinhThucKhuyenMai km_ht ON hd.khuyenMaiId = km_ht.khuyenMaiId AND km_ht.loaiHinhThuc = 'GIAM_THEO_PHAN_TRAM' "
                 + "WHERE YEAR(hd.ngayLapHD) = ? AND hd.loaiHD = 'BAN_HANG'");
         List<Object> params = new ArrayList<>();
         params.add(year);
@@ -820,12 +814,11 @@ public class DAO_ThongKe {
         String sql = "SELECT COUNT(DISTINCT hd.id) AS tongHD, "
                 + "COUNT(DISTINCT hd.khachHangId) AS tongKH, "
                 + "ISNULL(SUM(ct.soLuong),0) AS tongSP, "
-                + "ISNULL(SUM(ROUND(ct.soLuong * dvl.gia * (1 - ISNULL(km_ht.giaTri, 0)/100.0), 0)),0) AS tongDT "
+                + "ISNULL(SUM(ROUND(ABS(ct.thanhTien) / (1 + ISNULL(sp.thueVAT, 0)/100.0), 0)),0) AS tongDT "
                 + "FROM HoaDon hd "
                 + "LEFT JOIN ChiTietHoaDon ct ON ct.hoaDonId = hd.id "
                 + "LEFT JOIN SanPham sp ON sp.id = ct.sanPhamId "
                 + "LEFT JOIN DonViDoLuong dvl ON dvl.id = ct.donViDoLuongId AND dvl.sanPhamId = ct.sanPhamId "
-                + "LEFT JOIN HinhThucKhuyenMai km_ht ON hd.khuyenMaiId = km_ht.khuyenMaiId AND km_ht.loaiHinhThuc = 'GIAM_THEO_PHAN_TRAM' "
                 + "WHERE hd.loaiHD = 'BAN_HANG' AND CAST(hd.ngayLapHD AS DATE) = ?";
         try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setString(1, dateYMD);
@@ -840,12 +833,11 @@ public class DAO_ThongKe {
     public List<Object[]> getNVTrongNgay(String dateYMD) {
         List<Object[]> result = new ArrayList<>();
         String sql = "SELECT nv.hoVaTen, COUNT(DISTINCT hd.id) AS soHD, "
-                + "ISNULL(SUM(ROUND(ct.soLuong * dvl.gia * (1 - ISNULL(km_ht.giaTri, 0)/100.0), 0)),0) AS dtThuan "
+                + "ISNULL(SUM(ROUND(ABS(ct.thanhTien) / (1 + ISNULL(sp.thueVAT, 0)/100.0), 0)),0) AS dtThuan "
                 + "FROM HoaDon hd "
                 + "JOIN NhanVien nv ON nv.id = hd.nhanVienId "
                 + "LEFT JOIN ChiTietHoaDon ct ON ct.hoaDonId = hd.id "
                 + "LEFT JOIN DonViDoLuong dvl ON dvl.id = ct.donViDoLuongId AND dvl.sanPhamId = ct.sanPhamId "
-                + "LEFT JOIN HinhThucKhuyenMai km_ht ON hd.khuyenMaiId = km_ht.khuyenMaiId AND km_ht.loaiHinhThuc = 'GIAM_THEO_PHAN_TRAM' "
                 + "WHERE hd.loaiHD = 'BAN_HANG' AND CAST(hd.ngayLapHD AS DATE) = ? "
                 + "GROUP BY nv.hoVaTen ORDER BY dtThuan DESC";
         try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql)) {
@@ -1233,8 +1225,8 @@ public class DAO_ThongKe {
     public List<Object[]> getRawHDByDay(String dateYMD, BUS.BUS_ThongKe.ThongKeFilter filter) {
         List<Object[]> result = new ArrayList<>();
         StringBuilder sql = new StringBuilder("SELECT hd.id, hd.ghiChu, "
-                + "SUM(ct.soLuong * dvl.gia * (1 + ISNULL(sp.thueVAT, 0)/100.0)) as tongGocCoVAT, "
-                + "SUM(ct.soLuong * dvl.gia) as tongGocChuaVAT "
+                + "SUM(ABS(ct.thanhTien)) as tongGocCoVAT, "
+                + "SUM(ROUND(ABS(ct.thanhTien) / (1 + ISNULL(sp.thueVAT, 0)/100.0), 0)) as tongGocChuaVAT "
                 + "FROM HoaDon hd "
                 + "JOIN ChiTietHoaDon ct ON hd.id = ct.hoaDonId "
                 + "JOIN DonViDoLuong dvl ON ct.donViDoLuongId = dvl.id AND ct.sanPhamId = dvl.sanPhamId "
@@ -1393,7 +1385,7 @@ public class DAO_ThongKe {
     
 	 public List<Object[]> getRawLineItems(String hdId) {
 	     List<Object[]> list = new ArrayList<>();
-	     String sql = "SELECT ct.soLuong, dvl.gia, sp.thueVAT " +
+	     String sql = "SELECT ct.soLuong, dvl.gia, ISNULL(sp.thueVAT,0) AS thueVAT, ABS(ct.thanhTien) AS thanhTien " +
 	                  "FROM ChiTietHoaDon ct " +
 	                  "JOIN DonViDoLuong dvl ON ct.donViDoLuongId = dvl.id AND ct.sanPhamId = dvl.sanPhamId " +
 	                  "JOIN SanPham sp ON ct.sanPhamId = sp.id " +
@@ -1405,7 +1397,8 @@ public class DAO_ThongKe {
 	             list.add(new Object[] { 
 	                 rs.getInt("soLuong"), 
 	                 rs.getDouble("gia"), 
-	                 rs.getDouble("thueVAT") 
+	                 rs.getDouble("thueVAT"),
+	                 rs.getDouble("thanhTien")
 	             });
 	         }
 	     } catch (Exception e) { e.printStackTrace(); }
