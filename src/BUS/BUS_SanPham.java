@@ -186,7 +186,7 @@ public class BUS_SanPham {
         System.out.println("maVachMoi = [" + maVachMoi + "]");
 
         if (isBlank(maSP) || isBlank(maVachMoi)) {
-            System.out.println("BUS result = false vì maSP hoặc maVachMoi rỗng");
+            System.out.println("BUS result = false vì mã sản phẩm hoặc mã vạch rỗng");
             return false;
         }
 

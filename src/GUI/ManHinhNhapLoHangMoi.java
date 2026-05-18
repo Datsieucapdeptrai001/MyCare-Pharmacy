@@ -1617,15 +1617,15 @@ public class ManHinhNhapLoHangMoi extends JDialog {
             SanPham spChon = dsTatCaSanPham.get(idx);
 
             System.out.println("=== DEBUG LIEN KET MA VACH ===");
-            System.out.println("Ma vach la: " + maVachLa);
-            System.out.println("San pham chon: " + spChon.getId() + " - " + spChon.getTen());
+            System.out.println("Ma vach quet duoc = [" + maVachLa + "]");
+            System.out.println("San pham chon = [" + spChon.getId() + "] - " + spChon.getTen());
 
             boolean okSanPham = busSanPham.capNhatMaVachSanPham(spChon.getId(), maVachLa);
 
-            System.out.println("Ket qua cap nhat SanPham.maVach = " + okSanPham);
+            System.out.println("Ket qua update SanPham.maVach = " + okSanPham);
 
             if (!okSanPham) {
-                showModernAlert("Không thể lưu mã vạch vào sản phẩm! Không liên kết tạm.", false);
+                showModernAlert("Không thể lưu mã vạch vào bảng Sản phẩm!", false);
                 return;
             }
 
