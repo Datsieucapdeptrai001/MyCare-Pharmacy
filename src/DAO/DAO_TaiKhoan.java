@@ -239,7 +239,7 @@ public class DAO_TaiKhoan {
                     if (vaiTroStr != null) tk.setVaiTro(VaiTro.valueOf(vaiTroStr));
                     
                     NhanVien nv = new NhanVien();
-                    nv.setNhanVien(rs.getString("nhanVienId"));
+                    nv.setNhanVien(rs.getString("nhanVienId")); 
                     tk.setNhanVienId(nv);
                 }
             }
