@@ -435,15 +435,14 @@ public class TaoHoaDon extends JDialog {
             if (boDemNguoc != null) boDemNguoc.stop();
             
             for (Entity.ChiTietHoaDon ct : dsKetQua) {
-                double tiLe = 1.0;
+                double heSoQuyDoi = 1.0;
                 List<Entity.DonViDoLuong> dsDonVi = busDonVi.getDSTheoMaSP(ct.getSanPhamId().getId());
                 for (Entity.DonViDoLuong dv : dsDonVi) {
-                    if (dv.getId().equals(ct.getDonViDoLuongId().getId())) { 
-                        tiLe = dv.getChuyenDoiSangDonViCoBan(); break; 
+                    if (dv.getId().equals(ct.getDonViDoLuongId().getId())) {
+                        heSoQuyDoi = dv.getChuyenDoiSangDonViCoBan(); break;
                     }
                 }
-                int tongTru = (int)(ct.getSoLuong() * tiLe);
-                busKho.xuLyXuatKhoFEFO(ct.getSanPhamId().getId(), tongTru);
+                busKho.xuLyXuatKhoFEFO(ct.getSanPhamId().getId(), ct.getSoLuong(), heSoQuyDoi);
             }
 
             if (isCustomerLinked && !sdt.isEmpty()) {
