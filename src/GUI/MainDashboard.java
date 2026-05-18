@@ -851,7 +851,6 @@ public class MainDashboard extends JFrame {
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
             ConnectDB.getInstance().connect();
-            Utils.MigrationTool.main(new String[] {});
             new ManHinhDangNhap().setVisible(true);
         });
     }
