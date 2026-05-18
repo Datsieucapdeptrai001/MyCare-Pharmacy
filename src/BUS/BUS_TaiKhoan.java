@@ -14,26 +14,31 @@ public class BUS_TaiKhoan {
 
     // 1. XÁC THỰC + TỰ ĐỘNG BĂM MẬT KHẨU THÔ KHI ĐĂNG NHẬP (thay thế MigrationTool)
     public boolean authenticate(String tenDangNhap, String matKhauNhapVao) {
-        TaiKhoan tk = daoTaiKhoan.getTaiKhoan(tenDangNhap);
+        TaiKhoan tk = daoTaiKhoan.getTaiKhoan(tenDangNhap); // Lúc này đã tìm được tài khoản hợp lệ
         if (tk == null || tk.getMatKhau() == null) {
             return false;
         }
 
         String matKhauDB = tk.getMatKhau();
+        // Nhận diện mật khẩu thô: Nếu chuỗi lấy từ DB không chứa dấu ":" -> Nó là mật khẩu thô!
         boolean laMKTho = !matKhauDB.contains(":");
         
         if (laMKTho) {
+            // So sánh trực tiếp chuỗi thô trong DB với mật khẩu người dùng vừa gõ
             if (!matKhauDB.equals(matKhauNhapVao)) {
                 return false;
             }
             
+            // Nếu khớp, tiến hành băm mật khẩu thô này ngay lập tức
             String mkBam = PasswordUtils.hashPassword(matKhauNhapVao);
             String idNV = tk.getNhanVienId() != null ? tk.getNhanVienId().getNhanVien() : "";
             
+            // Đẩy ngược chuỗi đã băm đè lên mật khẩu thô trong DB SQL
             daoTaiKhoan.capNhatTaiKhoanTheoMaNV(idNV, tk.getTenDangNhap(), mkBam);
             return true;
         }
 
+        // Nếu mật khẩu trong DB đã là hàm băm chuẩn, thực hiện xác thực bảo mật constant-time
         return PasswordUtils.verifyPassword(matKhauNhapVao, matKhauDB);
     }
 

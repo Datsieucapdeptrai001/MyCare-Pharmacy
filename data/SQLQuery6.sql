@@ -690,6 +690,7 @@ SET [maVachNoiBo] = N'L02-AMOX-QR-TEST'
 WHERE [id] = N'LH-0002';
 GO
 
+ALTER TABLE TaiKhoan ALTER COLUMN matKhau VARCHAR(255);
 -- ==============================================================================
 -- CẬP NHẬT giaBan THEO ĐƠN VỊ CƠ BẢN
 -- ==============================================================================

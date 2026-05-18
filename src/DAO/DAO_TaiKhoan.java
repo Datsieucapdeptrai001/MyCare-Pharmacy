@@ -20,24 +20,26 @@ public class DAO_TaiKhoan {
     /**
      * Lấy tài khoản + thông tin nhân viên theo tên đăng nhập
      */
-    public TaiKhoan getTaiKhoan(String tenDangNhap) {
+    public TaiKhoan getTaiKhoan(String input) {
         TaiKhoan tk = null;
 
+        // FIX: Thêm "OR tk.nhanVienId = ?" để chấp nhận cả Mã nhân viên lẫn Tên đăng nhập
         String sql =
                 "SELECT tk.id, tk.nhanVienId, tk.vaiTro, tk.tenDangNhap, tk.matKhau, " +
                 "nv.hoVaTen, nv.chucVu, nv.sdt, nv.email, nv.soChungChiHanhNghe, nv.trangThaiLamViec " +
                 "FROM TaiKhoan tk " +
                 "LEFT JOIN NhanVien nv ON tk.nhanVienId = nv.id " +
-                "WHERE tk.tenDangNhap = ?";
+                "WHERE tk.tenDangNhap = ? OR tk.nhanVienId = ?"; // <-- SỬA Ở ĐÂY
 
         Connection con = ConnectDB.getInstance().getConnection();
 
         try (PreparedStatement pst = con.prepareStatement(sql)) {
-            pst.setString(1, tenDangNhap);
+            pst.setString(1, input);
+            pst.setString(2, input); // <-- THÊM DÒNG NÀY để truyền tham số thứ 2
 
             try (ResultSet rs = pst.executeQuery()) {
                 if (rs.next()) {
-                    tk = mapTaiKhoan(rs, tenDangNhap);
+                    tk = mapTaiKhoan(rs, input);
                 }
             }
         } catch (SQLException e) {
