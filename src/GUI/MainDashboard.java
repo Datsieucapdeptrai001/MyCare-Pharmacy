@@ -11,11 +11,11 @@ import BUS.BUS_CaLamViec;
 import Entity.TaiKhoan;
 import Entity.NhanVien;
 import Entity.CaLamViec;
-
+import Utils.TooltipConfig;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
-
+import Utils.TelexFix;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.File;
@@ -851,6 +851,10 @@ public class MainDashboard extends JFrame {
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
             ConnectDB.getInstance().connect();
+
+            TooltipConfig.tatTatCaTooltip();
+            TelexFix.setupGlobalTelexFix();
+
             new ManHinhDangNhap().setVisible(true);
         });
     }
