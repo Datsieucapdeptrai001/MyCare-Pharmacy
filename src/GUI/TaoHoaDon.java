@@ -4356,7 +4356,6 @@ public class TaoHoaDon extends JDialog {
         
         return tienDauCa + doanhThuTienMat;
     }
- // Sửa hàm kiemTraHopLeKhuyenMai trong TaoHoaDon.java
     private boolean kiemTraHopLeKhuyenMai(String maKM) {
         long tongTienDK = tamTinh + vat;
         java.util.List<Object[]> dsSP = new java.util.ArrayList<>();
@@ -4365,7 +4364,6 @@ public class TaoHoaDon extends JDialog {
             dsSP.add(new Object[] {
                 productModel.getValueAt(i, 0).toString(),
                 productModel.getValueAt(i, 1).toString(),
-                // [FIX]: Lấy số lượng từ cột 3
                 Integer.parseInt(productModel.getValueAt(i, 3).toString()) 
             });
         }
