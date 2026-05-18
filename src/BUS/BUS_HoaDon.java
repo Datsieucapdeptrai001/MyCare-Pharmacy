@@ -240,38 +240,54 @@ public class BUS_HoaDon {
         public int tongSoLuongSP = 0;
         public long tienGiamTuDiem = 0;
         public long tongThanhToan = 0;
+        public double kmRatioGlobal = 0.0; // TỈ LỆ GIẢM GIÁ: tienGiamGia / tamTinh
     }
 
     
     public KetQuaHoaDon tinhToanTienHoaDon(List<long[]> danhSachSanPham, boolean isDungDiem, int diemHienTaiKH, long tienGiamGiaKhuyenMai) {
         KetQuaHoaDon kq = new KetQuaHoaDon();
+
+        // Pass 1: tổng tiền gốc (chưa KM, chưa VAT) để tính tỉ lệ KM
+        long tamTinhGoc = 0;
         for (long[] sp : danhSachSanPham) {
-            long soLuong = sp[0];
-            long donGia = sp[1];
-            double thueSuat = sp[2] / 100.0; // VAT (%)
-            
-            long thanhTien = soLuong * donGia;
-            kq.tamTinh += thanhTien;
-            kq.tongVat += (long) (thanhTien * thueSuat);
-            kq.tongSoLuongSP += soLuong;
+            tamTinhGoc += sp[0] * sp[1]; // soLuong × donGia
         }
-        long totalToPay = kq.tamTinh + kq.tongVat - tienGiamGiaKhuyenMai;
-        if (totalToPay < 0) totalToPay = 0;
+        kq.tamTinh = tamTinhGoc;
+
+        // Tỉ lệ giảm giá KM (áp dụng đồng đều các dòng)
+        // Theo luật: giảm giá trước → tính VAT trên giá sau giảm
+        double kmRatio = (tamTinhGoc > 0) ? (double) tienGiamGiaKhuyenMai / tamTinhGoc : 0.0;
+        kq.kmRatioGlobal = kmRatio; // TỈ LỆ GIẢM GIÁ lưu vào kết quả để GUI dùng
+
+        // Pass 2: tính VAT đúng từng dòng theo mức thuế riêng của SP
+        for (long[] sp : danhSachSanPham) {
+            long soLuong  = sp[0];
+            long donGia   = sp[1];
+            double thueSuat = sp[2] / 100.0; // VAT rate (%)
+
+            long tienGoc  = soLuong * donGia;
+            // Thành tiền sau KM (chưa VAT) – làm tròn từng dòng
+            long thuanDong = Math.round(tienGoc * (1.0 - kmRatio));
+            // VAT tính trên tiền sau KM, đúng mức thuế từng sản phẩm
+            long vatDong   = Math.round(thuanDong * thueSuat);
+
+            kq.tongVat         += vatDong;
+            kq.tongSoLuongSP   += soLuong;
+        }
+
+        // Tổng khách phải trả = (tamTinh - KM) + VAT
+        long tongSauGiam = tamTinhGoc - tienGiamGiaKhuyenMai;
+        long totalToPay  = Math.max(0, tongSauGiam + kq.tongVat);
+
         if (isDungDiem) {
             long maxTienGiam = diemHienTaiKH * 100L; // 1 điểm = 100đ
-            if (maxTienGiam > totalToPay) {
-                kq.tienGiamTuDiem = (totalToPay / 100L) * 100L; // Làm tròn điểm
-            } else {
-                kq.tienGiamTuDiem = maxTienGiam; 
-            }
+            kq.tienGiamTuDiem = Math.min(maxTienGiam, (totalToPay / 100L) * 100L);
             totalToPay -= kq.tienGiamTuDiem;
         } else {
             kq.tienGiamTuDiem = 0;
         }
-        
-        if (totalToPay < 0) totalToPay = 0;
-        kq.tongThanhToan = totalToPay;
-        
+
+        kq.tongThanhToan = Math.max(0, totalToPay);
         return kq;
     }
 }

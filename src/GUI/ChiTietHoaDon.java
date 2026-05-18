@@ -100,28 +100,17 @@ public class ChiTietHoaDon extends JDialog {
             }
         } catch (Exception e) { e.printStackTrace(); }
 
-        // Tính toán tiền hàng
+        // === BƯỚC 1: Tổng tiền gốc (chưa VAT, chưa KM) để tính tỉ lệ KM ===
         this.tamTinhThucTe = 0;
         this.vatThucTe = 0;
-        
+
         for (Object[] sp : dsSanPham) {
             long donGia = Long.parseLong(sp[4].toString().replaceAll("[^0-9]", ""));
             int sl = Integer.parseInt(sp[3].toString());
-            double vatPercent = 0.0;
-            try { vatPercent = Double.parseDouble(sp[5].toString().replace("%", "").trim()); } catch(Exception ex) {}
-            
-            long tienChuaVat = donGia * sl; 
-            long tienVat = Math.round(tienChuaVat * (vatPercent / 100.0));
-            long tienDaCoVat = tienChuaVat + tienVat; // CỘNG VAT VÀO THÀNH TIỀN
-            
-            sp[4] = String.format("%,d", donGia).replace(',', '.') + "đ";
-            sp[6] = String.format("%,d", tienDaCoVat).replace(',', '.') + "đ"; // HIỂN THỊ ĐÚNG TIỀN ĐÃ CÓ VAT
-            
-            this.tamTinhThucTe += tienChuaVat;
-            this.vatThucTe += tienVat;
+            this.tamTinhThucTe += donGia * sl;
         }
 
-        long tongTienTruocGiam = this.tamTinhThucTe + this.vatThucTe;
+        // === BƯỚC 2: Lấy tiền giảm KM từ DB — tính trên giá GỐC (chưa VAT) ===
         this.tienGiamGiaThucTe = 0;
 
         if (!maKMs.isEmpty()) {
@@ -138,7 +127,8 @@ public class ChiTietHoaDon extends JDialog {
                                 double giaTri = rsCheck.getDouble("mucGiam");
                                 if (loaiKM != null && !loaiKM.contains("TANG") && !loaiKM.contains("SAN_PHAM_KEM_THEO")) {
                                     if (loaiKM.contains("PHAN_TRAM") || loaiKM.contains("%")) {
-                                        this.tienGiamGiaThucTe += (long) (tongTienTruocGiam * (giaTri / 100.0));
+                                        // Tính KM% trên giá GỐC (chưa VAT) — đúng pháp lý
+                                        this.tienGiamGiaThucTe += (long) (this.tamTinhThucTe * (giaTri / 100.0));
                                     } else {
                                         this.tienGiamGiaThucTe += (long) giaTri;
                                     }
@@ -150,7 +140,30 @@ public class ChiTietHoaDon extends JDialog {
             } catch (Exception ex) {}
         }
 
-        this.tongThanhToanThucTe = tongTienTruocGiam - this.tienGiamGiaThucTe - this.tienGiamTuDiemThucTe;
+        // === BƯỚC 3: Tính VAT đúng pháp lý — trên từng dòng SAU KM ===
+        double kmRatio = (tamTinhThucTe > 0) ? (double) tienGiamGiaThucTe / tamTinhThucTe : 0.0;
+        String kmPctText = (kmRatio > 0) ? String.format("%.0f%%", kmRatio * 100) : "0%";
+
+        for (Object[] sp : dsSanPham) {
+            long donGia = Long.parseLong(sp[4].toString().replaceAll("[^0-9]", ""));
+            int sl = Integer.parseInt(sp[3].toString());
+            double vatPercent = 0.0;
+            try { vatPercent = Double.parseDouble(sp[5].toString().replace("%", "").trim()); } catch(Exception ex) {}
+
+            long tienGoc = donGia * sl;
+            long tienGiam = Math.round(tienGoc * kmRatio);              // Giảm KM trước
+            long thuanChuaThue = tienGoc - tienGiam;                    // Thành tiền sau KM, chưa thuế
+            long tienVat = Math.round(thuanChuaThue * (vatPercent / 100.0)); // VAT tính trên giá sau KM
+
+            sp[4] = String.format("%,d", donGia).replace(',', '.') + "đ";   // Đơn giá
+            sp[5] = kmPctText;                                               // KM%
+            sp[6] = String.format("%,d", thuanChuaThue).replace(',', '.') + "đ"; // Thành tiền (sau KM, chưa thuế)
+
+            this.vatThucTe += tienVat;
+        }
+
+        long tongSauGiam = this.tamTinhThucTe - this.tienGiamGiaThucTe;
+        this.tongThanhToanThucTe = tongSauGiam + this.vatThucTe - this.tienGiamTuDiemThucTe;
         if (this.tongThanhToanThucTe < 0) this.tongThanhToanThucTe = 0;
 
         if (this.tienKhachDuaThucTe == 0) this.tienKhachDuaThucTe = this.tongThanhToanThucTe;
@@ -395,7 +408,7 @@ public class ChiTietHoaDon extends JDialog {
 
         // BỔ SUNG: Tách riêng cột ĐVT và SL thành 5 cột
      // BỔ SUNG: Tách riêng cột ĐVT, SL và thêm cột VAT thành 6 cột
-        String[] cols = {"Sản phẩm", "ĐVT", "SL", "Đơn giá", "VAT%", "Thành tiền"};
+        String[] cols = {"Sản phẩm", "ĐVT", "SL", "Đơn giá", "KM%", "Thành tiền"};
         Object[][] data = new Object[dsSanPham.size()][6];
 
         for (int i = 0; i < dsSanPham.size(); i++) { 
@@ -497,19 +510,27 @@ public class ChiTietHoaDon extends JDialog {
     private JPanel createSummaryPanel(String phuongThuc) {
         JPanel pnl = new JPanel(new GridLayout(1, 2, 10, 0)); pnl.setBackground(Color.WHITE);
 
-        int totalRows = 4;
-        if (tienGiamTuDiemThucTe > 0) totalRows++; 
+        int totalRows = 5; // Tạm tính + KM + Tổng sau giảm + VAT + Tổng tiền
+        if (tienGiamTuDiemThucTe > 0) totalRows++;
 
         JPanel pnlTotal = new JPanel(new GridLayout(totalRows, 2, 0, 8)); pnlTotal.setBackground(Color.WHITE);
         pnlTotal.setBorder(BorderFactory.createCompoundBorder(new LineBorder(borderGray, 1, true), new EmptyBorder(10, 10, 10, 10)));
 
-        pnlTotal.add(new JLabel("Tạm tính:")); pnlTotal.add(createRightAlignLabel(String.format("%,d", tamTinhThucTe).replace(',', '.') + "đ"));
-        pnlTotal.add(new JLabel("VAT:")); pnlTotal.add(createRightAlignLabel("+" + String.format("%,d", vatThucTe).replace(',', '.') + "đ"));
-        
-        JLabel lblGiamGiaText = new JLabel("Khuyến mãi:"); lblGiamGiaText.setForeground(Color.decode("#EF4444")); 
+        long tongSauGiam = tamTinhThucTe - tienGiamGiaThucTe;
+
+        pnlTotal.add(new JLabel("Tạm tính (giá gốc):"));
+        pnlTotal.add(createRightAlignLabel(String.format("%,d", tamTinhThucTe).replace(',', '.') + "đ"));
+
+        JLabel lblGiamGiaText = new JLabel("Khuyến mãi:"); lblGiamGiaText.setForeground(Color.decode("#EF4444"));
         JLabel lblGiamGiaValue = createRightAlignLabel("-" + String.format("%,d", tienGiamGiaThucTe).replace(',', '.') + "đ");
-        lblGiamGiaValue.setFont(new Font("Segoe UI", Font.BOLD, 13)); lblGiamGiaValue.setForeground(Color.decode("#EF4444")); 
+        lblGiamGiaValue.setFont(new Font("Segoe UI", Font.BOLD, 13)); lblGiamGiaValue.setForeground(Color.decode("#EF4444"));
         pnlTotal.add(lblGiamGiaText); pnlTotal.add(lblGiamGiaValue);
+
+        pnlTotal.add(new JLabel("Tổng sau giảm (chưa thuế):"));
+        pnlTotal.add(createRightAlignLabel(String.format("%,d", tongSauGiam).replace(',', '.') + "đ"));
+
+        pnlTotal.add(new JLabel("Thuế VAT:"));
+        pnlTotal.add(createRightAlignLabel("+" + String.format("%,d", vatThucTe).replace(',', '.') + "đ"));
 
         if (tienGiamTuDiemThucTe > 0) {
             long diemDaDung = tienGiamTuDiemThucTe / 100;

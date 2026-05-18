@@ -175,13 +175,22 @@ public class DAO_HoaDon {
         if (maNV == null || maNV.trim().isEmpty()) return null;
 
         List<Object[]> ds = new ArrayList<>();
+
+        // [FIX] Thay subquery tính lại giá từ đầu (soLuong * gia * VAT)
+        // bằng subquery đọc trực tiếp ct.thanhTien — giá trị này đã được
+        // lưu đúng sau khi áp dụng KM + VAT tại thời điểm bán hàng.
+        // Không cần JOIN DonViDoLuong hay SanPham trong subquery nữa.
+        //
+        // LƯU Ý: Nếu bảng ChiTietHoaDon CÓ cột loaiChiTiet, hãy bỏ comment
+        // dòng điều kiện AND bên dưới để chỉ tính dòng BAN_HANG, tránh
+        // cộng nhầm dòng quà tặng/đổi trả.
         String sql =
             "SELECT hd.id, hd.loaiHD, hd.ngayLapHD, kh.hoVaTen, kh.sdt, hd.phuongThucThanhToan, hd.ghiChu, " +
-            "(SELECT SUM(ct.soLuong * dv.gia * (1 + (ISNULL(sp.thueVAT, 0) / 100.0))) " +
+            "(SELECT ISNULL(SUM(ct.thanhTien), 0) " +
             " FROM ChiTietHoaDon ct " +
-            " JOIN DonViDoLuong dv ON ct.donViDoLuongId = dv.id AND ct.sanPhamId = dv.sanPhamId " +
-            " JOIN SanPham sp ON ct.sanPhamId = sp.id " +
-            " WHERE ct.hoaDonId = hd.id) as tongTienGoc " +
+            " WHERE ct.hoaDonId = hd.id " +
+            // " AND ct.loaiChiTiet = 'BAN_HANG' " + // Bỏ comment nếu cột loaiChiTiet tồn tại
+            ") as tongThucTe " +
             "FROM HoaDon hd " +
             "LEFT JOIN KhachHang kh ON hd.khachHangId = kh.id " +
             "WHERE hd.nhanVienId = ? " +
@@ -198,41 +207,26 @@ public class DAO_HoaDon {
                 DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
                 while (rs.next()) {
-                    double totalAmount = rs.getDouble("tongTienGoc");
-                    double originalAmount = totalAmount;
-                    double tongTienGiam = 0;
+                    // [FIX] Đọc tongThucTe thay vì tongTienGoc.
+                    // Giá trị này đã bao gồm VAT và đã trừ KM từng dòng.
+                    double totalAmount = rs.getDouble("tongThucTe");
                     String ghiChu = rs.getString("ghiChu");
                     String loaiHD = rs.getString("loaiHD");
 
+                    // [FIX] Bỏ toàn bộ logic đọc KM từ ghiChu (nguồn gốc
+                    // gây lỗi tính sai) vì KM đã nằm trong ct.thanhTien rồi.
+                    // Chỉ giữ lại phần trừ "Dùng điểm" — đây là khoản giảm
+                    // bổ sung bên ngoài thanhTien, áp trực tiếp lên tổng HĐ.
                     if (ghiChu != null && !ghiChu.isEmpty()) {
-                        String[] parts = ghiChu.split("\\|");
-                        for (String p : parts) {
+                        for (String p : ghiChu.split("\\|")) {
                             p = p.trim();
-                            if (p.startsWith("Dùng điểm: -") || p.contains("KM_GIAM:")) {
-                                try { tongTienGiam += Long.parseLong(p.replaceAll("[^0-9]", "")); } catch (Exception ignored) {}
-                            } else if (p.startsWith("KM:")) {
-                                String[] mks = p.substring(3).trim().split(",");
-                                for (String mk : mks) {
-                                    String sqlKM = "SELECT loaiHinhThuc, giaTri FROM HinhThucKhuyenMai WHERE khuyenMaiId = ?";
-                                    try (PreparedStatement pstKM = con.prepareStatement(sqlKM)) {
-                                        pstKM.setString(1, mk.trim());
-                                        try (ResultSet rsKM = pstKM.executeQuery()) {
-                                            if (rsKM.next()) {
-                                                String loaiKM = rsKM.getString("loaiHinhThuc");
-                                                double val = rsKM.getDouble("giaTri");
-                                                if (loaiKM.contains("PHAN_TRAM") || loaiKM.contains("%"))
-                                                    tongTienGiam += originalAmount * (val / 100.0);
-                                                else if (loaiKM.contains("TIEN_MAT"))
-                                                    tongTienGiam += val;
-                                            }
-                                        }
-                                    } catch (Exception ignored) {}
-                                }
+                            if (p.startsWith("Dùng điểm: -")) {
+                                try {
+                                    totalAmount -= Long.parseLong(p.replaceAll("[^0-9]", ""));
+                                } catch (Exception ignored) {}
                             }
                         }
                     }
-
-                    totalAmount -= tongTienGiam;
                     if (totalAmount < 0) totalAmount = 0;
 
                     String id = rs.getString("id");
@@ -324,15 +318,22 @@ public class DAO_HoaDon {
     public List<Object[]> layDanhSachHoaDonCuaNhanVien(String maNV) {
         List<Object[]> ds = new ArrayList<>();
         
-        // SỬA: Thêm hd.loaiHD vào SELECT và GROUP BY. Xóa phần hd.loaiHD = 'BAN_HANG'
+        // [FIX] Thay SUM(soLuong * gia) + GROUP BY + JOIN DonViDoLuong
+        // bằng subquery đọc ct.thanhTien trực tiếp — nhất quán với
+        // layDanhSachHoaDonTheoNVHomNay. Bỏ JOIN DonViDoLuong và GROUP BY
+        // vì không còn cần tính tay nữa. Kết quả đã bao gồm VAT + KM đúng.
+        //
+        // LƯU Ý: Nếu bảng ChiTietHoaDon CÓ cột loaiChiTiet, bỏ comment
+        // dòng điều kiện AND bên dưới.
         String sql = "SELECT hd.id, hd.loaiHD, hd.ngayLapHD, kh.hoVaTen, kh.sdt, hd.phuongThucThanhToan, hd.ghiChu, " +
-                     "SUM(ct.soLuong * dv.gia) as tongTien " +
+                     "(SELECT ISNULL(SUM(ct.thanhTien), 0) " +
+                     " FROM ChiTietHoaDon ct " +
+                     " WHERE ct.hoaDonId = hd.id " +
+                     // " AND ct.loaiChiTiet = 'BAN_HANG' " + // Bỏ comment nếu cột loaiChiTiet tồn tại
+                     ") as tongThucTe " +
                      "FROM HoaDon hd " +
                      "LEFT JOIN KhachHang kh ON hd.khachHangId = kh.id " +
-                     "LEFT JOIN ChiTietHoaDon ct ON hd.id = ct.hoaDonId " +
-                     "LEFT JOIN DonViDoLuong dv ON ct.donViDoLuongId = dv.id AND ct.sanPhamId = dv.sanPhamId " +
-                     "WHERE hd.nhanVienId = ? " + // Chỉ lọc theo nhân viên
-                     "GROUP BY hd.id, hd.loaiHD, hd.ngayLapHD, kh.hoVaTen, kh.sdt, hd.phuongThucThanhToan, hd.ghiChu " +
+                     "WHERE hd.nhanVienId = ? " +
                      "ORDER BY hd.ngayLapHD DESC";
 
         Connection con = ConnectDB.getInstance().getConnection();
@@ -353,7 +354,8 @@ public class DAO_HoaDon {
                     String pttt = rs.getString("phuongThucThanhToan");
                     String pt = (pttt != null && pttt.equals("TIEN_MAT")) ? "Tiền mặt" : "Chuyển khoản";
                     
-                    String tongTien = df.format(rs.getDouble("tongTien"));
+                    // [FIX] Đọc tongThucTe thay vì tongTien (alias cũ đã bị xóa)
+                    String tongTien = df.format(rs.getDouble("tongThucTe"));
                     String ghiChu = rs.getString("ghiChu");
                     
                     // LOGIC MỚI: ĐỒNG BỘ TRẠNG THÁI VỚI ADMIN
