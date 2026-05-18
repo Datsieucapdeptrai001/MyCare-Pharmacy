@@ -43,7 +43,7 @@ public class ManHinhDangNhap extends JFrame {
         setLocationRelativeTo(null);
         setResizable(true);
 
-        // ĐẶT LOGO CHO CỬA SỔ (TASKBAR ICON)
+        // ĐẶT LOGO CHO CỬA SỔ
         try {
             String imagePath = "D:\\MyCare-Pharmacy\\MyCare-Pharmacy\\data\\logo.png";
             File file = new File(imagePath);
@@ -106,7 +106,7 @@ public class ManHinhDangNhap extends JFrame {
         pnlContent.setOpaque(false);
         pnlWrapper.add(pnlContent);
 
-        // LOGO CHÍNH CỦA FORM ĐĂNG NHẬP
+        // LOGO CHÍNH
         JLabel pnlLogo = new JLabel();
         pnlLogo.setBounds(215, 20, 70, 70);
         pnlLogo.setHorizontalAlignment(SwingConstants.CENTER);
@@ -145,7 +145,7 @@ public class ManHinhDangNhap extends JFrame {
         lblHeaderCard.setBounds(0, 225, 500, 30);
         pnlContent.add(lblHeaderCard);
 
-        JLabel lblUser = new JLabel("Tên đăng nhập");
+        JLabel lblUser = new JLabel("Mã nhân viên");
         lblUser.setFont(new Font("Segoe UI", Font.BOLD, 14));
         lblUser.setForeground(COLOR_TEXT_GRAY);
         lblUser.setBounds(40, 270, 300, 20);
@@ -153,68 +153,45 @@ public class ManHinhDangNhap extends JFrame {
 
         JPanel pnlInputUser = createInputBorder();
         pnlInputUser.setBounds(40, 293, 420, 48);
-        
-        // TRẢ LẠI ICON HÌNH NGƯỜI NHƯ GỐC
+
         JLabel iconUser = new JLabel(new MenuIcon("USER"));
         iconUser.setBounds(15, 13, 22, 22);
         pnlInputUser.add(iconUser);
 
-        txtTaiKhoan = new AutoSuggestJTextField("Nhập tên đăng nhập", savedUsersList);
+        // Watermark cập nhật: "VD: QL-0001" để hướng dẫn định dạng mã NV
+        txtTaiKhoan = new AutoSuggestJTextField("VD: QL-0001, DS-0001...", savedUsersList);
         txtTaiKhoan.setBounds(50, 5, 360, 38);
         txtTaiKhoan.setBorder(new EmptyBorder(0, 10, 0, 0));
         txtTaiKhoan.setFont(new Font("Segoe UI", Font.PLAIN, 16));
 
+        // FIX GỢI Ý: Kiểm tra getText().trim().isEmpty() thay vì getText().isEmpty()
+        // để tránh bị sót khi có khoảng trắng vô tình. Popup hiện khi field rỗng
+        // (dù đang focus hay không) hoặc khi đang nhập mà có saved list khớp.
         txtTaiKhoan.addMouseListener(new MouseAdapter() {
-            @Override public void mouseClicked(MouseEvent e) {
-                if (txtTaiKhoan.getText().isEmpty() && !savedUsersList.isEmpty()) {
-                    JPopupMenu popup = new JPopupMenu();
-                    popup.setFocusable(false);
-                    popup.setBorder(BorderFactory.createLineBorder(COLOR_BORDER, 1));
-                    popup.setBackground(Color.WHITE);
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                showSuggestPopup();
+            }
 
-                    JLabel lblMenuTitle = new JLabel("   Tài khoản đã lưu:");
-                    lblMenuTitle.setFont(new Font("Segoe UI", Font.BOLD, 12));
-                    lblMenuTitle.setForeground(Color.decode("#9CA3AF"));
-                    lblMenuTitle.setBorder(new EmptyBorder(5, 0, 5, 0));
-                    popup.add(lblMenuTitle);
-                    popup.addSeparator();
-
-                    for (String user : savedUsersList) {
-                        JMenuItem item = new JMenuItem("   " + user);
-                        item.setFont(new Font("Segoe UI", Font.BOLD, 14));
-                        item.setForeground(COLOR_HEADER_DARK);
-                        item.setBackground(Color.WHITE);
-                        item.setCursor(new Cursor(Cursor.HAND_CURSOR));
-                        item.addActionListener(ae -> {
-                            txtTaiKhoan.setText(user);
-                            txtMatKhau.setText("");
-                            txtMatKhau.requestFocus();
-                        });
-                        popup.add(item);
-                    }
-
-                    popup.addSeparator();
-                    JMenuItem clearItem = new JMenuItem("   [X] Xóa danh sách gợi ý");
-                    clearItem.setFont(new Font("Segoe UI", Font.ITALIC, 12));
-                    clearItem.setForeground(Color.RED);
-                    clearItem.setBackground(Color.WHITE);
-                    clearItem.setCursor(new Cursor(Cursor.HAND_CURSOR));
-                    clearItem.addActionListener(ae -> {
-                        savedUsersList.clear();
-                        prefs.remove("saved_users");
-                        prefs.remove("saved_username");
-                        txtTaiKhoan.setText("");
-                        cbGhiNho.setSelected(false);
-                    });
-                    popup.add(clearItem);
-
-                    popup.setPopupSize(txtTaiKhoan.getWidth() + 10, popup.getPreferredSize().height);
-                    popup.show(txtTaiKhoan, 0, txtTaiKhoan.getHeight() + 2);
-                    
-                    txtTaiKhoan.requestFocusInWindow(); 
+            @Override
+            public void mousePressed(MouseEvent e) {
+                // Khi click vào field lần đầu (field trống) -> mở popup ngay
+                if (txtTaiKhoan.getText().trim().isEmpty() && !savedUsersList.isEmpty()) {
+                    SwingUtilities.invokeLater(() -> showSuggestPopup());
                 }
             }
         });
+
+        // Cũng hiện popup khi field được focus bằng phím Tab
+        txtTaiKhoan.addFocusListener(new FocusAdapter() {
+            @Override
+            public void focusGained(FocusEvent e) {
+                if (txtTaiKhoan.getText().trim().isEmpty() && !savedUsersList.isEmpty()) {
+                    SwingUtilities.invokeLater(() -> showSuggestPopup());
+                }
+            }
+        });
+
         pnlInputUser.add(txtTaiKhoan);
         pnlContent.add(pnlInputUser);
 
@@ -281,7 +258,7 @@ public class ManHinhDangNhap extends JFrame {
             @Override protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(isEnabled() ? COLOR_BTN_LOGIN : Color.GRAY); 
+                g2.setColor(isEnabled() ? COLOR_BTN_LOGIN : Color.GRAY);
                 g2.fillRoundRect(0, 0, getWidth(), getHeight(), 10, 10);
                 super.paintComponent(g2);
             }
@@ -301,6 +278,7 @@ public class ManHinhDangNhap extends JFrame {
         gbcFooter.insets = new Insets(20, 0, 0, 0);
         pnlBackground.add(lblFooter, gbcFooter);
 
+        // Khôi phục tài khoản đã lưu
         String savedUser = prefs.get("saved_username", "");
         if (!savedUser.isEmpty()) {
             txtTaiKhoan.setText(savedUser);
@@ -319,7 +297,7 @@ public class ManHinhDangNhap extends JFrame {
             String p = new String(txtMatKhau.getPassword()).trim();
 
             if (u.isEmpty() || p.isEmpty()) {
-                showCustomErrorDialog("<html>Vui lòng nhập đầy đủ tên đăng nhập<br/>và mật khẩu!</html>");
+                showCustomErrorDialog("<html>Vui lòng nhập đầy đủ mã nhân viên<br/>và mật khẩu!</html>");
                 return;
             }
 
@@ -364,44 +342,36 @@ public class ManHinhDangNhap extends JFrame {
                             // Đưa tài khoản vào Session
                             UserSession.getInstance().setTaiKhoan(tk);
 
-                            // ====================================================================
-                            // BẮT ĐẦU FIX: KIỂM TRA VÀ NỐI LẠI CA DANG DỞ CHO CẢ ADMIN VÀ STAFF
-                            // ====================================================================
                             String maNV = tk.getNhanVienId().getNhanVien();
                             BUS_CaLamViec busCa = new BUS_CaLamViec();
-                            
-                            // Kiểm tra xem dưới DB có ca nào của NV này chưa kết thúc không
+
                             Entity.CaLamViec caDangMo = busCa.getCaHienTai(maNV);
 
                             if (caDangMo != null) {
-                                // 1. TRƯỜNG HỢP CÓ CA CŨ CHƯA KẾT THÚC -> NỐI LẠI CA
-                                JOptionPane.showMessageDialog(ManHinhDangNhap.this, 
-                                    "Phát hiện ca làm việc chưa kết thúc.\nHệ thống sẽ tiếp tục ca làm việc trước đó của bạn!", 
+                                // Có ca cũ chưa kết thúc -> nối lại ca
+                                JOptionPane.showMessageDialog(ManHinhDangNhap.this,
+                                    "Phát hiện ca làm việc chưa kết thúc.\nHệ thống sẽ tiếp tục ca làm việc trước đó của bạn!",
                                     "Thông báo", JOptionPane.INFORMATION_MESSAGE);
-                                
+
                                 UserSession.getInstance().setCaHienTai(caDangMo);
                                 UserSession.getInstance().setTienDauCa((long) caDangMo.getTienDauCa());
                                 UserSession.getInstance().setLoaiCa(caDangMo.getLoaiCa());
-                                
+
                                 new MainDashboard().setVisible(true);
                                 dispose();
                             } else {
-                                // 2. TRƯỜNG HỢP KHÔNG CÓ CA DANG DỞ
                                 if (UserSession.getInstance().isAdmin()) {
-                                    // QUẢN LÝ: Vào thẳng Dashboard luôn (sẽ bắt mở ca lúc tạo hóa đơn)
                                     new MainDashboard().setVisible(true);
                                     dispose();
                                 } else {
-                                    // NHÂN VIÊN: Bắt buộc mở ca ngay lúc đăng nhập
                                     ManHinhMoCa dlg = new ManHinhMoCa(ManHinhDangNhap.this);
                                     dlg.setVisible(true);
-                                    
+
                                     if (!dlg.isConfirmed()) {
-                                        UserSession.getInstance().logout(); // Nếu tắt form mở ca thì hủy phiên đăng nhập
+                                        UserSession.getInstance().logout();
                                         return;
                                     }
-                                    
-                                    // Lấy thông tin từ form mở ca
+
                                     UserSession.getInstance().setLoaiCa(dlg.getSelectedCa());
                                     UserSession.getInstance().setTienDauCa(dlg.getTongTienDauCa());
 
@@ -410,21 +380,20 @@ public class ManHinhDangNhap extends JFrame {
                                     ca.setNhanVienId(tk.getNhanVienId());
                                     ca.setThoiGianBatDau(java.time.LocalDateTime.now());
                                     ca.setTienDauCa(dlg.getTongTienDauCa());
-                                    ca.setTienHeThongGhiNhan(0); 
+                                    ca.setTienHeThongGhiNhan(0);
                                     ca.setTienKetCa(0);
                                     ca.setLoaiCa(dlg.getSelectedCa());
-                                    
-                                    busCa.themCa(ca); 
+
+                                    busCa.themCa(ca);
                                     UserSession.getInstance().setCaHienTai(ca);
-                                    
+
                                     new MainDashboard().setVisible(true);
                                     dispose();
                                 }
                             }
-                            
 
                         } else {
-                            showCustomErrorDialog("<html>Tài khoản hoặc mật khẩu không chính xác.<br/>Vui lòng kiểm tra lại!</html>");
+                            showCustomErrorDialog("<html>Mã nhân viên hoặc mật khẩu không chính xác.<br/>Vui lòng kiểm tra lại!</html>");
                             txtMatKhau.setText("");
                             txtMatKhau.requestFocus();
                         }
@@ -438,6 +407,64 @@ public class ManHinhDangNhap extends JFrame {
         });
 
         getRootPane().setDefaultButton(btnLogin);
+    }
+
+    /**
+     * Hiển thị popup gợi ý tài khoản đã lưu.
+     * Tách ra method riêng để tái sử dụng từ cả mouseClicked và focusGained.
+     */
+    private void showSuggestPopup() {
+        // Chỉ hiện khi field đang thực sự rỗng và có danh sách đã lưu
+        if (!txtTaiKhoan.getText().trim().isEmpty() || savedUsersList.isEmpty()) return;
+
+        JPopupMenu popup = new JPopupMenu();
+        popup.setFocusable(false);
+        popup.setBorder(BorderFactory.createLineBorder(COLOR_BORDER, 1));
+        popup.setBackground(Color.WHITE);
+
+        JLabel lblMenuTitle = new JLabel("   Tài khoản đã lưu:");
+        lblMenuTitle.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        lblMenuTitle.setForeground(Color.decode("#9CA3AF"));
+        lblMenuTitle.setBorder(new EmptyBorder(5, 0, 5, 0));
+        popup.add(lblMenuTitle);
+        popup.addSeparator();
+
+        for (String user : savedUsersList) {
+            JMenuItem item = new JMenuItem("   " + user);
+            item.setFont(new Font("Segoe UI", Font.BOLD, 14));
+            item.setForeground(COLOR_HEADER_DARK);
+            item.setBackground(Color.WHITE);
+            item.setCursor(new Cursor(Cursor.HAND_CURSOR));
+            item.addActionListener(ae -> {
+                txtTaiKhoan.setText(user);
+                txtMatKhau.setText("");
+                txtMatKhau.requestFocus();
+            });
+            popup.add(item);
+        }
+
+        popup.addSeparator();
+        JMenuItem clearItem = new JMenuItem("   [X] Xóa danh sách gợi ý");
+        clearItem.setFont(new Font("Segoe UI", Font.ITALIC, 12));
+        clearItem.setForeground(Color.RED);
+        clearItem.setBackground(Color.WHITE);
+        clearItem.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        clearItem.addActionListener(ae -> {
+            savedUsersList.clear();
+            prefs.remove("saved_users");
+            prefs.remove("saved_username");
+            txtTaiKhoan.setText("");
+            cbGhiNho.setSelected(false);
+        });
+        popup.add(clearItem);
+
+        popup.setPopupSize(txtTaiKhoan.getWidth() + 10, popup.getPreferredSize().height);
+        // Hiển thị popup ngay bên dưới field, dùng parent panel để tọa độ đúng
+        popup.show(txtTaiKhoan.getParent(),
+                txtTaiKhoan.getX() - 5,
+                txtTaiKhoan.getY() + txtTaiKhoan.getHeight() + 2);
+
+        txtTaiKhoan.requestFocusInWindow();
     }
 
     private void showCustomErrorDialog(String message) {
@@ -564,9 +591,15 @@ public class ManHinhDangNhap extends JFrame {
             int startX = getInsets().left;
 
             if (getText().isEmpty() && !hasFocus()) {
+                // Watermark khi không focus
                 g2d.setColor(Color.decode("#9CA3AF"));
                 g2d.drawString(watermark, startX, textY);
+            } else if (getText().isEmpty() && hasFocus()) {
+                // Watermark mờ hơn khi đang focus (nhắc nhở format)
+                g2d.setColor(Color.decode("#C4C9D4"));
+                g2d.drawString(watermark, startX, textY);
             } else if (!suggestion.isEmpty()) {
+                // Gợi ý auto-complete
                 g2d.setColor(Color.decode("#6B7280"));
                 int textWidth = g2d.getFontMetrics(getFont()).stringWidth(getText());
                 g2d.drawString(suggestion, startX + textWidth, textY);
