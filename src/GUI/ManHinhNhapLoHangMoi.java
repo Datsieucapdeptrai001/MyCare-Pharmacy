@@ -53,6 +53,7 @@ public class ManHinhNhapLoHangMoi extends JDialog {
     private static final Color WARNING = new Color(249, 115, 22);
     private static final Color SUCCESS = new Color(34, 197, 94);
     private static final Color SUCCESS_HOVER = new Color(22, 163, 74);
+    private static final int SO_NGAY_CAN_HAN = 30;
 
     private static final Font FONT_TITLE = new Font("Segoe UI", Font.BOLD, 20);
     private static final Font FONT_LABEL = new Font("Segoe UI", Font.BOLD, 14);
@@ -727,86 +728,164 @@ public class ManHinhNhapLoHangMoi extends JDialog {
 
     private void handleSubmit() {
         clearErrors();
+
         String spText = txtTimSanPham.getText().trim();
         String maLo = txtMaLo.getText().trim().toUpperCase();
         String giaNhapText = getDigitsOnly(txtGiaNhap.getText().trim());
         String hanSuDung = txtHanSuDung.getText().trim();
+
         boolean valid = true;
 
+        // 1. Kiểm tra sản phẩm
         if (spText.isEmpty() || spText.equals("Nhập tên, mã SP hoặc bấm ▼ để chọn...")) {
             errSanPham.setText("Vui lòng chọn sản phẩm");
             valid = false;
         } else {
             selectedSanPham = null;
+
             for (SanPham sp : dsTatCaSanPham) {
                 String displayText = sp.getTen() + " (" + sp.getId() + ")";
-                if (spText.equalsIgnoreCase(displayText) || spText.equalsIgnoreCase(sp.getTen())
+                if (spText.equalsIgnoreCase(displayText)
+                        || spText.equalsIgnoreCase(sp.getTen())
                         || spText.equalsIgnoreCase(sp.getId())) {
                     selectedSanPham = sp;
                     break;
                 }
             }
+
+            // Cho phép nhập sản phẩm mới bằng tay, giữ logic cũ
             if (selectedSanPham == null) {
                 selectedSanPham = new SanPham();
                 selectedSanPham.setTen(spText);
-            } else
+            } else {
                 updateQuyCachTuSanPham(selectedSanPham.getId());
+            }
         }
 
+        // 2. Kiểm tra mã lô
         if (maLo.isEmpty()) {
             errMaLo.setText("Số lô không được bỏ trống (Vui lòng tự gõ hoặc quét mã)");
             valid = false;
         }
+
+        // 3. Kiểm tra số lượng
         long soLuongLon = 0;
         try {
-            if (!txtSoLuong.getText().trim().isEmpty())
-                soLuongLon = Long.parseLong(txtSoLuong.getText().trim());
+            String soLuongText = txtSoLuong.getText().trim();
+            if (soLuongText.isEmpty()) {
+                errSoLuong.setText("Vui lòng nhập số lượng");
+                valid = false;
+            } else {
+                soLuongLon = Long.parseLong(soLuongText);
+            }
         } catch (Exception e) {
-            errSoLuong.setText("Không hợp lệ");
+            errSoLuong.setText("Số lượng không hợp lệ");
             valid = false;
         }
-        int tongSoLuongQuyDoi = (int) (soLuongLon * currentQuyCach);
-        if (tongSoLuongQuyDoi <= 0 && valid) {
+
+        long tongSoLuongQuyDoiLong = (long) (soLuongLon * currentQuyCach);
+        if (tongSoLuongQuyDoiLong <= 0) {
             errSoLuong.setText("Số lượng phải > 0");
             valid = false;
         }
 
-        int giaHop = 0;
-        double giaVien = 0.0;
-        try {
-            giaHop = Integer.parseInt(giaNhapText);
-            if (giaHop < 0) {
-                errGiaNhap.setText("Không được âm");
-                valid = false;
-            } else
-                giaVien = (currentQuyCach > 0) ? ((double) giaHop / currentQuyCach) : 0;
-        } catch (Exception e) {
-            errGiaNhap.setText("Không hợp lệ");
+        if (tongSoLuongQuyDoiLong > Integer.MAX_VALUE) {
+            errSoLuong.setText("Số lượng quá lớn");
             valid = false;
         }
 
+        int tongSoLuongQuyDoi = (int) tongSoLuongQuyDoiLong;
+
+        // 4. Kiểm tra giá nhập
+        long giaHop = 0;
+        double giaVien = 0.0;
+        try {
+            if (giaNhapText.isEmpty()) {
+                errGiaNhap.setText("Vui lòng nhập giá");
+                valid = false;
+            } else {
+                giaHop = Long.parseLong(giaNhapText);
+
+                if (giaHop <= 0) {
+                    errGiaNhap.setText("Giá nhập phải > 0");
+                    valid = false;
+                } else {
+                    giaVien = (currentQuyCach > 0) ? ((double) giaHop / currentQuyCach) : 0;
+                }
+            }
+        } catch (Exception e) {
+            errGiaNhap.setText("Giá nhập không hợp lệ");
+            valid = false;
+        }
+
+        // 5. Kiểm tra hạn sử dụng
         LocalDate ngayHSD = null;
+        boolean canHan = false;
+
         if (hanSuDung.isEmpty() || hanSuDung.equals("dd/MM/yyyy")) {
             errHanSuDung.setText("Vui lòng nhập HSD");
             valid = false;
         } else {
             try {
                 ngayHSD = LocalDate.parse(hanSuDung, DATE_FORMAT);
+
                 if (ngayHSD.isBefore(LocalDate.now())) {
-                    errHanSuDung.setText("Hạn sử dụng phải >= hôm nay");
+                    errHanSuDung.setText("Lô hàng đã hết hạn");
                     valid = false;
+                } else if (!ngayHSD.isAfter(LocalDate.now().plusDays(SO_NGAY_CAN_HAN))) {
+                    canHan = true;
                 }
             } catch (DateTimeParseException e) {
-                errHanSuDung.setText("Sai định dạng");
+                errHanSuDung.setText("Sai định dạng ngày");
                 valid = false;
             }
         }
 
-        if (!valid)
+        if (!valid) {
             return;
+        }
+
+        // 6. Không cho trùng mã lô đang hoạt động
         if (busKho.tonTaiMaLoDangHoatDong(maLo)) {
             errMaLo.setText("Mã lô đã tồn tại trong kho");
             return;
+        }
+
+        // 7. Cảnh báo vàng nếu lô cận hạn dưới hoặc bằng 30 ngày
+        if (canHan) {
+            int confirm = JOptionPane.showConfirmDialog(
+                    this,
+                    "Lô hàng còn dưới hoặc bằng " + SO_NGAY_CAN_HAN + " ngày đến hạn.\nBạn vẫn muốn nhập kho?",
+                    "Cảnh báo cận hạn",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.WARNING_MESSAGE);
+
+            if (confirm != JOptionPane.YES_OPTION) {
+                errHanSuDung.setText("Lô hàng cận hạn, cần xác nhận để nhập");
+                return;
+            }
+        }
+
+        // 8. Cảnh báo nếu giá nhập quy đổi > giá bán hiện tại
+        if (selectedSanPham != null && selectedSanPham.getId() != null && selectedSanPham.getGiaBan() > 0) {
+            double giaBan = selectedSanPham.getGiaBan();
+
+            if (giaVien > giaBan) {
+                int confirm = JOptionPane.showConfirmDialog(
+                        this,
+                        "Giá nhập quy đổi đang lớn hơn giá bán hiện tại.\n"
+                                + "Giá nhập quy đổi: " + vnNumberFormat.format(giaVien) + " đ/" + currentDonViNho + "\n"
+                                + "Giá bán hiện tại: " + vnNumberFormat.format(giaBan) + " đ/" + currentDonViNho + "\n"
+                                + "Bạn vẫn muốn nhập lô này?",
+                        "Cảnh báo lợi nhuận",
+                        JOptionPane.YES_NO_OPTION,
+                        JOptionPane.WARNING_MESSAGE);
+
+                if (confirm != JOptionPane.YES_OPTION) {
+                    errGiaNhap.setText("Giá nhập > giá bán, cần kiểm tra");
+                    return;
+                }
+            }
         }
 
         String idTuDong = taoMaLoHangTuDong();
@@ -833,12 +912,16 @@ public class ManHinhNhapLoHangMoi extends JDialog {
             String tenSPHienThi = (selectedSanPham != null && selectedSanPham.getTen() != null)
                     ? selectedSanPham.getTen()
                     : "Sản phẩm không tên";
-            String maSPHienThi = (selectedSanPham != null && selectedSanPham.getId() != null) ? selectedSanPham.getId()
+            String maSPHienThi = (selectedSanPham != null && selectedSanPham.getId() != null)
+                    ? selectedSanPham.getId()
                     : "N/A";
 
             showModernAlert(laTaiSuDung ? "Đã tái sử dụng lô hàng đã ẩn!" : "Thêm lô hàng thành công!", true);
-            if (reloadListener != null)
+
+            if (reloadListener != null) {
                 reloadListener.onReload();
+            }
+
             dispose();
 
             Window owner = SwingUtilities.getWindowAncestor(this);
@@ -940,127 +1023,205 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         dialog.setVisible(true);
     }
 
-    // ==============================================================================
-    // XỬ LÝ CHUỖI QUÉT 2D/1D VÀ TÍCH HỢP LIÊN KẾT MÃ LẠ THÔNG MINH
-    // ==============================================================================
+    private SanPham timSanPhamTheoMaVachHoacId(String maQuet) {
+        if (maQuet == null || maQuet.trim().isEmpty()) {
+            return null;
+        }
+
+        String ma = maQuet.trim();
+
+        if (mapLienKetTam.containsKey(ma)) {
+            return mapLienKetTam.get(ma);
+        }
+
+        for (SanPham sp : dsTatCaSanPham) {
+            String spMaVach = sp.getId();
+
+            try {
+                java.lang.reflect.Method method = sp.getClass().getMethod("getMaVach");
+                Object val = method.invoke(sp);
+
+                if (val != null && !val.toString().trim().isEmpty()) {
+                    spMaVach = val.toString().trim();
+                }
+            } catch (Exception ignored) {
+            }
+
+            if ((spMaVach != null && spMaVach.equalsIgnoreCase(ma))
+                    || (sp.getId() != null && sp.getId().equalsIgnoreCase(ma))) {
+                return sp;
+            }
+        }
+
+        return null;
+    }
+
+    private boolean chonSanPhamTuMaQuet(String maQuet) {
+        selectedSanPham = timSanPhamTheoMaVachHoacId(maQuet);
+
+        if (selectedSanPham == null) {
+            boolean daLienKet = moHopThoaiLienKetMaVach(maQuet);
+            if (!daLienKet) {
+                return false;
+            }
+        }
+
+        if (selectedSanPham != null) {
+            setSanPhamAutoFill(selectedSanPham.getTen() + " (" + selectedSanPham.getId() + ")");
+            updateQuyCachTuSanPham(selectedSanPham.getId());
+            return true;
+        }
+
+        return false;
+    }
+
+    private void canhBaoCanHanNeuCo(LocalDate hsd) {
+        if (hsd == null) {
+            return;
+        }
+
+        if (!hsd.isBefore(LocalDate.now()) && !hsd.isAfter(LocalDate.now().plusDays(SO_NGAY_CAN_HAN))) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Lô hàng còn dưới hoặc bằng " + SO_NGAY_CAN_HAN
+                            + " ngày đến hạn.\nVui lòng kiểm tra kỹ trước khi lưu.",
+                    "Cảnh báo cận hạn",
+                    JOptionPane.WARNING_MESSAGE);
+        }
+    }
+
     private void processQRCodeData(String qrData) {
         try {
+            if (qrData == null || qrData.trim().isEmpty()) {
+                showModernAlert("Mã quét rỗng!", false);
+                return;
+            }
+
+            qrData = qrData.trim();
+
             // ---------------------------------------------------------
-            // TRƯỜNG HỢP 1: QUÉT MÃ 2D (Chứa đầy đủ thông tin cách nhau bởi dấu | )
+            // TRƯỜNG HỢP 1: QUÉT MÃ 2D
+            // Yêu cầu checklist: mã 2D phải có đúng 10 trường, cách nhau bởi dấu |
+            // Quy ước 5 trường đầu đang dùng:
+            // 0: mã vạch sản phẩm | 1: mã lô | 2: số lượng | 3: giá nhập | 4: hạn dùng
+            // dd/MM/yyyy
+            // 5..9: thông tin bổ sung nếu có
             // ---------------------------------------------------------
             if (qrData.contains("|")) {
-                String[] parts = qrData.split("\\|");
-                if (parts.length >= 5) {
-                    String maVachQuocTe = parts[0].trim();
-                    String maLo = parts[1].trim();
-                    String soLuong = parts[2].trim();
-                    String giaNhap = parts[3].trim();
-                    String hanDung = parts[4].trim();
+                String[] parts = qrData.split("\\|", -1);
 
-                    selectedSanPham = null;
+                if (parts.length != 10) {
+                    showModernAlert("Mã QR sai định dạng. Mã phải có đúng 10 trường dữ liệu!", false);
+                    return;
+                }
 
-                    if (mapLienKetTam.containsKey(maVachQuocTe)) {
-                        selectedSanPham = mapLienKetTam.get(maVachQuocTe);
-                    } else {
-                        for (SanPham sp : dsTatCaSanPham) {
-                            String spMaVach = sp.getId();
-                            try {
-                                java.lang.reflect.Method method = sp.getClass().getMethod("getMaVach");
-                                Object val = method.invoke(sp);
-                                if (val != null && !val.toString().isEmpty()) {
-                                    spMaVach = val.toString();
-                                }
-                            } catch (Exception ignored) {
-                            }
+                String maVachQuocTe = parts[0].trim();
+                String maLo = parts[1].trim().toUpperCase();
+                String soLuong = parts[2].trim();
+                String giaNhap = parts[3].trim();
+                String hanDung = parts[4].trim();
 
-                            if (spMaVach.equalsIgnoreCase(maVachQuocTe) || sp.getId().equalsIgnoreCase(maVachQuocTe)) {
-                                selectedSanPham = sp;
-                                break;
-                            }
-                        }
+                if (maVachQuocTe.isEmpty()) {
+                    showModernAlert("Mã QR thiếu mã sản phẩm!", false);
+                    return;
+                }
+
+                if (maLo.isEmpty()) {
+                    showModernAlert("Mã QR thiếu mã lô!", false);
+                    return;
+                }
+
+                if (!soLuong.matches("\\d+")) {
+                    showModernAlert("Số lượng trong mã quét không hợp lệ!", false);
+                    return;
+                }
+
+                long soLuongQuet = Long.parseLong(soLuong);
+                if (soLuongQuet <= 0) {
+                    showModernAlert("Số lượng trong mã quét phải > 0!", false);
+                    return;
+                }
+
+                String giaDigits = getDigitsOnly(giaNhap);
+                if (giaDigits.isEmpty()) {
+                    showModernAlert("Mã QR thiếu giá nhập!", false);
+                    return;
+                }
+
+                long giaNhapQuet = Long.parseLong(giaDigits);
+                if (giaNhapQuet <= 0) {
+                    showModernAlert("Giá nhập trong mã quét phải > 0!", false);
+                    return;
+                }
+
+                LocalDate hsd;
+                try {
+                    hsd = LocalDate.parse(hanDung, DATE_FORMAT);
+                } catch (DateTimeParseException ex) {
+                    showModernAlert("Ngày hạn sử dụng sai định dạng dd/MM/yyyy!", false);
+                    return;
+                }
+
+                if (hsd.isBefore(LocalDate.now())) {
+                    showModernAlert("Lô hàng đã hết hạn, không được nhập kho!", false);
+                    return;
+                }
+
+                if (!chonSanPhamTuMaQuet(maVachQuocTe)) {
+                    showModernAlert("Đã hủy quá trình liên kết mã vạch!", false);
+                    return;
+                }
+
+                // Nếu quét lại đúng mã lô đang có trên form thì cộng dồn số lượng
+                if (txtMaLo.getText().trim().equalsIgnoreCase(maLo)) {
+                    long soLuongCu = 0;
+                    String soLuongCuText = txtSoLuong.getText().trim();
+
+                    if (!soLuongCuText.isEmpty() && soLuongCuText.matches("\\d+")) {
+                        soLuongCu = Long.parseLong(soLuongCuText);
                     }
 
-                    if (selectedSanPham == null) {
-                        boolean daLienKet = moHopThoaiLienKetMaVach(maVachQuocTe);
-                        if (!daLienKet) {
-                            showModernAlert("Đã hủy quá trình liên kết mã vạch!", false);
-                            return;
-                        }
-                    }
-
-                    if (selectedSanPham != null) {
-                        setSanPhamAutoFill(selectedSanPham.getTen() + " (" + selectedSanPham.getId() + ")");
-                        updateQuyCachTuSanPham(selectedSanPham.getId());
-                    }
-
+                    txtSoLuong.setText(String.valueOf(soLuongCu + soLuongQuet));
+                } else {
                     txtMaLo.setText(maLo);
-                    txtSoLuong.setText(soLuong);
-                    long parsedGiaNhap = Long.parseLong(getDigitsOnly(giaNhap));
-                    txtGiaNhap.setText(vnNumberFormat.format(parsedGiaNhap));
-                    txtHanSuDung.setText(hanDung);
-
-                    clearErrors();
-                    showModernAlert("Đã quét và điền thông tin tự động!", true);
-                } else {
-                    showModernAlert("Mã QR không đủ 5 trường dữ liệu!", false);
+                    txtSoLuong.setText(String.valueOf(soLuongQuet));
                 }
+
+                txtGiaNhap.setText(vnNumberFormat.format(giaNhapQuet));
+                txtHanSuDung.setText(hanDung);
+
+                calculateTotal();
+                clearErrors();
+                canhBaoCanHanNeuCo(hsd);
+                showModernAlert("Đã quét và điền thông tin tự động!", true);
+                return;
             }
+
             // ---------------------------------------------------------
-            // TRƯỜNG HỢP 2: QUÉT MÃ 1D BÌNH THƯỜNG (Mã vạch SP hoặc Mã Lô)
+            // TRƯỜNG HỢP 2: QUÉT MÃ 1D BÌNH THƯỜNG
+            // Mã vạch chuẩn GTIN/EAN thường là chuỗi toàn số, dài từ 8 đến 14 ký tự
             // ---------------------------------------------------------
-            else {
-                // Mã vạch chuẩn quốc tế (GTIN/EAN) thường là chuỗi TOÀN SỐ và DÀI TỪ 8 -> 14 ký
-                // tự
-                boolean laMaVachSanPham = qrData.matches("\\d{8,14}");
+            boolean laMaVachSanPham = qrData.matches("\\d{8,14}");
 
-                if (laMaVachSanPham) {
-                    selectedSanPham = null;
-                    if (mapLienKetTam.containsKey(qrData)) {
-                        selectedSanPham = mapLienKetTam.get(qrData);
-                    } else {
-                        for (SanPham sp : dsTatCaSanPham) {
-                            String spMaVach = sp.getId();
-                            try {
-                                java.lang.reflect.Method method = sp.getClass().getMethod("getMaVach");
-                                Object val = method.invoke(sp);
-                                if (val != null && !val.toString().isEmpty()) {
-                                    spMaVach = val.toString();
-                                }
-                            } catch (Exception ignored) {
-                            }
-
-                            if (spMaVach.equalsIgnoreCase(qrData) || sp.getId().equalsIgnoreCase(qrData)) {
-                                selectedSanPham = sp;
-                                break;
-                            }
-                        }
-                    }
-
-                    if (selectedSanPham == null) {
-                        boolean daLienKet = moHopThoaiLienKetMaVach(qrData);
-                        if (!daLienKet) {
-                            showModernAlert("Đã hủy liên kết mã Sản phẩm!", false);
-                            return;
-                        }
-                    }
-
-                    // Nếu tìm thấy / liên kết thành công -> Bắn ra tên SP và trỏ chuột vào ô Mã Lô
-                    // chờ quét tiếp
-                    if (selectedSanPham != null) {
-                        setSanPhamAutoFill(selectedSanPham.getTen() + " (" + selectedSanPham.getId() + ")");
-                        updateQuyCachTuSanPham(selectedSanPham.getId());
-
-                        txtMaLo.requestFocus();
-                        showModernAlert("Đã nhận diện Sản phẩm! Vui lòng nhập/quét tiếp Mã lô.", true);
-                    }
-                } else {
-                    // Có chữ (VD: LOT-PANA) hoặc định dạng khác -> Hiểu là quét MÃ LÔ
-                    txtMaLo.setText(qrData);
-                    txtSoLuong.requestFocus(); // Tự động trỏ chuột qua ô Số lượng
-                    clearErrors();
-                    showModernAlert("Đã quét Mã Lô: " + qrData, true);
+            if (laMaVachSanPham) {
+                if (!chonSanPhamTuMaQuet(qrData)) {
+                    showModernAlert("Đã hủy liên kết mã Sản phẩm!", false);
+                    return;
                 }
+
+                txtMaLo.requestFocus();
+                showModernAlert("Đã nhận diện Sản phẩm! Vui lòng nhập/quét tiếp Mã lô.", true);
+                return;
             }
+
+            // Có chữ hoặc định dạng khác thì xem là mã lô
+            txtMaLo.setText(qrData.toUpperCase());
+            txtSoLuong.requestFocus();
+            clearErrors();
+            showModernAlert("Đã quét Mã Lô: " + qrData, true);
+
+        } catch (NumberFormatException ex) {
+            showModernAlert("Số lượng hoặc giá nhập trong mã quét quá lớn/không hợp lệ!", false);
         } catch (Exception ex) {
             showModernAlert("Lỗi xử lý dữ liệu quét!", false);
         }
@@ -1166,8 +1327,7 @@ public class ManHinhNhapLoHangMoi extends JDialog {
                         spChon.getMoTa(),
                         spChon.getDonViDoCoBan(),
                         spChon.getGiaBan(),
-                        dsDonViMoi // Gọi xuống BUS để lưu Đơn Vị Đo Lường (Mã vạch)
-                );
+                        dsDonViMoi);
 
                 selectedSanPham = spChon;
                 result[0] = true;
