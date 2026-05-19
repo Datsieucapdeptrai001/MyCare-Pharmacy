@@ -114,22 +114,29 @@ public class BUS_SanPham {
             String nsx, String hoatChat, double vat, String hamLuong,
             String moTa, String dvt, double giaBan,
             String maVach, String nhomBenhLy, List<Object[]> dsDonVi) {
-        boolean ok = themSP(
-                id, danhMuc, dang, ten, vietTat, nsx, hoatChat, vat,
-                hamLuong, moTa, dvt, giaBan, maVach, nhomBenhLy);
+        return themSP(id, danhMuc, dang, ten, vietTat, nsx, hoatChat, vat,
+                hamLuong, moTa, dvt, giaBan, maVach, nhomBenhLy, "", dsDonVi);
+    }
 
-        if (ok) {
-            daoSanPham.luuDonViQuyDoi(id.trim(), dvt, giaBan, dsDonVi);
-        }
-
+    /** Overload chính — có viTriId */
+    public boolean themSP(String id, String danhMuc, String dang, String ten, String vietTat,
+            String nsx, String hoatChat, double vat, String hamLuong,
+            String moTa, String dvt, double giaBan,
+            String maVach, String nhomBenhLy, String viTriId, List<Object[]> dsDonVi) {
+        if (isBlank(id) || isBlank(ten) || vat < 0 || giaBan < 0) return false;
+        boolean ok = daoSanPham.themSanPhamNhanh(
+                id.trim(), safe(danhMuc).trim(), safe(dang).trim(), ten.trim(),
+                safe(vietTat).trim(), safe(nsx).trim(), safe(hoatChat).trim(), vat,
+                safe(hamLuong).trim(), safe(moTa).trim(), safe(dvt).trim(), giaBan,
+                safe(maVach).trim(), safe(nhomBenhLy).trim(), safe(viTriId).trim());
+        if (ok) daoSanPham.luuDonViQuyDoi(id.trim(), dvt, giaBan, dsDonVi);
         return ok;
     }
 
     public boolean themSP(String id, String danhMuc, String dang, String ten, String vietTat,
             String nsx, String hoatChat, double vat, String hamLuong,
             String moTa, String dvt, double giaBan, List<Object[]> dsDonVi) {
-        return themSP(
-                id, danhMuc, dang, ten, vietTat, nsx, hoatChat, vat,
+        return themSP(id, danhMuc, dang, ten, vietTat, nsx, hoatChat, vat,
                 hamLuong, moTa, dvt, giaBan, "", "", dsDonVi);
     }
 
@@ -139,44 +146,40 @@ public class BUS_SanPham {
             String maVach, String nhomBenhLy) {
         if (isBlank(id) || isBlank(ten) || vat < 0 || giaBan < 0)
             return false;
-
         return daoSanPham.capNhatSanPhamNhanh(
-                id.trim(),
-                safe(danhMuc).trim(),
-                safe(dang).trim(),
-                ten.trim(),
-                safe(vietTat).trim(),
-                safe(nsx).trim(),
-                safe(hoatChat).trim(),
-                vat,
-                safe(hamLuong).trim(),
-                safe(moTa).trim(),
-                safe(dvt).trim(),
-                giaBan,
-                safe(maVach).trim(),
-                safe(nhomBenhLy).trim());
+                id.trim(), safe(danhMuc).trim(), safe(dang).trim(), ten.trim(),
+                safe(vietTat).trim(), safe(nsx).trim(), safe(hoatChat).trim(), vat,
+                safe(hamLuong).trim(), safe(moTa).trim(), safe(dvt).trim(), giaBan,
+                safe(maVach).trim(), safe(nhomBenhLy).trim());
     }
 
     public boolean capNhatSP(String id, String danhMuc, String dang, String ten, String vietTat,
             String nsx, String hoatChat, double vat, String hamLuong,
             String moTa, String dvt, double giaBan,
             String maVach, String nhomBenhLy, List<Object[]> dsDonVi) {
-        boolean ok = capNhatSP(
-                id, danhMuc, dang, ten, vietTat, nsx, hoatChat, vat,
-                hamLuong, moTa, dvt, giaBan, maVach, nhomBenhLy);
+        return capNhatSP(id, danhMuc, dang, ten, vietTat, nsx, hoatChat, vat,
+                hamLuong, moTa, dvt, giaBan, maVach, nhomBenhLy, "", dsDonVi);
+    }
 
-        if (ok) {
-            daoSanPham.luuDonViQuyDoi(id.trim(), dvt, giaBan, dsDonVi);
-        }
-
+    /** Overload chính — có viTriId */
+    public boolean capNhatSP(String id, String danhMuc, String dang, String ten, String vietTat,
+            String nsx, String hoatChat, double vat, String hamLuong,
+            String moTa, String dvt, double giaBan,
+            String maVach, String nhomBenhLy, String viTriId, List<Object[]> dsDonVi) {
+        if (isBlank(id) || isBlank(ten) || vat < 0 || giaBan < 0) return false;
+        boolean ok = daoSanPham.capNhatSanPhamNhanh(
+                id.trim(), safe(danhMuc).trim(), safe(dang).trim(), ten.trim(),
+                safe(vietTat).trim(), safe(nsx).trim(), safe(hoatChat).trim(), vat,
+                safe(hamLuong).trim(), safe(moTa).trim(), safe(dvt).trim(), giaBan,
+                safe(maVach).trim(), safe(nhomBenhLy).trim(), safe(viTriId).trim());
+        if (ok) daoSanPham.luuDonViQuyDoi(id.trim(), dvt, giaBan, dsDonVi);
         return ok;
     }
 
     public boolean capNhatSP(String id, String danhMuc, String dang, String ten, String vietTat,
             String nsx, String hoatChat, double vat, String hamLuong,
             String moTa, String dvt, double giaBan, List<Object[]> dsDonVi) {
-        return capNhatSP(
-                id, danhMuc, dang, ten, vietTat, nsx, hoatChat, vat,
+        return capNhatSP(id, danhMuc, dang, ten, vietTat, nsx, hoatChat, vat,
                 hamLuong, moTa, dvt, giaBan, "", "", dsDonVi);
     }
 
@@ -274,5 +277,110 @@ public class BUS_SanPham {
 
     private String safe(String s) {
         return s == null ? "" : s;
+    }
+
+    // =========================================================================
+    // VỊ TRÍ THUỐC — gộp vào BUS_SanPham, dùng SanPham.ViTriThuoc (inner class)
+    // =========================================================================
+
+    public List<SanPham.ViTriThuoc> layTatCaViTri() {
+        return daoSanPham.layTatCaViTri();
+    }
+
+    public SanPham.ViTriThuoc layViTriTheoId(String id) {
+        if (isBlank(id)) return null;
+        return daoSanPham.layViTriTheoId(id.trim());
+    }
+
+    public List<String> layDanhSachKhuViTri() {
+        return daoSanPham.layDanhSachKhuViTri();
+    }
+
+    public boolean themViTri(SanPham.ViTriThuoc vt) {
+        if (vt == null || isBlank(vt.getId()) || isBlank(vt.getKhu()) || isBlank(vt.getKe()))
+            return false;
+        return daoSanPham.themViTri(vt);
+    }
+
+    public boolean capNhatViTri(SanPham.ViTriThuoc vt) {
+        if (vt == null || isBlank(vt.getId())) return false;
+        return daoSanPham.capNhatViTri(vt);
+    }
+
+    /**
+     * Xóa vị trí có kiểm tra nghiệp vụ.
+     * Trả về: "OK" | "CON_SP" | "LOI"
+     */
+    public String xoaViTri(String id) {
+        if (isBlank(id)) return "LOI";
+        int kq = daoSanPham.xoaViTri(id.trim());
+        if (kq == 0)  return "OK";
+        if (kq == -1) return "CON_SP";
+        return "LOI";
+    }
+
+    public boolean ganViTriChoSP(String maSP, String viTriId) {
+        if (isBlank(maSP)) return false;
+        return daoSanPham.ganViTriChoSP(maSP.trim(), viTriId);
+    }
+
+    public String layIdViTriMoi() {
+        return daoSanPham.layIdViTriMoi();
+    }
+
+    // =========================================================================
+    // MẪU LIỀU DÙNG — gộp vào BUS_SanPham
+    // =========================================================================
+
+    public List<Object[]> layMauLieuTheoSP(String maSP) {
+        if (isBlank(maSP)) return new java.util.ArrayList<>();
+        return daoSanPham.layMauLieuTheoSP(maSP.trim());
+    }
+
+    /** Lấy mẫu liều mặc định — dùng tại bán hàng để gợi ý liều ngay */
+    public Object[] layMauLieuMacDinh(String maSP) {
+        if (isBlank(maSP)) return null;
+        return daoSanPham.layMauLieuMacDinh(maSP.trim());
+    }
+
+    public boolean luuMauLieu(String maSP, List<Object[]> dsMau) {
+        if (isBlank(maSP)) return false;
+        // Validate từng mẫu trước khi lưu
+        if (dsMau != null) {
+            for (Object[] m : dsMau) {
+                try {
+                    // Đã đổi thành kiểu String để hỗ trợ nhập "1/2", "1-2"
+                    String lieu = m[2].toString().trim();
+                    int soLan  = Integer.parseInt(m[4].toString());
+                    if (lieu.isEmpty() || soLan <= 0) return false;
+                    if (isBlank(m[1].toString())) return false; // doiTuong không được rỗng
+                } catch (Exception e) { return false; }
+            }
+        }
+        return daoSanPham.luuMauLieu(maSP.trim(), dsMau);
+    }
+
+    /**
+     * Tạo chuỗi hướng dẫn dùng thuốc đầy đủ từ mẫu liều mặc định.
+     * Dùng để in lên túi thuốc / phiếu tư vấn.
+     * VD: "Người lớn: Uống 1 viên × 3 lần/ngày — Sau ăn"
+     */
+    public String taoHuongDanDungThuoc(String maSP) {
+        Object[] m = layMauLieuMacDinh(maSP);
+        if (m == null) return "";
+        // Cấu trúc Object[] (từ DAO): [id, tenMau, doiTuong, lieuLuong, donViLieu, soLanNgay, thoiDiemUong, duongDung, ccd, luuY, laMacDinh]
+        // Nếu là format UI (từ layMauLieuTuDB): [tenMau, doiTuong, lieuLuong, donViLieu, soLanNgay, thoiDiemUong, duongDung, ccd, luuY, laMacDinh]
+        // Method này gọi layMauLieuMacDinh từ DAO nên dùng index của DAO (có cột id ở [0])
+        StringBuilder sb = new StringBuilder();
+        sb.append(m[2]).append(": ");                          // [2] doiTuong
+        sb.append(m[7]).append(" ");                           // [7] duongDung
+        sb.append(m[3]).append(" ").append(m[4]);              // [3] lieuLuong + [4] donViLieu
+        sb.append(" × ").append(m[5]).append(" lần/ngày");    // [5] soLanNgay
+        sb.append(" — ").append(m[6]);                         // [6] thoiDiemUong
+        if (m[8] != null && !m[8].toString().isEmpty())
+            sb.append("\n⚠ ").append(m[8]);                   // [8] chongChiDinh
+        if (m[9] != null && !m[9].toString().isEmpty())
+            sb.append("\nℹ ").append(m[9]);                   // [9] luuY
+        return sb.toString();
     }
 }

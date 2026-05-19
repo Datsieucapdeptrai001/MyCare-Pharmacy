@@ -119,12 +119,20 @@ public class DAO_SanPham {
             String vietTat, String nsx, String hoatChat, double vat,
             String hamLuong, String moTa, String dvt, double giaBan,
             String maVach, String nhomBenhLy) {
+        return themSanPhamNhanh(id, danhMuc, dang, ten, vietTat, nsx, hoatChat,
+                vat, hamLuong, moTa, dvt, giaBan, maVach, nhomBenhLy, null);
+    }
+
+    public boolean themSanPhamNhanh(String id, String danhMuc, String dang, String ten,
+            String vietTat, String nsx, String hoatChat, double vat,
+            String hamLuong, String moTa, String dvt, double giaBan,
+            String maVach, String nhomBenhLy, String viTriId) {
         if (kiemTraMaSPTonTai(id))
             return false;
 
         String sql = "INSERT INTO SanPham (id, danhMuc, dang, ten, tenVietTat, nhaSanXuat, hoatChat, " +
-                "thueVAT, hamLuong, moTa, donViDoCoBan, giaBan, ngayTao, maVach, nhomBenhLy) " +
-                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,GETDATE(),?,?)";
+                "thueVAT, hamLuong, moTa, donViDoCoBan, giaBan, ngayTao, maVach, nhomBenhLy, viTriId) " +
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,GETDATE(),?,?,?)";
 
         try (Connection con = ConnectDB.getInstance().getConnection();
                 PreparedStatement pst = con.prepareStatement(sql)) {
@@ -154,6 +162,12 @@ public class DAO_SanPham {
                 pst.setString(14, nhomBenhLy);
             }
 
+            if (viTriId == null || viTriId.isEmpty()) {
+                pst.setNull(15, java.sql.Types.NVARCHAR);
+            } else {
+                pst.setString(15, viTriId);
+            }
+
             return pst.executeUpdate() > 0;
 
         } catch (Exception e) {
@@ -167,9 +181,17 @@ public class DAO_SanPham {
             String vietTat, String nsx, String hoatChat, double vat,
             String hamLuong, String moTa, String dvt, double giaBan,
             String maVach, String nhomBenhLy) {
+        return capNhatSanPhamNhanh(id, danhMuc, dang, ten, vietTat, nsx, hoatChat,
+                vat, hamLuong, moTa, dvt, giaBan, maVach, nhomBenhLy, null);
+    }
+
+    public boolean capNhatSanPhamNhanh(String id, String danhMuc, String dang, String ten,
+            String vietTat, String nsx, String hoatChat, double vat,
+            String hamLuong, String moTa, String dvt, double giaBan,
+            String maVach, String nhomBenhLy, String viTriId) {
         String sql = "UPDATE SanPham SET danhMuc=?,dang=?,ten=?,tenVietTat=?,nhaSanXuat=?," +
                 "hoatChat=?,thueVAT=?,hamLuong=?,moTa=?,donViDoCoBan=?,giaBan=?," +
-                "maVach=?,nhomBenhLy=? " +
+                "maVach=?,nhomBenhLy=?,viTriId=? " +
                 "WHERE id=?";
 
         try (Connection con = ConnectDB.getInstance().getConnection();
@@ -199,7 +221,13 @@ public class DAO_SanPham {
                 pst.setString(13, nhomBenhLy);
             }
 
-            pst.setString(14, id);
+            if (viTriId == null || viTriId.isEmpty()) {
+                pst.setNull(14, java.sql.Types.NVARCHAR);
+            } else {
+                pst.setString(14, viTriId);
+            }
+
+            pst.setString(15, id);
 
             return pst.executeUpdate() > 0;
 
@@ -303,7 +331,8 @@ public class DAO_SanPham {
     public List<Object[]> timKiemSanPhamBan(String text) {
         List<Object[]> ds = new ArrayList<>();
 
-        // ĐÃ FIX: Sửa lại maVach = ? thành maVach LIKE ? ở cả SELECT phụ và WHERE
+        // sp.maVach lưu dạng CSV ("8934...,8934...") — phải dùng exact pattern để tránh match nhầm
+        // FIX: đổi "OR sp.maVach LIKE ?" thành "',' + sp.maVach + ',' LIKE ?"
         String sql = "SELECT DISTINCT sp.id, sp.ten, " +
                 "ISNULL((SELECT TOP 1 ten FROM DonViDoLuong WHERE sanPhamId = sp.id AND maVach LIKE ?), " +
                 "    ISNULL((SELECT TOP 1 ten FROM DonViDoLuong WHERE sanPhamId = sp.id ORDER BY chuyenDoiDonViCoBan DESC), sp.donViDoCoBan)"
@@ -321,7 +350,7 @@ public class DAO_SanPham {
                 "WHERE (sp.ten LIKE ? OR sp.tenVietTat LIKE ? OR sp.hoatChat LIKE ? " +
                 "       OR sp.id LIKE ? OR lh.soLoHang LIKE ? " +
                 "       OR dv.maVach LIKE ? OR lh.maVachNoiBo = ? " +
-                "       OR sp.maVach LIKE ?) " +
+                "       OR ',' + ISNULL(sp.maVach,'') + ',' LIKE ?) " +
                 "AND ISNULL(lh.trangThai,'CON_HANG') = 'CON_HANG' " +
                 "AND lh.soLuongLoHang > 0 " +
                 "AND (lh.ngayHetHan IS NULL OR lh.ngayHetHan >= GETDATE()) " +
@@ -330,22 +359,20 @@ public class DAO_SanPham {
         try (Connection con = ConnectDB.getInstance().getConnection();
                 PreparedStatement pst = con.prepareStatement(sql)) {
 
-            // ĐÃ FIX: Dùng biến p (chứa %...%) cho tất cả các cột cần quét (trừ mã QR nội bộ)
             String p = "%" + text + "%";
+            // FIX: sp.maVach dùng exact CSV pattern — "%,<text>,%" — không dùng p thông thường
+            String pMaVach = "%," + text + ",%";
 
-            pst.setString(1, p); // Tìm mã vạch quy đổi đơn vị hiển thị
-            pst.setString(2, p); // Tìm mã vạch quy đổi giá tiền
-            pst.setString(3, p); // sp.ten
-            pst.setString(4, p); // sp.tenVietTat
-            pst.setString(5, p); // sp.hoatChat
-            pst.setString(6, p); // sp.id
-            pst.setString(7, p); // lh.soLoHang
-            pst.setString(8, p); // dv.maVach (Mã vạch Đơn vị tính)
-            
-            // Riêng mã QR nội bộ thường cần khớp chính xác tuyệt đối nên giữ nguyên text
-            pst.setString(9, text); 
-            
-            pst.setString(10, p); // sp.maVach (Mã vạch sản phẩm chung)
+            pst.setString(1, p);       // DonViDoLuong.maVach cho đơn vị hiển thị
+            pst.setString(2, p);       // DonViDoLuong.maVach cho giá
+            pst.setString(3, p);       // sp.ten
+            pst.setString(4, p);       // sp.tenVietTat
+            pst.setString(5, p);       // sp.hoatChat
+            pst.setString(6, p);       // sp.id
+            pst.setString(7, p);       // lh.soLoHang
+            pst.setString(8, p);       // dv.maVach (đơn vị tính)
+            pst.setString(9, text);    // lh.maVachNoiBo — khớp chính xác
+            pst.setString(10, pMaVach); // sp.maVach CSV — exact match từng mã
 
             try (ResultSet rs = pst.executeQuery()) {
                 while (rs.next()) {
@@ -1136,40 +1163,41 @@ public class DAO_SanPham {
         } catch (Exception ignored) {
         }
 
+        try {
+            sp.setViTriId(rs.getString("viTriId"));
+        } catch (Exception ignored) {
+        }
+
+        // Denormalized vị trí — join sẵn để UI không cần query thêm
+        try { sp.setViTriKhu(rs.getString("viTriKhu"));  } catch (Exception ignored) {}
+        try { sp.setViTriKe(rs.getString("viTriKe"));    } catch (Exception ignored) {}
+        try { sp.setViTriTang(rs.getString("viTriTang")); } catch (Exception ignored) {}
+
         return sp;
     }
     public boolean kiemTraMaVachTonTai(String maVach, String maSPBoQua) {
         if (maVach == null || maVach.trim().isEmpty()) {
             return false;
         }
-        
-        // Dùng LIKE để quét trong chuỗi (VD: "8934663100017,8934663100018")
-        // Check 3 trường hợp: Đứng đầu, đứng giữa, đứng cuối hoặc đứng 1 mình
-        String sql = "SELECT COUNT(*) FROM SanPham WHERE "
-                   + "(maVach = ? "
-                   + "OR maVach LIKE ? "
-                   + "OR maVach LIKE ? "
-                   + "OR maVach LIKE ?) ";
 
-        // Nếu đang Sửa sản phẩm -> Không check trùng với chính nó
+        // FIX: bọc chuỗi DB bằng dấu phẩy 2 đầu rồi tìm ",maVach,"
+        // → tránh match nhầm "8934" trong "89340,89341"
+        String sql = "SELECT COUNT(*) FROM SanPham WHERE "
+                   + "(',' + ISNULL(maVach,'') + ',' LIKE ?) ";
+
         if (maSPBoQua != null && !maSPBoQua.trim().isEmpty()) {
             sql += " AND id != ?";
         }
 
         try (Connection con = ConnectDB.getInstance().getConnection();
              PreparedStatement pst = con.prepareStatement(sql)) {
-             
-            String patternDau = maVach + ",%";      // VD: 893...,xxx
-            String patternGiua = "%," + maVach + ",%"; // VD: xxx,893...,yyy
-            String patternCuoi = "%," + maVach;     // VD: xxx,893...
 
-            pst.setString(1, maVach);
-            pst.setString(2, patternDau);
-            pst.setString(3, patternGiua);
-            pst.setString(4, patternCuoi);
+            // Pattern: "%,<maVach>,%" — khớp chính xác từng mã trong chuỗi CSV
+            String pattern = "%," + maVach.trim() + ",%";
+            pst.setString(1, pattern);
 
             if (maSPBoQua != null && !maSPBoQua.trim().isEmpty()) {
-                pst.setString(5, maSPBoQua);
+                pst.setString(2, maSPBoQua.trim());
             }
 
             try (ResultSet rs = pst.executeQuery()) {
@@ -1180,6 +1208,240 @@ public class DAO_SanPham {
         } catch (SQLException e) {
             e.printStackTrace();
         }
+        return false;
+    }
+
+    // =========================================================================
+    // VỊ TRÍ THUỐC — gộp vào DAO_SanPham, dùng SanPham.ViTriThuoc (inner class)
+    // =========================================================================
+
+    /** Lấy toàn bộ vị trí, kèm số SP đang dùng */
+    public List<SanPham.ViTriThuoc> layTatCaViTri() {
+        List<SanPham.ViTriThuoc> ds = new ArrayList<>();
+        String sql = "SELECT vt.id, vt.khu, vt.ke, ISNULL(vt.tang,'') tang, ISNULL(vt.moTa,'') moTa, " +
+                     "COUNT(sp.id) soSP FROM ViTriThuoc vt " +
+                     "LEFT JOIN SanPham sp ON sp.viTriId = vt.id AND ISNULL(sp.trangThai,'HOAT_DONG')='HOAT_DONG' " +
+                     "GROUP BY vt.id, vt.khu, vt.ke, vt.tang, vt.moTa ORDER BY vt.khu, vt.ke, vt.tang";
+        try (Connection con = ConnectDB.getInstance().getConnection();
+             PreparedStatement pst = con.prepareStatement(sql);
+             ResultSet rs = pst.executeQuery()) {
+            while (rs.next()) {
+                SanPham.ViTriThuoc vt = new SanPham.ViTriThuoc(
+                    rs.getString("id"), rs.getString("khu"),
+                    rs.getString("ke"),  rs.getString("tang"), rs.getString("moTa"));
+                vt.setSoSanPham(rs.getInt("soSP"));
+                ds.add(vt);
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return ds;
+    }
+
+    /** Lấy 1 vị trí theo id */
+    public SanPham.ViTriThuoc layViTriTheoId(String id) {
+        if (id == null || id.trim().isEmpty()) return null;
+        String sql = "SELECT id, khu, ke, ISNULL(tang,'') tang, ISNULL(moTa,'') moTa FROM ViTriThuoc WHERE id=?";
+        try (Connection con = ConnectDB.getInstance().getConnection();
+             PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setString(1, id.trim());
+            try (ResultSet rs = pst.executeQuery()) {
+                if (rs.next()) return new SanPham.ViTriThuoc(
+                    rs.getString("id"), rs.getString("khu"),
+                    rs.getString("ke"),  rs.getString("tang"), rs.getString("moTa"));
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return null;
+    }
+
+    /** Lấy danh sách khu phân biệt — cho filter ComboBox */
+    public List<String> layDanhSachKhuViTri() {
+        List<String> ds = new ArrayList<>();
+        String sql = "SELECT DISTINCT khu FROM ViTriThuoc ORDER BY khu";
+        try (Connection con = ConnectDB.getInstance().getConnection();
+             PreparedStatement pst = con.prepareStatement(sql);
+             ResultSet rs = pst.executeQuery()) {
+            while (rs.next()) ds.add(rs.getString("khu"));
+        } catch (SQLException e) { e.printStackTrace(); }
+        return ds;
+    }
+
+    /** Thêm vị trí mới */
+    public boolean themViTri(SanPham.ViTriThuoc vt) {
+        if (vt == null || vt.getId() == null || vt.getKhu() == null || vt.getKe() == null) return false;
+        String sql = "INSERT INTO ViTriThuoc (id, khu, ke, tang, moTa) VALUES (?,?,?,?,?)";
+        try (Connection con = ConnectDB.getInstance().getConnection();
+             PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setString(1, vt.getId().trim());
+            pst.setString(2, vt.getKhu().trim());
+            pst.setString(3, vt.getKe().trim());
+            pst.setString(4, (vt.getTang() == null || vt.getTang().isBlank()) ? null : vt.getTang().trim());
+            pst.setString(5, (vt.getMoTa() == null || vt.getMoTa().isBlank()) ? null : vt.getMoTa().trim());
+            return pst.executeUpdate() > 0;
+        } catch (SQLException e) { e.printStackTrace(); }
+        return false;
+    }
+
+    /** Cập nhật vị trí */
+    public boolean capNhatViTri(SanPham.ViTriThuoc vt) {
+        if (vt == null || vt.getId() == null) return false;
+        String sql = "UPDATE ViTriThuoc SET khu=?, ke=?, tang=?, moTa=? WHERE id=?";
+        try (Connection con = ConnectDB.getInstance().getConnection();
+             PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setString(1, vt.getKhu().trim());
+            pst.setString(2, vt.getKe().trim());
+            pst.setString(3, (vt.getTang() == null || vt.getTang().isBlank()) ? null : vt.getTang().trim());
+            pst.setString(4, (vt.getMoTa() == null || vt.getMoTa().isBlank()) ? null : vt.getMoTa().trim());
+            pst.setString(5, vt.getId().trim());
+            return pst.executeUpdate() > 0;
+        } catch (SQLException e) { e.printStackTrace(); }
+        return false;
+    }
+
+    /**
+     * Xóa vị trí — chỉ xóa được nếu không còn SP nào dùng.
+     * Trả về: 0 = xóa thành công, -1 = còn SP đang dùng, -2 = lỗi
+     */
+    public int xoaViTri(String id) {
+        if (id == null || id.trim().isEmpty()) return -2;
+        String sqlCheck = "SELECT COUNT(*) FROM SanPham WHERE viTriId=? AND ISNULL(trangThai,'HOAT_DONG')='HOAT_DONG'";
+        try (Connection con = ConnectDB.getInstance().getConnection()) {
+            try (PreparedStatement chk = con.prepareStatement(sqlCheck)) {
+                chk.setString(1, id.trim());
+                ResultSet rs = chk.executeQuery();
+                if (rs.next() && rs.getInt(1) > 0) return -1; // còn SP đang dùng
+            }
+            try (PreparedStatement del = con.prepareStatement("DELETE FROM ViTriThuoc WHERE id=?")) {
+                del.setString(1, id.trim());
+                return del.executeUpdate() > 0 ? 0 : -2;
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return -2;
+    }
+
+    /** Gán viTriId cho sản phẩm (null = bỏ gán) */
+    public boolean ganViTriChoSP(String maSP, String viTriId) {
+        if (maSP == null || maSP.trim().isEmpty()) return false;
+        String sql = "UPDATE SanPham SET viTriId=? WHERE id=?";
+        try (Connection con = ConnectDB.getInstance().getConnection();
+             PreparedStatement pst = con.prepareStatement(sql)) {
+            if (viTriId == null || viTriId.trim().isEmpty())
+                pst.setNull(1, java.sql.Types.NVARCHAR);
+            else
+                pst.setString(1, viTriId.trim());
+            pst.setString(2, maSP.trim());
+            return pst.executeUpdate() > 0;
+        } catch (SQLException e) { e.printStackTrace(); }
+        return false;
+    }
+
+    /** Sinh ID vị trí mới theo format VT-xxx */
+    public String layIdViTriMoi() {
+        String sql = "SELECT TOP 1 id FROM ViTriThuoc ORDER BY id DESC";
+        try (Connection con = ConnectDB.getInstance().getConnection();
+             PreparedStatement pst = con.prepareStatement(sql);
+             ResultSet rs = pst.executeQuery()) {
+            if (rs.next()) {
+                int num = Integer.parseInt(rs.getString("id").replaceAll("[^0-9]", "")) + 1;
+                return String.format("VT-%03d", num);
+            }
+        } catch (Exception e) { e.printStackTrace(); }
+        return "VT-001";
+    }
+
+    // =========================================================================
+    // MẪU LIỀU DÙNG — gộp vào DAO_SanPham
+    // Cấu trúc Object[] trả về:
+    //   [0] id, [1] tenMau, [2] doiTuong, [3] lieuLuong, [4] donViLieu,
+    //   [5] soLanNgay, [6] thoiDiemUong, [7] duongDung,
+    //   [8] chongChiDinh, [9] luuY, [10] laMacDinh(Boolean)
+    // =========================================================================
+
+    /** Lấy tất cả mẫu liều của 1 SP, mặc định lên trước */
+    public List<Object[]> layMauLieuTheoSP(String maSP) {
+        List<Object[]> ds = new ArrayList<>();
+        if (maSP == null || maSP.trim().isEmpty()) return ds;
+        String sql = "SELECT id, ISNULL(tenMau,'') tenMau, doiTuong, lieuLuong, donViLieu, " +
+                     "soLanNgay, thoiDiemUong, duongDung, " +
+                     "ISNULL(chongChiDinh,'') chongChiDinh, ISNULL(luuY,'') luuY, laMacDinh " +
+                     "FROM MauLieuDung WHERE sanPhamId=? ORDER BY laMacDinh DESC, id";
+        try (Connection con = ConnectDB.getInstance().getConnection();
+             PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setString(1, maSP.trim());
+            try (ResultSet rs = pst.executeQuery()) {
+                while (rs.next()) {
+                    ds.add(new Object[]{
+                        rs.getString("id"),
+                        rs.getString("tenMau"),
+                        rs.getString("doiTuong"),
+                        rs.getString("lieuLuong"),
+                        rs.getString("donViLieu"),
+                        rs.getInt("soLanNgay"),
+                        rs.getString("thoiDiemUong"),
+                        rs.getString("duongDung"),
+                        rs.getString("chongChiDinh"),
+                        rs.getString("luuY"),
+                        rs.getBoolean("laMacDinh")
+                    });
+                }
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return ds;
+    }
+
+    /** Lấy mẫu liều mặc định — dùng tại màn hình bán hàng để gợi ý nhanh */
+    public Object[] layMauLieuMacDinh(String maSP) {
+        List<Object[]> ds = layMauLieuTheoSP(maSP);
+        for (Object[] m : ds) if (Boolean.TRUE.equals(m[10])) return m;
+        return ds.isEmpty() ? null : ds.get(0); // fallback: mẫu đầu tiên
+    }
+
+    /**
+     * Lưu toàn bộ mẫu liều — xóa cũ rồi insert batch mới.
+     * Gọi sau khi lưu sản phẩm thành công.
+     * @param dsMau  mỗi phần tử: [tenMau, doiTuong, lieuLuong, donViLieu, soLanNgay,
+     *                             thoiDiemUong, duongDung, chongChiDinh, luuY, laMacDinh]
+     */
+    public boolean luuMauLieu(String maSP, List<Object[]> dsMau) {
+        if (maSP == null || maSP.trim().isEmpty()) return false;
+        String del = "DELETE FROM MauLieuDung WHERE sanPhamId=?";
+        String ins = "INSERT INTO MauLieuDung " +
+                     "(id, sanPhamId, tenMau, doiTuong, lieuLuong, donViLieu, soLanNgay, " +
+                     "thoiDiemUong, duongDung, chongChiDinh, luuY, laMacDinh) " +
+                     "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)";
+        try (Connection con = ConnectDB.getInstance().getConnection()) {
+            con.setAutoCommit(false);
+            try {
+                try (PreparedStatement pDel = con.prepareStatement(del)) {
+                    pDel.setString(1, maSP.trim()); pDel.executeUpdate();
+                }
+                if (dsMau != null && !dsMau.isEmpty()) {
+                    try (PreparedStatement pIns = con.prepareStatement(ins)) {
+                        for (int i = 0; i < dsMau.size(); i++) {
+                            Object[] m = dsMau.get(i);
+                            pIns.setString(1, "ML-" + maSP.trim() + "-" + String.format("%03d", i + 1));
+                            pIns.setString(2, maSP.trim());
+                            pIns.setString(3, m[0] != null ? m[0].toString() : "");
+                            pIns.setString(4, m[1].toString());
+                            pIns.setString(5, m[2] != null ? m[2].toString().trim() : "");
+                            pIns.setString(6, m[3].toString());
+                            pIns.setInt(7, Integer.parseInt(m[4].toString()));
+                            pIns.setString(8, m[5].toString());
+                            pIns.setString(9, m[6].toString());
+                            pIns.setString(10, m[7] != null ? m[7].toString() : "");
+                            pIns.setString(11, m[8] != null ? m[8].toString() : "");
+                            pIns.setBoolean(12, Boolean.TRUE.equals(m[9]));
+                            pIns.addBatch();
+                        }
+                        pIns.executeBatch();
+                    }
+                }
+                con.commit();
+                return true;
+            } catch (SQLException ex) {
+                con.rollback(); ex.printStackTrace();
+            } finally {
+                con.setAutoCommit(true);
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
         return false;
     }
 }
