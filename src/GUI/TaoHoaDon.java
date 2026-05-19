@@ -434,33 +434,35 @@ public class TaoHoaDon extends JDialog {
             }
         }
 
-     // === ĐOẠN GOM THUỐC LIỀU MẪU CẢI TIẾN ===
         StringBuilder strLieuMau = new StringBuilder();
-        String tenLieuHienTai = "Thuốc liều mẫu"; // Tên mặc định nếu lỗi
+        String tenLieuHienTai = "Thuốc liều mẫu"; 
 
         for (int i = 0; i < productModel.getRowCount(); i++) {
-            String tenRow = productModel.getValueAt(i, 0).toString().trim();
+            Object valObj = productModel.getValueAt(i, 0);
+            if (valObj == null) continue;
+            String tenRow = valObj.toString().trim();
             
-            if (tenRow.startsWith("[LIỀU]")) {
-                // Bắt được dòng Header của liều -> Lấy tên thật (vd: "Liều Cảm Cúm Ho Nhẹ")
+            if (tenRow.contains("[LIỀU]")) {
+                // Bắt tên liều
                 tenLieuHienTai = tenRow.replace("[LIỀU]", "").trim(); 
+            } else if (tenRow.contains("CHILD_ITEM")) {
+                // Gom tên thuốc con
+                String realName = tenRow.replace("CHILD_ITEM", "").trim();
                 
-            } else if (tenRow.startsWith("CHILD_ITEM ")) {
-                // Gắn thuốc con vào tên liều cha hiện tại theo định dạng: TenThuoc=TenLieu
-                String realName = tenRow.replace("CHILD_ITEM ", "").trim();
-                if (strLieuMau.length() > 0) strLieuMau.append(",");
+                // Dùng dấu ~ để nối, tuyệt đối KHÔNG dùng dấu phẩy để tránh lỗi cắt chuỗi
+                if (strLieuMau.length() > 0) strLieuMau.append("~");
                 strLieuMau.append(realName).append("=").append(tenLieuHienTai); 
             }
         }
         String lieuMauPart = strLieuMau.length() > 0 ? " | LIEU_MAU:" + strLieuMau.toString() : "";
-        // ==========================================
+        // ==================================
 
-        // Cập nhật lại câu lệnh setGhiChu có đính kèm phần lieuMauPart ở cuối
+        // CẬP NHẬT DÒNG SET GHI CHÚ CỦA BẠN (Đảm bảo lieuMauPart được cộng vào cuối)
         hd.setGhiChu((phuongThuc.equals("Tiền mặt") ? "CASH:" + tongTienMat : "BANK") + strKM + strDiem + strGifts.toString() + lieuMauPart);
 
         Entity.NhanVien nv = new Entity.NhanVien();
         String maNV = Utils.UserSession.getInstance().getMaNhanVien();
-        // FIX: Đổi "DS-0001" thành một mã nhân viên CÓ THẬT trong database (VD: "NV001")
+        
         nv.setNhanVien(maNV != null && !maNV.trim().isEmpty() ? maNV : "NV001");
         hd.setNhanVienId(nv);
         if (isCustomerLinked && !sdt.isEmpty()) {
