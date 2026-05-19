@@ -2459,7 +2459,8 @@ public class TaoHoaDon extends JDialog {
                     if (valTenSP != null) tenSP = valTenSP.toString().trim();
                     
                     JComboBox<String> cbDVT = new JComboBox<>();
-                    cbDVT.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+                    // FIX: Đổi font từ 14 xuống 12, bỏ BOLD nếu có để chữ thanh mảnh hơn
+                    cbDVT.setFont(new Font("Segoe UI", Font.PLAIN, 12)); 
                     cbDVT.setBackground(Color.WHITE);
                     
                     // --- [FIX]: LOAD ĐVT CHUẨN TỪ BUS ---
@@ -2499,7 +2500,7 @@ public class TaoHoaDon extends JDialog {
         };
         
         tbl.setRowHeight(45);
-        tbl.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        tbl.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         tbl.setShowGrid(false); 
         tbl.setShowHorizontalLines(true); 
         tbl.setGridColor(Color.decode("#F1F3F5"));
@@ -2540,10 +2541,16 @@ public class TaoHoaDon extends JDialog {
                     String tenThuoc = text.replace("CHILD_ITEM ", ""); 
                     
                     // DÙNG HTML ĐỂ HIỂN THỊ TÊN THUỐC Ở TRÊN, "(Thuốc liều mẫu)" IN NGHIÊNG MÀU XÁM Ở DƯỚI
+                 // TÌM ĐOẠN HTML NÀY VÀ SỬA LẠI FONT-SIZE TỪ 14px -> 12px, 11px -> 10px
                     String htmlText = "<html><div style='padding-top: 2px;'>"
-                                    + "<span style='font-family: Segoe UI; font-size: 14px; color: #111827;'>" + tenThuoc + "</span><br>"
-                                    + "<span style='font-family: Segoe UI; font-size: 11px; font-style: italic; color: #6B7280;'>(Thuốc liều mẫu)</span>"
+                                    + "<span style='font-family: Segoe UI; font-size: 12px; color: #111827;'>" + tenThuoc + "</span><br>"
+                                    + "<span style='font-family: Segoe UI; font-size: 10px; font-style: italic; color: #6B7280;'>(Thuốc liều mẫu)</span>"
                                     + "</div></html>";
+
+                   
+
+                    // TÌM DÒNG: lbl.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+                    lbl.setFont(new Font("Segoe UI", Font.BOLD, 12)); // Sửa lại thành 12
                                     
                     lbl.setText(htmlText);
                     lbl.setBorder(BorderFactory.createEmptyBorder(0, 15, 0, 0)); // Thụt lề vào trong
@@ -2551,12 +2558,12 @@ public class TaoHoaDon extends JDialog {
                 } else if (text.startsWith("[LIỀU]")) {
                     lbl.setIcon(null);
                     lbl.setText(text);
-                    lbl.setFont(new Font("Segoe UI", Font.BOLD, 14));
+                    lbl.setFont(new Font("Segoe UI", Font.BOLD, 12));
                     lbl.setForeground(Color.decode("#1E40AF"));
                 } else {
                     lbl.setIcon(null);
                     lbl.setText(text);
-                    lbl.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+                    lbl.setFont(new Font("Segoe UI", Font.PLAIN, 12));
                     lbl.setForeground(Color.BLACK);
                 }
                 return lbl;
@@ -2599,7 +2606,7 @@ public class TaoHoaDon extends JDialog {
                 
                 // NẾU LÀ DÒNG BÌNH THƯỜNG HOẶC TIÊU ĐỀ LIỀU -> HIỂN THỊ CHỮ
                 JLabel lbl = (JLabel) super.getTableCellRendererComponent(table, value, isSel, hasFocus, r, c);
-                lbl.setFont(new Font("Segoe UI", Font.BOLD, 14));
+                lbl.setFont(new Font("Segoe UI", Font.BOLD, 12));
                 lbl.setHorizontalAlignment(c == 7 ? JLabel.CENTER : JLabel.RIGHT);
                 
                 if (c == 6) lbl.setForeground(Color.decode("#DC2626")); // Thành tiền màu Đỏ
@@ -2630,7 +2637,7 @@ public class TaoHoaDon extends JDialog {
                 spinner = new JSpinner(new SpinnerNumberModel(1, 1, 999999, 1));
                 JSpinner.DefaultEditor editor = (JSpinner.DefaultEditor) spinner.getEditor();
                 editor.getTextField().setHorizontalAlignment(JTextField.CENTER);
-                editor.getTextField().setFont(new Font("Segoe UI", Font.BOLD, 14));
+                editor.getTextField().setFont(new Font("Segoe UI", Font.BOLD, 12));
                 
                 spinner.setBorder(BorderFactory.createLineBorder(Color.decode("#1967D2"), 2));
                 editor.setBorder(BorderFactory.createEmptyBorder());
@@ -2697,7 +2704,7 @@ public class TaoHoaDon extends JDialog {
             @Override
             public Component getTableCellRendererComponent(JTable table, Object value, boolean isSel, boolean hasFocus, int r, int c) {
                 JLabel lbl = (JLabel) super.getTableCellRendererComponent(table, value, isSel, hasFocus, r, c);
-                lbl.setFont(new Font("Segoe UI", Font.BOLD, 14));
+                lbl.setFont(new Font("Segoe UI", Font.BOLD, 12));
                 lbl.setForeground(Color.decode("#111827"));
                 lbl.setHorizontalAlignment(JLabel.RIGHT); 
                 return lbl;
@@ -2708,7 +2715,7 @@ public class TaoHoaDon extends JDialog {
             @Override
             public Component getTableCellRendererComponent(JTable table, Object value, boolean isSel, boolean hasFocus, int r, int c) {
                 JLabel lbl = (JLabel) super.getTableCellRendererComponent(table, value, isSel, hasFocus, r, c);
-                lbl.setFont(new Font("Segoe UI", Font.BOLD, 14));
+                lbl.setFont(new Font("Segoe UI", Font.BOLD, 12));
                 lbl.setForeground(Color.decode("#DC2626")); // Tô màu đỏ cho tổng tiền dễ nhìn
                 lbl.setHorizontalAlignment(JLabel.RIGHT); 
                 return lbl;
@@ -4062,7 +4069,9 @@ public class TaoHoaDon extends JDialog {
         
         // --- HIỂN THỊ COMBOBOX LÔ HÀNG NẰM NGANG NHAU ---
         JComboBox<String> cboBatches = new JComboBox<>();
-        cboBatches.setFont(new Font("Segoe UI", Font.BOLD, 12));
+     
+        cboBatches.setFont(new Font("Segoe UI", Font.PLAIN, 12)); 
+        cboBatches.setPreferredSize(new Dimension(140, 26)); // Ép chiều rộng 140px, cao 26px
         cboBatches.setForeground(Color.decode("#059669"));
         cboBatches.setBackground(Color.WHITE);
         

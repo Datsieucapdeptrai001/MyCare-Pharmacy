@@ -259,11 +259,11 @@ public class DialogChonLieuMau extends JDialog {
         gbcH.fill = GridBagConstraints.BOTH; gbcH.insets = new Insets(10, 5, 10, 5);
         
         String[] headers = {"Thuốc thành phần", "Vị trí kệ", "Số lượng/Ngày", "Lô & HSD", "Trạng thái"};
-        double[] weights = {4.0, 1.2, 1.2, 2.0, 2.0}; 
+        double[] weights = {3.5, 1.5, 1.0, 2.5, 1.5}; 
         
         for (int i = 0; i < headers.length; i++) {
-            JLabel lbl = new JLabel(headers[i], i > 1 ? SwingConstants.CENTER : SwingConstants.LEFT);
-            lbl.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        	JLabel lbl = new JLabel(headers[i], i > 1 ? SwingConstants.CENTER : SwingConstants.LEFT);
+        	lbl.setFont(new Font("Segoe UI", Font.BOLD, 12));
             lbl.setForeground(Color.decode("#475569"));
             lbl.setMinimumSize(new Dimension(60, 30)); 
             
@@ -482,25 +482,25 @@ public class DialogChonLieuMau extends JDialog {
             pnlRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 65)); 
 
             GridBagConstraints gbc = new GridBagConstraints();
-            gbc.fill = GridBagConstraints.BOTH; gbc.insets = new Insets(10, 5, 10, 5);
+            gbc.fill = GridBagConstraints.BOTH; gbc.insets = new Insets(5, 5, 5, 5);
 
             JPanel pnlTen = new JPanel(new BorderLayout(5, 0));
             pnlTen.setOpaque(false);
             chkChon = new JCheckBox(); chkChon.setSelected(true); chkChon.setOpaque(false);
             chkChon.addActionListener(e -> capNhatTongTienCombo()); 
             
-            String htmlTen = "<html><div style='max-width: 250px;'><span style='font-weight:bold; font-size:14px; color:#111827;'>" + ten + "</span><br>"
-                           + "<span style='font-size:12px; color:#6B7280;'>(" + (tacDung!=null?tacDung:"Thành phần") + ")</span></div></html>";
+            String htmlTen = "<html><div style='width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;'><span style='font-weight:bold; font-size:13px; color:#111827;'>" + ten + "</span><br>"
+                    + "<span style='font-size:11px; color:#6B7280;'>(" + (tacDung!=null?tacDung:"Thành phần") + ")</span></div></html>";
             JLabel lblTen = new JLabel(htmlTen);
             
             pnlTen.add(chkChon, BorderLayout.WEST); pnlTen.add(lblTen, BorderLayout.CENTER);
-            gbc.gridx = 0; gbc.weightx = 4.0; pnlRow.add(pnlTen, gbc);
+            gbc.gridx = 0; gbc.weightx = 3.5; pnlRow.add(pnlTen, gbc);
 
-            JLabel lblViTri = new JLabel("<html><span style='color:#6B7280; font-size:13px;'>Tủ A<br>- Ngăn 1</span></html>", SwingConstants.CENTER);
-            gbc.gridx = 1; gbc.weightx = 1.2; pnlRow.add(lblViTri, gbc);
+            JLabel lblViTri = new JLabel("<html><span style='color:#6B7280; font-size:12px;'>Tủ A - Ngăn 1</span></html>", SwingConstants.CENTER);
+            gbc.gridx = 1; gbc.weightx = 1.5; pnlRow.add(lblViTri, gbc);
 
             spnSoLuong = new JSpinner(new SpinnerNumberModel(sl, 1, 999, 1));
-            spnSoLuong.setFont(new Font("Segoe UI", Font.BOLD, 14));
+            spnSoLuong.setFont(new Font("Segoe UI", Font.BOLD, 12));
             spnSoLuong.addChangeListener(e -> {
                 this.soLuongGoc = (int) spnSoLuong.getValue(); 
                 capNhatTongTienCombo(); 
@@ -508,10 +508,10 @@ public class DialogChonLieuMau extends JDialog {
             
             JPanel pnlSpinnerWrapper = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
             pnlSpinnerWrapper.setOpaque(false); pnlSpinnerWrapper.add(spnSoLuong);
-            gbc.gridx = 2; gbc.weightx = 1.2; pnlRow.add(pnlSpinnerWrapper, gbc);
-
+            gbc.gridx = 2; gbc.weightx = 1.0; pnlRow.add(pnlSpinnerWrapper, gbc);
             cboLo = new JComboBox<>();
-            cboLo.setBackground(Color.WHITE); cboLo.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+            cboLo.setBackground(Color.WHITE); cboLo.setFont(new Font("Segoe UI", Font.PLAIN, 10));
+            
             try {
                 BUS.BUS_SanPham busSP = new BUS.BUS_SanPham();
                 List<Object[]> ketQua = busSP.timKiemSanPhamBan(id); 
@@ -524,7 +524,7 @@ public class DialogChonLieuMau extends JDialog {
                 }
             } catch(Exception e) {}
             if (cboLo.getItemCount() == 0) cboLo.addItem("Chưa có lô");
-            gbc.gridx = 3; gbc.weightx = 2.0; pnlRow.add(cboLo, gbc);
+            gbc.gridx = 3; gbc.weightx = 2.5; pnlRow.add(cboLo, gbc);
 
             lblStatus = new JLabel("Chưa quét", SwingConstants.CENTER);
             lblStatus.setFont(new Font("Segoe UI", Font.BOLD, 12));
@@ -534,7 +534,7 @@ public class DialogChonLieuMau extends JDialog {
             
             JPanel pnlStatusWrapper = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
             pnlStatusWrapper.setOpaque(false); pnlStatusWrapper.add(lblStatus);
-            gbc.gridx = 4; gbc.weightx = 2.0; pnlRow.add(pnlStatusWrapper, gbc);
+            gbc.gridx = 4; gbc.weightx = 1.5; pnlRow.add(pnlStatusWrapper, gbc);
         }
     }
 
