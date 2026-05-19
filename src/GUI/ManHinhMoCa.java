@@ -11,10 +11,6 @@ import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-/**
- * Dialog Mở Ca – hiện ra sau khi Nhân Viên (STAFF) đăng nhập thành công.
- * Thiết kế theo mẫu Figma: chọn loại ca → kiểm đếm tiền đầu ca → xác nhận.
- */
 public class ManHinhMoCa extends JDialog {
 
     // ======================== CONSTANTS ========================

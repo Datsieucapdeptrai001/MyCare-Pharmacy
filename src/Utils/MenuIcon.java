@@ -501,7 +501,6 @@ public class MenuIcon implements Icon {
 
             // ================= ICON TICKER THÔNG MINH =================
             case "FIRE":
-                // Ngọn lửa 🔥
                 g2d.setColor(customColor != null ? customColor : new Color(255, 107, 0));
                 g2d.fillOval(x + 6, y + 8, 10, 12);
                 g2d.setColor(customColor != null ? customColor.brighter() : new Color(255, 193, 7));
@@ -512,7 +511,6 @@ public class MenuIcon implements Icon {
                 g2d.fillPolygon(flameX, flameY, 7);
                 break;
             case "ALERT":
-                // Tam giác cảnh báo ⚠
                 g2d.setColor(customColor != null ? customColor : new Color(255, 152, 0));
                 g2d.fillPolygon(new int[] { x + 11, x + 20, x + 2 }, new int[] { y + 3, y + 19, y + 19 }, 3);
                 g2d.setColor(Color.WHITE);
@@ -521,17 +519,14 @@ public class MenuIcon implements Icon {
                 g2d.fillOval(x + 10, y + 16, 3, 3);
                 break;
             case "CLOCK_WARN":
-                // Đồng hồ cảnh báo ⏰
                 g2d.setColor(customColor != null ? customColor : new Color(225, 29, 72));
                 g2d.drawOval(x + 3, y + 3, 16, 16);
                 g2d.setStroke(new BasicStroke(2.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
                 g2d.drawLine(x + 11, y + 6, x + 11, y + 11);
                 g2d.drawLine(x + 11, y + 11, x + 15, y + 14);
-                // Dấu chấm than nhỏ
                 g2d.fillOval(x + 17, y + 2, 4, 4);
                 break;
             case "MONEY_BAG":
-                // Túi tiền 💰
                 g2d.setColor(customColor != null ? customColor : new Color(106, 27, 154));
                 g2d.fillOval(x + 4, y + 8, 14, 12);
                 g2d.drawArc(x + 7, y + 3, 8, 8, 0, 180);
@@ -540,19 +535,65 @@ public class MenuIcon implements Icon {
                 g2d.drawString("$", x + 8, y + 17);
                 break;
             case "STAR_FILL":
-                // Ngôi sao ⭐
                 g2d.setColor(customColor != null ? customColor : new Color(26, 115, 232));
                 int[] starX = { x + 11, x + 13, x + 19, x + 14, x + 16, x + 11, x + 6, x + 8, x + 3, x + 9 };
                 int[] starY = { y + 2, y + 8, y + 8, y + 12, y + 18, y + 15, y + 18, y + 12, y + 8, y + 8 };
                 g2d.fillPolygon(starX, starY, 10);
                 break;
             case "CHECK_OK":
-                // Dấu check tròn ✅
                 g2d.setColor(customColor != null ? customColor : new Color(0, 167, 111));
                 g2d.fillOval(x + 2, y + 2, 18, 18);
                 g2d.setColor(Color.WHITE);
                 g2d.setStroke(new BasicStroke(2.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
                 g2d.drawPolyline(new int[] { x + 6, x + 10, x + 16 }, new int[] { y + 11, y + 15, y + 7 }, 3);
+                break;
+
+            // ================= ICON QUÉT MÃ QR / LASER =================
+            case "QR_SCANNER":
+                int qrSize = size - 16;
+                int qrX = x + 8;
+                int qrY = y + 8;
+                int corner = qrSize / 4;
+
+                g2d.setColor(customColor != null ? customColor : new Color(14, 116, 144));
+                g2d.setStroke(new BasicStroke(3.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+
+                // FIXED: Thêm số lượng điểm (3) vào tham số cuối cùng của drawPolyline
+                g2d.drawPolyline(new int[] { qrX, qrX, qrX + corner }, new int[] { qrY + corner, qrY, qrY }, 3);
+                g2d.drawPolyline(new int[] { qrX + qrSize - corner, qrX + qrSize, qrX + qrSize },
+                        new int[] { qrY, qrY, qrY + corner }, 3);
+                g2d.drawPolyline(new int[] { qrX, qrX, qrX + corner },
+                        new int[] { qrY + qrSize - corner, qrY + qrSize, qrY + qrSize }, 3);
+                g2d.drawPolyline(new int[] { qrX + qrSize - corner, qrX + qrSize, qrX + qrSize },
+                        new int[] { qrY + qrSize, qrY + qrSize, qrY + qrSize - corner }, 3);
+
+                g2d.fillRect(qrX + (int) (qrSize * 0.2), qrY + (int) (qrSize * 0.2), (int) (qrSize * 0.2),
+                        (int) (qrSize * 0.2));
+                g2d.fillRect(qrX + (int) (qrSize * 0.6), qrY + (int) (qrSize * 0.2), (int) (qrSize * 0.2),
+                        (int) (qrSize * 0.2));
+                g2d.fillRect(qrX + (int) (qrSize * 0.2), qrY + (int) (qrSize * 0.6), (int) (qrSize * 0.2),
+                        (int) (qrSize * 0.2));
+                g2d.fillRect(qrX + (int) (qrSize * 0.65), qrY + (int) (qrSize * 0.65), (int) (qrSize * 0.15),
+                        (int) (qrSize * 0.15));
+
+                g2d.setColor(new Color(239, 68, 68, 220));
+                g2d.setStroke(new BasicStroke(2.5f));
+                g2d.drawLine(qrX - 6, qrY + qrSize / 2, qrX + qrSize + 6, qrY + qrSize / 2);
+
+                g2d.setColor(new Color(239, 68, 68, 80));
+                g2d.setStroke(new BasicStroke(6f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                g2d.drawLine(qrX - 6, qrY + qrSize / 2, qrX + qrSize + 6, qrY + qrSize / 2);
+                break;
+            case "ARROW_RIGHT": // Mũi tên chỉ ngang (thay cho ➔)
+                g2d.drawLine(x + 4, y + 11, x + 16, y + 11); // Thân mũi tên
+                g2d.drawLine(x + 12, y + 7, x + 16, y + 11); // Cánh trên
+                g2d.drawLine(x + 12, y + 15, x + 16, y + 11); // Cánh dưới
+                break;
+            case "ARROW_SUB": // Mũi tên rẽ nhánh xuống (thay cho ↳)
+                g2d.drawLine(x + 6, y + 4, x + 6, y + 14); // Cán dọc
+                g2d.drawLine(x + 6, y + 14, x + 16, y + 14); // Cán ngang
+                g2d.drawLine(x + 12, y + 10, x + 16, y + 14); // Cánh trên
+                g2d.drawLine(x + 12, y + 18, x + 16, y + 14); // Cánh dưới
                 break;
         }
         g2d.dispose();

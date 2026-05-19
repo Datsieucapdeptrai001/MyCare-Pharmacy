@@ -83,6 +83,71 @@ public class DAO_LoHang {
         return dsLoHang;
     }
 
+    public List<KhoHang> layDanhSachKhoHang() {
+        List<KhoHang> dsKho = new ArrayList<>();
+
+        String sql = "SELECT id FROM KhoHang ORDER BY id";
+
+        Connection con = ConnectDB.getInstance().getConnection();
+
+        try (PreparedStatement pst = con.prepareStatement(sql);
+                ResultSet rs = pst.executeQuery()) {
+
+            while (rs.next()) {
+                KhoHang kho = new KhoHang();
+                kho.setId(rs.getString("id"));
+                dsKho.add(kho);
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return dsKho;
+    }
+
+    public boolean tonTaiKho(String maKho) {
+        String sql = "SELECT COUNT(*) FROM KhoHang WHERE id = ?";
+
+        Connection con = ConnectDB.getInstance().getConnection();
+
+        try (PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setString(1, maKho);
+
+            try (ResultSet rs = pst.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1) > 0;
+                }
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return false;
+    }
+
+    public boolean tonTaiMaVachNoiBo(String maVachNoiBo) {
+        String sql = "SELECT COUNT(*) FROM LoHang WHERE maVachNoiBo = ?";
+
+        Connection con = ConnectDB.getInstance().getConnection();
+
+        try (PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setString(1, maVachNoiBo);
+
+            try (ResultSet rs = pst.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1) > 0;
+                }
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return false;
+    }
+
     public LoHang getLoHangTheoId(String id) {
         String sql = "SELECT lh.*, sp.ten AS tenSanPham " +
                 "FROM LoHang lh " +
@@ -129,50 +194,6 @@ public class DAO_LoHang {
         }
 
         return null;
-    }
-
-    // FIX: Check kho mặc định
-    public boolean tonTaiKho(String maKho) {
-        String sql = "SELECT COUNT(*) FROM KhoHang WHERE id = ?";
-
-        Connection con = ConnectDB.getInstance().getConnection();
-
-        try (PreparedStatement pst = con.prepareStatement(sql)) {
-            pst.setString(1, maKho);
-
-            try (ResultSet rs = pst.executeQuery()) {
-                if (rs.next()) {
-                    return rs.getInt(1) > 0;
-                }
-            }
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        return false;
-    }
-
-    // FIX: Check trùng mã vạch nội bộ
-    public boolean tonTaiMaVachNoiBo(String maVachNoiBo) {
-        String sql = "SELECT COUNT(*) FROM LoHang WHERE maVachNoiBo = ?";
-
-        Connection con = ConnectDB.getInstance().getConnection();
-
-        try (PreparedStatement pst = con.prepareStatement(sql)) {
-            pst.setString(1, maVachNoiBo);
-
-            try (ResultSet rs = pst.executeQuery()) {
-                if (rs.next()) {
-                    return rs.getInt(1) > 0;
-                }
-            }
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        return false;
     }
 
     public List<LoHang> layLoTheoSP(String maSP) {
@@ -239,7 +260,6 @@ public class DAO_LoHang {
         }
     }
 
-    // FIX: Khôi phục lô ẩn thì cập nhật lại maVachNoiBo
     public boolean khoiPhucVaCapNhatLoHang(LoHang lo) {
         String sql = "UPDATE LoHang SET " +
                 "sanPhamId = ?, " +
@@ -345,8 +365,9 @@ public class DAO_LoHang {
     }
 
     public boolean capNhatSoLuongTon(Connection con, String maLoHang, int soLuongMoi) throws SQLException {
-        if (soLuongMoi < 0)
+        if (soLuongMoi < 0) {
             return false;
+        }
 
         String sql = "UPDATE LoHang SET soLuongLoHang = ? " +
                 "WHERE id = ? AND ISNULL(trangThai, 'CON_HANG') <> 'AN'";
@@ -372,8 +393,9 @@ public class DAO_LoHang {
 
     public boolean capNhatSoLuongVaTrangThaiLo(Connection con, String maLoHang, int soLuongMoi)
             throws SQLException {
-        if (soLuongMoi < 0)
+        if (soLuongMoi < 0) {
             return false;
+        }
 
         String sql = "UPDATE LoHang SET soLuongLoHang = ?, " +
                 "trangThai = CASE " +
@@ -418,6 +440,7 @@ public class DAO_LoHang {
 
             con.commit();
             con.setAutoCommit(true);
+
             return true;
 
         } catch (Exception e) {
@@ -486,12 +509,17 @@ public class DAO_LoHang {
             int soLuongConThieu = soLuongCanXuat;
 
             for (LoHang lh : dsLo) {
-                if (soLuongConThieu == 0)
+                if (soLuongConThieu == 0) {
                     break;
-                if (lh == null || lh.getSoLuongLoHang() <= 0)
+                }
+
+                if (lh == null || lh.getSoLuongLoHang() <= 0) {
                     continue;
-                if (lh.getTrangThai() == TrangThaiLoHang.AN)
+                }
+
+                if (lh.getTrangThai() == TrangThaiLoHang.AN) {
                     continue;
+                }
 
                 int soLuongXuat = Math.min(lh.getSoLuongLoHang(), soLuongConThieu);
                 int soLuongMoi = lh.getSoLuongLoHang() - soLuongXuat;
@@ -514,8 +542,9 @@ public class DAO_LoHang {
 
         } catch (Exception e) {
             try {
-                if (con != null)
+                if (con != null) {
                     con.rollback();
+                }
             } catch (SQLException ex) {
                 ex.printStackTrace();
             }
@@ -525,8 +554,9 @@ public class DAO_LoHang {
 
         } finally {
             try {
-                if (con != null)
+                if (con != null) {
                     con.setAutoCommit(true);
+                }
             } catch (SQLException e) {
                 e.printStackTrace();
             }
@@ -536,8 +566,9 @@ public class DAO_LoHang {
     public boolean thucThiXuatHuyKhoBangTransaction(List<Object[]> danhSachXuat, String nguoiThucHien) {
         Connection con = ConnectDB.getInstance().getConnection();
 
-        if (con == null)
+        if (con == null) {
             return false;
+        }
 
         try {
             con.setAutoCommit(false);
@@ -623,8 +654,9 @@ public class DAO_LoHang {
 
         Connection con = ConnectDB.getInstance().getConnection();
 
-        if (con == null)
+        if (con == null) {
             return list;
+        }
 
         try (PreparedStatement pst = con.prepareStatement(sql);
                 ResultSet rs = pst.executeQuery()) {
@@ -661,8 +693,9 @@ public class DAO_LoHang {
 
         Connection con = ConnectDB.getInstance().getConnection();
 
-        if (con == null)
+        if (con == null) {
             return listData;
+        }
 
         try (Statement stmt = con.createStatement();
                 ResultSet rs = stmt.executeQuery(sql)) {

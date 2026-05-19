@@ -4,6 +4,7 @@ import Utils.*;
 import BUS.BUS_TaiKhoan;
 import BUS.BUS_CaLamViec;
 import Entity.TaiKhoan;
+
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.event.DocumentEvent;
@@ -19,21 +20,21 @@ import java.util.prefs.Preferences;
 
 public class ManHinhDangNhap extends JFrame {
 
-    private final Color COLOR_BG_DARK      = Color.decode("#122A4A");
-    private final Color COLOR_BG_LIGHT     = Color.decode("#1A3C64");
-    private final Color COLOR_HEADER_DARK  = Color.decode("#103358");
+    private final Color COLOR_BG_DARK = Color.decode("#122A4A");
+    private final Color COLOR_BG_LIGHT = Color.decode("#1A3C64");
+    private final Color COLOR_HEADER_DARK = Color.decode("#103358");
     private final Color COLOR_HEADER_LIGHT = Color.decode("#1870A9");
-    private final Color COLOR_BTN_LOGIN    = Color.decode("#1A4B7C");
-    private final Color COLOR_LINK         = Color.decode("#1976D2");
-    private final Color COLOR_TEXT_GRAY    = Color.decode("#555555");
-    private final Color COLOR_BORDER       = Color.decode("#D4D4D4");
+    private final Color COLOR_BTN_LOGIN = Color.decode("#1A4B7C");
+    private final Color COLOR_LINK = Color.decode("#1976D2");
+    private final Color COLOR_TEXT_GRAY = Color.decode("#555555");
+    private final Color COLOR_BORDER = Color.decode("#D4D4D4");
 
     private AutoSuggestJTextField txtTaiKhoan;
-    private JPasswordField        txtMatKhau;
-    private JButton               btnEye;
-    private JCheckBox             cbGhiNho;
+    private JPasswordField txtMatKhau;
+    private JButton btnEye;
+    private JCheckBox cbGhiNho;
 
-    private Preferences  prefs          = Preferences.userRoot().node(this.getClass().getName());
+    private Preferences prefs = Preferences.userRoot().node(this.getClass().getName());
     private List<String> savedUsersList;
 
     public ManHinhDangNhap() {
@@ -61,7 +62,8 @@ public class ManHinhDangNhap extends JFrame {
                 : new ArrayList<>(Arrays.asList(savedStr.split(",")));
 
         JPanel pnlBackground = new JPanel(new GridBagLayout()) {
-            @Override protected void paintComponent(Graphics g) {
+            @Override
+            protected void paintComponent(Graphics g) {
                 super.paintComponent(g);
                 Graphics2D g2d = (Graphics2D) g.create();
                 g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
@@ -79,7 +81,8 @@ public class ManHinhDangNhap extends JFrame {
         setContentPane(pnlBackground);
 
         JPanel pnlWrapper = new JPanel(null) {
-            @Override protected void paintComponent(Graphics g) {
+            @Override
+            protected void paintComponent(Graphics g) {
                 Graphics2D g2d = (Graphics2D) g.create();
                 g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2d.setColor(new Color(0, 0, 0, 40));
@@ -98,7 +101,8 @@ public class ManHinhDangNhap extends JFrame {
         pnlWrapper.setOpaque(false);
 
         GridBagConstraints gbcForm = new GridBagConstraints();
-        gbcForm.gridx = 0; gbcForm.gridy = 0;
+        gbcForm.gridx = 0;
+        gbcForm.gridy = 0;
         pnlBackground.add(pnlWrapper, gbcForm);
 
         JPanel pnlContent = new JPanel(null);
@@ -205,7 +209,8 @@ public class ManHinhDangNhap extends JFrame {
         pnlInputPass.setBounds(40, 376, 420, 48);
 
         JLabel iconLock = new JLabel() {
-            @Override protected void paintComponent(Graphics g) {
+            @Override
+            protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setColor(COLOR_TEXT_GRAY);
@@ -226,7 +231,8 @@ public class ManHinhDangNhap extends JFrame {
 
         btnEye = new JButton(new MenuIcon("EYE_HIDE"));
         btnEye.setBounds(385, 11, 25, 25);
-        btnEye.setBorder(null); btnEye.setContentAreaFilled(false);
+        btnEye.setBorder(null);
+        btnEye.setContentAreaFilled(false);
         btnEye.setCursor(new Cursor(Cursor.HAND_CURSOR));
         pnlInputPass.add(btnEye);
         pnlContent.add(pnlInputPass);
@@ -244,7 +250,8 @@ public class ManHinhDangNhap extends JFrame {
         lblForgot.setBounds(310, 433, 150, 20);
         lblForgot.setCursor(new Cursor(Cursor.HAND_CURSOR));
         lblForgot.addMouseListener(new MouseAdapter() {
-            @Override public void mouseClicked(MouseEvent e) {
+            @Override
+            public void mouseClicked(MouseEvent e) {
                 ManHinhQuenMatKhauOTP otpDialog = new ManHinhQuenMatKhauOTP(ManHinhDangNhap.this, (email, newPass) -> {
                     new BUS_TaiKhoan().capNhatMatKhauTheoEmail(email, newPass);
                     JOptionPane.showMessageDialog(ManHinhDangNhap.this, "Đổi mật khẩu thành công! Hãy đăng nhập lại.");
@@ -255,7 +262,8 @@ public class ManHinhDangNhap extends JFrame {
         pnlContent.add(lblForgot);
 
         JButton btnLogin = new JButton("Đăng nhập") {
-            @Override protected void paintComponent(Graphics g) {
+            @Override
+            protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setColor(isEnabled() ? COLOR_BTN_LOGIN : Color.GRAY);
@@ -266,7 +274,8 @@ public class ManHinhDangNhap extends JFrame {
         btnLogin.setBounds(40, 475, 420, 50);
         btnLogin.setForeground(Color.WHITE);
         btnLogin.setFont(new Font("Segoe UI", Font.BOLD, 18));
-        btnLogin.setContentAreaFilled(false); btnLogin.setBorderPainted(false);
+        btnLogin.setContentAreaFilled(false);
+        btnLogin.setBorderPainted(false);
         btnLogin.setCursor(new Cursor(Cursor.HAND_CURSOR));
         pnlContent.add(btnLogin);
 
@@ -274,7 +283,8 @@ public class ManHinhDangNhap extends JFrame {
         lblFooter.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         lblFooter.setForeground(new Color(255, 255, 255, 150));
         GridBagConstraints gbcFooter = new GridBagConstraints();
-        gbcFooter.gridx = 0; gbcFooter.gridy = 1;
+        gbcFooter.gridx = 0;
+        gbcFooter.gridy = 1;
         gbcFooter.insets = new Insets(20, 0, 0, 0);
         pnlBackground.add(lblFooter, gbcFooter);
 
@@ -340,9 +350,24 @@ public class ManHinhDangNhap extends JFrame {
                             }
 
                             // Đưa tài khoản vào Session
+                            // Đưa tài khoản vào UserSession cũ của project
                             UserSession.getInstance().setTaiKhoan(tk);
 
+                            // Lấy mã nhân viên đang đăng nhập
                             String maNV = tk.getNhanVienId().getNhanVien();
+
+                            // Lấy họ tên nhân viên đang đăng nhập
+                            String hoTenNV = tk.getNhanVienId().getHoVaTen();
+
+                            // Lấy vai trò hiện tại
+                            String vaiTro = UserSession.getInstance().isAdmin()
+                                    ? "QUAN_LY"
+                                    : "NHAN_VIEN";
+
+                            // Đưa nhân viên hiện tại vào SessionDangNhap
+                            // Từ đây các màn hình nhập lô / xuất kho sẽ tự biết ai đang thao tác
+                            SessionDangNhap.dangNhap(maNV, hoTenNV, vaiTro);
+
                             BUS_CaLamViec busCa = new BUS_CaLamViec();
 
                             Entity.CaLamViec caDangMo = busCa.getCaHienTai(maNV);
@@ -350,8 +375,8 @@ public class ManHinhDangNhap extends JFrame {
                             if (caDangMo != null) {
                                 // Có ca cũ chưa kết thúc -> nối lại ca
                                 JOptionPane.showMessageDialog(ManHinhDangNhap.this,
-                                    "Phát hiện ca làm việc chưa kết thúc.\nHệ thống sẽ tiếp tục ca làm việc trước đó của bạn!",
-                                    "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+                                        "Phát hiện ca làm việc chưa kết thúc.\nHệ thống sẽ tiếp tục ca làm việc trước đó của bạn!",
+                                        "Thông báo", JOptionPane.INFORMATION_MESSAGE);
 
                                 UserSession.getInstance().setCaHienTai(caDangMo);
                                 UserSession.getInstance().setTienDauCa((long) caDangMo.getTienDauCa());
@@ -393,7 +418,8 @@ public class ManHinhDangNhap extends JFrame {
                             }
 
                         } else {
-                            showCustomErrorDialog("<html>Mã nhân viên hoặc mật khẩu không chính xác.<br/>Vui lòng kiểm tra lại!</html>");
+                            showCustomErrorDialog(
+                                    "<html>Mã nhân viên hoặc mật khẩu không chính xác.<br/>Vui lòng kiểm tra lại!</html>");
                             txtMatKhau.setText("");
                             txtMatKhau.requestFocus();
                         }
@@ -415,7 +441,8 @@ public class ManHinhDangNhap extends JFrame {
      */
     private void showSuggestPopup() {
         // Chỉ hiện khi field đang thực sự rỗng và có danh sách đã lưu
-        if (!txtTaiKhoan.getText().trim().isEmpty() || savedUsersList.isEmpty()) return;
+        if (!txtTaiKhoan.getText().trim().isEmpty() || savedUsersList.isEmpty())
+            return;
 
         JPopupMenu popup = new JPopupMenu();
         popup.setFocusable(false);
@@ -473,7 +500,8 @@ public class ManHinhDangNhap extends JFrame {
         dialog.setBackground(new Color(0, 0, 0, 0));
 
         JPanel pnl = new JPanel(null) {
-            @Override protected void paintComponent(Graphics g) {
+            @Override
+            protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setColor(Color.WHITE);
@@ -507,7 +535,8 @@ public class ManHinhDangNhap extends JFrame {
         msg.setBounds(90, 60, 340, 55);
 
         JButton btnOk = new JButton("Đóng") {
-            @Override protected void paintComponent(Graphics g) {
+            @Override
+            protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setColor(COLOR_BTN_LOGIN);
@@ -518,22 +547,30 @@ public class ManHinhDangNhap extends JFrame {
         btnOk.setBounds(330, 135, 100, 38);
         btnOk.setForeground(Color.WHITE);
         btnOk.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        btnOk.setContentAreaFilled(false); btnOk.setBorderPainted(false);
+        btnOk.setContentAreaFilled(false);
+        btnOk.setBorderPainted(false);
         btnOk.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnOk.addActionListener(e -> dialog.dispose());
 
-        pnl.add(title); pnl.add(msg); pnl.add(btnOk);
-        dialog.add(pnl); dialog.pack(); dialog.setLocationRelativeTo(this);
+        pnl.add(title);
+        pnl.add(msg);
+        pnl.add(btnOk);
+        dialog.add(pnl);
+        dialog.pack();
+        dialog.setLocationRelativeTo(this);
         dialog.setVisible(true);
     }
 
     private JPanel createInputBorder() {
         JPanel p = new JPanel(null) {
-            @Override protected void paintComponent(Graphics g) {
+            @Override
+            protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(Color.WHITE); g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 8, 8);
-                g2.setColor(COLOR_BORDER); g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 8, 8);
+                g2.setColor(Color.WHITE);
+                g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 8, 8);
+                g2.setColor(COLOR_BORDER);
+                g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 8, 8);
                 g2.dispose();
             }
         };
@@ -542,19 +579,27 @@ public class ManHinhDangNhap extends JFrame {
     }
 
     static class AutoSuggestJTextField extends JTextField {
-        private String       watermark;
+        private String watermark;
         private List<String> dictionary;
-        private String       suggestion = "";
+        private String suggestion = "";
 
         public AutoSuggestJTextField(String watermark, List<String> dictionary) {
-            this.watermark  = watermark;
+            this.watermark = watermark;
             this.dictionary = dictionary;
             setOpaque(false);
 
             getDocument().addDocumentListener(new DocumentListener() {
-                public void insertUpdate(DocumentEvent e)  { updateSuggestion(); }
-                public void removeUpdate(DocumentEvent e)  { updateSuggestion(); }
-                public void changedUpdate(DocumentEvent e) { updateSuggestion(); }
+                public void insertUpdate(DocumentEvent e) {
+                    updateSuggestion();
+                }
+
+                public void removeUpdate(DocumentEvent e) {
+                    updateSuggestion();
+                }
+
+                public void changedUpdate(DocumentEvent e) {
+                    updateSuggestion();
+                }
             });
 
             addKeyListener(new KeyAdapter() {
@@ -582,12 +627,13 @@ public class ManHinhDangNhap extends JFrame {
             repaint();
         }
 
-        @Override protected void paintComponent(Graphics g) {
+        @Override
+        protected void paintComponent(Graphics g) {
             super.paintComponent(g);
             Graphics2D g2d = (Graphics2D) g.create();
             g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             g2d.setFont(new Font("Segoe UI", Font.ITALIC, 16));
-            int textY  = (getHeight() - g2d.getFontMetrics().getHeight()) / 2 + g2d.getFontMetrics().getAscent();
+            int textY = (getHeight() - g2d.getFontMetrics().getHeight()) / 2 + g2d.getFontMetrics().getAscent();
             int startX = getInsets().left;
 
             if (getText().isEmpty() && !hasFocus()) {
@@ -610,9 +656,14 @@ public class ManHinhDangNhap extends JFrame {
 
     static class WatermarkJPasswordField extends JPasswordField {
         private String watermark;
-        public WatermarkJPasswordField(String watermark) { this.watermark = watermark; setOpaque(false); }
 
-        @Override protected void paintComponent(Graphics g) {
+        public WatermarkJPasswordField(String watermark) {
+            this.watermark = watermark;
+            setOpaque(false);
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
             super.paintComponent(g);
             if (!hasFocus() && getPassword().length == 0) {
                 Graphics2D g2d = (Graphics2D) g.create();
