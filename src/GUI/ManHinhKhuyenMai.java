@@ -217,7 +217,7 @@ public class ManHinhKhuyenMai extends JPanel {
         RoundedButton btnRefresh = new RoundedButton("Làm mới", COLOR_CARD, COLOR_TEXT_MAIN);
         btnRefresh.setIcon(new MenuIcon("REFRESH"));
         btnRefresh.setBorderColor(COLOR_BORDER);
-        btnRefresh.setPreferredSize(new Dimension(110, 36));
+        btnRefresh.setPreferredSize(new Dimension(130, 36));
 
         searchField.getTextField().getDocument().addDocumentListener(new DocumentListener() {
             @Override public void insertUpdate(DocumentEvent e) { filterData(); }
