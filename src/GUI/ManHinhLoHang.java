@@ -83,6 +83,8 @@ public class ManHinhLoHang extends JPanel {
         add(createMainCard(), BorderLayout.CENTER);
         TelexFix.applyDeep(this);
         loadDataFromDatabase();
+        TelexFix.applyLater(this);
+        TelexFix.hardFixTablesLater(this);
     }
 
     private JPanel createMainCard() {

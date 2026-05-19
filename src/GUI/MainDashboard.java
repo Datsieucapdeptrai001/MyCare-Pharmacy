@@ -851,11 +851,12 @@ public class MainDashboard extends JFrame {
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
             ConnectDB.getInstance().connect();
-
             TooltipConfig.tatTatCaTooltip();
             TelexFix.setupGlobalTelexFix();
 
-            new ManHinhDangNhap().setVisible(true);
+            ManHinhDangNhap login = new ManHinhDangNhap();
+            TelexFix.applyWindow(login);
+            login.setVisible(true);
         });
     }
 }

@@ -130,8 +130,11 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         setSize(640, getHeight()); // Giữ width 640px, lấy chính xác height sau khi pack()
         setLocationRelativeTo(owner);
         setShape(new RoundRectangle2D.Double(0, 0, getWidth(), getHeight(), 16, 16));
-        TelexFix.applyWindow(this);
+
         registerKeyboardActions();
+
+        TelexFix.applyLater(this);
+        TelexFix.hardFixTablesLater(this);
 
         addWindowListener(new WindowAdapter() {
             @Override
@@ -253,6 +256,11 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         cbKhoHang.setFont(FONT_TEXT);
         cbKhoHang.setBackground(Color.WHITE);
         cbKhoHang.setPreferredSize(new Dimension(0, 40));
+
+        cbKhoHang.setEditable(false);
+        cbKhoHang.enableInputMethods(false);
+        cbKhoHang.setFocusable(false);
+
         cbKhoHang.setRenderer(new DefaultListCellRenderer() {
             @Override
             public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected,
@@ -548,6 +556,9 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         listSanPham = new JList<>(modelSanPham);
         listSanPham.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         listSanPham.setVisibleRowCount(6);
+
+        listSanPham.enableInputMethods(false);
+        listSanPham.setFocusable(false);
         listSanPham.setCellRenderer(new DefaultListCellRenderer() {
             @Override
             public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected,
@@ -583,8 +594,9 @@ public class ManHinhNhapLoHangMoi extends JDialog {
 
         popupSanPham = new JPopupMenu();
         popupSanPham.setBorder(BorderFactory.createEmptyBorder());
-        popupSanPham.add(scroll);
+        popupSanPham.enableInputMethods(false);
         popupSanPham.setFocusable(false);
+        popupSanPham.add(scroll);
     }
 
     private void filterSanPham(JPanel anchorPanel) {
@@ -1802,6 +1814,9 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         txtHiddenQR.setOpaque(false);
         txtHiddenQR.setBorder(null);
         txtHiddenQR.setForeground(new Color(0, 0, 0, 0));
+
+        txtHiddenQR.enableInputMethods(false);
+
         root.add(txtHiddenQR, BorderLayout.WEST);
 
         txtHiddenQR.addActionListener(e -> {
@@ -2357,6 +2372,7 @@ public class ManHinhNhapLoHangMoi extends JDialog {
             cb.setForeground(PRIMARY);
             cb.setBackground(Color.WHITE);
             cb.setFocusable(false);
+            cb.enableInputMethods(false);
             cb.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         }
 
