@@ -433,8 +433,13 @@ public class DAO_HoaDon {
             
             pst.setString(3, hd.getGhiChu());
             pst.setTimestamp(4, Timestamp.valueOf(hd.getNgayLapHD()));
-            pst.setString(5, hd.getNhanVienId().getNhanVien());
-
+            
+            if (hd.getNhanVienId() != null) {
+                // Đảm bảo entity NhanVien có hàm getId() hoặc dùng trường chứa mã (VD: NV2024001)
+                pst.setString(5, hd.getNhanVienId().getNhanVien()); 
+            } else {
+                pst.setNull(5, java.sql.Types.VARCHAR);
+            }
             if (hd.getKhachHangId() != null) pst.setString(6, hd.getKhachHangId().getId());
             else pst.setNull(6, java.sql.Types.NVARCHAR);
 

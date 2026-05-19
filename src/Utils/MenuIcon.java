@@ -584,6 +584,17 @@ public class MenuIcon implements Icon {
                 g2d.setStroke(new BasicStroke(6f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
                 g2d.drawLine(qrX - 6, qrY + qrSize / 2, qrX + qrSize + 6, qrY + qrSize / 2);
                 break;
+            case "ARROW_RIGHT": // Mũi tên chỉ ngang (thay cho ➔)
+                g2d.drawLine(x + 4, y + 11, x + 16, y + 11); // Thân mũi tên
+                g2d.drawLine(x + 12, y + 7, x + 16, y + 11); // Cánh trên
+                g2d.drawLine(x + 12, y + 15, x + 16, y + 11); // Cánh dưới
+                break;
+            case "ARROW_SUB": // Mũi tên rẽ nhánh xuống (thay cho ↳)
+                g2d.drawLine(x + 6, y + 4, x + 6, y + 14); // Cán dọc
+                g2d.drawLine(x + 6, y + 14, x + 16, y + 14); // Cán ngang
+                g2d.drawLine(x + 12, y + 10, x + 16, y + 14); // Cánh trên
+                g2d.drawLine(x + 12, y + 18, x + 16, y + 14); // Cánh dưới
+                break;
         }
         g2d.dispose();
     }

@@ -68,48 +68,65 @@ public class DAO_ChiTietHoaDon {
         List<Object[]> list = new ArrayList<>();
         Connection con = ConnectDB.getInstance().getConnection();
         
-        // ĐÃ FIX: JOIN trực tiếp từ ct.donViDoLuongId sang dv.id
+        // SQL MỚI: Tự động JOIN với PhanBoLoHang và LoHang để lấy Ngày Hết Hạn
         String sql = "SELECT sp.ten AS TenSP, dv.ten AS DVT, ct.soLuong AS SL, " +
-                     "dv.gia AS DonGia, sp.thueVAT AS VAT " +
+                     "dv.gia AS DonGia, sp.thueVAT AS VAT, ct.ghiChu AS GhiChu, " +
+                     "(SELECT TOP 1 lh.ngayHetHan FROM PhanBoLoHang pb " +
+                     " JOIN LoHang lh ON pb.loHangId = lh.id " +
+                     " WHERE pb.hoaDonId = ct.hoaDonId AND pb.sanPhamId = ct.sanPhamId AND pb.donViDoLuongId = ct.donViDoLuongId) AS HSD " +
                      "FROM ChiTietHoaDon ct " +
                      "JOIN SanPham sp ON ct.sanPhamId = sp.id " +
-                     "LEFT JOIN DonViDoLuong dv ON ct.donViDoLuongId = dv.id " + 
+                     "LEFT JOIN DonViDoLuong dv ON ct.donViDoLuongId = dv.id AND ct.sanPhamId = dv.sanPhamId " +
                      "WHERE ct.hoaDonId = ?";
                      
         try (PreparedStatement pstm = con.prepareStatement(sql)) {
             pstm.setString(1, maHD);
-            
             try (ResultSet rs = pstm.executeQuery()) {
                 int stt = 1;
                 while (rs.next()) {
                     String tenSP = rs.getString("TenSP");
+                    String ghiChu = rs.getString("GhiChu");
+                    java.sql.Date hsd = rs.getDate("HSD");
+
+                    String extraInfo = "";
+
+                    // 1. Xử lý ghi chú cắt liều
+                    if (ghiChu != null && !ghiChu.trim().isEmpty() && !ghiChu.equals("Hàng Đổi/Trả") && !ghiChu.equals("TRA_LAI") && !ghiChu.equals("DOI_LAY")) {
+                        extraInfo += ghiChu.replace("\n", "<br/>") + "<br/>";
+                        if (!tenSP.toUpperCase().contains("CẮT LIỀU")) {
+                            tenSP = "THUỐC CẮT LIỀU - " + tenSP;
+                        }
+                    }
+
+                    // 2. Thêm Ngày Hết Hạn
+                    if (hsd != null) {
+                        java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("dd/MM/yyyy");
+                        extraInfo += "Ngày hết hạn: " + sdf.format(hsd);
+                    }
+
+                    // 3. Gộp thành chuỗi HTML để JTable tự xuống dòng
+                    if (!extraInfo.isEmpty()) {
+                        tenSP = "<html><b>" + tenSP + "</b><br/><span style='font-size:9.5px; color:#555555;'>" + extraInfo + "</span></html>";
+                    }
+
                     String dvt = rs.getString("DVT") != null ? rs.getString("DVT") : "Hộp";
                     int sl = rs.getInt("SL");
                     double donGia = rs.getDouble("DonGia");
                     double vatPercent = rs.getDouble("VAT"); 
-                    
-                    if (vatPercent > 0 && vatPercent < 1) {
-                        vatPercent = vatPercent * 100;
-                    }
+                    if (vatPercent > 0 && vatPercent < 1) vatPercent = vatPercent * 100;
 
-                    // Trả về giá gốc chưa VAT — GUI (ChiTietHoaDon.java) sẽ áp KM và VAT đúng thứ tự pháp lý
-                    double tienGoc = sl * donGia; // chưa KM, chưa VAT
+                    double tienGoc = sl * donGia; 
                     String strDonGia = String.format("%,d", (long)donGia).replace(',', '.') + "đ";
                     String strThanhTienGoc = String.format("%,d", (long)tienGoc).replace(',', '.') + "đ";
-                    String strVAT = (int)vatPercent + "%"; // Giữ VAT% để GUI dùng tính VAT sau KM
+                    String strVAT = (int)vatPercent + "%"; 
 
                     Object[] row = new Object[]{
-                        String.valueOf(stt++), tenSP, dvt, String.valueOf(sl),
-                        strDonGia, strVAT, strThanhTienGoc  // sp[6] = tienGoc (chưa KM, chưa VAT)
+                        String.valueOf(stt++), tenSP, dvt, String.valueOf(sl), strDonGia, strVAT, strThanhTienGoc  
                     };
-                    
                     list.add(row);
                 }
             }
-        } catch (Exception e) {
-            e.printStackTrace();
-        } 
-        
+        } catch (Exception e) { e.printStackTrace(); } 
         return list;
     }
 
