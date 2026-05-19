@@ -1,5 +1,9 @@
 package GUI;
-
+import java.awt.print.PrinterJob;
+import java.awt.print.Printable;
+import java.awt.print.PageFormat;
+import java.awt.print.PrinterException;
+import com.google.zxing.oned.Code128Writer;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.PrintWriter;
@@ -27,7 +31,8 @@ public class ChiTietHoaDon extends JDialog {
     private Color textDark = Color.decode("#1F2937"); 
     private Color textGray = Color.decode("#6B7280"); 
     private Color borderGray = Color.decode("#E5E7EB"); 
-
+    private java.util.Map<String, String> mapThuocLieuMau = new java.util.HashMap<>();
+    private java.util.Set<String> dsThuocCutLieu = new java.util.HashSet<>(); // <-- BẠN ĐANG THIẾU DÒNG NÀY
     private List<Object[]> dsSanPham;
     private String tenNhanVien; 
 
@@ -45,7 +50,18 @@ public class ChiTietHoaDon extends JDialog {
 
     public ChiTietHoaDon(Frame parent, String maHD, String ngay, String khachHang, String sdt, String phuongThuc, String tongTienCu, String tenNhanVien, List<Object[]> dsSanPhamGoc) {
         super(parent, "Chi tiết hóa đơn", true);
-        this.dsSanPham = new java.util.ArrayList<>(dsSanPhamGoc);
+        try {
+            BUS.BUS_ChiTietHoaDon busCT = new BUS.BUS_ChiTietHoaDon();
+            List<Object[]> dsMoi = busCT.layDanhSachSanPhamTheoMaHD(maHD);
+            if (dsMoi != null && !dsMoi.isEmpty()) {
+                this.dsSanPham = dsMoi; 
+            } else {
+                this.dsSanPham = new java.util.ArrayList<>(dsSanPhamGoc);
+            }
+        } catch (Exception e) {
+            this.dsSanPham = new java.util.ArrayList<>(dsSanPhamGoc);
+            e.printStackTrace();
+        }
         this.tenNhanVien = tenNhanVien;
         String maKMs = "";
         this.tienKhachDuaThucTe = 0;
@@ -95,6 +111,26 @@ public class ChiTietHoaDon extends JDialog {
                                 this.dsSanPham.add(giftRow);
                             }
                         } catch (Exception ex) { }
+                    }
+                    else if (p.startsWith("LIEU_MAU:")) {
+                    	String danhSachTen = p.substring(9).trim(); // Cắt bỏ chữ "LIEU_MAU:"
+                        String[] mangTen = danhSachTen.split(",");
+                        for (String item : mangTen) {
+                            if (item.contains("=")) {
+                                String[] splitItem = item.split("=");
+                                // Key = Tên thuốc, Value = Tên Liều (vd: "Liều Cảm Cúm Ho Nhẹ")
+                                this.mapThuocLieuMau.put(splitItem[0].trim().toLowerCase(), splitItem[1].trim());
+                            } else {
+                                this.mapThuocLieuMau.put(item.trim().toLowerCase(), "Thuốc liều mẫu");
+                            }
+                        }
+                    }
+                    else if (p.startsWith("CUT_LIEU:")) {
+                        String danhSachTen = p.substring(9).trim();
+                        String[] mangTen = danhSachTen.split(",");
+                        for (String ten : mangTen) {
+                            this.dsThuocCutLieu.add(ten.trim().toLowerCase());
+                        }
                     }
                 }
             }
@@ -234,6 +270,33 @@ public class ChiTietHoaDon extends JDialog {
             return null;
         }
     }
+    private ImageIcon generateBarcode1D(String data, int width, int height) {
+        try {
+            Code128Writer barcodeWriter = new Code128Writer();
+            // Sinh ma trận điểm ảnh cho mã vạch
+            BitMatrix bitMatrix = barcodeWriter.encode(data, BarcodeFormat.CODE_128, width, height);
+            BufferedImage img = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+            img.createGraphics();
+            Graphics2D g = (Graphics2D) img.getGraphics();
+            
+            // Nền trắng
+            g.setColor(Color.WHITE);
+            g.fillRect(0, 0, width, height);
+            // Vạch đen
+            g.setColor(Color.BLACK);
+            for (int i = 0; i < width; i++) {
+                for (int j = 0; j < height; j++) {
+                    if (bitMatrix.get(i, j)) {
+                        g.fillRect(i, j, 1, 1);
+                    }
+                }
+            }
+            return new ImageIcon(img);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
     private JPanel createHeaderPanel(String maHD, String ngay, String khachHang, String sdt, String phuongThuc, String tongTien) {
         JPanel pnlHeader = new JPanel(new BorderLayout());
         pnlHeader.setBackground(isDaHuy ? textRed : primaryGreen);
@@ -264,7 +327,9 @@ public class ChiTietHoaDon extends JDialog {
         btnPrint.setContentAreaFilled(false); btnPrint.setFocusPainted(false);
         btnPrint.setBorder(new EmptyBorder(4, 8, 4, 8));
         
-        btnPrint.addActionListener(e -> JOptionPane.showMessageDialog(this, "Chức năng xuất hóa đơn TXT đang bảo trì."));
+        btnPrint.addActionListener(e -> {
+            inHoaDonRaPDF();
+        });
         
         JButton btnClose = new JButton("X");
         btnClose.setForeground(Color.WHITE); btnClose.setContentAreaFilled(false);
@@ -413,12 +478,41 @@ public class ChiTietHoaDon extends JDialog {
 
         for (int i = 0; i < dsSanPham.size(); i++) { 
             Object[] sp = dsSanPham.get(i);
-            data[i][0] = sp[1]; // Tên sản phẩm                          
+            
+            // --- BẮT ĐẦU ĐOẠN XỬ LÝ HTML ---
+            String tenSP = sp[1] != null ? sp[1].toString() : "";
+            String tenHienThi = tenSP; // Mặc định giữ nguyên tên gốc
+            
+            // TUYỆT ĐỐI BỎ QUA QUÀ TẶNG: Chỉ kiểm tra và gắn chữ mờ cho sản phẩm mua thật
+            if (!tenSP.contains("QUÀ TẶNG") && !tenSP.contains("[QUÀ TẶNG]")) {
+                String tenCheck = tenSP.trim().toLowerCase();
+                
+                // 1. Dò xem có phải Liều Mẫu không
+                if (this.mapThuocLieuMau.containsKey(tenCheck)) {
+                    String tenLieuCuaThuoc = this.mapThuocLieuMau.get(tenCheck); // Lấy tên Liều động
+                    
+                    tenHienThi = "<html><div style='padding-top: 2px;'>"
+                               + "<span style='font-family: Segoe UI; font-size: 14px; color: #111827;'>" + tenSP + "</span><br>"
+                               + "<span style='font-family: Segoe UI; font-size: 11px; font-style: italic; color: #6B7280;'>(" + tenLieuCuaThuoc + ")</span>"
+                               + "</div></html>";
+                } 
+                // 2. Dò xem có phải Cắt Liều không
+                else if (this.dsThuocCutLieu.contains(tenCheck)) {
+                    tenHienThi = "<html><div style='padding-top: 2px;'>"
+                               + "<span style='font-family: Segoe UI; font-size: 14px; color: #111827;'>" + tenSP + "</span><br>"
+                               + "<span style='font-family: Segoe UI; font-size: 11px; font-style: italic; color: #6B7280;'>(Thuốc cắt liều)</span>"
+                               + "</div></html>";
+                }
+            }
+            
+            data[i][0] = tenHienThi; // Nạp tên đã bọc HTML vào mảng dữ liệu thay vì tên gốc
+            // --- KẾT THÚC ĐOẠN XỬ LÝ HTML ---
+
             data[i][1] = sp[2]; // Đơn vị tính (Hộp, Viên...)
             data[i][2] = sp[3]; // Số lượng
             data[i][3] = sp[4]; // Đơn giá
-            data[i][4] = sp[5]; // VAT% (Lấy từ mảng dữ liệu gốc)
-            data[i][5] = sp[6]; // Thành tiền (đã có VAT)                          
+            data[i][4] = sp[5]; // VAT% 
+            data[i][5] = sp[6]; // Thành tiền                        
         }
 
         DefaultTableModel model = new DefaultTableModel(data, cols) { 
@@ -426,7 +520,24 @@ public class ChiTietHoaDon extends JDialog {
         };
         
         JTable table = new JTable(model);
-        table.setRowHeight(35); 
+        int totalTableHeight = 0;
+        for (int row = 0; row < table.getRowCount(); row++) {
+            int rowHeight = 35; // Chiều cao mặc định cho thuốc thông thường
+            Object val = table.getValueAt(row, 0); // Lấy cột tên sản phẩm
+            
+            if (val != null) {
+                String valStr = val.toString().toLowerCase();
+                // Kiểm tra xem có chứa thẻ xuống dòng của HTML không
+                if (valStr.contains("<br")) {
+                    // Đếm số dòng chữ nhỏ
+                    int lines = valStr.split("<br").length;
+                    // 32px gốc + 16px cho mỗi dòng ghi chú/HSD
+                    rowHeight = 32 + (lines * 16); 
+                }
+            }
+            table.setRowHeight(row, rowHeight);
+            totalTableHeight += rowHeight;
+        }
         table.setShowGrid(false); 
         table.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         
@@ -496,7 +607,7 @@ public class ChiTietHoaDon extends JDialog {
         sp.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         sp.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER);
         
-        int actualTableHeight = (table.getRowCount() * 35) + 35;
+        int actualTableHeight = totalTableHeight + 35;
         
         sp.setPreferredSize(new Dimension(0, actualTableHeight));
         sp.setMinimumSize(new Dimension(0, actualTableHeight));
@@ -508,16 +619,33 @@ public class ChiTietHoaDon extends JDialog {
         return pnl;
     }
     private JPanel createSummaryPanel(String phuongThuc) {
-        JPanel pnl = new JPanel(new GridLayout(1, 2, 10, 0)); pnl.setBackground(Color.WHITE);
+        JPanel pnl = new JPanel(new GridLayout(1, 2, 10, 0)); 
+        pnl.setBackground(Color.WHITE);
 
-        int totalRows = 5; // Tạm tính + KM + Tổng sau giảm + VAT + Tổng tiền
+        // TĂNG TOTAL ROWS THÊM 1 ĐỂ CHỨA DÒNG "TỔNG SỐ SẢN PHẨM"
+        int totalRows = 6; 
         if (tienGiamTuDiemThucTe > 0) totalRows++;
 
-        JPanel pnlTotal = new JPanel(new GridLayout(totalRows, 2, 0, 8)); pnlTotal.setBackground(Color.WHITE);
+        JPanel pnlTotal = new JPanel(new GridLayout(totalRows, 2, 0, 8)); 
+        pnlTotal.setBackground(Color.WHITE);
         pnlTotal.setBorder(BorderFactory.createCompoundBorder(new LineBorder(borderGray, 1, true), new EmptyBorder(10, 10, 10, 10)));
 
         long tongSauGiam = tamTinhThucTe - tienGiamGiaThucTe;
 
+        // --- TÍNH TỔNG SỐ LƯỢNG SẢN PHẨM ---
+        int tongSoSanPham = 0;
+        for (Object[] sp : dsSanPham) {
+            tongSoSanPham += Integer.parseInt(sp[3].toString()); // Cột 3 là Số lượng (SL)
+        }
+
+        // --- THÊM HIỂN THỊ TỔNG SP VÀO GIAO DIỆN ---
+        JLabel lblTongSPText = new JLabel("Tổng số sản phẩm:");
+        JLabel lblTongSPValue = createRightAlignLabel(String.valueOf(tongSoSanPham));
+        lblTongSPValue.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        pnlTotal.add(lblTongSPText); 
+        pnlTotal.add(lblTongSPValue);
+
+        // ... (Giữ nguyên phần add Tạm tính, Khuyến mãi, VAT,... bên dưới y như cũ)
         pnlTotal.add(new JLabel("Tạm tính (giá gốc):"));
         pnlTotal.add(createRightAlignLabel(String.format("%,d", tamTinhThucTe).replace(',', '.') + "đ"));
 
@@ -578,66 +706,73 @@ public class ChiTietHoaDon extends JDialog {
     private JLabel createRightAlignLabel(String text) { JLabel label = new JLabel(text); label.setHorizontalAlignment(SwingConstants.RIGHT); return label; }
 
     private JPanel createFooterTextPanel(String maHD) {
-        // Tách ra 2 cột: Cột trái (QR Code + Cảm ơn), Cột phải (Chữ ký nhân viên)
-        JPanel pnl = new JPanel(new GridLayout(1, 2, 10, 0)); 
+        JPanel pnl = new JPanel(); 
+        // Dùng BoxLayout xếp dọc từ trên xuống
+        pnl.setLayout(new BoxLayout(pnl, BoxLayout.Y_AXIS)); 
         pnl.setBackground(Color.WHITE);
-        pnl.setBorder(new EmptyBorder(10, 0, 10, 0));
+        pnl.setBorder(new EmptyBorder(15, 0, 20, 0));
 
-        // KHỐI TRÁI (Sinh mã QR + Cảm ơn)
-        JPanel pnlLeft = new JPanel();
-        pnlLeft.setLayout(new BoxLayout(pnlLeft, BoxLayout.Y_AXIS)); 
-        pnlLeft.setBackground(Color.WHITE);
-        
-        // --- 1. TẠO VÀ THÊM MÃ QR VÀO TRƯỚC (NẰM TRÊN) ---
-        // Đã tăng kích thước QR từ 80 lên 100 pixel để to và rõ hơn
-        ImageIcon qrIcon = generateQR(maHD, 100); 
-        if (qrIcon != null) {
-            JLabel lblQR = new JLabel(qrIcon);
-            lblQR.setAlignmentX(Component.LEFT_ALIGNMENT);
-            pnlLeft.add(lblQR);
+        // 1. MÃ VẠCH (Canh giữa)
+        ImageIcon barcodeIcon = generateBarcode1D(maHD, 220, 50); 
+        if (barcodeIcon != null) {
+            JLabel lblBarcode = new JLabel(barcodeIcon);
+            lblBarcode.setAlignmentX(Component.CENTER_ALIGNMENT); // Căn giữa
+            pnl.add(lblBarcode);
             
-            JLabel lblQRText = new JLabel("Mã quét: " + maHD);
-            lblQRText.setFont(new Font("Segoe UI", Font.BOLD, 11)); // Tăng size chữ mã quét xíu cho cân đối
-            lblQRText.setForeground(textDark);
-            lblQRText.setAlignmentX(Component.LEFT_ALIGNMENT);
-            pnlLeft.add(lblQRText);
+            JLabel lblBarcodeText = new JLabel("Mã HĐ: " + maHD);
+            lblBarcodeText.setFont(new Font("Segoe UI", Font.BOLD, 12));
+            lblBarcodeText.setForeground(textDark);
+            lblBarcodeText.setAlignmentX(Component.CENTER_ALIGNMENT); // Căn giữa
+            pnl.add(lblBarcodeText);
         }
+        
+        // Tạo khoảng trắng 15px
+        pnl.add(Box.createRigidArea(new Dimension(0, 15))); 
 
-        // Tạo một khoảng trống nhỏ 10px giữa mã QR và chữ Cảm ơn
-        pnlLeft.add(Box.createRigidArea(new Dimension(0, 10))); 
-
-        // --- 2. THÊM CHỮ CẢM ƠN XUỐNG DƯỚI ---
+        // 2. LỜI CẢM ƠN (Canh giữa)
         JLabel l1 = new JLabel("Cảm ơn quý khách đã tin dùng!"); 
-        l1.setFont(new Font("Segoe UI", Font.PLAIN, 11)); l1.setForeground(textGray);
-        l1.setAlignmentX(Component.LEFT_ALIGNMENT); 
+        l1.setFont(new Font("Segoe UI", Font.PLAIN, 11)); 
+        l1.setForeground(textGray);
+        l1.setAlignmentX(Component.CENTER_ALIGNMENT); 
         
-        JLabel l2 = new JLabel("Đổi trả trong 3 ngày kể từ lúc mua."); 
-        l2.setFont(new Font("Segoe UI", Font.PLAIN, 11)); l2.setForeground(textGray);
-        l2.setAlignmentX(Component.LEFT_ALIGNMENT);
+        JLabel l2 = new JLabel("Đổi trả trong 3 ngày kể từ lúc mua. Hóa đơn chỉ đổi trả 1 lần."); 
+        l2.setFont(new Font("Segoe UI", Font.PLAIN, 11)); 
+        l2.setForeground(textGray);
+        l2.setAlignmentX(Component.CENTER_ALIGNMENT);;
         
-        pnlLeft.add(l1); 
-        pnlLeft.add(l2);
+        pnl.add(l1); 
+        pnl.add(l2);
 
-        // KHỐI PHẢI (Ký tên - Giữ nguyên như cũ)
-        JPanel pnlRight = new JPanel(new GridLayout(3, 1, 0, 3));
-        pnlRight.setBackground(Color.WHITE);
-        JLabel lbl3 = new JLabel("Nhân viên xác nhận", SwingConstants.CENTER); 
-        lbl3.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        JLabel lbl4 = new JLabel("(Ký & Ghi rõ họ tên)", SwingConstants.CENTER); 
-        lbl4.setFont(new Font("Segoe UI", Font.ITALIC, 11)); lbl4.setForeground(textGray);
-        
-        String tenRutGon = this.tenNhanVien;
-        if(tenRutGon != null && tenRutGon.length() > 20) {
-             tenRutGon = tenRutGon.substring(0, 18) + "...";
-        }
-        JLabel lbl5 = new JLabel(tenRutGon, SwingConstants.CENTER); 
-        lbl5.setFont(new Font("Segoe UI", Font.BOLD, 12)); lbl5.setBorder(new EmptyBorder(20, 0, 0, 0));
-
-        pnlRight.add(lbl3); pnlRight.add(lbl4); pnlRight.add(lbl5);
-
-        // Ghép 2 khối vào Panel chính
-        pnl.add(pnlLeft); 
-        pnl.add(pnlRight); 
         return pnl;
+    }
+    private void inHoaDonRaPDF() {
+        PrinterJob job = PrinterJob.getPrinterJob();
+        job.setPrintable(new Printable() {
+            @Override
+            public int print(Graphics graphics, PageFormat pageFormat, int pageIndex) throws PrinterException {
+                if (pageIndex > 0) return NO_SUCH_PAGE;
+                
+                Graphics2D g2d = (Graphics2D) graphics;
+                g2d.translate(pageFormat.getImageableX(), pageFormat.getImageableY());
+                
+                // Thu nhỏ toàn bộ nội dung cửa sổ để vừa với kích thước giấy in
+                double widthScale = pageFormat.getImageableWidth() / getContentPane().getWidth();
+                g2d.scale(widthScale, widthScale);
+                
+                // In toàn bộ giao diện (Nó sẽ tự động in thành trắng đen đẹp mắt trên giấy)
+                getContentPane().printAll(g2d);
+                return PAGE_EXISTS;
+            }
+        });
+        
+        // Mở hộp thoại để người dùng chọn máy in (Chọn "Microsoft Print to PDF" để lưu PDF)
+        if (job.printDialog()) {
+            try {
+                job.print();
+            } catch (PrinterException ex) {
+                ex.printStackTrace();
+                JOptionPane.showMessageDialog(this, "Lỗi in ấn: " + ex.getMessage());
+            }
+        }
     }
 }
