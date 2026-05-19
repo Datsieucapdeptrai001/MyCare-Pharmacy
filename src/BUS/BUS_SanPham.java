@@ -261,6 +261,12 @@ public class BUS_SanPham {
             return false;
         return daoSanPham.kiemTraMaSPTonTai(id.trim());
     }
+    public boolean kiemTraMaVachTonTai(String maVach, String maSPBoQua) {
+        if (isBlank(maVach)) {
+            return false;
+        }
+        return daoSanPham.kiemTraMaVachTonTai(maVach.trim(), maSPBoQua);
+    }
 
     private boolean isBlank(String s) {
         return s == null || s.trim().isEmpty();

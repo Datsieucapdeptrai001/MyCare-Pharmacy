@@ -1330,9 +1330,7 @@ public class ManHinhSanPham extends JPanel {
         tblSanPham.clearSelection();
     }
 
-    // =========================================================================
-    // LƯU (THÊM / CẬP NHẬT)
-    // =========================================================================
+
     private void thucHienLuu() {
         resetAllBorders();
 
@@ -1409,8 +1407,6 @@ public class ManHinhSanPham extends JPanel {
 
      // --- LOGIC TỰ SINH MÃ (NẾU TRỐNG) ---
         if (maVach.isEmpty()) {
-            // Sinh ma noi bo EAN-13 hop le:
-            // Prefix "200" (GS1 Internal Use) + 9 digits + check digit
             String numOnly = "0";
             if (ma.contains("-")) {
                 numOnly = ma.split("-")[1].replaceAll("[^0-9]", "");
@@ -1430,6 +1426,23 @@ public class ManHinhSanPham extends JPanel {
                 maVach = digits12 + check;
             }
             txtMaVach.setText(maVach);
+            
+            // QUAN TRỌNG: Nạp mã vừa sinh vào danh sách để mang đi check trùng
+            if (!codes.contains(maVach)) {
+                codes.add(maVach);
+            }
+        }
+
+        BUS_SanPham bus = new BUS_SanPham();
+        String maSPBoQua = isAdding ? null : ma;
+        
+        for (String code : codes) {
+            if (bus.kiemTraMaVachTonTai(code, maSPBoQua)) {
+                showCustomNotification("TRÙNG MÃ VẠCH", 
+                    "Mã vạch '" + code + "' đã bị trùng với một sản phẩm khác đang có trong hệ thống!", "WARNING");
+                txtMaVach.requestFocus();
+                return; // Dừng ngay lập tức, không cho lưu
+            }
         }
 
         // --- THU THẬP ĐƠN VỊ QUY ĐỔI CHUẨN (3 CỘT) ---
@@ -1478,14 +1491,13 @@ public class ManHinhSanPham extends JPanel {
         String dbDanhMuc = mapToDbDanhMuc(loai);
         String dbDang    = mapToDbDang(dangBaoChe);
 
-        BUS_SanPham bus = new BUS_SanPham();
-        // Kiem tra trung ma SP truoc khi them moi
         if (isAdding && bus.kiemTraMaSPTonTai(ma)) {
-            showCustomNotification("TRUNG MA",
-                "Ma san pham " + ma + " da ton tai! Vui long lam moi va thu lai.", "WARNING");
+            showCustomNotification("TRÙNG MÃ HỆ THỐNG",
+                "Mã sản phẩm " + ma + " đã có người khác vừa dùng! Hệ thống đã tự lấy mã mới, vui lòng bấm Lưu lại.", "WARNING");
             txtId.setText(bus.taoMaMoi());
             return;
         }
+        
         boolean success;
         if (isAdding) {
             success = bus.themSP(ma, dbDanhMuc, dbDang, ten, vietTat, nsx, hoatChat, vat,

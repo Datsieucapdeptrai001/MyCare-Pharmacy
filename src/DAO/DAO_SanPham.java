@@ -1138,4 +1138,48 @@ public class DAO_SanPham {
 
         return sp;
     }
+    public boolean kiemTraMaVachTonTai(String maVach, String maSPBoQua) {
+        if (maVach == null || maVach.trim().isEmpty()) {
+            return false;
+        }
+        
+        // Dùng LIKE để quét trong chuỗi (VD: "8934663100017,8934663100018")
+        // Check 3 trường hợp: Đứng đầu, đứng giữa, đứng cuối hoặc đứng 1 mình
+        String sql = "SELECT COUNT(*) FROM SanPham WHERE "
+                   + "(maVach = ? "
+                   + "OR maVach LIKE ? "
+                   + "OR maVach LIKE ? "
+                   + "OR maVach LIKE ?) ";
+
+        // Nếu đang Sửa sản phẩm -> Không check trùng với chính nó
+        if (maSPBoQua != null && !maSPBoQua.trim().isEmpty()) {
+            sql += " AND id != ?";
+        }
+
+        try (Connection con = ConnectDB.getInstance().getConnection();
+             PreparedStatement pst = con.prepareStatement(sql)) {
+             
+            String patternDau = maVach + ",%";      // VD: 893...,xxx
+            String patternGiua = "%," + maVach + ",%"; // VD: xxx,893...,yyy
+            String patternCuoi = "%," + maVach;     // VD: xxx,893...
+
+            pst.setString(1, maVach);
+            pst.setString(2, patternDau);
+            pst.setString(3, patternGiua);
+            pst.setString(4, patternCuoi);
+
+            if (maSPBoQua != null && !maSPBoQua.trim().isEmpty()) {
+                pst.setString(5, maSPBoQua);
+            }
+
+            try (ResultSet rs = pst.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1) > 0;
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
 }
