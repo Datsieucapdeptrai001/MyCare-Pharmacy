@@ -85,26 +85,26 @@ public class BUS_TraHang {
         for (String item : items) {
             if (item.contains("_")) {
                 String[] vals = item.split("_");
+                // Format ghiChu: tenSP_DVT_soLuong_giaChuan
+                // vals[0]=ten, vals[1]=dvt, vals[2]=soLuong, vals[3]=gia
                 String ten = vals[0];
-                String sl = vals[1];
+                String dvt = vals.length > 1 ? vals[1] : "Hộp";
+                int sl = 1;
+                if (vals.length > 2) {
+                    try { sl = Integer.parseInt(vals[2].trim()); } catch (Exception e) {}
+                }
                 long donGia = 0;
-                
-                // ĐÃ FIX: Bóc tách Đơn Giá thẳng từ chuỗi, xử lý triệt để phần thập phân và dấu phân cách
-                if (vals.length >= 3) {
-                    try { 
-                        // 1. Chỉ xóa phần thập phân .0, .00, ,0, ,00 ở tận cùng chuỗi
-                        String strGia = vals[2].replaceAll(",00$|\\.00$|,0$|\\.0$", "");
-                        // 2. Lọc bỏ toàn bộ chữ, dấu phẩy, dấu chấm nghìn (chỉ giữ lại số)
-                        strGia = strGia.replaceAll("[^0-9]", ""); 
-                        if (!strGia.isEmpty()) {
-                            donGia = Long.parseLong(strGia);
-                        }
+                if (vals.length > 3) {
+                    try {
+                        String strGia = vals[3].replaceAll(",00$|\\.00$|,0$|\\.0$", "")
+                                                .replaceAll("[^0-9]", "");
+                        if (!strGia.isEmpty()) donGia = Long.parseLong(strGia);
                     } catch (Exception e) {
-                        e.printStackTrace(); // In ra console để dễ debug nếu có lỗi khác
+                        e.printStackTrace();
                     }
                 }
-                
-                result.add(new Object[]{ ten, sl, "", donGia });
+                // [0]=ten, [1]=sl(int), [2]=dvt(String), [3]=donGia(long)
+                result.add(new Object[]{ ten, sl, dvt, donGia });
             }
         }
         return result;

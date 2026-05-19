@@ -17,8 +17,11 @@ public class DAO_ChiTietHoaDon {
 
     public DAO_ChiTietHoaDon() {}
 
-    public boolean themChiTietDoiTra(String maHD, String tenSP, String dvt, int soLuong, double donGia, String ghiChu) {
-        // Cú pháp 6 tham số để khớp với BUS và GUI của cậu
+    public boolean themChiTietDoiTra(String maHD, String tenSP, String dvt, int soLuong, double donGia, String ghiChu, boolean isTraLai) {
+        // isTraLai=true  → hàng khách trả lại  → soLuong ÂM  (để CASE WHEN < 0 trong ThongKe match)
+        // isTraLai=false → hàng khách đổi mới  → soLuong DƯƠNG
+        int soLuongLuu = isTraLai ? -Math.abs(soLuong) : Math.abs(soLuong);
+
         String sql = "INSERT INTO ChiTietHoaDon (hoaDonId, sanPhamId, donViDoLuongId, soLuong, donGiaThucTe, thanhTien, ghiChu) " +
                      "SELECT TOP 1 ?, sp.id, dv.id, ?, ?, ?, ? " +
                      "FROM SanPham sp " +
@@ -29,9 +32,9 @@ public class DAO_ChiTietHoaDon {
              PreparedStatement pst = con.prepareStatement(sql)) {
             
             pst.setString(1, maHD);
-            pst.setInt(2, soLuong);
-            pst.setDouble(3, donGia);             // Nhận giá tiền trực tiếp từ GUI
-            pst.setDouble(4, soLuong * donGia);   // Tự nhân ra Thành tiền
+            pst.setInt(2, soLuongLuu);
+            pst.setDouble(3, donGia);                       // Đơn giá giữ nguyên (dương)
+            pst.setDouble(4, soLuongLuu * donGia);          // thanhTien mang dấu của soLuong
             
             // Ép chết lỗi NULL: Nếu ghiChu rỗng thì để mặc định
             String note = (ghiChu == null || ghiChu.isEmpty()) ? "Hàng Đổi/Trả" : ghiChu;

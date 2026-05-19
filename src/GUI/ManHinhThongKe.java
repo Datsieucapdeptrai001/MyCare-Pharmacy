@@ -617,7 +617,11 @@ public class ManHinhThongKe extends JPanel {
                 DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy");
                 for (int i = 0; i < 30; i++)
                     tmp_DAILY_30_DATES[29-i] = today.minusDays(i).format(dtf);
-                java.util.List<Object[]> daily30 = busThongKe.getThongKe30NgayGanNhat(fCondHD);
+                // Tạo filter riêng cho biểu đồ 30 ngày — chỉ giữ NV, bỏ hết thời gian
+                BUS.BUS_ThongKe.ThongKeFilter filterDaily30 = new BUS.BUS_ThongKe.ThongKeFilter();
+                filterDaily30.maNV = fCondHD.maNV; // giữ NV filter nếu có
+                // KHÔNG copy modeLocThoiGian, month, quarter, fromDate, toDate
+                java.util.List<Object[]> daily30 = busThongKe.getThongKe30NgayGanNhat(filterDaily30);
                 for (Object[] row : daily30) {
                     String d = (String) row[0]; int hd = (int) row[1]; double dt = (double) row[2];
                     for (int i = 0; i < 30; i++) {
@@ -637,14 +641,14 @@ public class ManHinhThongKe extends JPanel {
                     
                     double[] tra = busThongKe.getThongKeTraHangNV(tmp_NV_IDS[i], year, fCondHD);
                     tmp_NV_HD_TRA[i] = (int) tra[0];
-                    tmp_NV_DT_TRA[i] = tra[1];
+                    tmp_NV_DT_TRA[i] = tra[1] / 1_000_000.0; // chuẩn hoá sang triệu, đồng nhất với DT_S/C/T
                 }
 
                 double[] kpiData  = busThongKe.getKpiTongQuat(fCondHD);
-                double fDT        = kpiData[0];
+                double fDT        = kpiData[0];  // doanhThuRong  (đã trừ hàng trả, chưa VAT)
                 long   fHD        = (long) kpiData[1];
-                double fVAT       = kpiData[4];
-                double fThucThu   = fDT + fVAT;
+                double fVAT       = kpiData[4];  // VAT thực thu (đã điều chỉnh đổi/trả)
+                double fThucThu   = kpiData[5];  // thucThu = BUS tính sẵn, không tự cộng trong GUI
 
                 int peakMonth = 0;
                 for (int i = 1; i < 12; i++)
@@ -742,7 +746,7 @@ public class ManHinhThongKe extends JPanel {
         new Thread(() -> {
             double[] kpi = busThongKe.getKpiTongQuat(f);
             long tongDon   = (long) kpi[1];
-            double tongDT  = kpi[0] + kpi[4];
+            double tongDT  = kpi[5];  // thucThu từ BUS, không tự cộng DT+VAT trong GUI
             double dtTB    = tongDon > 0 ? tongDT / tongDon : 0;
 
             // Phân bổ theo giờ dùng 30 ngày gần nhất làm xấp xỉ
@@ -819,7 +823,7 @@ public class ManHinhThongKe extends JPanel {
             Object[] kpi = busThongKe.getKpiKhachHang();
             int tk=(int)kpi[0], kc=(int)kpi[1], td=(int)kpi[2];
             int[] khMoi = busThongKe.getKHMoiTheoThang(year);
-            java.util.List<Object[]> topKH = busThongKe.getTopKhachHang(year, condHD);
+            java.util.List<Object[]> topKH = busThongKe.getTopKhachHangTheoDiem(10);
             SwingUtilities.invokeLater(() -> {
                 if (lblKHTotal   != null) lblKHTotal.setText(String.valueOf(tk));
                 if (lblKHCoTK    != null) lblKHCoTK.setText(String.valueOf(kc));
@@ -829,8 +833,14 @@ public class ManHinhThongKe extends JPanel {
                     modelTopKH.setRowCount(0);
                     int rk=1;
                     for (Object[] r : topKH) {
-                    	String m=rk==1?"Top 1":rk==2?"Top 2":rk==3?"Top 3":String.valueOf(rk);
-                        modelTopKH.addRow(new Object[]{m,r[0],(int)r[1],formatM((double)r[2]),String.format("%,d",(int)r[3])+" đ."});
+                        String m=rk==1?"Top 1":rk==2?"Top 2":rk==3?"Top 3":String.valueOf(rk);
+                        modelTopKH.addRow(new Object[]{
+                            m,               // hạng (Top 1, Top 2...)
+                            r[0],            // tên KH  [hoVaTen]
+                            (int) r[2],      // số đơn  [soHD]
+                            formatM((double) r[3]),               // doanh thu (r[3] đã là triệu → formatM nhân 1_000_000)
+                            String.format("%,d", (int) r[4]) + " đ."  // điểm tích lũy
+                        });
                         rk++;
                     }
                 }
@@ -2413,26 +2423,26 @@ public class ManHinhThongKe extends JPanel {
                 totalDTS += NV_DT_S[i]; totalDTC += NV_DT_C[i]; totalDTT += dtT; totalDTTra += dtTra;
 
                 int netHD = NV_HD_S[i] + NV_HD_C[i] + hdT - hdTra;
-                double netDT = NV_DT_S[i] + NV_DT_C[i] + dtT - (dtTra / 1_000_000.0);
+                double netDT = NV_DT_S[i] + NV_DT_C[i] + dtT - dtTra; // dtTra đã ở triệu
 
                 model.addRow(new Object[] {
                         NV_NAMES[i],
                         NV_HD_S[i] + " đơn · " + formatM(NV_DT_S[i]),
                         NV_HD_C[i] + " đơn · " + formatM(NV_DT_C[i]),
                         hdT + " đơn · " + formatM(dtT),
-                        "<html><font color='#D32F2F'>" + hdTra + " đơn · " + formatM(dtTra / 1_000_000.0) + "</font></html>",
+                        "<html><font color='#D32F2F'>" + hdTra + " đơn · " + formatM(dtTra) + "</font></html>",
                         netHD,
                         formatM(netDT)
                 });
             }
             int netHDTotal = totalHDS + totalHDC + totalHDT - totalHDTra;
-            double netDTTotal = totalDTS + totalDTC + totalDTT - (totalDTTra / 1_000_000.0);
+            double netDTTotal = totalDTS + totalDTC + totalDTT - totalDTTra; // totalDTTra đã ở triệu
             model.addRow(new Object[] {
                     "TỔNG:",
                     totalHDS + " đơn · " + formatM(totalDTS),
                     totalHDC + " đơn · " + formatM(totalDTC),
                     totalHDT + " đơn · " + formatM(totalDTT),
-                    "<html><font color='#D32F2F'>" + totalHDTra + " đơn · " + formatM(totalDTTra / 1_000_000.0) + "</font></html>",
+                    "<html><font color='#D32F2F'>" + totalHDTra + " đơn · " + formatM(totalDTTra) + "</font></html>",
                     netHDTotal,
                     formatM(netDTTotal)
             });

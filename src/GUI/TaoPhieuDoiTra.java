@@ -1736,7 +1736,7 @@ public class TaoPhieuDoiTra extends JDialog {
             	        int sl = Integer.parseInt(chiTietModel.getValueAt(i, 3).toString());
             	        String strGia = chiTietModel.getValueAt(i, 4).toString().replaceAll("[^0-9]", "");
             	        double gia = Double.parseDouble(strGia);
-            	        busCT.themChiTietDoiTra(maPhieu, ten, dvt, sl, gia, "Hàng khách trả");
+            	        busCT.themChiTietDoiTra(maPhieu, ten, dvt, sl, gia, "Hàng khách trả", true);
             	    }
             	}
 
@@ -1747,7 +1747,7 @@ public class TaoPhieuDoiTra extends JDialog {
             	        int sl = Integer.parseInt(spMoiModel.getValueAt(i, 2).toString());
             	        String strGia = spMoiModel.getValueAt(i, 3).toString().replaceAll("[^0-9]", "");
             	        double gia = Double.parseDouble(strGia);
-            	        busCT.themChiTietDoiTra(maPhieu, ten, dvt, sl, gia, "Hàng khách đổi mới");
+            	        busCT.themChiTietDoiTra(maPhieu, ten, dvt, sl, gia, "Hàng khách đổi mới", false);
             	    }
             	}
 

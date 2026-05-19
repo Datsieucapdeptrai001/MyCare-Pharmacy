@@ -1000,17 +1000,28 @@ public class ManHinhChinh extends JPanel {
                     BUS.BUS_HoaDon busHD = new BUS.BUS_HoaDon();
                     Entity.HoaDon hd = busHD.layHoaDonTheoMa(maHD);
                     if (hd != null) {
-                        String ngay = hd.getNgayLapHD()
-                                .format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss"));
-                        String khach = hd.getKhachHangId() != null ? hd.getKhachHangId().getHoVaTen() : "Khách lẻ";
-                        String sdt = hd.getKhachHangId() != null ? hd.getKhachHangId().getSdt() : "";
-                        String pt = tInv.getValueAt(r, 3).toString();
-                        String tenNV = hd.getNhanVienId() != null ? hd.getNhanVienId().getHoVaTen() : "";
-                        BUS.BUS_ChiTietHoaDon busCTHD = new BUS.BUS_ChiTietHoaDon();
-                        List<Object[]> lsSP = busCTHD.layDanhSachSanPhamTheoMaHD(maHD);
-                        Window pw = SwingUtilities.getWindowAncestor(ManHinhChinh.this);
-                        ChiTietHoaDon dlg = new ChiTietHoaDon((Frame) pw, maHD, ngay, khach, sdt, pt, "0", tenNV, lsSP);
-                        dlg.setVisible(true);
+                        // ── PHÂN NHÁNH THEO LOẠI HÓA ĐƠN ──────────────────────────────────
+                        // Phiếu đổi/trả hàng (DTH-xxxx) → mở ChiTietPhieuDoiTra
+                        // để dialog tự load đầy đủ thông tin qua BUS, GUI không xử lý logic.
+                        String loaiHDStr = hd.getLoaiHD() != null ? hd.getLoaiHD().toString() : "";
+                        if ("DOI_HANG".equals(loaiHDStr) || "TRA_HANG".equals(loaiHDStr)) {
+                            Window pw = SwingUtilities.getWindowAncestor(ManHinhChinh.this);
+                            ChiTietPhieuDoiTra dlg = new ChiTietPhieuDoiTra((Frame) pw, maHD);
+                            dlg.setVisible(true);
+                        } else {
+                            // Hóa đơn bán hàng thông thường → giữ nguyên ChiTietHoaDon
+                            String ngay = hd.getNgayLapHD()
+                                    .format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss"));
+                            String khach = hd.getKhachHangId() != null ? hd.getKhachHangId().getHoVaTen() : "Khách lẻ";
+                            String sdt = hd.getKhachHangId() != null ? hd.getKhachHangId().getSdt() : "";
+                            String pt = tInv.getValueAt(r, 3).toString();
+                            String tenNV = hd.getNhanVienId() != null ? hd.getNhanVienId().getHoVaTen() : "";
+                            BUS.BUS_ChiTietHoaDon busCTHD = new BUS.BUS_ChiTietHoaDon();
+                            List<Object[]> lsSP = busCTHD.layDanhSachSanPhamTheoMaHD(maHD);
+                            Window pw = SwingUtilities.getWindowAncestor(ManHinhChinh.this);
+                            ChiTietHoaDon dlg = new ChiTietHoaDon((Frame) pw, maHD, ngay, khach, sdt, pt, "0", tenNV, lsSP);
+                            dlg.setVisible(true);
+                        }
                     }
                 }
             }
@@ -1242,15 +1253,27 @@ public class ManHinhChinh extends JPanel {
 
         c1.add(new JSeparator() { { setMaximumSize(new Dimension(Integer.MAX_VALUE, 1)); } });
         addLine(c1, "  (A) TỔNG DOANH THU BÁN RA:", formatMoney(Math.round(tThanhToanBanHang)), BLUE, true);
+
+        // BUG 1 FIX: 2 dòng đổi hàng (tất cả PTTT, không chỉ tiền mặt)
+        CaLamViec caDoiChieu = UserSession.getInstance().getCaHienTai();
+        String maNVDoiChieu = (filterMaNV != null && !filterMaNV.isEmpty())
+                ? filterMaNV : UserSession.getInstance().getMaNhanVien();
+        double[] doiHangSum = {0, 0};
+        if (caDoiChieu != null && maNVDoiChieu != null) {
+            doiHangSum = busThongKe.getDoiHangSummaryTheoCa(maNVDoiChieu, caDoiChieu.getThoiGianBatDau());
+        }
+        addLine(c1, "  (+) Tiền khách bù thêm (đổi hàng):", "+" + formatMoney(Math.round(doiHangSum[0])), GREEN, false);
+        addLine(c1, "  (-) Tiền tiệm hoàn lại (đổi hàng):", "-" + formatMoney(Math.round(doiHangSum[1])), RED, false);
+
         addLine(c1, "  (B) CHI TIỀN NHẬN TRẢ HÀNG:", "-" + formatMoney(Math.round(tHoanTra)), RED, true); 
         c1.add(box(8));
         addLine(c1, "ĐỐI CHIẾU THU CHI (A - B)", null, Color.GRAY, false);
-        double tMatThucTe = Math.max(0, tMat - tHoanTra); // Quỹ tiền mặt thực tế
+        double tMatThucTe = Math.max(0, tMat + doiHangSum[0] - doiHangSum[1] - tHoanTra); // Quỹ tiền mặt thực tế
         addLine(c1, "  ↔ Tiền mặt thu về:", formatMoney(Math.round(tMatThucTe)), Color.BLACK, false);
         addLine(c1, "  ↔ Chuyển khoản/Thẻ:", formatMoney(Math.round(ck)), Color.BLACK, false);
 
         c1.add(new JSeparator() { { setMaximumSize(new Dimension(Integer.MAX_VALUE, 1)); } });
-        addLine(c1, "  TỔNG THỰC THU TRONG CA:", formatMoney(Math.round(tThanhToanBanHang - tHoanTra)), GREEN, true);
+        addLine(c1, "  TỔNG THỰC THU TRONG CA:", formatMoney(Math.round(tThanhToanBanHang + doiHangSum[0] - doiHangSum[1] - tHoanTra)), GREEN, true);
 
         body.add(c1);
 
@@ -1626,7 +1649,13 @@ public class ManHinhChinh extends JPanel {
         long tienDauCa = UserSession.getInstance().getTienDauCa();
         long tienBanHang = (long) tmBanHang;
         long tienTraHang = (long) tmHoanTra;
-        long tienHT = tienDauCa + tienBanHang - tienTraHang;
+
+        // BUG 2 FIX: lấy tiền mặt từ đổi hàng trong ca
+        double[] doiMat = {0, 0};
+        if (ca != null && ca.getThoiGianBatDau() != null && maNV != null) {
+            doiMat = busThongKe.getTienDoiHangMatTheoCa(maNV, ca.getThoiGianBatDau());
+        }
+        long tienHT = tienDauCa + tienBanHang + (long) doiMat[0] - (long) doiMat[1] - tienTraHang;
 
         String[] CA_LABELS = { "Ca Sáng", "Ca Chiều", "Ca Tối" };
         String tenCa = (ca != null && ca.getLoaiCa() >= 0 && ca.getLoaiCa() <= 2) ? CA_LABELS[ca.getLoaiCa()] : "—";
@@ -1651,6 +1680,13 @@ public class ManHinhChinh extends JPanel {
         body.add(buildSection("Thông tin tiền mặt"));
         body.add(buildMoneyRow("Tiền đầu ca:", formatMoney(tienDauCa), Color.decode("#00A76F"), false));
         body.add(buildMoneyRow("(+) Tiền mặt bán hàng:", formatMoney(tienBanHang), Color.decode("#1A73E8"), false));
+        // BUG 2 FIX: hiển thị tiền đổi hàng nếu có giá trị
+        if (doiMat[0] > 0) {
+            body.add(buildMoneyRow("(+) Tiền mặt nhận đổi hàng:", formatMoney((long) doiMat[0]), GREEN, false));
+        }
+        if (doiMat[1] > 0) {
+            body.add(buildMoneyRow("(-) Tiền mặt hoàn đổi hàng:", formatMoney((long) doiMat[1]), RED, false));
+        }
         body.add(buildMoneyRow("(-) Tiền chi đổi/trả:", formatMoney(tienTraHang), Color.decode("#FF5630"), false));
 
         body.add(new JSeparator() {

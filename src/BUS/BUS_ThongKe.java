@@ -101,6 +101,45 @@ public class BUS_ThongKe {
         return sumThucThu(raw);
     }
 
+    // === BUG 1 + BUG 3 FIX ===
+    // Thay thế tinhDieuChinhDoiTra() (parse ghiChu fragile) bằng
+    // dao.getTienDoiHangTheoCa() / dao.getTienDoiHangTheoCaMat() (query SQL chính xác)
+
+    /**
+     * Bọc dao.getTienDoiHangTheoCaMat() để BUS_CaLamViec dùng khi tính tienHeThongGhiNhan.
+     * Trả về double[2]: [0]=tienBuThem, [1]=tienHoanLai (chỉ giao dịch tiền mặt)
+     */
+    public double[] getTienDoiHangMatTheoCa(String maNV, LocalDateTime start) {
+        return dao.getTienDoiHangTheoCaMat(maNV, start);
+    }
+
+    /**
+     * Tổng tiền đổi hàng theo ca — TẤT CẢ phương thức thanh toán (dùng cho tab Đối chiếu doanh thu).
+     * Trả về double[2]: [0]=tienBuThem (khách trả thêm), [1]=tienHoanLai (tiệm hoàn lại)
+     */
+    public double[] getDoiHangSummaryTheoCa(String maNV, LocalDateTime start) {
+        return dao.getTienDoiHangTheoCa(maNV, start);
+    }
+
+    // BUG 1 FIX: Không còn cộng tinhDieuChinhDoiTra() (parse ghiChu, bỏ sót DOI_HANG)
+    // Thay bằng dao.getTienDoiHangTheoCa() trả về số tiền chính xác từ DB
+    public double getDoanhThuTheoCa(String maNV, LocalDateTime start) {
+        List<Object[]> raw = dao.getRawHDTheoCa(maNV, start, null);
+        double doanhThuBanHang = sumThucThu(raw);
+        double[] doiHang = dao.getTienDoiHangTheoCa(maNV, start);
+        // doiHang[0] = tienBuThem (khách trả thêm → tăng doanh thu)
+        // doiHang[1] = tienHoanLai (tiệm hoàn lại  → giảm doanh thu)
+        return doanhThuBanHang + doiHang[0] - doiHang[1];
+    }
+
+    // BUG 3 FIX: Tương tự getDoanhThuTheoCa() nhưng chỉ tính tiền mặt
+    public double getDoanhThuTienMatTheoCa(String maNV, LocalDateTime start) {
+        List<Object[]> raw = dao.getRawHDTheoCa(maNV, start, "TIEN_MAT");
+        double doanhThuBanHang = sumThucThu(raw);
+        double[] doiMat = dao.getTienDoiHangTheoCaMat(maNV, start);
+        return doanhThuBanHang + doiMat[0] - doiMat[1];
+    }
+
     private boolean kiemTraThoiGianHople(LocalDateTime tu, LocalDateTime den) {
         return tu != null && den != null && !tu.isAfter(den);
     }
@@ -206,26 +245,6 @@ public class BUS_ThongKe {
         return getDoanhThuThuanHomNay(f);
     }
 
-    public double getDoanhThuTheoCa(String maNV, LocalDateTime start) {
-        List<Object[]> raw = dao.getRawHDTheoCa(maNV, start, null);
-        double dt = sumThucThu(raw);
-        ThongKeFilter f = new ThongKeFilter();
-        f.maNV = maNV;
-        java.time.format.DateTimeFormatter fmt = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS");
-        dt += tinhDieuChinhDoiTra("hd.ngayLapHD>='" + start.format(fmt) + "'", f);
-        return dt;
-    }
-
-    public double getDoanhThuTienMatTheoCa(String maNV, LocalDateTime start) {
-        List<Object[]> raw = dao.getRawHDTheoCa(maNV, start, "TIEN_MAT");
-        double dt = sumThucThu(raw);
-        ThongKeFilter f = new ThongKeFilter();
-        f.maNV = maNV;
-        java.time.format.DateTimeFormatter fmt = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS");
-        dt += tinhDieuChinhDoiTra("hd.ngayLapHD>='" + start.format(fmt) + "'", f);
-        return dt;
-    }
-
     public double[] getDoanhThu12Thang(int year, ThongKeFilter filter) {
         if (year <= 0) return new double[12];
         double[] data = new double[12];
@@ -257,9 +276,11 @@ public class BUS_ThongKe {
         List<Object[]> doiTraList = dao.getRawHDDoiTra12Thang(year, filter);
         for (Object[] row : doiTraList) {
             int m = (Integer) row[0];
-            double refundChuaVAT = (Double) row[1]; 
-            if (m >= 1 && m <= 12 && refundChuaVAT > 0) {
-                data[m - 1] -= refundChuaVAT / 1_000_000.0;
+            double netDelta = (Double) row[1]; // âm = hoàn trả nhiều hơn đổi, dương = đổi mới đắt hơn cũ
+            if (m >= 1 && m <= 12) {
+                // netDelta < 0: doanh thu giảm (khách trả nhiều hơn lấy) → trừ ABS
+                // netDelta > 0: doanh thu tăng (hàng mới đắt hơn cũ) → cộng
+                data[m - 1] += netDelta / 1_000_000.0;
             }
         }
         for(int i = 0; i < 12; i++) data[i] = Math.max(0, data[i]); 
@@ -295,9 +316,10 @@ public class BUS_ThongKe {
         List<Object[]> doiTraList = dao.getRawHDDoiTra30Ngay(filter);
         for (Object[] row : doiTraList) {
             String date = (String) row[0];
-            double refund = (Double) row[1];
+            double netDelta = (Double) row[1]; // âm = trả nhiều, dương = đổi lấy đắt hơn
             if (dailyData.containsKey(date)) {
-                dailyData.get(date)[1] = Math.max(0, dailyData.get(date)[1] - refund);
+                // cộng netDelta trực tiếp (netDelta âm → trừ DT, dương → tăng DT)
+                dailyData.get(date)[1] = Math.max(0, dailyData.get(date)[1] + netDelta);
             }
         }
 
@@ -349,8 +371,9 @@ public class BUS_ThongKe {
         List<Object[]> doiTraList = dao.getRawHDDoiTraGio("CAST(hd.ngayLapHD AS DATE)='" + dateYMD + "'", filter);
         for (Object[] row : doiTraList) {
             int h = (Integer) row[2];
-            double coVATRefund = (row.length >= 4 && row[3] instanceof Double) ? (Double) row[3] : 0;
-            if (h >= 0 && h < 24 && coVATRefund > 0) data[h] -= coVATRefund / 1_000_000.0;
+            double netDelta_coVAT = (row.length >= 4 && row[3] instanceof Double) ? (Double) row[3] : 0;
+            // netDelta_coVAT < 0: doanh thu giờ đó giảm; > 0: tăng
+            if (h >= 0 && h < 24) data[h] = Math.max(0, data[h] + netDelta_coVAT / 1_000_000.0);
         }
         return data;
     }
