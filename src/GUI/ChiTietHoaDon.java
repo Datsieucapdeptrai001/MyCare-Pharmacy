@@ -113,16 +113,13 @@ public class ChiTietHoaDon extends JDialog {
                         } catch (Exception ex) { }
                     }
                     else if (p.startsWith("LIEU_MAU:")) {
-                    	String danhSachTen = p.substring(9).trim(); // Cắt bỏ chữ "LIEU_MAU:"
-                        String[] mangTen = danhSachTen.split(",");
+                        String danhSachTen = p.substring(9).trim(); 
+                        String[] mangTen = danhSachTen.split("~"); // Đã đổi sang cắt bằng dấu ~
                         for (String item : mangTen) {
                             if (item.contains("=")) {
                                 String[] splitItem = item.split("=");
-                                // Key = Tên thuốc, Value = Tên Liều (vd: "Liều Cảm Cúm Ho Nhẹ")
                                 this.mapThuocLieuMau.put(splitItem[0].trim().toLowerCase(), splitItem[1].trim());
-                            } else {
-                                this.mapThuocLieuMau.put(item.trim().toLowerCase(), "Thuốc liều mẫu");
-                            }
+                            } 
                         }
                     }
                     else if (p.startsWith("CUT_LIEU:")) {
@@ -486,17 +483,24 @@ public class ChiTietHoaDon extends JDialog {
             // TUYỆT ĐỐI BỎ QUA QUÀ TẶNG: Chỉ kiểm tra và gắn chữ mờ cho sản phẩm mua thật
             if (!tenSP.contains("QUÀ TẶNG") && !tenSP.contains("[QUÀ TẶNG]")) {
                 String tenCheck = tenSP.trim().toLowerCase();
+                String tenLieuCuaThuoc = null;
+
+                // QUÉT THÔNG MINH: Bắt chéo chuỗi để chống rớt khoảng trắng thừa
+                for (java.util.Map.Entry<String, String> entry : this.mapThuocLieuMau.entrySet()) {
+                    if (tenCheck.contains(entry.getKey()) || entry.getKey().contains(tenCheck)) {
+                        tenLieuCuaThuoc = entry.getValue();
+                        break;
+                    }
+                }
                 
-                // 1. Dò xem có phải Liều Mẫu không
-                if (this.mapThuocLieuMau.containsKey(tenCheck)) {
-                    String tenLieuCuaThuoc = this.mapThuocLieuMau.get(tenCheck); // Lấy tên Liều động
-                    
+                // Nếu quét trúng Liều Mẫu
+                if (tenLieuCuaThuoc != null) {
                     tenHienThi = "<html><div style='padding-top: 2px;'>"
                                + "<span style='font-family: Segoe UI; font-size: 14px; color: #111827;'>" + tenSP + "</span><br>"
                                + "<span style='font-family: Segoe UI; font-size: 11px; font-style: italic; color: #6B7280;'>(" + tenLieuCuaThuoc + ")</span>"
                                + "</div></html>";
                 } 
-                // 2. Dò xem có phải Cắt Liều không
+                // Nếu quét trúng Thuốc Cắt Liều
                 else if (this.dsThuocCutLieu.contains(tenCheck)) {
                     tenHienThi = "<html><div style='padding-top: 2px;'>"
                                + "<span style='font-family: Segoe UI; font-size: 14px; color: #111827;'>" + tenSP + "</span><br>"
