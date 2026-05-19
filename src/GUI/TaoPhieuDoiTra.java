@@ -1764,6 +1764,7 @@ public class TaoPhieuDoiTra extends JDialog {
                     if (owner instanceof MainDashboard) {
                         MainDashboard md = (MainDashboard) owner;
                         md.lamMoiManHinhChinh();
+                        md.lamMoiManHinhThongKe();   // Thêm dòng này
                     }
                 });
 

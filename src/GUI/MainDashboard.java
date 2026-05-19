@@ -31,6 +31,7 @@ public class MainDashboard extends JFrame {
     private JPanel cardPanel;
     private List<JButton> menuButtons;
     private ManHinhChinh mhChinh;
+    private ManHinhThongKe mhThongKe;
 
     private JLabel lblTieuDeTrang;
 
@@ -51,6 +52,14 @@ public class MainDashboard extends JFrame {
         }
         mhChinh = new ManHinhChinh();
         cardPanel.add(mhChinh, "Màn hình chính");
+        cardPanel.revalidate();
+        cardPanel.repaint();
+    }
+
+    public void lamMoiManHinhThongKe() {
+        if (mhThongKe != null) cardPanel.remove(mhThongKe);
+        mhThongKe = new ManHinhThongKe();
+        cardPanel.add(mhThongKe, "Thống kê");
         cardPanel.revalidate();
         cardPanel.repaint();
     }
@@ -95,7 +104,7 @@ public class MainDashboard extends JFrame {
         ManHinhSanPham mhSanPham = new ManHinhSanPham();
         ManHinhLoHang mhLoHang = new ManHinhLoHang();
         ManHinhKhuyenMai mhKhuyenMai = new ManHinhKhuyenMai();
-        ManHinhThongKe mhThongKe = new ManHinhThongKe();
+        mhThongKe = new ManHinhThongKe();
         ManHinhNhanVien mhNhanVien = new ManHinhNhanVien();
         ManHinhKhachHang mhKhachHang = new ManHinhKhachHang();
         ManHinhHuongDan mhHuongDan = new ManHinhHuongDan();
@@ -201,6 +210,9 @@ public class MainDashboard extends JFrame {
         }
 
         cardLayout.show(cardPanel, tabName);
+        if (tabName.equals("Thống kê") && mhThongKe != null) {
+            mhThongKe.refreshAll();
+        }
         for (JButton btn : menuButtons) {
             if (btn.getText().equals(tabName)) {
                 setActiveButton(btn);

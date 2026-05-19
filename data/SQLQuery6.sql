@@ -760,6 +760,224 @@ FROM SanPham sp
 INNER JOIN DonViDoLuong dvl ON dvl.sanPhamId = sp.id AND dvl.ten = sp.donViDoCoBan
 WHERE sp.giaBan != dvl.gia;
 GO
+
+-- ===========================================================================
+-- STORED PROCEDURE: sp_BaoCaoTaiChinh
+-- Database: MYCAREPHARMACY
+-- Mục đích: Báo cáo tài chính chuẩn mực (Doanh thu Gộp → Lợi nhuận Gộp)
+--           gộp theo NGÀY hoặc THÁNG, có hỗ trợ lọc nhân viên / khoảng thời gian
+--
+-- Công thức:
+--   (1) Doanh Thu Gộp     = SUM(thanhTien) của BAN_HANG + DOI_HANG(soLuong > 0)
+--   (2) Thuế VAT           = SUM( thanhTien × VAT/(100+VAT) ) — bóc VAT từ giá đã có VAT
+--                            [Nếu donGiaThucTe là giá CHƯA VAT, dùng: donGiaThucTe×soLuong×VAT/100]
+--   (3) Hàng Bán Bị Trả   = SUM(ABS(thanhTien)) của TRA_HANG + DOI_HANG(soLuong < 0)
+--   (4) Doanh Thu Thuần   = (1) − (3) − (2)
+--   (5) COGS              = Σ(pbl.soLuong × lh.gia) cho BAN_HANG/DOI_HANG(+)
+--                           − Σ(pbl.soLuong × lh.gia) cho TRA_HANG/DOI_HANG(−)
+--                           [Dùng subquery GROUP BY trước khi JOIN để tránh nhân bản dòng]
+--   (6) Lợi Nhuận Gộp    = (4) − (5)
+--
+-- Parameters:
+--   @groupBy   NVARCHAR(10): 'NGAY' hoặc 'THANG'
+--   @tuNgay    DATE: Từ ngày (NULL = không giới hạn)
+--   @denNgay   DATE: Đến ngày (NULL = không giới hạn)
+--   @maNV      NVARCHAR(50): Lọc theo nhân viên (NULL = tất cả)
+--
+-- Trả về: thoiGian | doanhThuGop | thueVAT | hangBanBiTraLai |
+--         doanhThuThuan | giaVonHangBan | loiNhuanGop
+-- ===========================================================================
+USE [MYCAREPHARMACY];
+GO
+
+IF OBJECT_ID('dbo.sp_BaoCaoTaiChinh', 'P') IS NOT NULL
+    DROP PROCEDURE dbo.sp_BaoCaoTaiChinh;
+GO
+
+CREATE PROCEDURE dbo.sp_BaoCaoTaiChinh
+    @groupBy  NVARCHAR(10) = 'NGAY',   -- 'NGAY' | 'THANG'
+    @tuNgay   DATE         = NULL,
+    @denNgay  DATE         = NULL,
+    @maNV     NVARCHAR(50) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    -- Xác định biểu thức gộp nhóm
+    DECLARE @groupExpr NVARCHAR(200);
+    IF @groupBy = 'THANG'
+        SET @groupExpr = N'CAST(YEAR(hd.ngayLapHD) AS NVARCHAR(4)) + N''-'' '
+                       + N'+ RIGHT(N''0'' + CAST(MONTH(hd.ngayLapHD) AS NVARCHAR(2)), 2)';
+    ELSE
+        SET @groupExpr = N'CONVERT(NVARCHAR(10), CAST(hd.ngayLapHD AS DATE), 103)';
+
+    -- -----------------------------------------------------------------------
+    -- Xây dựng điều kiện WHERE động
+    -- -----------------------------------------------------------------------
+    DECLARE @whereBase NVARCHAR(MAX) = N'';
+
+    IF @tuNgay IS NOT NULL
+        SET @whereBase = @whereBase + N' AND CAST(hd.ngayLapHD AS DATE) >= @tuNgay';
+    IF @denNgay IS NOT NULL
+        SET @whereBase = @whereBase + N' AND CAST(hd.ngayLapHD AS DATE) <= @denNgay';
+    IF @maNV IS NOT NULL AND LEN(LTRIM(RTRIM(@maNV))) > 0
+        SET @whereBase = @whereBase + N' AND hd.nhanVienId = @maNV';
+
+    -- -----------------------------------------------------------------------
+    -- Query chính với 2 CTE:
+    --   CTE_Revenue : doanh thu, VAT, hàng trả (JOIN ChiTietHoaDon + SanPham)
+    --   CTE_COGS    : giá vốn hàng bán (JOIN PhanBoLoHang + LoHang)
+    --                 dùng subquery pbl_cost GROUP BY để tránh nhân bản dòng
+    --                 khi 1 ChiTietHoaDon được phân bổ từ nhiều lô (LoHang)
+    -- -----------------------------------------------------------------------
+    DECLARE @sql NVARCHAR(MAX) = N'
+;WITH CTE_Revenue AS (
+    SELECT
+        ' + @groupExpr + N' AS tg,
+
+        -- (1) Doanh Thu Gộp: BAN_HANG + DOI_HANG hàng xuất (soLuong > 0)
+        SUM(CASE
+                WHEN hd.loaiHD = ''BAN_HANG''
+                  OR (hd.loaiHD = ''DOI_HANG'' AND ct.soLuong > 0)
+                THEN ABS(ct.thanhTien)
+                ELSE 0
+            END) AS doanhThuGop,
+
+        -- (2) Thuế VAT — bóc từ giá đã bao gồm VAT: thanhTien × rate/(1+rate)
+        --     Nếu donGiaThucTe là giá CHƯA VAT, thay bằng:
+        --     ct.donGiaThucTe * ABS(ct.soLuong) * ISNULL(sp.thueVAT,0) / 100.0
+        SUM(CASE
+                WHEN hd.loaiHD = ''BAN_HANG''
+                  OR (hd.loaiHD = ''DOI_HANG'' AND ct.soLuong > 0)
+                THEN ROUND(
+                    ABS(ct.thanhTien)
+                    * (ISNULL(sp.thueVAT, 0) / 100.0)
+                    / (1.0 + ISNULL(sp.thueVAT, 0) / 100.0)
+                , 0)
+                ELSE 0
+            END) AS thueVAT,
+
+        -- (3) Hàng Bán Bị Trả Lại: TRA_HANG + DOI_HANG hàng nhập lại (soLuong < 0)
+        SUM(CASE
+                WHEN (   hd.loaiHD = ''TRA_HANG''
+                      OR (hd.loaiHD = ''DOI_HANG'' AND ct.soLuong < 0))
+                  AND hd.ghiChu LIKE N''%Hoàn thành%''
+                THEN ABS(ct.thanhTien)
+                ELSE 0
+            END) AS hangBanBiTraLai
+
+    FROM HoaDon hd
+    JOIN ChiTietHoaDon ct ON ct.hoaDonId = hd.id
+    JOIN SanPham sp        ON sp.id = ct.sanPhamId
+    WHERE hd.loaiHD IN (''BAN_HANG'', ''TRA_HANG'', ''DOI_HANG'')
+    ' + @whereBase + N'
+    GROUP BY ' + @groupExpr + N'
+),
+CTE_COGS AS (
+    SELECT
+        ' + @groupExpr + N' AS tg,
+
+        -- (5a) Giá vốn hàng xuất bán: BAN_HANG + DOI_HANG soLuong > 0
+        SUM(CASE
+                WHEN hd.loaiHD = ''BAN_HANG''
+                  OR (hd.loaiHD = ''DOI_HANG'' AND ct.soLuong > 0)
+                THEN ISNULL(pbl_cost.giaVon, 0)
+                ELSE 0
+            END) AS giaVonBan,
+
+        -- (5b) Hoàn lại giá vốn: TRA_HANG + DOI_HANG soLuong < 0 (hàng nhập kho lại)
+        SUM(CASE
+                WHEN (   hd.loaiHD = ''TRA_HANG''
+                      OR (hd.loaiHD = ''DOI_HANG'' AND ct.soLuong < 0))
+                  AND hd.ghiChu LIKE N''%Hoàn thành%''
+                THEN ISNULL(pbl_cost.giaVon, 0)
+                ELSE 0
+            END) AS giaVonHoan
+
+    FROM HoaDon hd
+    JOIN ChiTietHoaDon ct ON ct.hoaDonId = hd.id
+    -- Subquery gộp PhanBoLoHang trước → tránh nhân bản ct.thanhTien
+    -- khi 1 mặt hàng được xuất từ nhiều lô (PhanBoLoHang có nhiều dòng cho cùng ChiTietHoaDon)
+    LEFT JOIN (
+        SELECT
+            pbl.hoaDonId,
+            pbl.sanPhamId,
+            pbl.donViDoLuongId,
+            SUM(pbl.soLuong * lh.gia) AS giaVon
+        FROM PhanBoLoHang pbl
+        JOIN LoHang lh ON lh.id = pbl.loHangId
+        GROUP BY pbl.hoaDonId, pbl.sanPhamId, pbl.donViDoLuongId
+    ) pbl_cost ON pbl_cost.hoaDonId        = ct.hoaDonId
+              AND pbl_cost.sanPhamId       = ct.sanPhamId
+              AND pbl_cost.donViDoLuongId  = ct.donViDoLuongId
+    WHERE hd.loaiHD IN (''BAN_HANG'', ''TRA_HANG'', ''DOI_HANG'')
+    ' + @whereBase + N'
+    GROUP BY ' + @groupExpr + N'
+)
+-- -------------------------------------------------------------------------
+-- Kết quả cuối: FULL OUTER JOIN để giữ các kỳ chỉ có trả/đổi hàng
+-- -------------------------------------------------------------------------
+SELECT
+    ISNULL(r.tg, c.tg)                                                           AS thoiGian,
+    ISNULL(r.doanhThuGop,     0)                                                  AS doanhThuGop,
+    ISNULL(r.thueVAT,         0)                                                  AS thueVAT,
+    ISNULL(r.hangBanBiTraLai, 0)                                                  AS hangBanBiTraLai,
+
+    -- (4) Doanh Thu Thuần = Gộp − Trả lại − VAT
+    ISNULL(r.doanhThuGop, 0)
+    - ISNULL(r.hangBanBiTraLai, 0)
+    - ISNULL(r.thueVAT, 0)                                                        AS doanhThuThuan,
+
+    -- (5) Giá Vốn Hàng Bán = giaVonBan − giaVonHoan
+    ISNULL(c.giaVonBan,  0) - ISNULL(c.giaVonHoan, 0)                           AS giaVonHangBan,
+
+    -- (6) Lợi Nhuận Gộp = Doanh Thu Thuần − COGS
+    (ISNULL(r.doanhThuGop, 0) - ISNULL(r.hangBanBiTraLai, 0) - ISNULL(r.thueVAT, 0))
+    - (ISNULL(c.giaVonBan, 0) - ISNULL(c.giaVonHoan, 0))                        AS loiNhuanGop
+
+FROM CTE_Revenue r
+FULL OUTER JOIN CTE_COGS c ON c.tg = r.tg
+ORDER BY ISNULL(r.tg, c.tg) ASC;
+';
+
+    EXEC sp_executesql @sql,
+        N'@tuNgay DATE, @denNgay DATE, @maNV NVARCHAR(50)',
+        @tuNgay = @tuNgay,
+        @denNgay = @denNgay,
+        @maNV = @maNV;
+END;
+GO
+
+-- ===========================================================================
+-- Ví dụ gọi:
+-- ===========================================================================
+
+-- Báo cáo theo NGÀY, tháng 1/2025:
+EXEC dbo.sp_BaoCaoTaiChinh
+    @groupBy = 'NGAY',
+    @tuNgay  = '2025-01-01',
+    @denNgay = '2025-01-31';
+GO
+
+-- Báo cáo theo THÁNG, cả năm 2025:
+EXEC dbo.sp_BaoCaoTaiChinh
+    @groupBy = 'THANG',
+    @tuNgay  = '2025-01-01',
+    @denNgay = '2025-12-31';
+GO
+
+-- Báo cáo theo THÁNG, lọc theo nhân viên:
+EXEC dbo.sp_BaoCaoTaiChinh
+    @groupBy = 'THANG',
+    @tuNgay  = '2025-01-01',
+    @denNgay = '2025-12-31',
+    @maNV    = 'DS-0001';
+GO
+
+-- Tổng hợp toàn bộ (không giới hạn thời gian, không lọc NV):
+EXEC dbo.sp_BaoCaoTaiChinh @groupBy = 'THANG';
+GO
+
 USE [master]
 GO
 ALTER DATABASE [MYCAREPHARMACY] SET READ_WRITE
