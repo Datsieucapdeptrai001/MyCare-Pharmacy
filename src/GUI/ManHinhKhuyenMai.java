@@ -114,6 +114,12 @@ public class ManHinhKhuyenMai extends JPanel {
         loadCauHinhTichDiem();
     }
 
+    public void openAddDialogWithAutoFill(java.util.Map<String, Object> autoFillData) {
+        SwingUtilities.invokeLater(() -> {
+            new PromoDialog(autoFillData).showDialog();
+        });
+    }
+
     private void addCurrencyFormatting(JTextField field) {
         field.enableInputMethods(false); 
         field.addKeyListener(new KeyAdapter() {

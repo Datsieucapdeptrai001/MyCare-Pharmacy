@@ -187,8 +187,8 @@ public class BUS_ThongKe {
     }
 
     public int getHoaDonHomNay(ThongKeFilter filter) {
-        String today = java.time.LocalDate.now().toString();
-        return dao.getRawHDByDay(today, filter).size();
+        // BUG FIX: đếm TẤT CẢ loại HĐ hôm nay (BAN_HANG + TRA_HANG + DOI_HANG)
+        return dao.getSoTatCaHDHomNay(filter);
     }
 
     public double getDoanhThuHomNay(ThongKeFilter filter) {
@@ -423,6 +423,15 @@ public class BUS_ThongKe {
                 if (cur[0] <= 0) spMap.remove(ten); else spMap.put(ten, cur);
             }
         }
+        // BUG FIX: Thêm sản phẩm từ DOI_HANG xuất ra (soLuong > 0)
+        List<Object[]> doiList = dao.getSPDoiHangXuatRaTrongNgay(dateYMD, filter);
+        for (Object[] doi : doiList) {
+            String ten = (String) doi[0];
+            int sl = (Integer) doi[1];
+            double dtSP = (Double) doi[2];
+            double[] cur = spMap.getOrDefault(ten, new double[]{0, 0});
+            cur[0] += sl; cur[1] += dtSP; spMap.put(ten, cur);
+        }
         List<Object[]> result = new ArrayList<>();
         spMap.entrySet().stream().sorted((a, b) -> Double.compare(b.getValue()[1], a.getValue()[1])).limit(10)
                 .forEach(e -> result.add(new Object[] { e.getKey(), (int) e.getValue()[0], e.getValue()[1] / 1_000_000.0 }));
@@ -535,14 +544,26 @@ public class BUS_ThongKe {
 
     public double[] getKpiDoiChieu(ThongKeFilter f) {
         int soHD = dao.getSoHoaDonHomNay(f);
-        // Lấy đúng danh sách HĐ theo filter: nếu có startTime thì lọc từ giờ bắt đầu ca
+        // BUGFIX: Luôn giới hạn trong ngày để tránh lấy toàn bộ lịch sử từ trước đến nay.
+        // - Nhân viên có startTime: hôm nay + từ giờ bắt đầu ca.
+        // - Admin có fromDate/toDate (Tuần/Tháng): dùng getRawHDByFilter để lấy range đó.
+        // - Mặc định (admin xem hôm nay / ca hiện tại theo giờ): chỉ hôm nay.
         List<Object[]> rows;
         String dateCondForTra;
+        String today = LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+
         if (f != null && f.startTime != null) {
+            // Nhân viên trong ca: hôm nay + từ giờ startTime trở đi
+            rows = dao.getRawHDByDay(today, f);
+            dateCondForTra = "CAST(hd.ngayLapHD AS DATE) = CAST(GETDATE() AS DATE)"
+                    + " AND hd.ngayLapHD >= '" + f.startTime.toString().replace("T", " ") + "'";
+        } else if (f != null && f.fromDate != null && f.toDate != null) {
+            // Admin với khoảng ngày cụ thể (Tuần này / Tháng này / Hôm nay)
             rows = dao.getRawHDByFilter(f);
-            dateCondForTra = "hd.ngayLapHD >= '" + f.startTime.toString().replace("T", " ") + "'";
+            dateCondForTra = "CAST(hd.ngayLapHD AS DATE) BETWEEN '" + f.fromDate + "' AND '" + f.toDate + "'";
         } else {
-            rows = dao.getRawHDByDay(LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")), f);
+            // Admin xem hôm nay (có thể có ca filter theo giờ)
+            rows = dao.getRawHDByDay(today, f);
             dateCondForTra = "CAST(hd.ngayLapHD AS DATE) = CAST(GETDATE() AS DATE)";
         }
 
@@ -727,8 +748,177 @@ public class BUS_ThongKe {
     public double[] getNhapHang12Thang(int year) { 
     	return dao.getNhapHang12Thang(year); 
     }
-    public List<Object[]> getGoiYKhuyenMai(int year) { 
-    	return dao.getGoiYKhuyenMai(year); 
+    /**
+     * Phân tích và gợi ý KM thông minh theo 2 nguồn:
+     * NGUỒN 1 – Biên LN + tốc độ bán (chỉ SP có giá vốn):
+     *   - Biên >40% + bán chậm  → Mua 2 tặng 1
+     *   - Biên >40% + bán chạy  → Giảm 10%
+     *   - Biên 20-40% + bán chậm→ Mua 2 tặng 1
+     *   - Biên 20-40% + bán chạy→ Giảm 15%
+     *   - Biên <20%             → Giảm 5%
+     * NGUỒN 2 – Hàng sắp hết hạn ≤90 ngày:
+     *   → Gợi ý "Mua [SP bán chạy] tặng [SP sắp hết hạn]"
+     *   → Hiển thị kèm tag [Sắp HH] và số ngày còn lại
+     */
+    public List<Object[]> getGoiYKhuyenMai(int year) {
+        List<Object[]> raw = dao.getGoiYKhuyenMai(year);
+        List<Object[]> result = new ArrayList<>();
+
+        // ── NGUỒN 1: Phân tích biên LN + tốc độ bán ──
+        double tongSl = 0;
+        int countCoGiaVon = 0;
+        for (Object[] r : raw) {
+            double bienLN = (double) r[5];
+            if (bienLN > 0) {
+                tongSl += (int) r[2];
+                countCoGiaVon++;
+            }
+        }
+        double slTrungBinh = countCoGiaVon > 0 ? tongSl / countCoGiaVon : 1;
+
+        // Lấy tên SP bán chạy nhất để dùng làm "SP mua" trong gợi ý hàng HH
+        String spBanChayNhat = "";
+        int maxSl = 0;
+        for (Object[] r : raw) {
+            double bienLN = (double) r[5];
+            if (bienLN > 0) {
+                int sl = (int) r[2];
+                if (sl > maxSl) { maxSl = sl; spBanChayNhat = String.valueOf(r[0]); }
+            }
+        }
+
+        int thangHienTai = java.time.LocalDate.now().getMonthValue();
+
+        for (Object[] r : raw) {
+            double bienLN = (double) r[5];
+            if (bienLN <= 0) continue; // Bỏ qua SP không có giá vốn
+
+            String tenSP  = String.valueOf(r[0]);
+            int slBan     = (int) r[2];
+            boolean banChay = slBan >= slTrungBinh;
+
+            String loaiKMGoiY, lyDoGoiY, mucGiamGoiY;
+
+            if (bienLN > 40) {
+                if (!banChay) {
+                    loaiKMGoiY  = "Mua 2 tặng 1";
+                    lyDoGoiY    = "Biên LN cao, cần kích cầu";
+                    mucGiamGoiY = "0";
+                } else {
+                    loaiKMGoiY  = "Giảm 10% giá bán";
+                    lyDoGoiY    = "Biên LN cao, sản phẩm bán chạy";
+                    mucGiamGoiY = "10";
+                }
+            } else if (bienLN >= 20) {
+                if (!banChay) {
+                    loaiKMGoiY  = "Mua 2 tặng 1";
+                    lyDoGoiY    = "Bán chậm, cần kích cầu";
+                    mucGiamGoiY = "0";
+                } else {
+                    loaiKMGoiY  = "Giảm 15% giá bán";
+                    lyDoGoiY    = "Biên LN trung bình, bán chạy";
+                    mucGiamGoiY = "15";
+                }
+            } else {
+                loaiKMGoiY  = "Giảm 5% giá bán";
+                lyDoGoiY    = "Biên LN thấp, KM nhẹ để giữ giá";
+                mucGiamGoiY = "5";
+            }
+
+            // ── Enrich 1: Kiểm tra SP đã đang có KM chạy chưa ──
+            boolean coKM = dao.coKMDangChay(tenSP);
+            if (coKM) {
+                loaiKMGoiY = "Đang có KM";
+                mucGiamGoiY = "-";
+                lyDoGoiY += " | ⚠ SP đang trong chương trình KM";
+            }
+
+            // ── Enrich 2: Xu hướng quý này vs quý trước ──
+            int[] xuHuong = dao.getXuHuongBanSP(tenSP, year);
+            int slQuyNay = xuHuong[0], slQuyCu = xuHuong[1];
+            if (slQuyCu > 0 && slQuyNay < slQuyCu) {
+                int pctGiam = (int) Math.round((slQuyCu - slQuyNay) * 100.0 / slQuyCu);
+                lyDoGoiY += " | ↓ Q này giảm " + pctGiam + "% so Q trước → cần KM kích cầu";
+            } else if (slQuyCu > 0 && slQuyNay > slQuyCu && !banChay) {
+                // Đang tăng nhưng chưa đạt trung bình — không cần gợi ý mạnh
+                lyDoGoiY += " | ↑ Đang tăng trưởng Q này";
+            }
+
+            // ── Enrich 3: Mùa vụ — so cùng kỳ năm trước ──
+            int slCungKy = dao.getSlBanCungKy(tenSP, thangHienTai, year);
+            if (!banChay && slCungKy == 0) {
+                lyDoGoiY += " | Cùng kỳ năm trước cũng chậm — xem xét mùa vụ";
+            } else if (!banChay && slCungKy > 0 && slBan < slCungKy / 2) {
+                lyDoGoiY += " | Thấp hơn cùng kỳ năm trước (" + slCungKy + " sp)";
+            }
+
+            result.add(new Object[]{
+                r[0], r[1], r[2], r[3], r[4],
+                bienLN, coKM,          // [6] boolean coKM thực sự
+                loaiKMGoiY, lyDoGoiY, mucGiamGoiY,
+                false                  // [10] isHetHan = false
+            });
+        }
+
+        // ── NGUỒN 2: Hàng sắp hết hạn ≤90 ngày ──
+        try {
+            List<Object[]> dsHetHan = dao.getSpSapHetHan();
+            java.time.LocalDate homNay = java.time.LocalDate.now();
+
+            // Tập tên SP đã có trong gợi ý, tránh trùng
+            java.util.Set<String> tenDaCoGoiY = new java.util.HashSet<>();
+            for (Object[] r : result) tenDaCoGoiY.add(String.valueOf(r[0]).toLowerCase());
+
+            for (Object[] hh : dsHetHan) {
+                // hh: [maLo, tenSP, kho, slTon, ngayHetHan]
+                String tenSP     = String.valueOf(hh[1]);
+                String ngayHHStr = String.valueOf(hh[4]);
+                int slTon        = 0;
+                try { slTon = Integer.parseInt(String.valueOf(hh[3]).replaceAll("[^0-9]", "")); } catch (Exception ignored) {}
+
+                // Chỉ lấy SP tồn > 0 và chưa có trong gợi ý
+                if (slTon <= 0) continue;
+                if (tenDaCoGoiY.contains(tenSP.toLowerCase())) continue;
+
+                // Parse ngày hết hạn (thử yyyy-MM-dd rồi dd/MM/yyyy)
+                java.time.LocalDate ngayHH = null;
+                for (String fmt : new String[]{"yyyy-MM-dd", "dd/MM/yyyy", "yyyy-MM-dd HH:mm:ss"}) {
+                    try {
+                        ngayHH = java.time.LocalDate.parse(ngayHHStr.length() > 10 ? ngayHHStr.substring(0, 10) : ngayHHStr,
+                                java.time.format.DateTimeFormatter.ofPattern(fmt.length() > 10 ? "yyyy-MM-dd" : fmt));
+                        break;
+                    } catch (Exception ignored) {}
+                }
+                if (ngayHH == null) continue;
+
+                long soNgayConLai = java.time.temporal.ChronoUnit.DAYS.between(homNay, ngayHH);
+                if (soNgayConLai < 0 || soNgayConLai > 90) continue; // Chỉ lấy ≤90 ngày
+
+                String spMua = spBanChayNhat.isEmpty() ? "bất kỳ sản phẩm" : spBanChayNhat;
+                String loaiKMGoiY  = "Mua " + spMua + " tặng " + tenSP;
+                String lyDoGoiY    = "[Sắp HH] Còn " + soNgayConLai + " ngày - Tồn " + slTon + " SP";
+                String mucGiamGoiY = "0";
+
+                result.add(new Object[]{
+                    tenSP,           // [0] tenSP
+                    String.valueOf(hh[2]), // [1] kho (thay danhMuc)
+                    slTon,           // [2] slTon (thay slBan)
+                    0.0,             // [3] dt = 0
+                    0.0,             // [4] giaVon = 0
+                    0.0,             // [5] bienLN = 0 (không dùng để filter nữa)
+                    false,           // [6] coKM
+                    loaiKMGoiY,      // [7]
+                    lyDoGoiY,        // [8]
+                    mucGiamGoiY,     // [9]
+                    true             // [10] isHetHan = true → GUI highlight đỏ
+                });
+                tenDaCoGoiY.add(tenSP.toLowerCase());
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return result;
     }
     public List<Object[]> getKhachHangVIPMuaHomNay(int limit) { 
     	return dao.getKhachHangVIPMuaHomNay(limit); 

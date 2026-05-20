@@ -439,12 +439,29 @@ public class ManHinhChinh extends JPanel {
         List<Object[]> listTopSP = busThongKe.getTopSPTrongNgay(java.time.LocalDate.now().toString(), caFilterNV);
         // Tổng số lượng SP thực tế = BAN_HANG + DOI_HANG(xuất) - TRA_HANG - DOI_HANG(trả)
         int sp = busThongKe.getTongSoLuongSPHomNay(caFilterNV);
-        
-        int hd = (int) kpiData[0];
+
+        // BUGFIX: đếm HĐ trực tiếp từ getRawHDByDay để tránh lỗi soPhieuTra không lọc theo ngày.
+        // Admin: đếm toàn bộ BAN_HANG hôm nay (có thể theo ca nếu filterCa != 0).
+        // Nhân viên: đếm BAN_HANG hôm nay từ giờ bắt đầu ca (caFilterNV.startTime).
+        int hd = busThongKe.getHoaDonHomNay(caFilterNV);
+
+        // Subtitle KPI Hóa đơn
+        String hdKpiSub;
+        if (isAdminKPI) {
+            hdKpiSub = filterCa == 0 ? "Toàn cửa hàng (hôm nay)"
+                     : filterCa == 1 ? "Ca Sáng hôm nay"
+                     : filterCa == 2 ? "Ca Chiều hôm nay" : "Ca Tối hôm nay";
+        } else {
+            hdKpiSub = "Ca của bạn";
+        }
+
         int kh = busThongKe.getTongKhachHang();
-        
-        double dtGopThucTe = kpiData[4]; // Tổng doanh thu bán ra (trước khi trừ trả hàng)
-        if (kpiData.length > 7 && kpiData[7] > 0) dtGopThucTe = Math.max(0, kpiData[4] - kpiData[7]); // Trừ trả hàng
+
+        // BUG FIX: Dùng getDTTheoGioTrongNgay để tính tổng tiền đúng (bao gồm cả DOI/TRA net)
+        // thay vì kpiData[4] - kpiData[7] dễ bị tính sai khi có đổi hàng phức tạp
+        double[] dtsGio = busThongKe.getDTTheoGioTrongNgay(java.time.LocalDate.now().toString(), caFilterNV);
+        double dtGopThucTe = 0;
+        for (double d : dtsGio) dtGopThucTe += d * 1_000_000.0;
 
         // KPI 1: Top SP
         row.add(kpiCard("Sản phẩm bán ra hôm nay", String.valueOf(sp), "SP (đã tính đổi/trả)", "#EEF2FF", "#3D52A0", "PILL",
@@ -460,7 +477,7 @@ public class ManHinhChinh extends JPanel {
                 }));
 
         // KPI 2: Hóa đơn
-        row.add(kpiCard("Hóa đơn hôm nay", String.valueOf(hd), "Đã lọc theo ca/NV", "#ECFDF5", "#00A76F", "DOCUMENT",
+        row.add(kpiCard("Hóa đơn hôm nay", String.valueOf(hd), hdKpiSub, "#ECFDF5", "#00A76F", "DOCUMENT",
                 () -> {
                     DefaultTableModel model = new DefaultTableModel(new String[] { "Mã HĐ", "Loại", "Khách hàng", "Giao dịch", "Giờ lập" }, 0) {
                         public boolean isCellEditable(int r, int c) { return false; }
@@ -1256,10 +1273,63 @@ public class ManHinhChinh extends JPanel {
         BUS.BUS_ThongKe.ThongKeFilter filter = new BUS.BUS_ThongKe.ThongKeFilter();
 
         if (isAdmin) {
+            // ── Admin: combobox lọc thời gian với UI hiện đại ─────────────────
             String[] locOptions = {"Ca hiện tại", "Hôm nay", "Tuần này", "Tháng này"};
-            JComboBox<String> cboLoc = new JComboBox<>(locOptions);
+            String[] locIcons   = {"⏱", "📅", "🗓", "📆"};
+
+            // Styled JComboBox
+            JComboBox<String> cboLoc = new JComboBox<String>(locOptions) {
+                @Override public Dimension getPreferredSize() { return new Dimension(160, 34); }
+            };
             cboLoc.setSelectedIndex(currentDoiChieuFilterIndex);
-            
+            cboLoc.setFont(new Font("Segoe UI", Font.BOLD, 12));
+            cboLoc.setBackground(Color.WHITE);
+            cboLoc.setForeground(BLUE);
+            cboLoc.setFocusable(false);
+            cboLoc.setCursor(new Cursor(Cursor.HAND_CURSOR));
+            // Custom renderer — items trong popup to hơn, có highlight
+            cboLoc.setRenderer(new javax.swing.DefaultListCellRenderer() {
+                @Override
+                public Component getListCellRendererComponent(
+                        JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
+                    JLabel lbl = (JLabel) super.getListCellRendererComponent(
+                            list, value, index, isSelected, cellHasFocus);
+                    String v = value == null ? "" : value.toString();
+                    // Prepend icon nếu đang render dropdown (index >= 0)
+                    if (index >= 0 && index < locIcons.length) lbl.setText(locIcons[index] + "  " + v);
+                    lbl.setFont(new Font("Segoe UI", index == cboLoc.getSelectedIndex() ? Font.BOLD : Font.PLAIN, 12));
+                    lbl.setBorder(new EmptyBorder(7, 12, 7, 12));
+                    if (isSelected) {
+                        lbl.setBackground(Color.decode("#EBF5FF"));
+                        lbl.setForeground(BLUE);
+                    } else {
+                        lbl.setBackground(Color.WHITE);
+                        lbl.setForeground(index == cboLoc.getSelectedIndex()
+                                ? BLUE : Color.decode("#212B36"));
+                    }
+                    return lbl;
+                }
+            });
+            // Style vùng button (phần hiển thị khi đóng)
+            cboLoc.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(BLUE, 1, true),
+                    new EmptyBorder(2, 8, 2, 4)));
+            // Popup background trắng
+            Object ui = cboLoc.getUI();
+            if (ui instanceof javax.swing.plaf.basic.BasicComboBoxUI) {
+                try {
+                    java.lang.reflect.Field popupField =
+                            javax.swing.plaf.basic.BasicComboBoxUI.class.getDeclaredField("popup");
+                    popupField.setAccessible(true);
+                    Object popup = popupField.get(ui);
+                    if (popup instanceof javax.swing.plaf.basic.BasicComboPopup) {
+                        JScrollPane sp2 = (JScrollPane)
+                                ((javax.swing.plaf.basic.BasicComboPopup) popup).getComponent(0);
+                        sp2.setBorder(BorderFactory.createLineBorder(Color.decode("#DFE3E8"), 1));
+                    }
+                } catch (Exception ignored) {}
+            }
+
             cboLoc.addActionListener(e -> {
                 currentDoiChieuFilterIndex = cboLoc.getSelectedIndex();
                 doiChieuPanel.removeAll();
@@ -1267,33 +1337,72 @@ public class ManHinhChinh extends JPanel {
                 doiChieuPanel.revalidate();
                 doiChieuPanel.repaint();
             });
-            
-            JPanel pnlFilter = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+
+            JLabel lblFilter = new JLabel("Bộ lọc: ");
+            lblFilter.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+            lblFilter.setForeground(Color.decode("#637381"));
+            JPanel pnlFilter = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
             pnlFilter.setOpaque(false);
-            pnlFilter.add(new JLabel("Bộ lọc thời gian: "));
+            pnlFilter.add(lblFilter);
             pnlFilter.add(cboLoc);
             topRow.add(pnlFilter, BorderLayout.EAST);
 
+            // BUGFIX: xây filter đúng theo index — "Ca hiện tại" auto-detect ca theo giờ + chỉ hôm nay
             java.time.LocalDate now = java.time.LocalDate.now();
             if (currentDoiChieuFilterIndex == 0) {
-                filter = getHienTaiFilter(); 
-            } else if (currentDoiChieuFilterIndex == 1) { 
+                // "Ca hiện tại" cho admin: detect ca từ giờ hiện tại, chỉ hôm nay
+                int hour = java.time.LocalTime.now().getHour();
                 filter.fromDate = java.sql.Date.valueOf(now);
-                filter.toDate = java.sql.Date.valueOf(now);
-            } else if (currentDoiChieuFilterIndex == 2) { 
+                filter.toDate   = java.sql.Date.valueOf(now);
+                filter.modeLocThoiGian = "TUYCHINH";
+                if (hour >= 6 && hour <= 13)       filter.ca = 1; // Ca Sáng
+                else if (hour >= 14 && hour <= 21) filter.ca = 2; // Ca Chiều
+                else                               filter.ca = 3; // Ca Tối
+            } else if (currentDoiChieuFilterIndex == 1) {
+                filter.fromDate = java.sql.Date.valueOf(now);
+                filter.toDate   = java.sql.Date.valueOf(now);
+                filter.modeLocThoiGian = "TUYCHINH";
+            } else if (currentDoiChieuFilterIndex == 2) {
                 filter.fromDate = java.sql.Date.valueOf(now.with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY)));
-                filter.toDate = java.sql.Date.valueOf(now.with(java.time.temporal.TemporalAdjusters.nextOrSame(java.time.DayOfWeek.SUNDAY)));
-            } else if (currentDoiChieuFilterIndex == 3) { 
+                filter.toDate   = java.sql.Date.valueOf(now.with(java.time.temporal.TemporalAdjusters.nextOrSame(java.time.DayOfWeek.SUNDAY)));
+                filter.modeLocThoiGian = "TUYCHINH";
+            } else if (currentDoiChieuFilterIndex == 3) {
                 filter.fromDate = java.sql.Date.valueOf(now.withDayOfMonth(1));
-                filter.toDate = java.sql.Date.valueOf(now.withDayOfMonth(now.lengthOfMonth()));
+                filter.toDate   = java.sql.Date.valueOf(now.withDayOfMonth(now.lengthOfMonth()));
+                filter.modeLocThoiGian = "TUYCHINH";
             }
         } else {
-            JLabel lblSub = new JLabel("<html><span style='color:gray;font-size:11px;'>(Chỉ hiển thị ca làm việc của bạn)</span></html>");
-            topRow.add(lblSub, BorderLayout.SOUTH);
+            // ── Nhân viên: KHÔNG có combobox — chỉ xem ca của mình ─────────────
+            // Hiển thị badge thông tin ca
             filter = getHienTaiFilter();
-            try {
-                filter.maNV = Utils.UserSession.getInstance().getMaNhanVien();
-            } catch(Exception e) {}
+            try { filter.maNV = Utils.UserSession.getInstance().getMaNhanVien(); } catch(Exception ex) {}
+
+            CaLamViec caHienTai = Utils.UserSession.getInstance().getCaHienTai();
+            String caTimeLabel = "";
+            if (caHienTai != null && caHienTai.getThoiGianBatDau() != null) {
+                caTimeLabel = " · Từ " + caHienTai.getThoiGianBatDau()
+                        .format(java.time.format.DateTimeFormatter.ofPattern("HH:mm dd/MM"));
+            }
+            // Badge hiển thị trạng thái ca
+            JPanel badgePanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
+            badgePanel.setOpaque(false);
+
+            JLabel badgeCa = new JLabel(" Ca của bạn" + caTimeLabel + " ");
+            badgeCa.setFont(new Font("Segoe UI", Font.BOLD, 11));
+            badgeCa.setForeground(BLUE);
+            badgeCa.setOpaque(true);
+            badgeCa.setBackground(Color.decode("#EBF5FF"));
+            badgeCa.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(BLUE, 1, true),
+                    new EmptyBorder(4, 10, 4, 10)));
+            badgePanel.add(badgeCa);
+
+            JLabel lockHint = new JLabel("🔒 Chỉ xem ca của bạn");
+            lockHint.setFont(new Font("Segoe UI", Font.PLAIN, 10));
+            lockHint.setForeground(Color.decode("#919EAB"));
+            badgePanel.add(lockHint);
+
+            topRow.add(badgePanel, BorderLayout.EAST);
         }
         root.add(topRow, BorderLayout.NORTH);
 
