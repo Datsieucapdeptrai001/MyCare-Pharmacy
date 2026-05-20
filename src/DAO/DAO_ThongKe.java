@@ -1615,28 +1615,31 @@ public class DAO_ThongKe {
     }
  
     public double[] getTienVaGiaVonHangTra(BUS.BUS_ThongKe.ThongKeFilter filter) {
-        // [0] = Tiền hoàn khách (CoVAT), [1] = Tiền hoàn khách (Chưa VAT), [2] = Giá vốn hoàn lại kho
         double[] kq = new double[]{0, 0, 0};
-        
-        // Pủn Fix: Dùng Sub-query (pbl_cost) Gom nhóm PhanBoLoHang lại trước khi JOIN
-        // Đảm bảo ct.thanhTien tuyệt đối không bị nhân bản nếu hàng xuất từ nhiều lô!
         StringBuilder sql = new StringBuilder(
-            "SELECT " +
-            "SUM(ABS(ct.thanhTien)) as tienHoanCoVAT, " +
-            "SUM(ROUND(ABS(ct.thanhTien) / (1 + ISNULL(sp.thueVAT, 0)/100.0), 0)) as tienHoanChuaVAT, " +
-            "SUM(ISNULL(pbl_cost.giaVon, 0)) as giaVonHoan " +
-            "FROM HoaDon hd " +
-            "JOIN ChiTietHoaDon ct ON ct.hoaDonId = hd.id " +
-            "JOIN SanPham sp ON ct.sanPhamId = sp.id " +
-            "LEFT JOIN (" +
-            "    SELECT pbl.hoaDonId, pbl.sanPhamId, pbl.donViDoLuongId, SUM(pbl.soLuong * lh.gia) as giaVon " +
-            "    FROM PhanBoLoHang pbl " +
-            "    JOIN LoHang lh ON lh.id = pbl.loHangId " +
-            "    GROUP BY pbl.hoaDonId, pbl.sanPhamId, pbl.donViDoLuongId" +
-            ") pbl_cost ON pbl_cost.hoaDonId = ct.hoaDonId AND pbl_cost.sanPhamId = ct.sanPhamId AND pbl_cost.donViDoLuongId = ct.donViDoLuongId " +
-            "WHERE hd.loaiHD IN ('TRA_HANG', 'DOI_HANG') AND hd.ghiChu LIKE N'%Hoàn thành%' " +
-            "AND (hd.loaiHD = 'TRA_HANG' OR ct.soLuong < 0)"
-        );
+                "SELECT " +
+                "SUM(ABS(ct.thanhTien)) as tienHoanCoVAT, " +
+                "SUM(ROUND(ABS(ct.thanhTien) / (1 + ISNULL(sp.thueVAT, 0)/100.0), 0)) as tienHoanChuaVAT, " +
+                "SUM(ISNULL(pbl_cost.giaVon, ISNULL(pbl_goc.donGiaVonGoc * ABS(ct.soLuong), 0))) as giaVonHoan " +
+                "FROM HoaDon hd " +
+                "JOIN ChiTietHoaDon ct ON ct.hoaDonId = hd.id " +
+                "JOIN SanPham sp ON ct.sanPhamId = sp.id " +
+                "LEFT JOIN (" +
+                "    SELECT pbl.hoaDonId, pbl.sanPhamId, pbl.donViDoLuongId, SUM(pbl.soLuong * lh.gia) as giaVon " +
+                "    FROM PhanBoLoHang pbl " +
+                "    JOIN LoHang lh ON lh.id = pbl.loHangId " +
+                "    GROUP BY pbl.hoaDonId, pbl.sanPhamId, pbl.donViDoLuongId" +
+                ") pbl_cost ON pbl_cost.hoaDonId = ct.hoaDonId AND pbl_cost.sanPhamId = ct.sanPhamId AND pbl_cost.donViDoLuongId = ct.donViDoLuongId " +
+                "LEFT JOIN (" +
+                "    SELECT pbl.hoaDonId, pbl.sanPhamId, pbl.donViDoLuongId, " +
+                "           (SUM(pbl.soLuong * lh.gia) / NULLIF(SUM(pbl.soLuong), 0)) AS donGiaVonGoc " +
+                "    FROM PhanBoLoHang pbl " +
+                "    JOIN LoHang lh ON lh.id = pbl.loHangId " +
+                "    GROUP BY pbl.hoaDonId, pbl.sanPhamId, pbl.donViDoLuongId " +
+                ") pbl_goc ON pbl_goc.hoaDonId = hd.hoaDonGocId AND pbl_goc.sanPhamId = ct.sanPhamId AND pbl_goc.donViDoLuongId = ct.donViDoLuongId " +
+                "WHERE hd.loaiHD IN ('TRA_HANG', 'DOI_HANG') AND hd.ghiChu LIKE N'%Hoàn thành%' " +
+                "AND (hd.loaiHD = 'TRA_HANG' OR ct.soLuong < 0)"
+            );
         
         List<Object> params = new ArrayList<>();
         applyFilter(filter, sql, params, "hd.ngayLapHD", "hd.nhanVienId");
@@ -1822,96 +1825,90 @@ public class DAO_ThongKe {
          applyFilter(filter, filterForCogs, paramsCogs, "hd.ngayLapHD", "hd.nhanVienId");
 
          String sql =
-             "WITH CTE_Revenue AS (\n"
-           + "  SELECT\n"
-           + "    " + groupExpr + " AS tg,\n"
-           + "\n"
-           + "    -- (1) Doanh Thu Gop: BAN_HANG + DOI_HANG soLuong > 0\n"
-           + "    SUM(CASE\n"
-           + "          WHEN hd.loaiHD = 'BAN_HANG'\n"
-           + "            OR (hd.loaiHD = 'DOI_HANG' AND ct.soLuong > 0)\n"
-           + "          THEN ABS(ct.thanhTien) ELSE 0\n"
-           + "        END) AS doanhThuGop,\n"
-           + "\n"
-           + "    -- (2) Thue VAT: boc VAT tu gia da bao gom VAT = thanhTien x rate/(100+rate)\n"
-           + "    --    Neu donGiaThucTe la gia CHUA VAT: doi thanh:\n"
-           + "    --    ct.donGiaThucTe * ABS(ct.soLuong) * ISNULL(sp.thueVAT,0) / 100.0\n"
-           + "    SUM(CASE\n"
-           + "          WHEN hd.loaiHD = 'BAN_HANG'\n"
-           + "            OR (hd.loaiHD = 'DOI_HANG' AND ct.soLuong > 0)\n"
-           + "          THEN ROUND(\n"
-           + "                 ABS(ct.thanhTien)\n"
-           + "                 * (ISNULL(sp.thueVAT, 0) / 100.0)\n"
-           + "                 / (1.0 + ISNULL(sp.thueVAT, 0) / 100.0)\n"
-           + "               , 0)\n"
-           + "          ELSE 0\n"
-           + "        END) AS thueVAT,\n"
-           + "\n"
-           + "    -- (3) Hang Ban Bi Tra Lai: TRA_HANG + DOI_HANG soLuong < 0\n"
-           + "    SUM(CASE\n"
-           + "          WHEN (   hd.loaiHD = 'TRA_HANG'\n"
-           + "                OR (hd.loaiHD = 'DOI_HANG' AND ct.soLuong < 0))\n"
-           + "            AND hd.ghiChu LIKE N'%Hoàn thành%'\n"
-           + "          THEN ABS(ct.thanhTien) ELSE 0\n"
-           + "        END) AS hangBanBiTraLai\n"
-           + "\n"
-           + "  FROM HoaDon hd\n"
-           + "  JOIN ChiTietHoaDon ct ON ct.hoaDonId = hd.id\n"
-           + "  JOIN SanPham sp        ON sp.id = ct.sanPhamId\n"
-           + "  WHERE hd.loaiHD IN ('BAN_HANG', 'TRA_HANG', 'DOI_HANG')\n"
-           + filterForRevenue.toString() + "\n"
-           + "  GROUP BY " + groupExpr + "\n"
-           + "),\n"
-           + "CTE_COGS AS (\n"
-           + "  SELECT\n"
-           + "    " + groupExpr + " AS tg,\n"
-           + "\n"
-           + "    -- (5a) Gia von hang xuat ban: BAN_HANG + DOI_HANG soLuong > 0\n"
-           + "    SUM(CASE\n"
-           + "          WHEN hd.loaiHD = 'BAN_HANG'\n"
-           + "            OR (hd.loaiHD = 'DOI_HANG' AND ct.soLuong > 0)\n"
-           + "          THEN ISNULL(pbl_cost.giaVon, 0) ELSE 0\n"
-           + "        END) AS giaVonBan,\n"
-           + "\n"
-           + "    -- (5b) Hoan lai gia von: TRA_HANG + DOI_HANG soLuong < 0\n"
-           + "    SUM(CASE\n"
-           + "          WHEN (   hd.loaiHD = 'TRA_HANG'\n"
-           + "                OR (hd.loaiHD = 'DOI_HANG' AND ct.soLuong < 0))\n"
-           + "            AND hd.ghiChu LIKE N'%Hoàn thành%'\n"
-           + "          THEN ISNULL(pbl_cost.giaVon, 0) ELSE 0\n"
-           + "        END) AS giaVonHoan\n"
-           + "\n"
-           + "  FROM HoaDon hd\n"
-           + "  JOIN ChiTietHoaDon ct ON ct.hoaDonId = hd.id\n"
-           + "  -- Subquery GROUP BY PhanBoLoHang truoc khi JOIN de tranh nhan ban dong\n"
-           + "  -- khi 1 ChiTietHoaDon duoc phan bo tu nhieu lo hang khac nhau\n"
-           + "  LEFT JOIN (\n"
-           + "      SELECT pbl.hoaDonId, pbl.sanPhamId, pbl.donViDoLuongId,\n"
-           + "             SUM(pbl.soLuong * lh.gia) AS giaVon\n"
-           + "      FROM PhanBoLoHang pbl\n"
-           + "      JOIN LoHang lh ON lh.id = pbl.loHangId\n"
-           + "      GROUP BY pbl.hoaDonId, pbl.sanPhamId, pbl.donViDoLuongId\n"
-           + "  ) pbl_cost ON pbl_cost.hoaDonId       = ct.hoaDonId\n"
-           + "            AND pbl_cost.sanPhamId       = ct.sanPhamId\n"
-           + "            AND pbl_cost.donViDoLuongId  = ct.donViDoLuongId\n"
-           + "  WHERE hd.loaiHD IN ('BAN_HANG', 'TRA_HANG', 'DOI_HANG')\n"
-           + filterForCogs.toString() + "\n"
-           + "  GROUP BY " + groupExpr + "\n"
-           + ")\n"
-           + "SELECT\n"
-           + "  ISNULL(r.tg, c.tg)                                              AS thoiGian,\n"
-           + "  ISNULL(r.doanhThuGop,     0)                                    AS doanhThuGop,\n"
-           + "  ISNULL(r.thueVAT,         0)                                    AS thueVAT,\n"
-           + "  ISNULL(r.hangBanBiTraLai, 0)                                    AS hangBanBiTraLai,\n"
-           + "  ISNULL(r.doanhThuGop, 0) - ISNULL(r.hangBanBiTraLai, 0)\n"
-           + "    - ISNULL(r.thueVAT, 0)                                        AS doanhThuThuan,\n"
-           + "  ISNULL(c.giaVonBan, 0) - ISNULL(c.giaVonHoan, 0)              AS giaVonHangBan,\n"
-           + "  (ISNULL(r.doanhThuGop, 0) - ISNULL(r.hangBanBiTraLai, 0)\n"
-           + "    - ISNULL(r.thueVAT, 0))\n"
-           + "  - (ISNULL(c.giaVonBan, 0) - ISNULL(c.giaVonHoan, 0))          AS loiNhuanGop\n"
-           + "FROM CTE_Revenue r\n"
-           + "FULL OUTER JOIN CTE_COGS c ON c.tg = r.tg\n"
-           + "ORDER BY ISNULL(r.tg, c.tg) ASC";
+                 "WITH CTE_Revenue AS (\n"
+               + "  SELECT\n"
+               + "    " + groupExpr + " AS tg,\n"
+               + "    SUM(CASE\n"
+               + "          WHEN (hd.loaiHD = 'BAN_HANG' AND ISNULL(ct.ghiChu, '') != 'TRA_LAI')\n"
+               + "            OR (hd.loaiHD = 'DOI_HANG' AND ct.soLuong > 0)\n"
+               + "          THEN ABS(ct.thanhTien) ELSE 0\n"
+               + "        END) AS doanhThuGop,\n"
+               + "    SUM(CASE\n"
+               + "          WHEN (hd.loaiHD = 'BAN_HANG' AND ISNULL(ct.ghiChu, '') != 'TRA_LAI')\n"
+               + "            OR (hd.loaiHD = 'DOI_HANG' AND ct.soLuong > 0)\n"
+               + "          THEN ROUND(ABS(ct.thanhTien) * (ISNULL(sp.thueVAT, 0) / 100.0) / (1.0 + ISNULL(sp.thueVAT, 0) / 100.0), 0)\n"
+               + "          WHEN (hd.loaiHD = 'TRA_HANG' OR ct.ghiChu = 'TRA_LAI' OR (hd.loaiHD = 'DOI_HANG' AND ct.soLuong < 0))\n"
+               + "            AND hd.ghiChu LIKE N'%Hoàn thành%'\n"
+               + "          THEN -ROUND(ABS(ct.thanhTien) * (ISNULL(sp.thueVAT, 0) / 100.0) / (1.0 + ISNULL(sp.thueVAT, 0) / 100.0), 0)\n"
+               + "          ELSE 0\n"
+               + "        END) AS thueVAT,\n"
+               + "    SUM(CASE\n"
+               + "          WHEN (   hd.loaiHD = 'TRA_HANG'\n"
+               + "                OR ct.ghiChu = 'TRA_LAI'\n"
+               + "                OR (hd.loaiHD = 'DOI_HANG' AND ct.soLuong < 0))\n"
+               + "            AND hd.ghiChu LIKE N'%Hoàn thành%'\n"
+               + "          THEN ABS(ct.thanhTien) ELSE 0\n"
+               + "        END) AS hangBanBiTraLai\n"
+               + "  FROM HoaDon hd\n"
+               + "  JOIN ChiTietHoaDon ct ON ct.hoaDonId = hd.id\n"
+               + "  JOIN SanPham sp        ON sp.id = ct.sanPhamId\n"
+               + "  WHERE hd.loaiHD IN ('BAN_HANG', 'TRA_HANG', 'DOI_HANG')\n"
+               + filterForRevenue.toString() + "\n"
+               + "  GROUP BY " + groupExpr + "\n"
+               + "),\n"
+               + "CTE_COGS AS (\n"
+               + "  SELECT\n"
+               + "    " + groupExpr + " AS tg,\n"
+               + "    SUM(CASE\n"
+               + "          WHEN hd.loaiHD = 'BAN_HANG'\n"
+               + "            OR (hd.loaiHD = 'DOI_HANG' AND ct.soLuong > 0)\n"
+               + "          THEN ISNULL(pbl_cost.giaVon, 0) ELSE 0\n"
+               + "        END) AS giaVonBan,\n"
+               + "    SUM(CASE\n"
+               + "          WHEN (   hd.loaiHD = 'TRA_HANG'\n"
+               + "                OR ct.ghiChu = 'TRA_LAI'\n"
+               + "                OR (hd.loaiHD = 'DOI_HANG' AND ct.soLuong < 0))\n"
+               + "            AND hd.ghiChu LIKE N'%Hoàn thành%'\n"
+               + "          THEN ISNULL(pbl_cost.giaVon, ISNULL(pbl_goc.donGiaVonGoc * ABS(ct.soLuong), 0)) ELSE 0\n"
+               + "        END) AS giaVonHoan\n"
+               + "  FROM HoaDon hd\n"
+               + "  JOIN ChiTietHoaDon ct ON ct.hoaDonId = hd.id\n"
+               + "  LEFT JOIN (\n"
+               + "      SELECT pbl.hoaDonId, pbl.sanPhamId, pbl.donViDoLuongId,\n"
+               + "             SUM(pbl.soLuong * lh.gia) AS giaVon\n"
+               + "      FROM PhanBoLoHang pbl\n"
+               + "      JOIN LoHang lh ON lh.id = pbl.loHangId\n"
+               + "      GROUP BY pbl.hoaDonId, pbl.sanPhamId, pbl.donViDoLuongId\n"
+               + "  ) pbl_cost ON pbl_cost.hoaDonId       = ct.hoaDonId\n"
+               + "            AND pbl_cost.sanPhamId       = ct.sanPhamId\n"
+               + "            AND pbl_cost.donViDoLuongId  = ct.donViDoLuongId\n"
+               + "  LEFT JOIN (\n"
+               + "      SELECT pbl.hoaDonId, pbl.sanPhamId, pbl.donViDoLuongId,\n"
+               + "             (SUM(pbl.soLuong * lh.gia) / NULLIF(SUM(pbl.soLuong), 0)) AS donGiaVonGoc\n"
+               + "      FROM PhanBoLoHang pbl\n"
+               + "      JOIN LoHang lh ON lh.id = pbl.loHangId\n"
+               + "      GROUP BY pbl.hoaDonId, pbl.sanPhamId, pbl.donViDoLuongId\n"
+               + "  ) pbl_goc ON pbl_goc.hoaDonId       = hd.hoaDonGocId\n"
+               + "           AND pbl_goc.sanPhamId      = ct.sanPhamId\n"
+               + "           AND pbl_goc.donViDoLuongId = ct.donViDoLuongId\n"
+               + "  WHERE hd.loaiHD IN ('BAN_HANG', 'TRA_HANG', 'DOI_HANG')\n"
+               + filterForCogs.toString() + "\n"
+               + "  GROUP BY " + groupExpr + "\n"
+               + ")\n"
+               + "SELECT\n"
+               + "  ISNULL(r.tg, c.tg)                                              AS thoiGian,\n"
+               + "  ISNULL(r.doanhThuGop,     0)                                    AS doanhThuGop,\n"
+               + "  ISNULL(r.thueVAT,         0)                                    AS thueVAT,\n"
+               + "  ISNULL(r.hangBanBiTraLai, 0)                                    AS hangBanBiTraLai,\n"
+               + "  ISNULL(r.doanhThuGop, 0) - ISNULL(r.hangBanBiTraLai, 0)\n"
+               + "    - ISNULL(r.thueVAT, 0)                                        AS doanhThuThuan,\n"
+               + "  ISNULL(c.giaVonBan, 0) - ISNULL(c.giaVonHoan, 0)              AS giaVonHangBan,\n"
+               + "  (ISNULL(r.doanhThuGop, 0) - ISNULL(r.hangBanBiTraLai, 0)\n"
+               + "    - ISNULL(r.thueVAT, 0))\n"
+               + "  - (ISNULL(c.giaVonBan, 0) - ISNULL(c.giaVonHoan, 0))          AS loiNhuanGop\n"
+               + "FROM CTE_Revenue r\n"
+               + "FULL OUTER JOIN CTE_COGS c ON c.tg = r.tg\n"
+               + "ORDER BY ISNULL(r.tg, c.tg) ASC";
          List<Object> allParams = new ArrayList<>(paramsRevenue);
          allParams.addAll(paramsCogs);
          List<Object[]> result = new ArrayList<>();
@@ -1948,31 +1945,40 @@ public class DAO_ThongKe {
          }
 
          String sql =
-             "SELECT\n"
-           + "  SUM(CASE\n"
-           + "        WHEN hd.loaiHD = 'BAN_HANG'\n"
-           + "          OR (hd.loaiHD = 'DOI_HANG' AND ct.soLuong > 0)\n"
-           + "        THEN ISNULL(pbl_cost.giaVon, 0) ELSE 0\n"
-           + "      END) AS giaVonBan,\n"
-           + "  SUM(CASE\n"
-           + "        WHEN (   hd.loaiHD = 'TRA_HANG'\n"
-           + "              OR (hd.loaiHD = 'DOI_HANG' AND ct.soLuong < 0))\n"
-           + "          AND hd.ghiChu LIKE N'%Hoàn thành%'\n"
-           + "        THEN ISNULL(pbl_cost.giaVon, 0) ELSE 0\n"
-           + "      END) AS giaVonHoan\n"
-           + "FROM HoaDon hd\n"
-           + "JOIN ChiTietHoaDon ct ON ct.hoaDonId = hd.id\n"
-           + "LEFT JOIN (\n"
-           + "    SELECT pbl.hoaDonId, pbl.sanPhamId, pbl.donViDoLuongId,\n"
-           + "           SUM(pbl.soLuong * lh.gia) AS giaVon\n"
-           + "    FROM PhanBoLoHang pbl\n"
-           + "    JOIN LoHang lh ON lh.id = pbl.loHangId\n"
-           + "    GROUP BY pbl.hoaDonId, pbl.sanPhamId, pbl.donViDoLuongId\n"
-           + ") pbl_cost ON pbl_cost.hoaDonId      = ct.hoaDonId\n"
-           + "          AND pbl_cost.sanPhamId      = ct.sanPhamId\n"
-           + "          AND pbl_cost.donViDoLuongId = ct.donViDoLuongId\n"
-           + "WHERE hd.loaiHD IN ('BAN_HANG', 'TRA_HANG', 'DOI_HANG')\n"
-           + filterSb.toString();
+                 "SELECT\n"
+               + "  SUM(CASE\n"
+               + "        WHEN hd.loaiHD = 'BAN_HANG'\n"
+               + "          OR (hd.loaiHD = 'DOI_HANG' AND ct.soLuong > 0)\n"
+               + "        THEN ISNULL(pbl_cost.giaVon, 0) ELSE 0\n"
+               + "      END) AS giaVonBan,\n"
+               + "  SUM(CASE\n"
+               + "        WHEN (   hd.loaiHD = 'TRA_HANG'\n"
+               + "              OR (hd.loaiHD = 'DOI_HANG' AND ct.soLuong < 0))\n"
+               + "          AND hd.ghiChu LIKE N'%Hoàn thành%'\n"
+               + "        THEN ISNULL(pbl_cost.giaVon, ISNULL(pbl_goc.donGiaVonGoc * ABS(ct.soLuong), 0)) ELSE 0\n"
+               + "      END) AS giaVonHoan\n"
+               + "FROM HoaDon hd\n"
+               + "JOIN ChiTietHoaDon ct ON ct.hoaDonId = hd.id\n"
+               + "LEFT JOIN (\n"
+               + "    SELECT pbl.hoaDonId, pbl.sanPhamId, pbl.donViDoLuongId,\n"
+               + "           SUM(pbl.soLuong * lh.gia) AS giaVon\n"
+               + "    FROM PhanBoLoHang pbl\n"
+               + "    JOIN LoHang lh ON lh.id = pbl.loHangId\n"
+               + "    GROUP BY pbl.hoaDonId, pbl.sanPhamId, pbl.donViDoLuongId\n"
+               + ") pbl_cost ON pbl_cost.hoaDonId      = ct.hoaDonId\n"
+               + "          AND pbl_cost.sanPhamId      = ct.sanPhamId\n"
+               + "          AND pbl_cost.donViDoLuongId = ct.donViDoLuongId\n"
+               + "LEFT JOIN (\n"
+               + "    SELECT pbl.hoaDonId, pbl.sanPhamId, pbl.donViDoLuongId,\n"
+               + "           (SUM(pbl.soLuong * lh.gia) / NULLIF(SUM(pbl.soLuong), 0)) AS donGiaVonGoc\n"
+               + "    FROM PhanBoLoHang pbl\n"
+               + "    JOIN LoHang lh ON lh.id = pbl.loHangId\n"
+               + "    GROUP BY pbl.hoaDonId, pbl.sanPhamId, pbl.donViDoLuongId\n"
+               + ") pbl_goc ON pbl_goc.hoaDonId       = hd.hoaDonGocId\n"
+               + "         AND pbl_goc.sanPhamId      = ct.sanPhamId\n"
+               + "         AND pbl_goc.donViDoLuongId = ct.donViDoLuongId\n"
+               + "WHERE hd.loaiHD IN ('BAN_HANG', 'TRA_HANG', 'DOI_HANG')\n"
+               + filterSb.toString();
 
          try (PreparedStatement ps = getConn().prepareStatement(sql)) {
              for (int i = 0; i < params.size(); i++) ps.setObject(i + 1, params.get(i));
