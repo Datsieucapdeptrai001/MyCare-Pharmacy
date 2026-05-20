@@ -1457,14 +1457,18 @@ public class ManHinhThongKe extends JPanel {
         root.add(row2);
         root.add(Box.createVerticalStrut(12));
         
-        JPanel row3 = new JPanel(new GridLayout(1, 2, 12, 0));
-        row3.setOpaque(false);
-        row3.setPreferredSize(new Dimension(0, 350)); 
-        row3.setMaximumSize(new Dimension(Integer.MAX_VALUE, 400));
-        
-        row3.add(buildTopSPTable());
-        row3.add(buildTaiChinhTable());
-        root.add(row3);
+        // Bảng Top SP – full width, chiều cao cố định
+        JPanel pnlTopSP = buildTopSPTable();
+        pnlTopSP.setMaximumSize(new Dimension(Integer.MAX_VALUE, 320));
+        pnlTopSP.setPreferredSize(new Dimension(0, 280));
+        root.add(pnlTopSP);
+        root.add(Box.createVerticalStrut(12));
+
+        // Bảng Báo cáo tài chính – full width bên dưới, đủ chỗ xem các cột
+        JPanel pnlTaiChinh = buildTaiChinhTable();
+        pnlTaiChinh.setMaximumSize(new Dimension(Integer.MAX_VALUE, 340));
+        pnlTaiChinh.setPreferredSize(new Dimension(0, 300));
+        root.add(pnlTaiChinh);
         root.add(Box.createVerticalStrut(12));
 
         JScrollPane sp = makeScrollPane(root);
@@ -3303,7 +3307,18 @@ public class ManHinhThongKe extends JPanel {
             }
         });
         tbl.getColumnModel().getColumn(4).setCellRenderer(new DTRenderer());
-        
+
+        // Set column widths: # nhỏ, Sản phẩm rộng, Loại vừa, SL nhỏ, Doanh thu vừa
+        tbl.setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN);
+        tbl.getColumnModel().getColumn(0).setPreferredWidth(55);
+        tbl.getColumnModel().getColumn(0).setMaxWidth(70);
+        tbl.getColumnModel().getColumn(1).setPreferredWidth(260);
+        tbl.getColumnModel().getColumn(2).setPreferredWidth(90);
+        tbl.getColumnModel().getColumn(2).setMaxWidth(100);
+        tbl.getColumnModel().getColumn(3).setPreferredWidth(55);
+        tbl.getColumnModel().getColumn(3).setMaxWidth(70);
+        tbl.getColumnModel().getColumn(4).setPreferredWidth(130);
+
         JScrollPane sp = new JScrollPane(tbl);
         sp.setBorder(BorderFactory.createEmptyBorder());
         sp.getVerticalScrollBar().setUI(new ModernScrollBarUI());
@@ -3442,19 +3457,22 @@ public class ManHinhThongKe extends JPanel {
         for (int c = 0; c < COLS.length; c++)
             tbl.getColumnModel().getColumn(c).setCellRenderer(renderer);
 
-        tbl.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+        tbl.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
         tbl.getColumnModel().getColumn(0).setPreferredWidth(80);
-        for (int c = 1; c < COLS.length; c++)
+        tbl.getColumnModel().getColumn(0).setMaxWidth(120); 
+        
+        for (int c = 1; c < COLS.length; c++) {
             tbl.getColumnModel().getColumn(c).setPreferredWidth(115);
-
+        }
         JScrollPane sp = new JScrollPane(tbl);
         sp.setBorder(BorderFactory.createEmptyBorder());
         sp.getVerticalScrollBar().setUI(new ModernScrollBarUI());
         sp.getHorizontalScrollBar().setUI(new ModernScrollBarUI());
+        
         p.add(sp, BorderLayout.CENTER);
-        return p;
+        
+        return p; 
     }
-
     // ─────────────────────────────────────────────────────────────────────────
     // RELOAD BÁO CÁO TÀI CHÍNH CHI TIẾT
     // Gọi BUS_ThongKe.getBaoCaoTaiChinh() → đổ vào modelTaiChinh
@@ -3796,64 +3814,95 @@ public class ManHinhThongKe extends JPanel {
         final String finalPath = filePath;
         pj.setPrintable(buildReportPrintable(), pf);
 
-        try {
-            PrintRequestAttributeSet attrs = new HashPrintRequestAttributeSet();
-            attrs.add(new javax.print.attribute.standard.Copies(1));
-            // Nếu tìm thấy PDF printer thì dùng, không thì hiện dialog để user chọn
-            if (pdfService != null) {
-                pj.setPrintService(pdfService);
-                attrs.add(new javax.print.attribute.standard.Destination(new java.net.URI("file:///" + finalPath.replace("\\", "/"))));
-                pj.print(attrs);
-                showCustomDialog("Xuất PDF thành công!\n" + finalPath, "SUCCESS");
-                try { Desktop.getDesktop().open(new File(finalPath)); } catch (Exception ignored) {}
-            } else {
-                // Fallback: hiện dialog in, user tự chọn "Save as PDF"
-                JOptionPane.showMessageDialog(this,
-                        "<html>Không tìm thấy máy in PDF tự động.<br>" +
-                        "Trong hộp thoại in, chọn <b>\"Microsoft Print to PDF\"</b> hoặc <b>\"Save as PDF\"</b>.<br>" +
-                        "Đường dẫn gợi ý: <b>" + finalPath + "</b></html>",
-                        "Hướng dẫn", JOptionPane.INFORMATION_MESSAGE);
-                if (pj.printDialog(attrs)) { pj.print(attrs); }
-            }
-        } catch (Exception ex) {
-            ex.printStackTrace();
-            showCustomDialog("Lỗi xuất PDF: " + ex.getMessage(), "ERROR");
-        }
-    }
-
-    // ===== IN BÁO CÁO (kết nối máy in vật lý) =====
-    private void inBaoCao() {
-        PrinterJob pj = PrinterJob.getPrinterJob();
-        PageFormat pf = pj.defaultPage();
-        Paper paper = new Paper();
-        double w = 595, h = 842;
-        paper.setSize(w, h);
-        paper.setImageableArea(36, 36, w - 72, h - 72);
-        pf.setPaper(paper);
-        pj.setPrintable(buildReportPrintable(), pf);
-
         PrintRequestAttributeSet attrs = new HashPrintRequestAttributeSet();
-        attrs.add(OrientationRequested.PORTRAIT);
-        attrs.add(MediaSizeName.ISO_A4);
+        attrs.add(new javax.print.attribute.standard.Copies(1));
 
-        // Hiện dialog chọn máy in → user chọn xong bấm OK là in
-        if (pj.printDialog(attrs)) {
+        if (pdfService != null) {
+            // Dùng PDF printer tự động – chạy trong background thread
+            try { pj.setPrintService(pdfService); }
+            catch (PrinterException ex) { showCustomDialog("Lỗi PDF printer: " + ex.getMessage(), "ERROR"); return; }
+            try {
+                attrs.add(new javax.print.attribute.standard.Destination(
+                        new java.net.URI("file:///" + finalPath.replace("\\", "/"))));
+            } catch (Exception ex) { ex.printStackTrace(); return; }
             setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
             new Thread(() -> {
                 try {
                     pj.print(attrs);
-                    SwingUtilities.invokeLater(() ->
-                        showCustomDialog("Đã gửi lệnh in thành công!", "SUCCESS"));
-                } catch (PrinterException ex) {
-                    SwingUtilities.invokeLater(() ->
-                        showCustomDialog("Lỗi máy in: " + ex.getMessage(), "ERROR"));
-                } finally {
-                    SwingUtilities.invokeLater(() -> setCursor(Cursor.getDefaultCursor()));
+                    SwingUtilities.invokeLater(() -> {
+                        setCursor(Cursor.getDefaultCursor());
+                        showCustomDialog("Xuất PDF thành công!\n" + finalPath, "SUCCESS");
+                        try { Desktop.getDesktop().open(new File(finalPath)); } catch (Exception ignored) {}
+                    });
+                } catch (Exception ex) {
+                    SwingUtilities.invokeLater(() -> {
+                        setCursor(Cursor.getDefaultCursor());
+                        showCustomDialog("Lỗi xuất PDF: " + ex.getMessage(), "ERROR");
+                    });
                 }
             }).start();
+        } else {
+            // Fallback: hiện dialog in, user tự chọn "Save as PDF"
+            JOptionPane.showMessageDialog(this,
+                    "<html>Không tìm thấy máy in PDF tự động.<br>" +
+                    "Trong hộp thoại in, chọn <b>\"Microsoft Print to PDF\"</b> hoặc <b>\"Save as PDF\"</b>.<br>" +
+                    "Đường dẫn gợi ý: <b>" + finalPath + "</b></html>",
+                    "Hướng dẫn", JOptionPane.INFORMATION_MESSAGE);
+            if (pj.printDialog(attrs)) {
+                setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+                new Thread(() -> {
+                    try {
+                        pj.print(attrs);
+                        SwingUtilities.invokeLater(() -> {
+                            setCursor(Cursor.getDefaultCursor());
+                            showCustomDialog("Đã gửi lệnh in thành công!", "SUCCESS");
+                        });
+                    } catch (Exception ex) {
+                        SwingUtilities.invokeLater(() -> {
+                            setCursor(Cursor.getDefaultCursor());
+                            showCustomDialog("Lỗi xuất PDF: " + ex.getMessage(), "ERROR");
+                        });
+                    }
+                }).start();
+            }
         }
     }
 
+    // ===== IN BÁO CÁO =====
+    private void inBaoCao() {
+        setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+
+        new Thread(() -> {
+            try {
+                PrinterJob pj = PrinterJob.getPrinterJob();
+                PageFormat pf = pj.defaultPage();
+                pf.setOrientation(PageFormat.PORTRAIT);
+                Paper paper = new Paper();
+                double w = 595, h = 842; // Khổ A4
+                paper.setSize(w, h);
+                paper.setImageableArea(36, 36, w - 72, h - 72);
+                pf.setPaper(paper);
+                
+                pj.setPrintable(buildReportPrintable(), pf);
+                SwingUtilities.invokeLater(() -> setCursor(Cursor.getDefaultCursor()));
+                if (pj.printDialog()) {
+                    pj.print(); // Tiến hành in
+                    SwingUtilities.invokeLater(() ->
+                        showCustomDialog("Đã gửi lệnh in thành công!", "SUCCESS"));
+                }
+            } catch (PrinterException ex) {
+                SwingUtilities.invokeLater(() -> {
+                    setCursor(Cursor.getDefaultCursor());
+                    showCustomDialog("Lỗi máy in: " + ex.getMessage(), "ERROR");
+                });
+            } catch (Exception e) {
+                SwingUtilities.invokeLater(() -> {
+                    setCursor(Cursor.getDefaultCursor());
+                    showCustomDialog("Lỗi hệ thống: " + e.getMessage(), "ERROR");
+                });
+            }
+        }).start();
+    }
     /** Tạo Printable vẽ báo cáo tóm tắt lên trang in / PDF */
     private Printable buildReportPrintable() {
         // Thu thập snapshot data hiện tại

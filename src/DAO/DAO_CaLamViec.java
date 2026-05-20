@@ -35,41 +35,30 @@ public class DAO_CaLamViec {
     public double tinhTienMatThucTeTrongCa(String maCa) {
         String sql =
             "SELECT " +
-            "    clv.tienDauCa + ISNULL( " +
-            "        SUM( " +
-            "            CASE hd.loaiHD " +
-            "                WHEN 'BAN_HANG' THEN ( " +
-            "                    SELECT ISNULL(SUM(ct.thanhTien), 0) " +
-            "                    FROM   ChiTietHoaDon ct " +
-            "                    WHERE  ct.hoaDonId = hd.id " +
-            "                ) " +
-            "                WHEN 'DOI_HANG' THEN ( " +
-            "                    SELECT ISNULL(SUM(ct_moi.thanhTien), 0) " +
-            "                    FROM   ChiTietHoaDon ct_moi " +
-            "                    WHERE  ct_moi.hoaDonId = hd.id " +
-            "                ) - ( " +
-            "                    SELECT ISNULL(SUM(ct_cu.thanhTien), 0) " +
-            "                    FROM   ChiTietHoaDon ct_cu " +
-            "                    WHERE  ct_cu.hoaDonId = hd.hoaDonGocId " +
-            "                ) " +
-            "                WHEN 'TRA_HANG' THEN -( " +
-            "                    SELECT ISNULL(SUM(ct.thanhTien), 0) " +
-            "                    FROM   ChiTietHoaDon ct " +
-            "                    WHERE  ct.hoaDonId = hd.id " +
-            "                ) " +
-            "                ELSE 0 " +
-            "            END " +
-            "        ), 0 " +
-            "    ) AS tienHeThongGhiNhan " +
-            "FROM  CaLamViec clv " +
-            // LEFT JOIN: nếu ca chưa có hóa đơn nào vẫn trả về tienDauCa
-            "LEFT  JOIN HoaDon hd " +
-            "    ON  hd.nhanVienId          = clv.nhanVienId " +
-            "    AND hd.ngayLapHD           >= clv.thoiGianBatDau " +
-            // Ca đang mở (thoiGianKetThuc IS NULL) → lấy hết đến hiện tại
+            "    clv.tienDauCa + ISNULL(SUM( " +
+            "        CASE hd.loaiHD " +
+            "            WHEN 'BAN_HANG' THEN ISNULL(ct_hien_tai.tongTien, 0) " +
+            "            WHEN 'DOI_HANG' THEN ISNULL(ct_hien_tai.tongTien, 0) - ISNULL(ct_goc.tongTien, 0) " +
+            "            WHEN 'TRA_HANG' THEN -ISNULL(ct_hien_tai.tongTien, 0) " +
+            "            ELSE 0 " +
+            "        END " +
+            "    ), 0) AS tienHeThongGhiNhan " +
+            "FROM CaLamViec clv " +
+            "LEFT JOIN HoaDon hd " +
+            "    ON  hd.nhanVienId = clv.nhanVienId " +
+            "    AND hd.ngayLapHD >= clv.thoiGianBatDau " +
             "    AND (clv.thoiGianKetThuc IS NULL OR hd.ngayLapHD <= clv.thoiGianKetThuc) " +
-            // Lọc TIEN_MAT trong ON để không làm mất dòng LEFT JOIN
             "    AND hd.phuongThucThanhToan = 'TIEN_MAT' " +
+            "OUTER APPLY ( " +
+            "    SELECT SUM(thanhTien) AS tongTien " +
+            "    FROM ChiTietHoaDon " +
+            "    WHERE hoaDonId = hd.id " +
+            ") ct_hien_tai " +
+            "OUTER APPLY ( " +
+            "    SELECT SUM(thanhTien) AS tongTien " +
+            "    FROM ChiTietHoaDon " +
+            "    WHERE hoaDonId = hd.hoaDonGocId AND hd.loaiHD = 'DOI_HANG' " +
+            ") ct_goc " +
             "WHERE clv.id = ? " +
             "GROUP BY clv.tienDauCa";
 
