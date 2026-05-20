@@ -11,6 +11,8 @@ import Entity.SanPham;
 import Utils.MenuIcon;
 import Utils.SessionDangNhap;
 import Utils.TelexFix;
+import BUS.BUS_NhapLoHangDongBo;
+import BUS.BUS_NhapLoHangDongBo.KetQuaNhapLo;
 import java.awt.print.PageFormat;
 import java.awt.print.Printable;
 import java.awt.print.PrinterException;
@@ -76,7 +78,7 @@ public class ManHinhNhapLoHangMoi extends JDialog {
     private final BUS_Kho busKho = new BUS_Kho();
     private final BUS_DonViDoLuong busDonVi = new BUS_DonViDoLuong();
     private final BUS_PhieuNhapHang busPhieuNhap = new BUS_PhieuNhapHang();
-
+    private final BUS_NhapLoHangDongBo busNhapLoHangDongBo = new BUS_NhapLoHangDongBo();
     private HintTextField txtTimSanPham;
     private SanPham selectedSanPham = null;
     private List<SanPham> dsTatCaSanPham = new ArrayList<>();
@@ -128,8 +130,11 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         setSize(640, getHeight()); // Giữ width 640px, lấy chính xác height sau khi pack()
         setLocationRelativeTo(owner);
         setShape(new RoundRectangle2D.Double(0, 0, getWidth(), getHeight(), 16, 16));
-        TelexFix.applyWindow(this);
+
         registerKeyboardActions();
+
+        TelexFix.applyLater(this);
+        TelexFix.hardFixTablesLater(this);
 
         addWindowListener(new WindowAdapter() {
             @Override
@@ -251,6 +256,11 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         cbKhoHang.setFont(FONT_TEXT);
         cbKhoHang.setBackground(Color.WHITE);
         cbKhoHang.setPreferredSize(new Dimension(0, 40));
+
+        cbKhoHang.setEditable(false);
+        cbKhoHang.enableInputMethods(false);
+        cbKhoHang.setFocusable(false);
+
         cbKhoHang.setRenderer(new DefaultListCellRenderer() {
             @Override
             public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected,
@@ -546,6 +556,9 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         listSanPham = new JList<>(modelSanPham);
         listSanPham.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         listSanPham.setVisibleRowCount(6);
+
+        listSanPham.enableInputMethods(false);
+        listSanPham.setFocusable(false);
         listSanPham.setCellRenderer(new DefaultListCellRenderer() {
             @Override
             public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected,
@@ -581,8 +594,9 @@ public class ManHinhNhapLoHangMoi extends JDialog {
 
         popupSanPham = new JPopupMenu();
         popupSanPham.setBorder(BorderFactory.createEmptyBorder());
-        popupSanPham.add(scroll);
+        popupSanPham.enableInputMethods(false);
         popupSanPham.setFocusable(false);
+        popupSanPham.add(scroll);
     }
 
     private void filterSanPham(JPanel anchorPanel) {
@@ -880,6 +894,157 @@ public class ManHinhNhapLoHangMoi extends JDialog {
 
     private String getDigitsOnly(String text) {
         return text == null ? "" : text.replaceAll("\\D+", "");
+    }
+
+    private void showNhapLoResultDialog(
+            boolean congDon,
+            String maPhieuNhap,
+            String maLoHang,
+            String tenSanPham) {
+        JDialog dialog = new JDialog(this, "Kết quả nhập lô", Dialog.ModalityType.APPLICATION_MODAL);
+        dialog.setUndecorated(true);
+        dialog.setBackground(BG_TRANSPARENT);
+
+        Color themeColor = congDon ? WARNING : SUCCESS;
+        Color lightColor = congDon ? new Color(255, 247, 237) : new Color(240, 253, 244);
+        Color textColor = new Color(15, 23, 42);
+
+        JPanel root = new JPanel(new BorderLayout());
+        root.setBackground(Color.WHITE);
+        root.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(themeColor, 2),
+                new EmptyBorder(0, 0, 0, 0)));
+
+        JPanel header = new JPanel(new BorderLayout());
+        header.setBackground(themeColor);
+        header.setBorder(new EmptyBorder(12, 18, 12, 18));
+
+        JLabel lblTitle = new JLabel(congDon ? "ĐÃ CỘNG DỒN LÔ HÀNG" : "ĐÃ TẠO LÔ HÀNG MỚI");
+        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        lblTitle.setForeground(Color.WHITE);
+
+        JButton btnClose = new JButton("×");
+        btnClose.setFont(new Font("Segoe UI", Font.BOLD, 22));
+        btnClose.setForeground(Color.WHITE);
+        btnClose.setFocusPainted(false);
+        btnClose.setBorderPainted(false);
+        btnClose.setContentAreaFilled(false);
+        btnClose.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btnClose.addActionListener(e -> dialog.dispose());
+
+        header.add(lblTitle, BorderLayout.WEST);
+        header.add(btnClose, BorderLayout.EAST);
+
+        JPanel body = new JPanel(new BorderLayout(14, 0));
+        body.setBackground(Color.WHITE);
+        body.setBorder(new EmptyBorder(18, 20, 16, 20));
+
+        JPanel iconBox = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+                g2.setColor(lightColor);
+                g2.fillOval(0, 0, 52, 52);
+
+                g2.setColor(themeColor);
+                g2.setStroke(new BasicStroke(4f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+
+                if (congDon) {
+                    g2.drawLine(26, 13, 26, 31);
+                    g2.fillOval(23, 37, 6, 6);
+                } else {
+                    g2.drawLine(15, 27, 23, 35);
+                    g2.drawLine(23, 35, 38, 17);
+                }
+
+                g2.dispose();
+            }
+        };
+        iconBox.setPreferredSize(new Dimension(52, 52));
+        iconBox.setOpaque(false);
+
+        JPanel info = new JPanel();
+        info.setOpaque(false);
+        info.setLayout(new BoxLayout(info, BoxLayout.Y_AXIS));
+
+        JLabel lblMsg = new JLabel(congDon
+                ? "Lô trùng đúng điều kiện nên đã cộng số lượng vào lô cũ."
+                : "Lô mới đã được lưu vào kho thành công.");
+        lblMsg.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        lblMsg.setForeground(TEXT_SECONDARY);
+        lblMsg.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        info.add(lblMsg);
+        info.add(Box.createVerticalStrut(12));
+        info.add(createInfoLine("Mã phiếu nhập", maPhieuNhap));
+        info.add(Box.createVerticalStrut(6));
+        info.add(createInfoLine("Mã lô hệ thống", maLoHang));
+        info.add(Box.createVerticalStrut(6));
+        info.add(createInfoLine("Sản phẩm", tenSanPham));
+
+        if (congDon) {
+            info.add(Box.createVerticalStrut(10));
+
+            JLabel note = new JLabel(
+                    "<html><body style='width:300px'>Không in tem mã vạch mới vì lô đã cộng vào lô cũ.</body></html>");
+            note.setFont(new Font("Segoe UI", Font.ITALIC, 13));
+            note.setForeground(WARNING);
+            note.setAlignmentX(Component.LEFT_ALIGNMENT);
+            info.add(note);
+        }
+
+        body.add(iconBox, BorderLayout.WEST);
+        body.add(info, BorderLayout.CENTER);
+
+        JPanel footer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        footer.setBackground(new Color(248, 250, 252));
+        footer.setBorder(new EmptyBorder(12, 18, 12, 18));
+
+        JButton btnOK = new JButton("Đã hiểu");
+        btnOK.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btnOK.setForeground(Color.WHITE);
+        btnOK.setBackground(themeColor);
+        btnOK.setFocusPainted(false);
+        btnOK.setBorder(new EmptyBorder(9, 24, 9, 24));
+        btnOK.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btnOK.addActionListener(e -> dialog.dispose());
+
+        footer.add(btnOK);
+
+        root.add(header, BorderLayout.NORTH);
+        root.add(body, BorderLayout.CENTER);
+        root.add(footer, BorderLayout.SOUTH);
+
+        dialog.setContentPane(root);
+        dialog.pack();
+        dialog.setSize(460, dialog.getHeight());
+        dialog.setShape(new RoundRectangle2D.Double(0, 0, dialog.getWidth(), dialog.getHeight(), 16, 16));
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+    }
+
+    private JPanel createInfoLine(String label, String value) {
+        JPanel row = new JPanel(new BorderLayout(10, 0));
+        row.setOpaque(false);
+        row.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JLabel lbl = new JLabel(label + ":");
+        lbl.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        lbl.setForeground(TEXT_PRIMARY);
+        lbl.setPreferredSize(new Dimension(105, 22));
+
+        JLabel val = new JLabel(value == null || value.trim().isEmpty() ? "N/A" : value);
+        val.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        val.setForeground(TEXT_SECONDARY);
+
+        row.add(lbl, BorderLayout.WEST);
+        row.add(val, BorderLayout.CENTER);
+
+        return row;
     }
 
     private void showModernAlert(String message, boolean isSuccess) {
@@ -1422,11 +1587,6 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         if (!valid)
             return;
 
-        if (busKho.tonTaiMaLoDangHoatDong(maLo)) {
-            errMaLo.setText("Mã lô đã tồn tại trong kho");
-            return;
-        }
-
         if (canHan) {
             boolean confirm = showModernQuestionDialog("Cảnh báo cận hạn",
                     "Lô hàng còn dưới hoặc bằng " + SO_NGAY_CAN_HAN + " ngày đến hạn.\nBạn vẫn muốn nhập kho?");
@@ -1465,43 +1625,74 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         kho.setId(khoDuocChon.getId().trim());
         loHang.setKhoHangId(kho);
 
-        boolean laTaiSuDung = busKho.tonTaiMaLoDaAn(maLo);
-        boolean success = busKho.themLoHang(loHang);
+        KetQuaNhapLo ketQuaNhapLo = busNhapLoHangDongBo.luuNhapLoVaTaoPhieu(
+                loHang,
+                SessionDangNhap.getMaNhanVienOrDefault(),
+                "Phiếu nhập từ màn hình nhập lô hàng");
 
-        if (success) {
-            String maNhanVienDangNhap = SessionDangNhap.getMaNhanVienOrDefault();
-            boolean taoPhieuNhapOk = busPhieuNhap.lapPhieuNhapTuLoHang(loHang, maNhanVienDangNhap, null,
-                    "Phiếu nhập tự động từ màn hình nhập lô");
+        if (!ketQuaNhapLo.isThanhCong()) {
+            showModernAlert(ketQuaNhapLo.getThongBao(), false);
+            return;
+        }
 
-            if (!taoPhieuNhapOk) {
-                showModernAlert("Đã nhập lô nhưng tạo phiếu nhập thất bại!", false);
-                return;
-            }
+        /*
+         * Nếu BUS cộng dồn vào lô cũ,
+         * id lô thực tế trong database là id lô cũ.
+         * Cập nhật lại để phiếu in không bị in mã LH mới giả.
+         */
+        if (ketQuaNhapLo.getLoHangId() != null && !ketQuaNhapLo.getLoHangId().trim().isEmpty()) {
+            loHang.setId(ketQuaNhapLo.getLoHangId());
+        }
 
-            String tenSPHienThi = selectedSanPham.getTen() != null ? selectedSanPham.getTen() : "Sản phẩm không tên";
-            String maSPHienThi = selectedSanPham.getId() != null ? selectedSanPham.getId() : "N/A";
+        String tenSPHienThi = selectedSanPham.getTen() != null
+                ? selectedSanPham.getTen()
+                : "Sản phẩm không tên";
 
-            showToastNotification("Thành công!", laTaiSuDung ? "Đã tái sử dụng lô hàng ẩn & tạo phiếu nhập!"
-                    : "Thêm lô hàng & tạo phiếu nhập thành công!", true);
+        String maSPHienThi = selectedSanPham.getId() != null
+                ? selectedSanPham.getId()
+                : "N/A";
 
-            if (reloadListener != null) {
-                reloadListener.onReload();
-            }
+        /*
+         * Thông báo đẹp gọn.
+         * Hàm showNhapLoResultDialog() của m đã có sẵn trong file rồi.
+         */
+        showNhapLoResultDialog(
+                ketQuaNhapLo.isCongDonVaoLoCu(),
+                ketQuaNhapLo.getPhieuNhapId(),
+                loHang.getId(),
+                tenSPHienThi);
 
-            boolean[] printOptions = showPrintConfirmDialog();
+        if (reloadListener != null) {
+            reloadListener.onReload();
+        }
 
-            dispose();
+        boolean[] printOptions = showPrintConfirmDialog();
 
-            if (printOptions[0]) {
-                inPhieuNhapLoHang(loHang, giaNhapDonViLon);
-            }
-            if (printOptions[1]) {
-                Window owner = SwingUtilities.getWindowAncestor(this);
-                DialogInMaVach dialogMaVach = new DialogInMaVach(owner, maVachNoiBo, maSPHienThi, tenSPHienThi);
-                dialogMaVach.setVisible(true);
-            }
-        } else {
-            showModernAlert("Lưu lô hàng thất bại!", false);
+        /*
+         * Nếu cộng dồn vào lô cũ thì không in tem mới.
+         * Vì tem mới sẽ dùng maVachNoiBo vừa tạo tạm, không phải mã vạch đang lưu của
+         * lô cũ.
+         */
+        if (ketQuaNhapLo.isCongDonVaoLoCu()) {
+            printOptions[1] = false;
+        }
+
+        dispose();
+
+        if (printOptions[0]) {
+            inPhieuNhapLoHang(loHang, giaNhapDonViLon);
+        }
+
+        if (printOptions[1]) {
+            Window owner = SwingUtilities.getWindowAncestor(this);
+
+            DialogInMaVach dialogMaVach = new DialogInMaVach(
+                    owner,
+                    maVachNoiBo,
+                    maSPHienThi,
+                    tenSPHienThi);
+
+            dialogMaVach.setVisible(true);
         }
     }
 
@@ -1623,6 +1814,9 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         txtHiddenQR.setOpaque(false);
         txtHiddenQR.setBorder(null);
         txtHiddenQR.setForeground(new Color(0, 0, 0, 0));
+
+        txtHiddenQR.enableInputMethods(false);
+
         root.add(txtHiddenQR, BorderLayout.WEST);
 
         txtHiddenQR.addActionListener(e -> {
@@ -2178,6 +2372,7 @@ public class ManHinhNhapLoHangMoi extends JDialog {
             cb.setForeground(PRIMARY);
             cb.setBackground(Color.WHITE);
             cb.setFocusable(false);
+            cb.enableInputMethods(false);
             cb.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         }
 
