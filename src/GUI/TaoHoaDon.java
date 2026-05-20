@@ -484,17 +484,8 @@ public class TaoHoaDon extends JDialog {
 
         if (success) {
             if (boDemNguoc != null) boDemNguoc.stop();
-            
-            for (Entity.ChiTietHoaDon ct : dsKetQua) {
-                double heSoQuyDoi = 1.0;
-                List<Entity.DonViDoLuong> dsDonVi = busDonVi.getDSTheoMaSP(ct.getSanPhamId().getId());
-                for (Entity.DonViDoLuong dv : dsDonVi) {
-                    if (dv.getId().equals(ct.getDonViDoLuongId().getId())) {
-                        heSoQuyDoi = dv.getChuyenDoiSangDonViCoBan(); break;
-                    }
-                }
-                busKho.xuLyXuatKhoFEFO(ct.getSanPhamId().getId(), ct.getSoLuong(), heSoQuyDoi);
-            }
+            // Xuất kho FEFO đã được xử lý bên trong busHD.thanhToan() -> luuGiaoDichThanhToan()
+            // KHÔNG gọi lại ở đây để tránh trừ kho 2 lần
 
             if (isCustomerLinked && !sdt.isEmpty()) {
                 int diemDung = isDungDiem ? (int)(tienGiamTuDiem / 100) : 0;

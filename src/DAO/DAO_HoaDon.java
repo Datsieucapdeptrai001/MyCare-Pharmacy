@@ -814,6 +814,112 @@ try { if (con != null) con.setAutoCommit(true); } catch (SQLException e) { e.pri
         }
     }
     
+    /**
+     * Khi duyệt "Hoàn thành" phiếu ĐỔI HÀNG:
+     * - Xuất kho hàng mới (soLuong > 0) → tạo PhanBoLoHang, trừ LoHang
+     * - Nhập lại kho hàng trả (soLuong < 0) → cộng lại LoHang gốc
+     * Không làm gì với TRA_HANG (không có hàng xuất mới).
+     */
+    public boolean xuatKhoKhiDuyetDoiHang(String maPhieu) {
+        Connection con = null;
+        try {
+            con = ConnectDB.getInstance().getConnection();
+            con.setAutoCommit(false);
+
+            // 1. Kiểm tra phiếu có phải DOI_HANG không
+            String loaiHD = "";
+            try (PreparedStatement ps = con.prepareStatement(
+                    "SELECT loaiHD, hoaDonGocId FROM HoaDon WHERE id = ?")) {
+                ps.setString(1, maPhieu);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) loaiHD = rs.getString("loaiHD");
+                }
+            }
+            // DOI_HANG: soLuong > 0 → xuất mới, soLuong < 0 → cộng lại kho
+            // TRA_HANG: chỉ cộng lại kho (soLuong < 0), không xuất mới
+            boolean isTRAHang = "TRA_HANG".equals(loaiHD);
+            if (!isTRAHang && !"DOI_HANG".equals(loaiHD)) {
+                con.setAutoCommit(true);
+                return true;
+            }
+
+            // 2. Lấy tất cả chi tiết phiếu đổi
+            List<Object[]> dsCT = new ArrayList<>(); // [sanPhamId, donViDoLuongId, soLuong]
+            try (PreparedStatement ps = con.prepareStatement(
+                    "SELECT sanPhamId, donViDoLuongId, soLuong FROM ChiTietHoaDon WHERE hoaDonId = ?")) {
+                ps.setString(1, maPhieu);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        dsCT.add(new Object[]{
+                            rs.getString("sanPhamId"),
+                            rs.getString("donViDoLuongId"),
+                            rs.getInt("soLuong")
+                        });
+                    }
+                }
+            }
+
+            DAO_LoHang daoLo = new DAO_LoHang();
+            DAO_PhanBoLoHang daoPB = new DAO_PhanBoLoHang();
+
+            for (Object[] ct : dsCT) {
+                String spId   = (String) ct[0];
+                String dvlId  = (String) ct[1];
+                int    soLuong = (int)    ct[2];
+
+                // Lấy hệ số quy đổi về ĐVCB (LoHang.soLuongLoHang lưu theo ĐVCB)
+                int heSo = 1;
+                try (PreparedStatement psHeSo = con.prepareStatement(
+                        "SELECT chuyenDoiDonViCoBan FROM DonViDoLuong WHERE id = ? AND sanPhamId = ?")) {
+                    psHeSo.setString(1, dvlId);
+                    psHeSo.setString(2, spId);
+                    try (ResultSet rsHeSo = psHeSo.executeQuery()) {
+                        if (rsHeSo.next()) heSo = (int) rsHeSo.getDouble(1);
+                    }
+                }
+
+                if (soLuong > 0 && !isTRAHang) {
+                    // XUẤT KHO hàng mới: chỉ DOI_HANG mới xuất hàng mới cho khách
+                    // canLayCoBan tính theo ĐVCB để so sánh/trừ đúng với LoHang.soLuongLoHang
+                    List<LoHang> dsLo = daoLo.layLoTheoSP(con, spId);
+                    int canLayCoBan = soLuong * heSo;
+                    for (LoHang lh : dsLo) {
+                        if (canLayCoBan <= 0) break;
+                        int layDuocCoBan = Math.min(lh.getSoLuongLoHang(), canLayCoBan);
+                        HoaDon hdRef = new HoaDon(); hdRef.setId(maPhieu);
+                        Entity.DonViDoLuong dvl = new Entity.DonViDoLuong(); dvl.setId(dvlId);
+                        Entity.SanPham sp = new Entity.SanPham(); sp.setId(spId);
+                        // PhanBoLoHang.soLuong lưu theo đơn vị bán (để tính COGS: pbl.soLuong * dvl.chuyenDoi * lh.gia)
+                        int pblSoLuong = (heSo > 0) ? layDuocCoBan / heSo : layDuocCoBan;
+                        daoPB.themPhanBo(con, new PhanBoLoHang(hdRef, dvl, sp, lh, pblSoLuong));
+                        daoLo.capNhatSoLuongVaTrangThaiLo(con, lh.getId(), lh.getSoLuongLoHang() - layDuocCoBan);
+                        canLayCoBan -= layDuocCoBan;
+                    }
+                    if (canLayCoBan > 0) throw new Exception("Kho không đủ hàng để xuất đổi: " + spId);
+
+                } else if (soLuong < 0) {
+                    // NHẬP LẠI KHO hàng trả: cộng lại theo ĐVCB
+                    int soLuongTraCoBan = Math.abs(soLuong) * heSo;
+                    List<LoHang> dsLo = daoLo.layLoTheoSP(con, spId);
+                    if (!dsLo.isEmpty()) {
+                        LoHang loGoc = dsLo.get(0);
+                        daoLo.capNhatSoLuongVaTrangThaiLo(con, loGoc.getId(),
+                                loGoc.getSoLuongLoHang() + soLuongTraCoBan);
+                    }
+                }
+            }
+
+            con.commit();
+            return true;
+        } catch (Exception e) {
+            try { if (con != null) con.rollback(); } catch (Exception ex) { ex.printStackTrace(); }
+            e.printStackTrace();
+            return false;
+        } finally {
+            try { if (con != null) con.setAutoCommit(true); } catch (Exception e) { e.printStackTrace(); }
+        }
+    }
+
     public Object[] layThongTinGiaTuHDGoc(String maHDGoc, String tenSP) {
         String dvt = "Hộp";
         double giaGocHienTai = 0.0, thueVAT = 0.0;
@@ -1077,5 +1183,96 @@ try { if (con != null) con.setAutoCommit(true); } catch (SQLException e) { e.pri
                 pst2.setString(1, maHD); pst2.executeUpdate();
             }
         } catch (Exception e) { e.printStackTrace(); }
+    }
+    public long layDoanhThuTienMatTuDauCa(String maNhanVien, java.time.LocalDateTime thoiGianBatDau) {
+        String sql = "SELECT " +
+                     "ISNULL(SUM(CASE WHEN hd.loaiHD = 0 THEN ct.soLuong * dv.gia ELSE 0 END), 0) - " +
+                     "ISNULL(SUM(CASE WHEN hd.loaiHD = 1 THEN ct.soLuong * dv.gia ELSE 0 END), 0) " +
+                     "FROM ChiTietHoaDon ct " +
+                     "JOIN HoaDon hd ON ct.hoaDonId = hd.id " +
+                     "JOIN DonViDoLuong dv ON ct.donViDoLuongId = dv.id " +
+                     "WHERE hd.nhanVienId = ? " +
+                     "AND hd.phuongThucThanhToan = 0 " +
+                     "AND hd.ngayLapHD >= ?";
+        try (Connection con = ConnectDB.getInstance().getConnection();
+             PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setString(1, maNhanVien);
+            pst.setTimestamp(2, java.sql.Timestamp.valueOf(thoiGianBatDau));
+            try (ResultSet rs = pst.executeQuery()) {
+                if (rs.next()) return (long) rs.getDouble(1);
+            }
+        } catch (Exception e) {
+            System.err.println("Lỗi DAO_HoaDon (layDoanhThuTienMatTuDauCa): " + e.getMessage());
+        }
+        return 0;
+    }
+
+    public String layGhiChuHoaDon(String maHD) {
+        String sql = "SELECT ghiChu FROM HoaDon WHERE id = ?";
+        try (Connection con = ConnectDB.getInstance().getConnection();
+             PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setString(1, maHD);
+            try (ResultSet rs = pst.executeQuery()) {
+                if (rs.next()) return rs.getString("ghiChu");
+            }
+        } catch (Exception e) {
+            System.err.println("Lỗi DAO_HoaDon (layGhiChuHoaDon): " + e.getMessage());
+        }
+        return "";
+    }
+
+    public String[] layPhieuDoiTraTheoHDGoc(String maHDGoc) {
+        String sql = "SELECT id, loaiHD FROM HoaDon WHERE hoaDonGocId = ?";
+        try (Connection con = ConnectDB.getInstance().getConnection();
+             PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setString(1, maHDGoc);
+            try (ResultSet rs = pst.executeQuery()) {
+                if (rs.next()) {
+                    return new String[]{rs.getString("id"), rs.getString("loaiHD")};
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Lỗi DAO_HoaDon (layPhieuDoiTraTheoHDGoc): " + e.getMessage());
+        }
+        return null;
+    }
+
+    public String layTenKhachHangTheoHD(String maHD) {
+        String sql = "SELECT kh.hoVaTen FROM HoaDon hd JOIN KhachHang kh ON hd.khachHangId = kh.id WHERE hd.id = ?";
+        try (Connection con = ConnectDB.getInstance().getConnection();
+             PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setString(1, maHD);
+            try (ResultSet rs = pst.executeQuery()) {
+                if (rs.next()) {
+                    String ten = rs.getString("hoVaTen");
+                    if (ten != null && !ten.trim().isEmpty()) return ten;
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Lỗi DAO_HoaDon (layTenKhachHangTheoHD): " + e.getMessage());
+        }
+        return "Khách lẻ";
+    }
+
+    public java.util.List<String> timKiemMaHoaDonGoiY(String tuKhoa) {
+        java.util.List<String> ds = new java.util.ArrayList<>();
+        String sql = "SELECT TOP 5 id, ghiChu FROM HoaDon WHERE id LIKE ? AND hoaDonGocId IS NULL";
+        try (Connection con = ConnectDB.getInstance().getConnection();
+             PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setString(1, "%" + tuKhoa + "%");
+            try (ResultSet rs = pst.executeQuery()) {
+                while (rs.next()) {
+                    String gc = rs.getString("ghiChu");
+                    if (gc == null) gc = "";
+                    if (!gc.contains("Lưu nháp") && !gc.contains("Đang xử lý")
+                            && !gc.contains("Đã hủy") && !gc.contains("Từ chối")) {
+                        ds.add(rs.getString("id"));
+                    }
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Lỗi DAO_HoaDon (timKiemMaHoaDonGoiY): " + e.getMessage());
+        }
+        return ds;
     }
 }

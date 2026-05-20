@@ -8,6 +8,7 @@ import Enumeration.TrangThaiLoHang;
 import Utils.MenuIcon;
 import Utils.TelexFix;
 import javax.swing.*;
+import java.awt.geom.RoundRectangle2D;
 import javax.swing.border.AbstractBorder;
 import javax.swing.border.EmptyBorder;
 import javax.swing.event.DocumentEvent;
@@ -197,7 +198,26 @@ public class ManHinhLoHang extends JPanel {
         btnLichSu.setMaximumSize(new Dimension(110, 38));
         btnLichSu.setMinimumSize(new Dimension(40, 38));
         btnLichSu.addActionListener(e -> moManHinhNhatKyKho());
+        
+        JButton btnKiemKeKho = new JButton("Kiểm kê kho");
+        btnKiemKeKho.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btnKiemKeKho.setForeground(Color.WHITE);
+        btnKiemKeKho.setBackground(new Color(14, 116, 144));
+        btnKiemKeKho.setFocusPainted(false);
+        btnKiemKeKho.setBorder(new EmptyBorder(10, 18, 10, 18));
+        btnKiemKeKho.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
+        btnKiemKeKho.addActionListener(e -> {
+            Window owner = SwingUtilities.getWindowAncestor(this);
+
+            ManHinhKiemKeKho dialog = new ManHinhKiemKeKho(owner, () -> {
+                loadDataFromDatabase();
+                refreshTable();
+            });
+
+            dialog.setVisible(true);
+        });
+        
         JButton btnXuatKho = createHoverButton("Xuất / Hủy Kho", WARNING, new Color(234, 88, 12), Color.WHITE);
         btnXuatKho.setIcon(new MenuIcon("MINUS"));
         btnXuatKho.setPreferredSize(new Dimension(160, 38));
@@ -216,12 +236,19 @@ public class ManHinhLoHang extends JPanel {
 
         right.add(searchField);
         right.add(Box.createHorizontalStrut(10));
+
         right.add(btnLamMoi);
         right.add(Box.createHorizontalStrut(10));
+
         right.add(btnLichSu);
         right.add(Box.createHorizontalStrut(10));
+
+        right.add(btnKiemKeKho);
+        right.add(Box.createHorizontalStrut(10));
+
         right.add(btnXuatKho);
         right.add(Box.createHorizontalStrut(10));
+
         right.add(btnThemLo);
 
         wrapper.add(left);
@@ -900,12 +927,15 @@ public class ManHinhLoHang extends JPanel {
         }
 
         if (item.tonKho > 0) {
-            String msg = "Lô hàng " + item.soLo + " tại " + item.khoHienThi + " hiện vẫn còn tồn " + item.tonKhoHienThi
-                    + ".\n\n"
-                    + "Theo nguyên tắc quản lý kho, bạn KHÔNG ĐƯỢC PHÉP ẩn lô hàng khi giá trị tài sản vẫn còn trên hệ thống.\n\n"
-                    + "Vui lòng sử dụng chức năng 'Xuất / Hủy Kho' để đưa số lượng về 0 trước khi tiến hành ẩn lô này!";
-            showCustomNotification("TỪ CHỐI THAO TÁC", msg, "ERROR");
-            return;
+        	String msg =
+        	        "Lô hàng <b>" + escapeHtml(item.soLo) + "</b> tại <b>" + escapeHtml(item.khoHienThi) + "</b> "
+        	                + "hiện vẫn còn tồn <b>" + escapeHtml(item.tonKhoHienThi) + "</b>.<br><br>"
+        	                + "Theo nguyên tắc quản lý kho, bạn <b>không được phép ẩn lô hàng</b> "
+        	                + "khi số lượng tồn vẫn còn trên hệ thống.<br><br>"
+        	                + "Vui lòng dùng chức năng <b>Xuất / Hủy Kho</b> để đưa tồn kho về 0 trước.";
+
+        	showCustomNotification("Từ chối thao tác", msg, "ERROR");
+        	return;
         }
 
         boolean confirm = showCustomConfirmDialog("XÁC NHẬN ẨN LÔ HÀNG",
@@ -949,136 +979,322 @@ public class ManHinhLoHang extends JPanel {
     }
 
     private boolean showCustomConfirmDialog(String titleText, String message) {
-        final boolean[] result = { false };
+        final boolean[] result = {false};
+
         Window owner = SwingUtilities.getWindowAncestor(this);
-        JDialog dialog = new JDialog(owner, Dialog.ModalityType.APPLICATION_MODAL);
+
+        JDialog dialog = new JDialog(owner, titleText, Dialog.ModalityType.APPLICATION_MODAL);
         dialog.setUndecorated(true);
         dialog.setBackground(new Color(0, 0, 0, 0));
 
-        JPanel pnlMain = new JPanel(new BorderLayout());
-        pnlMain.setBorder(BorderFactory.createLineBorder(PRIMARY_BLUE, 2));
-        pnlMain.setBackground(Color.WHITE);
+        boolean isRestore = titleText != null && titleText.toLowerCase().contains("khôi phục");
 
-        JPanel pnlHeader = new JPanel(new BorderLayout());
-        pnlHeader.setBackground(PRIMARY_BLUE);
-        pnlHeader.setPreferredSize(new Dimension(0, 45));
-        JLabel lblTitle = new JLabel(titleText.toUpperCase(), SwingConstants.CENTER);
-        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        Color themeColor = isRestore ? PRIMARY_BLUE : DANGER;
+        Color hoverColor = isRestore ? PRIMARY_BLUE_HOVER : DANGER_HOVER;
+        Color softColor = isRestore ? new Color(224, 242, 254) : DANGER_SOFT;
+        String iconText = isRestore ? "↻" : "!";
+
+        JPanel root = new JPanel(new BorderLayout());
+        root.setBackground(Color.WHITE);
+        root.setBorder(BorderFactory.createLineBorder(themeColor, 2));
+
+        JPanel header = new JPanel(new BorderLayout());
+        header.setBackground(themeColor);
+        header.setBorder(new EmptyBorder(13, 20, 13, 18));
+
+        JLabel lblTitle = new JLabel(titleText == null ? "Xác nhận" : titleText);
+        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 18));
         lblTitle.setForeground(Color.WHITE);
-        pnlHeader.add(lblTitle, BorderLayout.CENTER);
 
-        JPanel pnlBody = new JPanel(new BorderLayout());
-        pnlBody.setBackground(Color.WHITE);
-        pnlBody.setBorder(new EmptyBorder(20, 25, 15, 25));
+        JButton btnX = createDialogCloseButton(dialog);
 
-        JLabel msg = new JLabel("<html><center style='color:#333333; font-family:Segoe UI; font-size:14px;'>" + message
-                + "</center></html>", SwingConstants.CENTER);
-        msg.setVerticalAlignment(SwingConstants.CENTER);
-        pnlBody.add(msg, BorderLayout.CENTER);
+        header.add(lblTitle, BorderLayout.WEST);
+        header.add(btnX, BorderLayout.EAST);
 
-        JPanel pnlFooter = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 20));
-        pnlFooter.setBackground(Color.WHITE);
-        JButton btnYes = createHoverButton("Xác nhận", DANGER, DANGER_HOVER, Color.WHITE);
-        btnYes.setPreferredSize(new Dimension(130, 40));
-        btnYes.addActionListener(e -> {
+        JPanel body = new JPanel(new BorderLayout(18, 0));
+        body.setBackground(Color.WHITE);
+        body.setBorder(new EmptyBorder(24, 26, 18, 26));
+
+        JPanel iconPanel = createCircleIcon(iconText, themeColor, softColor);
+        iconPanel.setPreferredSize(new Dimension(58, 58));
+
+        JLabel lblMessage = new JLabel(
+                "<html><div style='width:390px; font-family:Segoe UI; font-size:13px; color:#334155; line-height:1.45;'>"
+                        + normalizeDialogMessage(message)
+                        + "</div></html>"
+        );
+        lblMessage.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        lblMessage.setForeground(TEXT_PRIMARY);
+
+        body.add(iconPanel, BorderLayout.WEST);
+        body.add(lblMessage, BorderLayout.CENTER);
+
+        JPanel footer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 0));
+        footer.setBackground(new Color(248, 250, 252));
+        footer.setBorder(new EmptyBorder(14, 22, 14, 22));
+
+        JButton btnCancel = createDialogButton("Hủy", TEXT_SECONDARY, new Color(71, 85, 105));
+        JButton btnConfirm = createDialogButton(isRestore ? "Khôi phục" : "Ẩn lô", themeColor, hoverColor);
+
+        btnCancel.setPreferredSize(new Dimension(110, 40));
+        btnConfirm.setPreferredSize(new Dimension(120, 40));
+
+        btnCancel.addActionListener(e -> dialog.dispose());
+
+        btnConfirm.addActionListener(e -> {
             result[0] = true;
             dialog.dispose();
         });
-        JButton btnNo = createHoverButton("Hủy bỏ", TEXT_SECONDARY, new Color(71, 85, 105), Color.WHITE);
-        btnNo.setPreferredSize(new Dimension(130, 40));
-        btnNo.addActionListener(e -> dialog.dispose());
-        pnlFooter.add(btnYes);
-        pnlFooter.add(btnNo);
 
-        pnlMain.add(pnlHeader, BorderLayout.NORTH);
-        pnlMain.add(pnlBody, BorderLayout.CENTER);
-        pnlMain.add(pnlFooter, BorderLayout.SOUTH);
+        footer.add(btnCancel);
+        footer.add(btnConfirm);
 
-        dialog.add(pnlMain);
-        dialog.setSize(450, 250);
+        root.add(header, BorderLayout.NORTH);
+        root.add(body, BorderLayout.CENTER);
+        root.add(footer, BorderLayout.SOUTH);
+
+        dialog.setContentPane(root);
+        dialog.pack();
+        dialog.setSize(Math.max(520, dialog.getWidth()), dialog.getHeight());
+        dialog.setShape(new RoundRectangle2D.Double(0, 0, dialog.getWidth(), dialog.getHeight(), 18, 18));
         dialog.setLocationRelativeTo(this);
         dialog.setVisible(true);
+
         return result[0];
     }
 
     private void showCustomNotification(String titleText, String message, String type) {
         Window owner = SwingUtilities.getWindowAncestor(this);
-        JDialog dialog = new JDialog(owner, Dialog.ModalityType.APPLICATION_MODAL);
+
+        JDialog dialog = new JDialog(owner, titleText, Dialog.ModalityType.APPLICATION_MODAL);
         dialog.setUndecorated(true);
         dialog.setBackground(new Color(0, 0, 0, 0));
 
-        JPanel pnlMain = new JPanel(new BorderLayout());
-        pnlMain.setBorder(BorderFactory.createLineBorder(PRIMARY_BLUE, 2));
-        pnlMain.setBackground(Color.WHITE);
+        String normalizedType = type == null ? "INFO" : type.trim().toUpperCase();
 
-        JPanel pnlHeader = new JPanel(new BorderLayout());
-        pnlHeader.setBackground(PRIMARY_BLUE);
-        pnlHeader.setPreferredSize(new Dimension(0, 45));
-        JLabel lblTitle = new JLabel(titleText.toUpperCase(), SwingConstants.CENTER);
-        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        Color themeColor;
+        Color hoverColor;
+        Color softColor;
+        String iconText;
+
+        switch (normalizedType) {
+            case "SUCCESS":
+                themeColor = SUCCESS;
+                hoverColor = SUCCESS_HOVER;
+                softColor = SUCCESS_SOFT;
+                iconText = "✓";
+                break;
+
+            case "WARNING":
+                themeColor = WARNING;
+                hoverColor = new Color(234, 88, 12);
+                softColor = WARNING_SOFT;
+                iconText = "!";
+                break;
+
+            case "ERROR":
+                themeColor = DANGER;
+                hoverColor = DANGER_HOVER;
+                softColor = DANGER_SOFT;
+                iconText = "×";
+                break;
+
+            default:
+                themeColor = PRIMARY_BLUE;
+                hoverColor = PRIMARY_BLUE_HOVER;
+                softColor = new Color(224, 242, 254);
+                iconText = "i";
+                break;
+        }
+
+        JPanel root = new JPanel(new BorderLayout());
+        root.setBackground(Color.WHITE);
+        root.setBorder(BorderFactory.createLineBorder(themeColor, 2));
+
+        JPanel header = new JPanel(new BorderLayout());
+        header.setBackground(themeColor);
+        header.setBorder(new EmptyBorder(13, 20, 13, 18));
+
+        JLabel lblTitle = new JLabel(titleText == null ? "Thông báo" : titleText);
+        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 18));
         lblTitle.setForeground(Color.WHITE);
-        pnlHeader.add(lblTitle, BorderLayout.CENTER);
 
-        JPanel pnlBody = new JPanel(null);
-        pnlBody.setBackground(Color.WHITE);
-        pnlBody.setPreferredSize(new Dimension(420, 170));
+        JButton btnX = createDialogCloseButton(dialog);
 
-        JPanel pnlIcon = new JPanel() {
+        header.add(lblTitle, BorderLayout.WEST);
+        header.add(btnX, BorderLayout.EAST);
+
+        JPanel body = new JPanel(new BorderLayout(18, 0));
+        body.setBackground(Color.WHITE);
+        body.setBorder(new EmptyBorder(24, 26, 18, 26));
+
+        JPanel iconPanel = createCircleIcon(iconText, themeColor, softColor);
+        iconPanel.setPreferredSize(new Dimension(58, 58));
+
+        JLabel lblMessage = new JLabel(
+                "<html><div style='width:400px; font-family:Segoe UI; font-size:13px; color:#334155; line-height:1.45;'>"
+                        + normalizeDialogMessage(message)
+                        + "</div></html>"
+        );
+        lblMessage.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        lblMessage.setForeground(TEXT_PRIMARY);
+
+        body.add(iconPanel, BorderLayout.WEST);
+        body.add(lblMessage, BorderLayout.CENTER);
+
+        JPanel footer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 0));
+        footer.setBackground(new Color(248, 250, 252));
+        footer.setBorder(new EmptyBorder(14, 22, 14, 22));
+
+        JButton btnClose = createDialogButton("Đóng", themeColor, hoverColor);
+        btnClose.setPreferredSize(new Dimension(110, 40));
+        btnClose.addActionListener(e -> dialog.dispose());
+
+        footer.add(btnClose);
+
+        root.add(header, BorderLayout.NORTH);
+        root.add(body, BorderLayout.CENTER);
+        root.add(footer, BorderLayout.SOUTH);
+
+        dialog.setContentPane(root);
+        dialog.pack();
+        dialog.setSize(Math.max(540, dialog.getWidth()), dialog.getHeight());
+        dialog.setShape(new RoundRectangle2D.Double(0, 0, dialog.getWidth(), dialog.getHeight(), 18, 18));
+        dialog.setLocationRelativeTo(this);
+
+        if ("SUCCESS".equals(normalizedType)) {
+            Timer timer = new Timer(1600, e -> dialog.dispose());
+            timer.setRepeats(false);
+            timer.start();
+        }
+
+        dialog.setVisible(true);
+    }
+
+    private JButton createDialogCloseButton(JDialog dialog) {
+        JButton btnX = new JButton("×");
+        btnX.setFont(new Font("Segoe UI", Font.BOLD, 24));
+        btnX.setForeground(new Color(255, 255, 255, 210));
+        btnX.setFocusPainted(false);
+        btnX.setBorderPainted(false);
+        btnX.setContentAreaFilled(false);
+        btnX.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+
+        btnX.addActionListener(e -> dialog.dispose());
+
+        btnX.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                btnX.setForeground(Color.WHITE);
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                btnX.setForeground(new Color(255, 255, 255, 210));
+            }
+        });
+
+        return btnX;
+    }
+
+    private JButton createDialogButton(String text, Color bg, Color hoverBg) {
+        JButton btn = new JButton(text);
+        btn.setFocusPainted(false);
+        btn.setForeground(Color.WHITE);
+        btn.setBackground(bg);
+        btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btn.setBorder(new EmptyBorder(9, 22, 9, 22));
+        btn.setOpaque(true);
+        btn.setContentAreaFilled(true);
+
+        btn.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                btn.setBackground(hoverBg);
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                btn.setBackground(bg);
+            }
+        });
+
+        return btn;
+    }
+
+    private JPanel createCircleIcon(String text, Color color, Color bgColor) {
+        return new JPanel() {
             @Override
             protected void paintComponent(Graphics g) {
                 super.paintComponent(g);
+
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                Color c = type.equals("ERROR") ? DANGER : (type.equals("SUCCESS") ? SUCCESS : new Color(245, 158, 11));
-                g2.setColor(type.equals("ERROR") ? new Color(254, 242, 242)
-                        : (type.equals("SUCCESS") ? new Color(209, 250, 229) : new Color(254, 243, 199)));
-                g2.fillOval(0, 0, 50, 50);
-                g2.setColor(c);
-                g2.setStroke(new BasicStroke(3f));
-                g2.drawOval(0, 0, 50, 50);
-                g2.setFont(new Font("Segoe UI", Font.BOLD, 26));
-                String s = type.equals("ERROR") ? "X" : (type.equals("SUCCESS") ? "V" : "!");
-                g2.drawString(s, (50 - g2.getFontMetrics().stringWidth(s)) / 2, 35);
+                g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+
+                int size = 56;
+                int x = 1;
+                int y = 1;
+
+                g2.setColor(bgColor);
+                g2.fillOval(x, y, size, size);
+
+                g2.setColor(color);
+                g2.setStroke(new BasicStroke(2.8f));
+                g2.drawOval(x + 1, y + 1, size - 2, size - 2);
+
+                g2.setFont(new Font("Segoe UI", Font.BOLD, 31));
+                FontMetrics fm = g2.getFontMetrics();
+
+                String icon = text == null ? "!" : text;
+                int tx = x + (size - fm.stringWidth(icon)) / 2;
+                int ty = y + (size - fm.getHeight()) / 2 + fm.getAscent() - 1;
+
+                g2.drawString(icon, tx, ty);
+
                 g2.dispose();
             }
+
+            @Override
+            public Dimension getPreferredSize() {
+                return new Dimension(58, 58);
+            }
         };
-        pnlIcon.setBounds(25, 30, 50, 50);
-        pnlIcon.setOpaque(false);
+    }
 
-        JTextArea msgArea = new JTextArea(message);
-        msgArea.setFont(new Font("Segoe UI", Font.PLAIN, 15));
-        msgArea.setWrapStyleWord(true);
-        msgArea.setLineWrap(true);
-        msgArea.setOpaque(false);
-        msgArea.setEditable(false);
-
-        JScrollPane scroll = new JScrollPane(msgArea);
-        scroll.setBounds(95, 20, 305, 140);
-        scroll.setBorder(null);
-        scroll.setOpaque(false);
-        scroll.getViewport().setOpaque(false);
-
-        pnlBody.add(pnlIcon);
-        pnlBody.add(scroll);
-
-        JPanel pnlFooter = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 15));
-        pnlFooter.setBackground(Color.WHITE);
-        JButton btnClose = createHoverButton("Đóng", PRIMARY_BLUE, PRIMARY_BLUE_HOVER, Color.WHITE);
-        btnClose.setPreferredSize(new Dimension(110, 38));
-        btnClose.addActionListener(e -> dialog.dispose());
-        pnlFooter.add(btnClose);
-
-        pnlMain.add(pnlHeader, BorderLayout.NORTH);
-        pnlMain.add(pnlBody, BorderLayout.CENTER);
-        pnlMain.add(pnlFooter, BorderLayout.SOUTH);
-
-        dialog.add(pnlMain);
-        dialog.pack();
-        dialog.setLocationRelativeTo(this);
-        if (type.equals("SUCCESS")) {
-            new Timer(1500, e -> dialog.dispose()).start();
+    private String normalizeDialogMessage(String message) {
+        if (message == null) {
+            return "";
         }
-        dialog.setVisible(true);
+
+        String value = message.trim();
+
+        boolean alreadyHtml = value.contains("<br>")
+                || value.contains("<b>")
+                || value.contains("</")
+                || value.contains("<html");
+
+        if (alreadyHtml) {
+            return value
+                    .replace("<html>", "")
+                    .replace("</html>", "")
+                    .replace("<body>", "")
+                    .replace("</body>", "");
+        }
+
+        return escapeHtml(value).replace("\n", "<br>");
+    }
+
+    private String escapeHtml(String text) {
+        if (text == null) {
+            return "";
+        }
+
+        return text
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;");
     }
 
     private void switchFilter(TrangThaiFilter newFilter, JButton source) {

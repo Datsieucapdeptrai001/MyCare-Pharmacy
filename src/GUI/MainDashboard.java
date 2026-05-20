@@ -236,6 +236,16 @@ public class MainDashboard extends JFrame {
         }
     }
 
+    public void chuyenSangTabKhuyenMaiVaTaoMoi(java.util.Map<String, Object> autoFillData) {
+        switchTabAndFilter("Khuyến mại", "");
+        for (Component c : cardPanel.getComponents()) {
+            if (c instanceof ManHinhKhuyenMai) {
+                ((ManHinhKhuyenMai) c).openAddDialogWithAutoFill(autoFillData);
+                break;
+            }
+        }
+    }
+
     private JPanel createTopHeader() {
         JPanel header = new JPanel(new BorderLayout());
         header.setBackground(Color.WHITE);

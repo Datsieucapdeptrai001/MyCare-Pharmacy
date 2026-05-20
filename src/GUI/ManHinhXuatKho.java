@@ -59,10 +59,14 @@ public class ManHinhXuatKho extends JPanel {
     private List<DonViDoLuong> currentDsDonVi = new ArrayList<>();
     private List<LoHang> cacheDanhSachLo = new ArrayList<>();
 
+    private LoHang currentLoHang = null;
+    private String currentLoHangId = "";
+
     private JPopupMenu popupSuggest;
     private JList<String> listSuggest;
     private DefaultListModel<String> modelSuggest;
     private JScrollPane scrollSuggest;
+    private final List<LoHang> dsSuggestLo = new ArrayList<>();
     private boolean isProgrammaticUpdate = false;
 
     public ManHinhXuatKho() {
@@ -70,8 +74,19 @@ public class ManHinhXuatKho extends JPanel {
         setBackground(BG_APP);
 
         new Thread(() -> {
-            List<LoHang> tempData = busKho.layDSLoHang(true);
-            SwingUtilities.invokeLater(() -> cacheDanhSachLo = tempData);
+            List<LoHang> tempData = busKho.layDSLoHang(false);
+
+            List<LoHang> dsCoTheXuat = new ArrayList<>();
+
+            if (tempData != null) {
+                for (LoHang lh : tempData) {
+                    if (laLoCoTheXuat(lh)) {
+                        dsCoTheXuat.add(lh);
+                    }
+                }
+            }
+
+            SwingUtilities.invokeLater(() -> cacheDanhSachLo = dsCoTheXuat);
         }).start();
 
         add(createHeader(), BorderLayout.NORTH);
@@ -289,6 +304,38 @@ public class ManHinhXuatKho extends JPanel {
         panel.add(valueLabel, gbc);
     }
 
+    private boolean laLoCoTheXuat(LoHang loHang) {
+        if (loHang == null) {
+            return false;
+        }
+
+        if (loHang.getSoLuongLoHang() <= 0) {
+            return false;
+        }
+
+        String trangThai = "";
+
+        try {
+            Object value = loHang.getTrangThai();
+
+            if (value != null) {
+                trangThai = value.toString().trim().toUpperCase();
+            }
+        } catch (Exception ignored) {
+        }
+
+        if (trangThai.contains("AN")
+                || trangThai.contains("ẨN")
+                || trangThai.contains("HET_HANG")
+                || trangThai.contains("HẾT_HÀNG")
+                || trangThai.contains("HET HANG")
+                || trangThai.contains("HẾT HÀNG")) {
+            return false;
+        }
+
+        return true;
+    }
+    
     private void setupAutoSuggest() {
         popupSuggest = new JPopupMenu();
         modelSuggest = new DefaultListModel<>();
@@ -359,15 +406,24 @@ public class ManHinhXuatKho extends JPanel {
     }
 
     private void chonTuSuggest() {
-        String selected = listSuggest.getSelectedValue();
+        int index = listSuggest.getSelectedIndex();
 
-        if (selected != null) {
-            isProgrammaticUpdate = true;
-            txtMaLo.setText(selected.split(" - ")[0]);
-            popupSuggest.setVisible(false);
-            isProgrammaticUpdate = false;
-            kiemTraMaLo();
+        if (index < 0 || index >= dsSuggestLo.size()) {
+            return;
         }
+
+        LoHang loDuocChon = dsSuggestLo.get(index);
+
+        if (loDuocChon == null) {
+            return;
+        }
+
+        isProgrammaticUpdate = true;
+        txtMaLo.setText(loDuocChon.getSoLoHang());
+        popupSuggest.setVisible(false);
+        isProgrammaticUpdate = false;
+
+        hienThiThongTinLoHang(loDuocChon, null);
     }
 
     private void updateSuggest() {
@@ -377,28 +433,44 @@ public class ManHinhXuatKho extends JPanel {
 
         SwingUtilities.invokeLater(() -> {
             String text = txtMaLo.getText().trim().toLowerCase();
+
             modelSuggest.clear();
+            dsSuggestLo.clear();
 
             if (text.isEmpty()) {
                 popupSuggest.setVisible(false);
                 return;
             }
 
-            int count = 0;
-
             for (LoHang lh : cacheDanhSachLo) {
+            	if (!laLoCoTheXuat(lh)) {
+            	    continue;
+            	}
+
                 String maLo = lh.getSoLoHang() != null ? lh.getSoLoHang().toLowerCase() : "";
                 String tenSP = lh.getSanPhamId() != null && lh.getSanPhamId().getTen() != null
                         ? lh.getSanPhamId().getTen().toLowerCase()
                         : "";
                 String kho = layKhoTuLoHang(lh).toLowerCase();
+                String maVachNoiBo = lh.getMaVachNoiBo() != null ? lh.getMaVachNoiBo().toLowerCase() : "";
 
-                if (maLo.contains(text) || tenSP.contains(text) || kho.contains(text)) {
-                    modelSuggest.addElement(
-                            lh.getSoLoHang() + " - " + lh.getSanPhamId().getTen() + " - " + layKhoTuLoHang(lh));
-                    count++;
+                if (maLo.contains(text) || tenSP.contains(text) || kho.contains(text) || maVachNoiBo.contains(text)) {
+                    String tenSanPham = lh.getSanPhamId() != null && lh.getSanPhamId().getTen() != null
+                            ? lh.getSanPhamId().getTen()
+                            : "Không rõ sản phẩm";
+
+                    String hienThi = lh.getSoLoHang()
+                            + " - "
+                            + tenSanPham
+                            + " - "
+                            + layKhoTuLoHang(lh);
+
+                    modelSuggest.addElement(hienThi);
+                    dsSuggestLo.add(lh);
                 }
             }
+
+            int count = modelSuggest.getSize();
 
             if (count > 0) {
                 int displayCount = Math.min(count, 5);
@@ -578,7 +650,8 @@ public class ManHinhXuatKho extends JPanel {
                 "Lý do",
                 "Ghi chú",
                 "Xóa",
-                "SL_QuyDoi_Hidden"
+                "SL_QuyDoi_Hidden",
+                "LO_HANG_ID_HIDDEN"
         };
 
         tableModel = new DefaultTableModel(cols, 0) {
@@ -608,7 +681,10 @@ public class ManHinhXuatKho extends JPanel {
         table.getColumnModel().getColumn(8).setMinWidth(0);
         table.getColumnModel().getColumn(8).setMaxWidth(0);
         table.getColumnModel().getColumn(8).setWidth(0);
-
+        table.getColumnModel().getColumn(9).setMinWidth(0);
+        table.getColumnModel().getColumn(9).setMaxWidth(0);
+        table.getColumnModel().getColumn(9).setWidth(0);
+        
         JTableHeader header = table.getTableHeader();
         header.setFont(new Font("Segoe UI", Font.BOLD, 13));
         header.setBackground(Color.WHITE);
@@ -784,61 +860,14 @@ public class ManHinhXuatKho extends JPanel {
         dialog.setContentPane(root);
         dialog.setVisible(true);
     }
-
-    private void kiemTraMaLo() {
-        isProgrammaticUpdate = true;
-        popupSuggest.setVisible(false);
-        isProgrammaticUpdate = false;
-
-        String maQuet = txtMaLo.getText().trim();
-
-        if (maQuet.isEmpty()) {
-            return;
-        }
-
-        LoHang loTimThay;
-        List<LoHang> dsLoKhop = new ArrayList<>();
-        DonViDoLuong dvQuetDuoc = null;
-
-        try {
-            dvQuetDuoc = busDonVi.layDonViTheoMaVach(maQuet);
-        } catch (Exception ignored) {
-        }
-
-        for (LoHang lh : cacheDanhSachLo) {
-            boolean match = false;
-
-            if (dvQuetDuoc != null) {
-                if (lh.getSanPhamId() != null
-                        && lh.getSanPhamId().getId().equals(dvQuetDuoc.getSanPhamId().getId())) {
-                    match = true;
-                }
-            } else {
-                boolean khopMaVachNoiBo = lh.getMaVachNoiBo() != null
-                        && lh.getMaVachNoiBo().equalsIgnoreCase(maQuet);
-                boolean khopSoLo = lh.getSoLoHang() != null
-                        && lh.getSoLoHang().equalsIgnoreCase(maQuet);
-                boolean khopMaSP = lh.getSanPhamId() != null
-                        && lh.getSanPhamId().getId().equalsIgnoreCase(maQuet);
-
-                if (khopMaVachNoiBo || khopSoLo || khopMaSP) {
-                    match = true;
-                }
-            }
-
-            if (match) {
-                dsLoKhop.add(lh);
-            }
-        }
-
-        if (dsLoKhop.isEmpty()) {
-            showCustomNotification("Không tìm thấy", "Mã '" + maQuet + "' không tồn tại trong kho.", "ERROR");
+    private void hienThiThongTinLoHang(LoHang loTimThay, DonViDoLuong dvQuetDuoc) {
+        if (loTimThay == null) {
             resetThongTinSP();
             return;
         }
 
-        dsLoKhop.sort((a, b) -> a.getNgayHetHan().compareTo(b.getNgayHetHan()));
-        loTimThay = dsLoKhop.get(0);
+        currentLoHang = loTimThay;
+        currentLoHangId = loTimThay.getId() == null ? "" : loTimThay.getId();
 
         isProgrammaticUpdate = true;
         txtMaLo.setText(loTimThay.getSoLoHang());
@@ -857,7 +886,13 @@ public class ManHinhXuatKho extends JPanel {
         currentSanPham = loTimThay.getSanPhamId();
 
         lblTonKhoHienTai.setText(formatTonKhoHienThi(currentSanPham.getId(), currentTonKho));
-        lblTonKhoHienTai.setForeground(DANGER);
+
+        if (currentTonKho <= 0) {
+            lblTonKhoHienTai.setForeground(DANGER);
+        } else {
+            lblTonKhoHienTai.setForeground(PRIMARY_BLUE);
+        }
+
         lblTonKhoHienTai.setFont(new Font("Segoe UI", Font.BOLD, 13));
 
         cbDonVi.removeAllItems();
@@ -877,6 +912,7 @@ public class ManHinhXuatKho extends JPanel {
             for (DonViDoLuong d : currentDsDonVi) {
                 if (d.getChuyenDoiSangDonViCoBan() == 1.0) {
                     dvCoBan = d;
+                    break;
                 }
             }
 
@@ -886,6 +922,111 @@ public class ManHinhXuatKho extends JPanel {
         txtSoLuong.setText("1");
         txtSoLuong.requestFocus();
         txtSoLuong.selectAll();
+    }
+    
+    private void kiemTraMaLo() {
+        isProgrammaticUpdate = true;
+        popupSuggest.setVisible(false);
+        isProgrammaticUpdate = false;
+
+        String maQuet = txtMaLo.getText().trim();
+
+        if (maQuet.isEmpty()) {
+            return;
+        }
+
+        List<LoHang> dsLoKhop = new ArrayList<>();
+        DonViDoLuong dvQuetDuoc = null;
+
+        try {
+            dvQuetDuoc = busDonVi.layDonViTheoMaVach(maQuet);
+        } catch (Exception ignored) {
+        }
+
+        for (LoHang lh : cacheDanhSachLo) {
+            if (!laLoCoTheXuat(lh)) {
+                continue;
+            }
+
+            boolean match = false;
+
+            if (dvQuetDuoc != null) {
+                if (lh.getSanPhamId() != null
+                        && lh.getSanPhamId().getId().equals(dvQuetDuoc.getSanPhamId().getId())) {
+                    match = true;
+                }
+            } else {
+                boolean khopMaVachNoiBo = lh.getMaVachNoiBo() != null
+                        && lh.getMaVachNoiBo().equalsIgnoreCase(maQuet);
+
+                boolean khopSoLo = lh.getSoLoHang() != null
+                        && lh.getSoLoHang().equalsIgnoreCase(maQuet);
+
+                boolean khopMaSP = lh.getSanPhamId() != null
+                        && lh.getSanPhamId().getId().equalsIgnoreCase(maQuet);
+
+                boolean khopIdLo = lh.getId() != null
+                        && lh.getId().equalsIgnoreCase(maQuet);
+
+                if (khopMaVachNoiBo || khopSoLo || khopMaSP || khopIdLo) {
+                    match = true;
+                }
+            }
+
+            if (match) {
+                dsLoKhop.add(lh);
+            }
+        }
+
+        if (dsLoKhop.isEmpty()) {
+            showCustomNotification("Không tìm thấy", "Mã '" + maQuet + "' không tồn tại trong kho.", "ERROR");
+            resetThongTinSP();
+            return;
+        }
+
+        /*
+         * Nếu quét mã vạch nội bộ hoặc ID lô thì chỉ nên ra đúng 1 lô.
+         * Nếu nhập tay mã lô bị trùng ở nhiều kho thì hiện popup để chọn đúng kho,
+         * không tự lấy dòng đầu tiên nữa.
+         */
+        if (dsLoKhop.size() > 1) {
+            modelSuggest.clear();
+            dsSuggestLo.clear();
+
+            for (LoHang lh : dsLoKhop) {
+                String tenSanPham = lh.getSanPhamId() != null && lh.getSanPhamId().getTen() != null
+                        ? lh.getSanPhamId().getTen()
+                        : "Không rõ sản phẩm";
+
+                modelSuggest.addElement(
+                        lh.getSoLoHang()
+                                + " - "
+                                + tenSanPham
+                                + " - "
+                                + layKhoTuLoHang(lh)
+                );
+
+                dsSuggestLo.add(lh);
+            }
+
+            int displayCount = Math.min(dsLoKhop.size(), 5);
+            listSuggest.setVisibleRowCount(displayCount);
+            scrollSuggest.setPreferredSize(new Dimension(390, displayCount * 28));
+
+            popupSuggest.pack();
+            popupSuggest.show(txtMaLo, 0, txtMaLo.getHeight());
+            listSuggest.setSelectedIndex(0);
+            txtMaLo.requestFocus();
+
+            showCustomNotification(
+                    "Trùng mã lô",
+                    "Mã lô này đang tồn tại ở nhiều kho.\nVui lòng chọn đúng dòng kho cần xuất trong danh sách gợi ý.",
+                    "WARNING"
+            );
+            return;
+        }
+
+        hienThiThongTinLoHang(dsLoKhop.get(0), dvQuetDuoc);
     }
 
     private String layKhoTuLoHang(LoHang loHang) {
@@ -1022,7 +1163,9 @@ public class ManHinhXuatKho extends JPanel {
             String maLoHienTai = txtMaLo.getText().trim();
 
             for (int i = 0; i < tableModel.getRowCount(); i++) {
-                if (tableModel.getValueAt(i, 0).toString().equalsIgnoreCase(maLoHienTai)) {
+                String loHangIdTrongGio = tableModel.getValueAt(i, 9).toString();
+
+                if (loHangIdTrongGio.equalsIgnoreCase(currentLoHangId)) {
                     tongDaCoTrongGio += Integer.parseInt(tableModel.getValueAt(i, 8).toString());
                 }
             }
@@ -1064,7 +1207,8 @@ public class ManHinhXuatKho extends JPanel {
                     cbLyDo.getSelectedItem().toString(),
                     txtGhiChu.getText().trim(),
                     "",
-                    slXuatQuyDoi
+                    slXuatQuyDoi,
+                    currentLoHangId
             });
 
             updateTableTitle();
@@ -1091,11 +1235,11 @@ public class ManHinhXuatKho extends JPanel {
             List<Object[]> ds = new ArrayList<>();
 
             for (int i = 0; i < tableModel.getRowCount(); i++) {
-                ds.add(new Object[] {
-                        tableModel.getValueAt(i, 0),
-                        tableModel.getValueAt(i, 8),
-                        tableModel.getValueAt(i, 5)
-                });
+            	ds.add(new Object[] {
+            	        tableModel.getValueAt(i, 9),
+            	        tableModel.getValueAt(i, 8),
+            	        tableModel.getValueAt(i, 5)
+            	});
             }
 
             String maNhanVienDangNhap = SessionDangNhap.getMaNhanVienOrDefault();
@@ -1131,6 +1275,7 @@ public class ManHinhXuatKho extends JPanel {
                         tenHienThi);
 
                 dialogQR.setVisible(true);
+                reloadCacheLoHangCoTheXuat();
                 resetFormToanBo();
 
             } else {
@@ -1139,6 +1284,24 @@ public class ManHinhXuatKho extends JPanel {
         }
     }
 
+    private void reloadCacheLoHangCoTheXuat() {
+        new Thread(() -> {
+            List<LoHang> tempData = busKho.layDSLoHang(false);
+
+            List<LoHang> dsCoTheXuat = new ArrayList<>();
+
+            if (tempData != null) {
+                for (LoHang lh : tempData) {
+                    if (laLoCoTheXuat(lh)) {
+                        dsCoTheXuat.add(lh);
+                    }
+                }
+            }
+
+            SwingUtilities.invokeLater(() -> cacheDanhSachLo = dsCoTheXuat);
+        }).start();
+    }
+    
     private void resetFormNhap() {
         isProgrammaticUpdate = true;
         txtMaLo.setText("");
@@ -1168,6 +1331,9 @@ public class ManHinhXuatKho extends JPanel {
         currentSanPham = null;
         currentKhoHienThi = "Không xác định";
         currentDsDonVi.clear();
+
+        currentLoHang = null;
+        currentLoHangId = "";
     }
 
     private void resetFormToanBo() {

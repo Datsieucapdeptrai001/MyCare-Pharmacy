@@ -244,7 +244,8 @@ public class TaoPhieuDoiTra extends JDialog {
             }
         });
 
-        spMoiModel = new DefaultTableModel(new String[]{"Sản phẩm mới", "ĐVT", "SL", "Đơn giá", "Thành tiền"}, 0) {
+        // Cột: 0=Tên, 1=ĐVT, 2=SL, 3=Đơn giá (chưa VAT), 4=VAT%, 5=Thành tiền (đã gộp VAT)
+        spMoiModel = new DefaultTableModel(new String[]{"Sản phẩm mới", "ĐVT", "SL", "Đơn giá", "VAT", "Thành tiền"}, 0) {
             @Override
             public boolean isCellEditable(int row, int column) { return column == 1 || column == 2; } 
         };
@@ -261,23 +262,28 @@ public class TaoPhieuDoiTra extends JDialog {
                         try {
                             String tenSP = spMoiModel.getValueAt(row, 0).toString();
                             String donViMoi = spMoiModel.getValueAt(row, 1).toString();
-                            double giaBanMoi = 0;
-                            
-                            try (java.sql.Connection con = ConnectDB.ConnectDB.getInstance().getConnection()) {
-                                String sql = "SELECT dv.gia FROM DonViDoLuong dv JOIN SanPham sp ON dv.sanPhamId = sp.id WHERE sp.ten = ? AND dv.ten = ?";
-                                try (java.sql.PreparedStatement pst = con.prepareStatement(sql)) {
-                                    pst.setString(1, tenSP);
-                                    pst.setString(2, donViMoi);
-                                    try (java.sql.ResultSet rs = pst.executeQuery()) {
-                                        if (rs.next()) giaBanMoi = rs.getDouble("gia");
-                                    }
-                                }
-                            } catch (Exception ex) {}
+                            double giaChuaVAT = 0;
+                            double thueVAT = 0;
 
-                            if (giaBanMoi > 0) {
-                                spMoiModel.setValueAt(String.format("%,.0fđ", giaBanMoi), row, 3);
+                            BUS_DonViDoLuong busDVDL_inner = new BUS_DonViDoLuong();
+                            List<DonViDoLuong> dsDV = busDVDL_inner.getDSTheoTenSP(tenSP);
+                            for (DonViDoLuong dv : dsDV) {
+                                if (dv.getTen().equalsIgnoreCase(donViMoi)) {
+                                    giaChuaVAT = dv.getGia();
+                                    break;
+                                }
+                            }
+                            BUS_SanPham busSP_inner = new BUS_SanPham();
+                            thueVAT = busSP_inner.layThueVATTheoTenSP(tenSP);
+                            if (thueVAT > 0 && thueVAT < 1) thueVAT = thueVAT * 100;
+
+                            if (giaChuaVAT > 0) {
                                 int sl = Integer.parseInt(spMoiModel.getValueAt(row, 2).toString());
-                                spMoiModel.setValueAt(String.format("%,.0fđ", sl * giaBanMoi), row, 4);
+                                double thanhTien = sl * giaChuaVAT * (1.0 + thueVAT / 100.0);
+                                // col 3 = Đơn giá (chưa VAT), col 4 = VAT%, col 5 = Thành tiền (đã gộp VAT)
+                                spMoiModel.setValueAt(String.format("%,.0fđ", giaChuaVAT), row, 3);
+                                spMoiModel.setValueAt(String.format("%.0f%%", thueVAT), row, 4);
+                                spMoiModel.setValueAt(String.format("%,.0fđ", thanhTien), row, 5);
                             }
                         } catch (Exception ex) {}
                         finally {
@@ -291,10 +297,16 @@ public class TaoPhieuDoiTra extends JDialog {
                         int sl = Integer.parseInt(spMoiModel.getValueAt(row, 2).toString());
                         if (sl < 1) sl = 1;
                         double donGia = Double.parseDouble(spMoiModel.getValueAt(row, 3).toString().replaceAll("[^0-9]", ""));
+                        double vatPct = 0;
+                        try {
+                            String vatStr = spMoiModel.getValueAt(row, 4).toString().replace("%", "").trim();
+                            vatPct = Double.parseDouble(vatStr);
+                        } catch (Exception ignored) {}
+                        double thanhTien = sl * donGia * (1.0 + vatPct / 100.0);
                         
                         isUpdatingCart = true;
                         spMoiModel.setValueAt(sl, row, 2);
-                        spMoiModel.setValueAt(String.format("%,.0fđ", sl * donGia), row, 4);
+                        spMoiModel.setValueAt(String.format("%,.0fđ", thanhTien), row, 5);
                     } catch(Exception ex) { 
                     } finally {
                         isUpdatingCart = false;
@@ -441,27 +453,7 @@ public class TaoPhieuDoiTra extends JDialog {
         }
 
         new Thread(() -> {
-            java.util.List<String> dsGoiY = new java.util.ArrayList<>();
-            try (java.sql.Connection con = ConnectDB.ConnectDB.getInstance().getConnection()) {
-                String sql = "SELECT id, ghiChu FROM HoaDon WHERE id LIKE ? AND hoaDonGocId IS NULL";
-                try (java.sql.PreparedStatement pst = con.prepareStatement(sql)) {
-                    pst.setString(1, "%" + kw + "%");
-                    try (java.sql.ResultSet rs = pst.executeQuery()) {
-                        int count = 0;
-                        while (rs.next() && count < 5) {
-                            String gc = rs.getString("ghiChu");
-                            if (gc == null) gc = "";
-                            
-                            if (!gc.contains("Lưu nháp") && !gc.contains("Đang xử lý") && !gc.contains("Đã hủy") && !gc.contains("Từ chối")) {
-                                dsGoiY.add(rs.getString("id"));
-                                count++;
-                            }
-                        }
-                    }
-                }
-            } catch (Exception ex) {
-                ex.printStackTrace();
-            }
+            java.util.List<String> dsGoiY = busHD.timKiemMaHoaDonGoiY(kw);
 
             SwingUtilities.invokeLater(() -> {
                 if (!txtSearch.getText().trim().equals(kw)) return; 
@@ -871,23 +863,15 @@ public class TaoPhieuDoiTra extends JDialog {
                     JComboBox<String> cbDVT = new JComboBox<>();
                     cbDVT.setFont(new Font("Segoe UI", Font.PLAIN, 13));
                     cbDVT.setBackground(Color.WHITE);
-                    
-                    try (java.sql.Connection con = ConnectDB.ConnectDB.getInstance().getConnection()) {
-                        String sql = "SELECT dv.ten FROM DonViDoLuong dv JOIN SanPham sp ON dv.sanPhamId = sp.id WHERE sp.ten = ?";
-                        try (java.sql.PreparedStatement pst = con.prepareStatement(sql)) {
-                            pst.setString(1, tenSP);
-                            try (java.sql.ResultSet rs = pst.executeQuery()) {
-                                boolean hasData = false;
-                                while (rs.next()) {
-                                    cbDVT.addItem(rs.getString("ten"));
-                                    hasData = true;
-                                }
-                                if (!hasData && !dvtHienTai.isEmpty()) cbDVT.addItem(dvtHienTai);
-                            }
-                        }
-                    } catch (Exception ex) {
-                        if (!dvtHienTai.isEmpty()) cbDVT.addItem(dvtHienTai);
+
+                    BUS_DonViDoLuong busDVDL_editor = new BUS_DonViDoLuong();
+                    List<DonViDoLuong> dsDV_editor = busDVDL_editor.getDSTheoTenSP(tenSP);
+                    boolean hasData = false;
+                    for (DonViDoLuong dv : dsDV_editor) {
+                        cbDVT.addItem(dv.getTen());
+                        hasData = true;
                     }
+                    if (!hasData && !dvtHienTai.isEmpty()) cbDVT.addItem(dvtHienTai);
                     cbDVT.setSelectedItem(dvtHienTai);
                     return new DefaultCellEditor(cbDVT);
                 }
@@ -902,19 +886,21 @@ public class TaoPhieuDoiTra extends JDialog {
         
         DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
         centerRenderer.setHorizontalAlignment(JLabel.CENTER);
-        tableSPMoi.getColumnModel().getColumn(1).setCellRenderer(centerRenderer); 
-        tableSPMoi.getColumnModel().getColumn(2).setCellRenderer(centerRenderer); 
+        tableSPMoi.getColumnModel().getColumn(1).setCellRenderer(centerRenderer); // ĐVT
+        tableSPMoi.getColumnModel().getColumn(2).setCellRenderer(centerRenderer); // SL
+        tableSPMoi.getColumnModel().getColumn(4).setCellRenderer(centerRenderer); // VAT%
         
         DefaultTableCellRenderer rightRenderer = new DefaultTableCellRenderer();
         rightRenderer.setHorizontalAlignment(JLabel.RIGHT);
-        tableSPMoi.getColumnModel().getColumn(3).setCellRenderer(rightRenderer); 
-        tableSPMoi.getColumnModel().getColumn(4).setCellRenderer(rightRenderer); 
+        tableSPMoi.getColumnModel().getColumn(3).setCellRenderer(rightRenderer); // Đơn giá
+        tableSPMoi.getColumnModel().getColumn(5).setCellRenderer(rightRenderer); // Thành tiền
 
-        tableSPMoi.getColumnModel().getColumn(0).setPreferredWidth(180);
-        tableSPMoi.getColumnModel().getColumn(1).setPreferredWidth(60); 
-        tableSPMoi.getColumnModel().getColumn(2).setPreferredWidth(40); 
-        tableSPMoi.getColumnModel().getColumn(3).setPreferredWidth(80); 
-        tableSPMoi.getColumnModel().getColumn(4).setPreferredWidth(80); 
+        tableSPMoi.getColumnModel().getColumn(0).setPreferredWidth(160); // Tên SP
+        tableSPMoi.getColumnModel().getColumn(1).setPreferredWidth(60);  // ĐVT
+        tableSPMoi.getColumnModel().getColumn(2).setPreferredWidth(35);  // SL
+        tableSPMoi.getColumnModel().getColumn(3).setPreferredWidth(85);  // Đơn giá
+        tableSPMoi.getColumnModel().getColumn(4).setPreferredWidth(45);  // VAT%
+        tableSPMoi.getColumnModel().getColumn(5).setPreferredWidth(85);  // Thành tiền
         
         scrollSPMoi = new JScrollPane(tableSPMoi);
         scrollSPMoi.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, Color.decode("#E2E8F0")));
@@ -954,23 +940,7 @@ public class TaoPhieuDoiTra extends JDialog {
             return;
         }
 
-        // =========================================================
-        // ĐÃ FIX: TRUY VẤN LẤY CỘT 'ghiChu' ĐỂ KIỂM TRA TRẠNG THÁI
-        // =========================================================
-        String ghiChuThucTe = "";
-        try (java.sql.Connection con = ConnectDB.ConnectDB.getInstance().getConnection()) {
-            String sql = "SELECT ghiChu FROM HoaDon WHERE id = ?";
-            try (java.sql.PreparedStatement pst = con.prepareStatement(sql)) {
-                pst.setString(1, maHD);
-                try (java.sql.ResultSet rs = pst.executeQuery()) {
-                    if (rs.next()) {
-                        ghiChuThucTe = rs.getString("ghiChu");
-                    }
-                }
-            }
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
+        String ghiChuThucTe = busHD.layGhiChuHoaDon(maHD);
 
         if (ghiChuThucTe == null) ghiChuThucTe = "";
 
@@ -999,25 +969,15 @@ public class TaoPhieuDoiTra extends JDialog {
         String maPhieuCu = "";
         String loaiPhieuCu = "Đổi / Trả";
 
-        try (java.sql.Connection con = ConnectDB.ConnectDB.getInstance().getConnection()) {
-            String sqlCheck = "SELECT id, loaiHD FROM HoaDon WHERE hoaDonGocId = ?";
-            try (java.sql.PreparedStatement pst = con.prepareStatement(sqlCheck)) {
-                pst.setString(1, hd.getId());
-                try (java.sql.ResultSet rs = pst.executeQuery()) {
-                    if (rs.next()) {
-                        daCoPhieu = true;
-                        maPhieuCu = rs.getString("id");
-                        String loai = rs.getString("loaiHD"); 
-                        
-                        if (loai != null) {
-                            if (loai.contains("TRA_HANG")) loaiPhieuCu = "Trả hàng";
-                            else if (loai.contains("DOI_HANG")) loaiPhieuCu = "Đổi hàng";
-                        }
-                    }
-                }
+        String[] phieuCu = busHD.layPhieuDoiTraTheoHDGoc(hd.getId());
+        if (phieuCu != null) {
+            daCoPhieu = true;
+            maPhieuCu = phieuCu[0];
+            String loai = phieuCu[1];
+            if (loai != null) {
+                if (loai.contains("TRA_HANG")) loaiPhieuCu = "Trả hàng";
+                else if (loai.contains("DOI_HANG")) loaiPhieuCu = "Đổi hàng";
             }
-        } catch (Exception ex) {
-            ex.printStackTrace();
         }
 
         if (daCoPhieu) {
@@ -1075,19 +1035,7 @@ public class TaoPhieuDoiTra extends JDialog {
             }
         }
 
-        String khachName = "Khách lẻ";
-        try (java.sql.Connection con = ConnectDB.ConnectDB.getInstance().getConnection()) {
-            String sql = "SELECT kh.hoVaTen FROM HoaDon hd JOIN KhachHang kh ON hd.khachHangId = kh.id WHERE hd.id = ?";
-            try (java.sql.PreparedStatement pst = con.prepareStatement(sql)) {
-                pst.setString(1, hd.getId());
-                try (java.sql.ResultSet rs = pst.executeQuery()) {
-                    if (rs.next()) {
-                        String ten = rs.getString("hoVaTen");
-                        if (ten != null && !ten.trim().isEmpty()) khachName = ten;
-                    }
-                }
-            }
-        } catch (Exception ex) {}
+        String khachName = busHD.layTenKhachHangTheoHD(hd.getId());
         
         lblKhachHang.setText(khachName); lblMaHoaDonInfo.setText(hd.getId());
         lblThoiGianThanhToan.setText(hd.getNgayLapHD().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
@@ -1506,7 +1454,7 @@ public class TaoPhieuDoiTra extends JDialog {
                         pnlInfo.add(lblTen, BorderLayout.NORTH); 
                         pnlInfo.add(pnlSub, BorderLayout.CENTER);
 
-                        // Lấy giá bán
+                        // Lấy giá bán và VAT
                         BUS_DonViDoLuong busDVDL = new BUS_DonViDoLuong(); 
                         List<DonViDoLuong> dsDVT = busDVDL.getDSTheoMaSP(sp.getId());
                         double gia = 0; String dvt = "Hộp"; 
@@ -1514,9 +1462,18 @@ public class TaoPhieuDoiTra extends JDialog {
                             gia = dsDVT.get(0).getGia(); 
                             dvt = dsDVT.get(0).getTen(); 
                         }
+                        // Lấy VAT của sản phẩm qua BUS
+                        double vatSP = 0;
+                        BUS_SanPham busSPVAT = new BUS_SanPham();
+                        SanPham spFull = busSPVAT.getSanPhamDayDu(sp.getId());
+                        if (spFull != null) {
+                            vatSP = spFull.getThueVAT();
+                            if (vatSP > 0 && vatSP < 1) vatSP = vatSP * 100;
+                        }
                         
                         final double finalGia = gia; 
-                        final String finalDvt = dvt; 
+                        final String finalDvt = dvt;
+                        final double finalVat = vatSP;
 
                         JLabel lblGia = new JLabel(String.format("%,.0fđ / %s", gia, dvt)); 
                         lblGia.setFont(new Font("Segoe UI", Font.BOLD, 13)); 
@@ -1529,6 +1486,7 @@ public class TaoPhieuDoiTra extends JDialog {
                         final String tenSP = sp.getTen();
                         final String dvtChuan = finalDvt;
                         final double giaChuan = finalGia;
+                        final double vatChuan = finalVat;
 
                         pnlItem.addMouseListener(new java.awt.event.MouseAdapter() {
                             public void mouseEntered(java.awt.event.MouseEvent evt) { pnlItem.setBackground(Color.decode("#F8FAFC")); }
@@ -1555,14 +1513,16 @@ public class TaoPhieuDoiTra extends JDialog {
                                         }
                                     }
                                     
-                                    // 2. Nếu chưa có thì thêm dòng sản phẩm mới vào bảng
+                                    // 2. Nếu chưa có thì thêm dòng sản phẩm mới vào bảng (6 cột)
                                     if (!tonTai) {
+                                        double thanhTienMoi = giaChuan * (1.0 + vatChuan / 100.0);
                                         spMoiModel.addRow(new Object[]{
                                             tenSP, 
                                             dvtChuan, 
                                             1, 
-                                            String.format("%,.0fđ", giaChuan), 
-                                            String.format("%,.0fđ", giaChuan)
+                                            String.format("%,.0fđ", giaChuan),   // Đơn giá (chưa VAT)
+                                            String.format("%.0f%%", vatChuan),   // VAT%
+                                            String.format("%,.0fđ", thanhTienMoi) // Thành tiền (đã gộp VAT)
                                         });
                                     }
                                     
@@ -2296,38 +2256,6 @@ public class TaoPhieuDoiTra extends JDialog {
         return result[0];
     }
     private long layTienMatTrongKetHienTai() {
-        Utils.UserSession session = Utils.UserSession.getInstance();
-        if (session.getCaHienTai() == null) return Long.MAX_VALUE; // Bypass nếu chạy test không ca
-        
-        long tienDauCa = (long) session.getCaHienTai().getTienDauCa();
-        long doanhThuTienMat = 0;
-        
-        // Cần truy vấn DB để lấy TỔNG TIỀN MẶT thu được từ đầu ca tới giờ
-        try (java.sql.Connection con = ConnectDB.ConnectDB.getInstance().getConnection()) {
-            // Lấy TỔNG THU (Bán hàng - Tiền mặt) trừ đi TỔNG CHI (Đổi trả hoàn tiền mặt)
-            String sql = "SELECT " +
-                         "ISNULL(SUM(CASE WHEN hd.loaiHD = 0 THEN ct.soLuong * dv.gia ELSE 0 END), 0) - " + // Cộng tiền Hóa Đơn Bán (loaiHD = 0)
-                         "ISNULL(SUM(CASE WHEN hd.loaiHD = 1 THEN ct.soLuong * dv.gia ELSE 0 END), 0) " +   // Trừ tiền Phiếu Trả (loaiHD = 1)
-                         "FROM ChiTietHoaDon ct " +
-                         "JOIN HoaDon hd ON ct.hoaDonId = hd.id " +
-                         "JOIN DonViDoLuong dv ON ct.donViDoLuongId = dv.id " +
-                         "WHERE hd.nhanVienId = ? " +
-                         "AND hd.phuongThucThanhToan = 0 " + // 0 = Tiền mặt
-                         "AND hd.ngayLapHD >= ?";            // Tính từ lúc mở ca
-            
-            try (java.sql.PreparedStatement pst = con.prepareStatement(sql)) {
-            	pst.setString(1, session.getMaNhanVien());
-                pst.setTimestamp(2, java.sql.Timestamp.valueOf(session.getCaHienTai().getThoiGianBatDau()));
-                try (java.sql.ResultSet rs = pst.executeQuery()) {
-                    if (rs.next()) {
-                        doanhThuTienMat = (long) rs.getDouble(1);
-                    }
-                }
-            }
-        } catch (Exception ex) {
-            System.err.println("Lỗi tính tiền trong két: " + ex.getMessage());
-        }
-        
-        return tienDauCa + doanhThuTienMat;
+        return busHD.layTienMatTrongKet();
     }
 }
