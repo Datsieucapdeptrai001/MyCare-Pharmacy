@@ -337,17 +337,48 @@ public class BUS_SanPham {
         return daoSanPham.layIdViTriMoi();
     }
  // =========================================================================
-    // COMBO LIỀU (CẮT LIỀU)
+    // NGHIỆP VỤ CẮT LIỀU CHUYÊN SÂU (TỪ BUS_MAULIEU)
     // =========================================================================
-    public List<Object[]> layDanhSachCombo() { return daoSanPham.layDanhSachCombo(); }
-    public boolean themComboMoi(String ten) {
-        String id = "CB" + java.util.UUID.randomUUID().toString().replace("-", "").substring(0, 12);
-        return daoSanPham.themComboMoi(id, ten, "");
+    public SanPham getSanPhamByBarcode(String maVach) {
+        if (maVach == null || maVach.trim().isEmpty()) return null;
+        return daoSanPham.getSanPhamByBarcode(maVach.trim());
     }
-    public boolean capNhatCombo(String id, String hdsd) { return daoSanPham.capNhatCombo(id, hdsd); }
-    public boolean xoaCombo(String id) { return daoSanPham.xoaCombo(id); }
-    public List<Object[]> layChiTietCombo(String comboId) { return daoSanPham.layChiTietCombo(comboId); }
-    public boolean luuChiTietCombo(String comboId, List<Object[]> dsChiTiet) {
-        return daoSanPham.luuChiTietCombo(comboId, dsChiTiet);
+
+    public Object[] getDonViNhoNhat(String maSP) {
+        if (maSP == null || maSP.trim().isEmpty()) return null;
+        return daoSanPham.getDonViNhoNhat(maSP.trim());
+    }
+
+    public List<Object[]> layDanhSachComboNangCao() {
+        return daoSanPham.layDanhSachComboNangCao();
+    }
+
+    public List<String> layDanhSachNhomBenhLieu() {
+        return daoSanPham.layDanhSachNhomBenhLieu();
+    }
+
+    public SanPham.MauLieu layComboByIdNangCao(String comboId) {
+        if (comboId == null || comboId.trim().isEmpty()) return null;
+        return daoSanPham.layComboByIdNangCao(comboId.trim());
+    }
+
+    public String themMauMoiNangCao(String tenCombo, String nhomBenh, double giaBanCombo, String ghiChu, List<SanPham.ChiTietLieu> dsChiTiet) {
+        if (tenCombo == null || tenCombo.trim().isEmpty() || dsChiTiet == null || dsChiTiet.isEmpty()) return null;
+        String id = daoSanPham.sinhComboIdMoi();
+        SanPham.MauLieu m = new SanPham.MauLieu(id, tenCombo.trim(), nhomBenh, giaBanCombo, ghiChu);
+        for (SanPham.ChiTietLieu ct : dsChiTiet) ct.setComboId(id);
+        return daoSanPham.taoMauMoiNangCao(m, dsChiTiet) ? id : null;
+    }
+
+    public boolean capNhatMauNangCao(String comboId, String tenCombo, String nhomBenh, double giaBanCombo, String ghiChu, List<SanPham.ChiTietLieu> dsChiTiet) {
+        if (comboId == null || tenCombo == null || dsChiTiet == null || dsChiTiet.isEmpty()) return false;
+        SanPham.MauLieu m = new SanPham.MauLieu(comboId.trim(), tenCombo.trim(), nhomBenh, giaBanCombo, ghiChu);
+        for (SanPham.ChiTietLieu ct : dsChiTiet) ct.setComboId(comboId.trim());
+        return daoSanPham.capNhatMauNangCao(m, dsChiTiet);
+    }
+
+    public boolean xoaMauNangCao(String comboId) {
+        if (comboId == null || comboId.trim().isEmpty()) return false;
+        return daoSanPham.xoaMauNangCao(comboId.trim());
     }
 }

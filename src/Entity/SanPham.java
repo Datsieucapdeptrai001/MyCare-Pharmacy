@@ -2,7 +2,8 @@ package Entity;
 
 import Enumeration.DangBaoChe;
 import Enumeration.DanhMucSanPham;
-
+import java.util.List;
+import java.util.ArrayList;
 import java.time.LocalDateTime;
 
 public class SanPham {
@@ -139,5 +140,77 @@ public class SanPham {
     @Override
     public String toString() {
         return ten + " (" + id + ")";
+    }
+ // =========================================================================
+    // TÍCH HỢP TỪ CHITIETLIEU VÀ MAULIEU (INNER CLASSES)
+    // =========================================================================
+    public static class ChiTietLieu {
+        private int id;
+        private String comboId;
+        private String sanPhamId;
+        private String tenSanPham;
+        private String dvt;
+        private double sang, trua, chieu, toi;
+        private String cachDung;
+        private int soNgay = 5;
+        private int tongSoLuong;
+        private double giaDonVi;
+
+        public ChiTietLieu() {}
+        public ChiTietLieu(String comboId, String sanPhamId, String tenSanPham, String dvt, 
+                           double sang, double trua, double chieu, double toi, String cachDung, int soNgay, double giaDonVi) {
+            this.comboId = comboId; this.sanPhamId = sanPhamId; this.tenSanPham = tenSanPham;
+            this.dvt = dvt; this.sang = sang; this.trua = trua; this.chieu = chieu; this.toi = toi;
+            this.cachDung = cachDung; this.soNgay = soNgay; this.giaDonVi = giaDonVi;
+            tinhLaiTongSoLuong();
+        }
+        public void tinhLaiTongSoLuong() {
+            this.tongSoLuong = (int) Math.ceil((sang + trua + chieu + toi) * soNgay);
+        }
+        public double tinhThanhTien() { return tongSoLuong * giaDonVi; }
+        
+        // Bạn bổ sung đầy đủ các hàm Getter/Setter cho các thuộc tính trên...
+        public String getSanPhamId() { return sanPhamId; }
+        public String getTenSanPham() { return tenSanPham; }
+        public String getDvt() { return dvt; }
+        public double getSang() { return sang; }
+        public double getTrua() { return trua; }
+        public double getChieu() { return chieu; }
+        public double getToi() { return toi; }
+        public String getCachDung() { return cachDung; }
+        public int getSoNgay() { return soNgay; }
+        public int getTongSoLuong() { return tongSoLuong; }
+        public double getGiaDonVi() { return giaDonVi; }
+        public void setComboId(String comboId) { this.comboId = comboId; }
+        public void setSang(double sang) { this.sang = sang; tinhLaiTongSoLuong(); }
+        public void setTrua(double trua) { this.trua = trua; tinhLaiTongSoLuong(); }
+        public void setChieu(double chieu) { this.chieu = chieu; tinhLaiTongSoLuong(); }
+        public void setToi(double toi) { this.toi = toi; tinhLaiTongSoLuong(); }
+        public void setCachDung(String cachDung) { this.cachDung = cachDung; }
+        public void setSoNgay(int soNgay) { this.soNgay = soNgay; tinhLaiTongSoLuong(); }
+        public int getId() { return id; }
+        public void setId(int id) { this.id = id; }
+    }
+
+    public static class MauLieu {
+        private String comboId;
+        private String tenCombo;
+        private String nhomBenh;
+        private double giaBanCombo;
+        private String ghiChu;
+        private List<ChiTietLieu> dsChiTiet = new ArrayList<>();
+
+        public MauLieu() {}
+        public MauLieu(String comboId, String tenCombo, String nhomBenh, double giaBanCombo, String ghiChu) {
+            this.comboId = comboId; this.tenCombo = tenCombo; this.nhomBenh = nhomBenh; this.giaBanCombo = giaBanCombo; this.ghiChu = ghiChu;
+        }
+        // Bổ sung các hàm Getter/Setter cho MauLieu...
+        public String getComboId() { return comboId; }
+        public String getTenCombo() { return tenCombo; }
+        public String getNhomBenh() { return nhomBenh; }
+        public double getGiaBanCombo() { return giaBanCombo; }
+        public String getGhiChu() { return ghiChu; }
+        public List<ChiTietLieu> getDsChiTiet() { return dsChiTiet; }
+        public void setDsChiTiet(List<ChiTietLieu> dsChiTiet) { this.dsChiTiet = dsChiTiet; }
     }
 }
