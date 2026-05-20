@@ -290,4 +290,31 @@ public class BUS_HoaDon {
         kq.tongThanhToan = Math.max(0, totalToPay);
         return kq;
     }
+    public long layTienMatTrongKet() {
+        Utils.UserSession session = Utils.UserSession.getInstance();
+        if (session.getCaHienTai() == null) return Long.MAX_VALUE;
+     
+        long tienDauCa = (long) session.getCaHienTai().getTienDauCa();
+        long doanhThu = daoHD.layDoanhThuTienMatTuDauCa(
+                session.getMaNhanVien(),
+                session.getCaHienTai().getThoiGianBatDau());
+        return tienDauCa + doanhThu;
+    }
+	public String layGhiChuHoaDon(String maHD) {
+	    if (maHD == null || maHD.trim().isEmpty()) return "";
+	    String result = daoHD.layGhiChuHoaDon(maHD.trim());
+	    return result != null ? result : "";
+	}
+	public String[] layPhieuDoiTraTheoHDGoc(String maHDGoc) {
+	    if (maHDGoc == null || maHDGoc.trim().isEmpty()) return null;
+	    return daoHD.layPhieuDoiTraTheoHDGoc(maHDGoc.trim());
+	}
+	public String layTenKhachHangTheoHD(String maHD) {
+	    if (maHD == null || maHD.trim().isEmpty()) return "Khách lẻ";
+	    return daoHD.layTenKhachHangTheoHD(maHD.trim());
+	}
+	public java.util.List<String> timKiemMaHoaDonGoiY(String tuKhoa) {
+	    if (tuKhoa == null || tuKhoa.trim().isEmpty()) return new java.util.ArrayList<>();
+	    return daoHD.timKiemMaHoaDonGoiY(tuKhoa.trim());
+	}
 }

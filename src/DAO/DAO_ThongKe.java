@@ -165,8 +165,9 @@ public class DAO_ThongKe {
             "JOIN ChiTietHoaDon ct ON ct.hoaDonId = hd.id " +
             "LEFT JOIN ( " +
             "    SELECT pbl.hoaDonId, pbl.sanPhamId, pbl.donViDoLuongId, " +
-            "           SUM(pbl.soLuong * lh.gia) AS giaVon " +
+            "           SUM(pbl.soLuong * dvl.chuyenDoiDonViCoBan * lh.gia) AS giaVon " +
             "    FROM PhanBoLoHang pbl JOIN LoHang lh ON lh.id = pbl.loHangId " +
+            "    JOIN DonViDoLuong dvl ON dvl.id = pbl.donViDoLuongId AND dvl.sanPhamId = pbl.sanPhamId " +
             "    GROUP BY pbl.hoaDonId, pbl.sanPhamId, pbl.donViDoLuongId " +
             ") pbl_cost ON pbl_cost.hoaDonId = ct.hoaDonId " +
             "          AND pbl_cost.sanPhamId = ct.sanPhamId " +
@@ -451,6 +452,30 @@ public class DAO_ThongKe {
         return result;
     }	
 
+    /** SP xuất ra từ DOI_HANG hôm nay (soLuong > 0) — dùng cho Top SP popup */
+    public List<Object[]> getSPDoiHangXuatRaTrongNgay(String dateYMD, BUS.BUS_ThongKe.ThongKeFilter filter) {
+        List<Object[]> result = new ArrayList<>();
+        StringBuilder sql = new StringBuilder(
+            "SELECT sp.ten, SUM(ct.soLuong) AS sl, " +
+            "SUM(ROUND(ABS(ct.thanhTien) / (1 + ISNULL(sp.thueVAT, 0)/100.0), 0)) AS dtThuan " +
+            "FROM HoaDon hd " +
+            "JOIN ChiTietHoaDon ct ON hd.id = ct.hoaDonId " +
+            "JOIN SanPham sp ON ct.sanPhamId = sp.id " +
+            "WHERE hd.loaiHD = 'DOI_HANG' AND ct.soLuong > 0 " +
+            "AND CAST(hd.ngayLapHD AS DATE) = ? ");
+        List<Object> params = new ArrayList<>();
+        params.add(dateYMD);
+        applyFilter(filter, sql, params, "hd.ngayLapHD", "hd.nhanVienId");
+        sql.append(" GROUP BY sp.ten");
+        try (PreparedStatement ps = getConn().prepareStatement(sql.toString())) {
+            for (int i = 0; i < params.size(); i++) ps.setObject(i + 1, params.get(i));
+            ResultSet rs = ps.executeQuery();
+            while (rs.next())
+                result.add(new Object[]{rs.getString("ten"), rs.getInt("sl"), rs.getDouble("dtThuan")});
+        } catch (Exception e) { e.printStackTrace(); }
+        return result;
+    }
+
     public List<Object[]> getRawCTHD(String hdId) {
         List<Object[]> result = new ArrayList<>();
         String sql = "SELECT sp.ten, ct.soLuong, "
@@ -638,8 +663,10 @@ public class DAO_ThongKe {
             "SELECT MONTH(hd.ngayLapHD) as m, SUM(ISNULL(pbl_cost.giaVon, 0)) as cp " +
             "FROM HoaDon hd " +
             "JOIN ChiTietHoaDon ct ON ct.hoaDonId = hd.id " +
-            "JOIN (SELECT pbl.hoaDonId, pbl.sanPhamId, pbl.donViDoLuongId, SUM(pbl.soLuong * lh.gia) as giaVon " +
-            "      FROM PhanBoLoHang pbl JOIN LoHang lh ON lh.id = pbl.loHangId GROUP BY pbl.hoaDonId, pbl.sanPhamId, pbl.donViDoLuongId) pbl_cost " +
+            "JOIN (SELECT pbl.hoaDonId, pbl.sanPhamId, pbl.donViDoLuongId, SUM(pbl.soLuong * dvl.chuyenDoiDonViCoBan * lh.gia) as giaVon " +
+            "      FROM PhanBoLoHang pbl JOIN LoHang lh ON lh.id = pbl.loHangId " +
+            "      JOIN DonViDoLuong dvl ON dvl.id = pbl.donViDoLuongId AND dvl.sanPhamId = pbl.sanPhamId " +
+            "      GROUP BY pbl.hoaDonId, pbl.sanPhamId, pbl.donViDoLuongId) pbl_cost " +
             "ON pbl_cost.hoaDonId = ct.hoaDonId AND pbl_cost.sanPhamId = ct.sanPhamId AND pbl_cost.donViDoLuongId = ct.donViDoLuongId " +
             "WHERE YEAR(hd.ngayLapHD) = ? AND hd.loaiHD = 'BAN_HANG' "
         );
@@ -662,8 +689,10 @@ public class DAO_ThongKe {
             "SELECT MONTH(hd.ngayLapHD) as m, SUM(ISNULL(pbl_cost.giaVon, 0)) as cp " +
             "FROM HoaDon hd " +
             "JOIN ChiTietHoaDon ct ON ct.hoaDonId = hd.id " +
-            "JOIN (SELECT pbl.hoaDonId, pbl.sanPhamId, pbl.donViDoLuongId, SUM(pbl.soLuong * lh.gia) as giaVon " +
-            "      FROM PhanBoLoHang pbl JOIN LoHang lh ON lh.id = pbl.loHangId GROUP BY pbl.hoaDonId, pbl.sanPhamId, pbl.donViDoLuongId) pbl_cost " +
+            "JOIN (SELECT pbl.hoaDonId, pbl.sanPhamId, pbl.donViDoLuongId, SUM(pbl.soLuong * dvl.chuyenDoiDonViCoBan * lh.gia) as giaVon " +
+            "      FROM PhanBoLoHang pbl JOIN LoHang lh ON lh.id = pbl.loHangId " +
+            "      JOIN DonViDoLuong dvl ON dvl.id = pbl.donViDoLuongId AND dvl.sanPhamId = pbl.sanPhamId " +
+            "      GROUP BY pbl.hoaDonId, pbl.sanPhamId, pbl.donViDoLuongId) pbl_cost " +
             "ON pbl_cost.hoaDonId = ct.hoaDonId AND pbl_cost.sanPhamId = ct.sanPhamId AND pbl_cost.donViDoLuongId = ct.donViDoLuongId " +
             "WHERE YEAR(hd.ngayLapHD) = ? AND hd.loaiHD IN ('TRA_HANG', 'DOI_HANG') AND hd.ghiChu LIKE N'%Hoàn thành%' " +
             "AND (hd.loaiHD = 'TRA_HANG' OR ct.soLuong < 0) "
@@ -755,7 +784,7 @@ public class DAO_ThongKe {
     public List<Object[]> getTopSanPham(int year, BUS.BUS_ThongKe.ThongKeFilter filter) {
         List<Object[]> result = new ArrayList<>();
         StringBuilder sql = new StringBuilder("SELECT sp.ten, sp.danhMuc, "
-                + "SUM(CASE WHEN hd.loaiHD = 'BAN_HANG' THEN ct.soLuong ELSE -ABS(ct.soLuong) END) AS sl, "
+                + "SUM(CASE WHEN hd.loaiHD = 'BAN_HANG' THEN ct.soLuong * dvl.chuyenDoiDonViCoBan ELSE -ABS(ct.soLuong * dvl.chuyenDoiDonViCoBan) END) AS sl, "
                 + "SUM(CASE WHEN hd.loaiHD = 'BAN_HANG' "
                 + "THEN ROUND(ABS(ct.thanhTien) / (1 + ISNULL(sp.thueVAT, 0)/100.0), 0) "
                 + "ELSE -ROUND(ABS(ct.thanhTien) / (1 + ISNULL(sp.thueVAT, 0)/100.0), 0) END) AS dtThuan "
@@ -1189,6 +1218,21 @@ public class DAO_ThongKe {
         return 0;
     }
 
+    /** Đếm TẤT CẢ loại hóa đơn hôm nay (BAN_HANG + TRA_HANG + DOI_HANG) */
+    public int getSoTatCaHDHomNay(BUS.BUS_ThongKe.ThongKeFilter filter) {
+        StringBuilder sql = new StringBuilder(
+            "SELECT COUNT(*) FROM HoaDon hd WHERE CAST(hd.ngayLapHD AS DATE) = CAST(GETDATE() AS DATE) " +
+            "AND hd.loaiHD IN ('BAN_HANG', 'TRA_HANG', 'DOI_HANG')");
+        List<Object> params = new ArrayList<>();
+        applyFilter(filter, sql, params, "hd.ngayLapHD", "hd.nhanVienId");
+        try (PreparedStatement ps = getConn().prepareStatement(sql.toString())) {
+            for (int i = 0; i < params.size(); i++) ps.setObject(i + 1, params.get(i));
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) return rs.getInt(1);
+        } catch (SQLException e) { e.printStackTrace(); }
+        return 0;
+    }
+
     public int getSoHoaDon7NgayQua(BUS.BUS_ThongKe.ThongKeFilter filter) {
         StringBuilder sql = new StringBuilder(
                 "SELECT COUNT(*) FROM HoaDon hd WHERE hd.ngayLapHD >= DATEADD(DAY, -7, GETDATE()) AND hd.loaiHD = 'BAN_HANG'");
@@ -1356,10 +1400,11 @@ public class DAO_ThongKe {
                 + "JOIN SanPham sp ON ct.sanPhamId = sp.id "
                 + "LEFT JOIN ("
                 + "    SELECT pbl.sanPhamId, pbl.donViDoLuongId, pbl.hoaDonId, "
-                + "           SUM(pbl.soLuong * lh.gia) AS tongGiaVon, "
-                + "           SUM(pbl.soLuong)          AS tongSLCoBan "
+                + "           SUM(pbl.soLuong * dvl2.chuyenDoiDonViCoBan * lh.gia) AS tongGiaVon, "
+                + "           SUM(pbl.soLuong * dvl2.chuyenDoiDonViCoBan)          AS tongSLCoBan "
                 + "    FROM PhanBoLoHang pbl "
                 + "    JOIN LoHang lh ON lh.id = pbl.loHangId "
+                + "    JOIN DonViDoLuong dvl2 ON dvl2.id = pbl.donViDoLuongId AND dvl2.sanPhamId = pbl.sanPhamId "
                 + "    GROUP BY pbl.sanPhamId, pbl.donViDoLuongId, pbl.hoaDonId"
                 + ") pc ON pc.sanPhamId = ct.sanPhamId AND pc.donViDoLuongId = ct.donViDoLuongId AND pc.hoaDonId = ct.hoaDonId "
                 + "LEFT JOIN LoHang lh2 ON lh2.sanPhamId = sp.id AND lh2.trangThai = 'CON_HANG' "
@@ -1639,16 +1684,18 @@ public class DAO_ThongKe {
                 "JOIN ChiTietHoaDon ct ON ct.hoaDonId = hd.id " +
                 "JOIN SanPham sp ON ct.sanPhamId = sp.id " +
                 "LEFT JOIN (" +
-                "    SELECT pbl.hoaDonId, pbl.sanPhamId, pbl.donViDoLuongId, SUM(pbl.soLuong * lh.gia) as giaVon " +
+                "    SELECT pbl.hoaDonId, pbl.sanPhamId, pbl.donViDoLuongId, SUM(pbl.soLuong * dvl2.chuyenDoiDonViCoBan * lh.gia) as giaVon " +
                 "    FROM PhanBoLoHang pbl " +
                 "    JOIN LoHang lh ON lh.id = pbl.loHangId " +
+                "    JOIN DonViDoLuong dvl2 ON dvl2.id = pbl.donViDoLuongId AND dvl2.sanPhamId = pbl.sanPhamId " +
                 "    GROUP BY pbl.hoaDonId, pbl.sanPhamId, pbl.donViDoLuongId" +
                 ") pbl_cost ON pbl_cost.hoaDonId = ct.hoaDonId AND pbl_cost.sanPhamId = ct.sanPhamId AND pbl_cost.donViDoLuongId = ct.donViDoLuongId " +
                 "LEFT JOIN (" +
                 "    SELECT pbl.hoaDonId, pbl.sanPhamId, pbl.donViDoLuongId, " +
-                "           (SUM(pbl.soLuong * lh.gia) / NULLIF(SUM(pbl.soLuong), 0)) AS donGiaVonGoc " +
+                "           (SUM(pbl.soLuong * dvl2.chuyenDoiDonViCoBan * lh.gia) / NULLIF(SUM(pbl.soLuong * dvl2.chuyenDoiDonViCoBan), 0)) AS donGiaVonGoc " +
                 "    FROM PhanBoLoHang pbl " +
                 "    JOIN LoHang lh ON lh.id = pbl.loHangId " +
+                "    JOIN DonViDoLuong dvl2 ON dvl2.id = pbl.donViDoLuongId AND dvl2.sanPhamId = pbl.sanPhamId " +
                 "    GROUP BY pbl.hoaDonId, pbl.sanPhamId, pbl.donViDoLuongId " +
                 ") pbl_goc ON pbl_goc.hoaDonId = hd.hoaDonGocId AND pbl_goc.sanPhamId = ct.sanPhamId AND pbl_goc.donViDoLuongId = ct.donViDoLuongId " +
                 "WHERE hd.loaiHD IN ('TRA_HANG', 'DOI_HANG') AND hd.ghiChu LIKE N'%Hoàn thành%' " +
@@ -1889,18 +1936,20 @@ public class DAO_ThongKe {
                + "  JOIN ChiTietHoaDon ct ON ct.hoaDonId = hd.id\n"
                + "  LEFT JOIN (\n"
                + "      SELECT pbl.hoaDonId, pbl.sanPhamId, pbl.donViDoLuongId,\n"
-               + "             SUM(pbl.soLuong * lh.gia) AS giaVon\n"
+               + "             SUM(pbl.soLuong * dvl2.chuyenDoiDonViCoBan * lh.gia) AS giaVon\n"
                + "      FROM PhanBoLoHang pbl\n"
                + "      JOIN LoHang lh ON lh.id = pbl.loHangId\n"
+               + "      JOIN DonViDoLuong dvl2 ON dvl2.id = pbl.donViDoLuongId AND dvl2.sanPhamId = pbl.sanPhamId\n"
                + "      GROUP BY pbl.hoaDonId, pbl.sanPhamId, pbl.donViDoLuongId\n"
                + "  ) pbl_cost ON pbl_cost.hoaDonId       = ct.hoaDonId\n"
                + "            AND pbl_cost.sanPhamId       = ct.sanPhamId\n"
                + "            AND pbl_cost.donViDoLuongId  = ct.donViDoLuongId\n"
                + "  LEFT JOIN (\n"
                + "      SELECT pbl.hoaDonId, pbl.sanPhamId, pbl.donViDoLuongId,\n"
-               + "             (SUM(pbl.soLuong * lh.gia) / NULLIF(SUM(pbl.soLuong), 0)) AS donGiaVonGoc\n"
+               + "             (SUM(pbl.soLuong * dvl2.chuyenDoiDonViCoBan * lh.gia) / NULLIF(SUM(pbl.soLuong * dvl2.chuyenDoiDonViCoBan), 0)) AS donGiaVonGoc\n"
                + "      FROM PhanBoLoHang pbl\n"
                + "      JOIN LoHang lh ON lh.id = pbl.loHangId\n"
+               + "      JOIN DonViDoLuong dvl2 ON dvl2.id = pbl.donViDoLuongId AND dvl2.sanPhamId = pbl.sanPhamId\n"
                + "      GROUP BY pbl.hoaDonId, pbl.sanPhamId, pbl.donViDoLuongId\n"
                + "  ) pbl_goc ON pbl_goc.hoaDonId       = hd.hoaDonGocId\n"
                + "           AND pbl_goc.sanPhamId      = ct.sanPhamId\n"
@@ -1970,18 +2019,20 @@ public class DAO_ThongKe {
                + "JOIN ChiTietHoaDon ct ON ct.hoaDonId = hd.id\n"
                + "LEFT JOIN (\n"
                + "    SELECT pbl.hoaDonId, pbl.sanPhamId, pbl.donViDoLuongId,\n"
-               + "           SUM(pbl.soLuong * lh.gia) AS giaVon\n"
+               + "           SUM(pbl.soLuong * dvl2.chuyenDoiDonViCoBan * lh.gia) AS giaVon\n"
                + "    FROM PhanBoLoHang pbl\n"
                + "    JOIN LoHang lh ON lh.id = pbl.loHangId\n"
+               + "    JOIN DonViDoLuong dvl2 ON dvl2.id = pbl.donViDoLuongId AND dvl2.sanPhamId = pbl.sanPhamId\n"
                + "    GROUP BY pbl.hoaDonId, pbl.sanPhamId, pbl.donViDoLuongId\n"
                + ") pbl_cost ON pbl_cost.hoaDonId      = ct.hoaDonId\n"
                + "          AND pbl_cost.sanPhamId      = ct.sanPhamId\n"
                + "          AND pbl_cost.donViDoLuongId = ct.donViDoLuongId\n"
                + "LEFT JOIN (\n"
                + "    SELECT pbl.hoaDonId, pbl.sanPhamId, pbl.donViDoLuongId,\n"
-               + "           (SUM(pbl.soLuong * lh.gia) / NULLIF(SUM(pbl.soLuong), 0)) AS donGiaVonGoc\n"
+               + "           (SUM(pbl.soLuong * dvl2.chuyenDoiDonViCoBan * lh.gia) / NULLIF(SUM(pbl.soLuong * dvl2.chuyenDoiDonViCoBan), 0)) AS donGiaVonGoc\n"
                + "    FROM PhanBoLoHang pbl\n"
                + "    JOIN LoHang lh ON lh.id = pbl.loHangId\n"
+               + "    JOIN DonViDoLuong dvl2 ON dvl2.id = pbl.donViDoLuongId AND dvl2.sanPhamId = pbl.sanPhamId\n"
                + "    GROUP BY pbl.hoaDonId, pbl.sanPhamId, pbl.donViDoLuongId\n"
                + ") pbl_goc ON pbl_goc.hoaDonId       = hd.hoaDonGocId\n"
                + "         AND pbl_goc.sanPhamId      = ct.sanPhamId\n"
@@ -2003,6 +2054,88 @@ public class DAO_ThongKe {
          return kq;
      }
      
+     // =====================================================================
+     // PHÂN TÍCH KM / XU HƯỚNG / MÙA VỤ — dùng cho getGoiYKhuyenMai
+     // =====================================================================
+
+     /**
+      * Trả về true nếu sản phẩm đang có chương trình KM hoạt động hôm nay.
+      * Link: SanPham → ApDungKhuyenMai → KhuyenMai.trangThai = 'HOAT_DONG'
+      */
+     public boolean coKMDangChay(String tenSP) {
+         String sql = "SELECT COUNT(*) FROM ApDungKhuyenMai akm "
+                 + "JOIN KhuyenMai km ON akm.khuyenMaiId = km.id "
+                 + "JOIN SanPham sp   ON akm.sanPhamId   = sp.id "
+                 + "WHERE sp.ten = ? "
+                 + "  AND km.trangThai = 'HOAT_DONG' "
+                 + "  AND km.ngayBatDau <= GETDATE() "
+                 + "  AND (km.ngayKetThuc IS NULL OR km.ngayKetThuc >= GETDATE())";
+         try (PreparedStatement ps = getConn().prepareStatement(sql)) {
+             ps.setString(1, tenSP);
+             ResultSet rs = ps.executeQuery();
+             if (rs.next()) return rs.getInt(1) > 0;
+         } catch (Exception e) { e.printStackTrace(); }
+         return false;
+     }
+
+     /**
+      * Xu hướng bán: so sánh quý hiện tại vs quý trước của năm {@code year}.
+      * Nếu year = năm hiện tại, dùng quý thực tế; ngược lại dùng Q4 vs Q3.
+      *
+      * @return int[2] { slQuyHienTai, slQuyCu }
+      */
+     public int[] getXuHuongBanSP(String tenSP, int year) {
+         int nowYear = java.time.LocalDate.now().getYear();
+         int currentQ = (year == nowYear)
+                 ? (java.time.LocalDate.now().getMonthValue() - 1) / 3 + 1
+                 : 4;
+         int prevQ    = currentQ > 1 ? currentQ - 1 : 4;
+         int prevYear = currentQ > 1 ? year : year - 1;
+
+         String sql = "SELECT "
+                 + "ISNULL(SUM(CASE WHEN DATEPART(QUARTER, hd.ngayLapHD) = ? AND YEAR(hd.ngayLapHD) = ? "
+                 + "               THEN ct.soLuong ELSE 0 END), 0) AS slQuyNay, "
+                 + "ISNULL(SUM(CASE WHEN DATEPART(QUARTER, hd.ngayLapHD) = ? AND YEAR(hd.ngayLapHD) = ? "
+                 + "               THEN ct.soLuong ELSE 0 END), 0) AS slQuyCu "
+                 + "FROM ChiTietHoaDon ct "
+                 + "JOIN HoaDon hd ON ct.hoaDonId = hd.id "
+                 + "JOIN SanPham sp ON ct.sanPhamId = sp.id "
+                 + "WHERE sp.ten = ? AND hd.loaiHD = 'BAN_HANG'";
+         try (PreparedStatement ps = getConn().prepareStatement(sql)) {
+             ps.setInt(1, currentQ);
+             ps.setInt(2, year);
+             ps.setInt(3, prevQ);
+             ps.setInt(4, prevYear);
+             ps.setString(5, tenSP);
+             ResultSet rs = ps.executeQuery();
+             if (rs.next()) return new int[]{ rs.getInt("slQuyNay"), rs.getInt("slQuyCu") };
+         } catch (Exception e) { e.printStackTrace(); }
+         return new int[]{0, 0};
+     }
+
+     /**
+      * Số lượng bán cùng tháng {@code thang} của năm trước ({@code year - 1}).
+      * Dùng để phát hiện mùa vụ: nếu cùng kỳ năm trước cũng thấp → bình thường theo mùa.
+      */
+     public int getSlBanCungKy(String tenSP, int thang, int year) {
+         String sql = "SELECT ISNULL(SUM(ct.soLuong), 0) "
+                 + "FROM ChiTietHoaDon ct "
+                 + "JOIN HoaDon hd ON ct.hoaDonId = hd.id "
+                 + "JOIN SanPham sp ON ct.sanPhamId = sp.id "
+                 + "WHERE sp.ten = ? "
+                 + "  AND MONTH(hd.ngayLapHD) = ? "
+                 + "  AND YEAR(hd.ngayLapHD)  = ? "
+                 + "  AND hd.loaiHD = 'BAN_HANG'";
+         try (PreparedStatement ps = getConn().prepareStatement(sql)) {
+             ps.setString(1, tenSP);
+             ps.setInt(2, thang);
+             ps.setInt(3, year - 1);
+             ResultSet rs = ps.executeQuery();
+             if (rs.next()) return rs.getInt(1);
+         } catch (Exception e) { e.printStackTrace(); }
+         return 0;
+     }
+
      public BUS.BUS_KetQuaDoiChieuCa layDoiChieuDoanhThuTheoCa(BUS.BUS_ThongKe.ThongKeFilter filter) {
     	    BUS.BUS_KetQuaDoiChieuCa kq = new BUS.BUS_KetQuaDoiChieuCa();
     	    StringBuilder sql = new StringBuilder(
@@ -2011,10 +2144,10 @@ public class DAO_ThongKe {
     	        + "COUNT(DISTINCT CASE WHEN hd.loaiHD = 'BAN_HANG' THEN hd.id END) AS soHdBan, "
     	        + "COUNT(DISTINCT CASE WHEN hd.loaiHD IN ('TRA_HANG', 'DOI_HANG') AND hd.ghiChu LIKE N'%Hoàn thành%' THEN hd.id END) AS soHdTra, "
     	        
-    	        // --- NHÓM A: BÁN HÀNG ---
-    	        + "ISNULL(SUM(CASE WHEN hd.loaiHD = 'BAN_HANG' THEN dvl.gia * ABS(ct.soLuong) ELSE 0 END), 0) AS a_giaGoc, "
-    	        + "ISNULL(SUM(CASE WHEN hd.loaiHD = 'BAN_HANG' THEN (dvl.gia * ABS(ct.soLuong)) - ROUND(ABS(ct.thanhTien) / (1.0 + ISNULL(sp.thueVAT, 0) / 100.0), 0) ELSE 0 END), 0) AS a_khuyenMai, "
-    	        + "ISNULL(SUM(CASE WHEN hd.loaiHD = 'BAN_HANG' THEN ABS(ct.thanhTien) - ROUND(ABS(ct.thanhTien) / (1.0 + ISNULL(sp.thueVAT, 0) / 100.0), 0) ELSE 0 END), 0) AS a_vat, "
+    	        // --- NHÓM A: BÁN HÀNG + DOI_HANG xuất mới (soLuong > 0) ---
+    	        + "ISNULL(SUM(CASE WHEN hd.loaiHD = 'BAN_HANG' OR (hd.loaiHD = 'DOI_HANG' AND ct.soLuong > 0) THEN dvl.gia * ABS(ct.soLuong) ELSE 0 END), 0) AS a_giaGoc, "
+    	        + "ISNULL(SUM(CASE WHEN hd.loaiHD = 'BAN_HANG' OR (hd.loaiHD = 'DOI_HANG' AND ct.soLuong > 0) THEN (dvl.gia * ABS(ct.soLuong)) - ROUND(ABS(ct.thanhTien) / (1.0 + ISNULL(sp.thueVAT, 0) / 100.0), 0) ELSE 0 END), 0) AS a_khuyenMai, "
+    	        + "ISNULL(SUM(CASE WHEN hd.loaiHD = 'BAN_HANG' OR (hd.loaiHD = 'DOI_HANG' AND ct.soLuong > 0) THEN ABS(ct.thanhTien) - ROUND(ABS(ct.thanhTien) / (1.0 + ISNULL(sp.thueVAT, 0) / 100.0), 0) ELSE 0 END), 0) AS a_vat, "
     	        
     	        // --- NHÓM B: ĐỔI/TRẢ HÀNG ---
     	        + "ISNULL(SUM(CASE WHEN hd.loaiHD IN ('TRA_HANG', 'DOI_HANG') AND ct.soLuong < 0 AND hd.ghiChu LIKE N'%Hoàn thành%' THEN dvl.gia * ABS(ct.soLuong) ELSE 0 END), 0) AS b_giaGoc, "

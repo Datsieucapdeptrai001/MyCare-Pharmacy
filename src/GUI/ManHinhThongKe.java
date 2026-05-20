@@ -3442,9 +3442,10 @@ public class ManHinhThongKe extends JPanel {
         for (int c = 0; c < COLS.length; c++)
             tbl.getColumnModel().getColumn(c).setCellRenderer(renderer);
 
-        tbl.getColumnModel().getColumn(0).setPreferredWidth(60);
+        tbl.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+        tbl.getColumnModel().getColumn(0).setPreferredWidth(80);
         for (int c = 1; c < COLS.length; c++)
-            tbl.getColumnModel().getColumn(c).setPreferredWidth(82);
+            tbl.getColumnModel().getColumn(c).setPreferredWidth(115);
 
         JScrollPane sp = new JScrollPane(tbl);
         sp.setBorder(BorderFactory.createEmptyBorder());
@@ -4408,10 +4409,17 @@ public class ManHinhThongKe extends JPanel {
     }
 
     private void showCustomDialog(String message, String type) {
-        boolean isSuccess = "SUCCESS".equals(type);
-        Color headerColor = isSuccess ? Color.decode("#00A76F") : Color.decode("#D32F2F");
-        String headerTitle = isSuccess ? "Thành công" : "Lỗi";
-        String iconType = isSuccess ? "CORRECT" : "CANCEL";
+        boolean isSuccess  = "SUCCESS".equals(type);
+        boolean isWarning  = "WARNING".equals(type);
+        Color headerColor  = isSuccess ? Color.decode("#00A76F")
+                           : isWarning ? Color.decode("#FFAB00")
+                           : Color.decode("#D32F2F");
+        String headerTitle = isSuccess ? "Thành công"
+                           : isWarning ? "Nhắc nhở"
+                           : "Lỗi";
+        String iconType    = isSuccess ? "CORRECT"
+                           : isWarning ? "WARNING"
+                           : "CANCEL";
 
         Window owner = SwingUtilities.getWindowAncestor(this);
         JDialog dialog = (owner instanceof Frame) ? new JDialog((Frame) owner, headerTitle, true)
@@ -4419,6 +4427,7 @@ public class ManHinhThongKe extends JPanel {
         dialog.setLayout(new BorderLayout());
         dialog.setSize(420, 200);
         dialog.setLocationRelativeTo(this);
+        dialog.setUndecorated(true);
         dialog.setResizable(false);
 
         JPanel header = new JPanel(new FlowLayout(FlowLayout.LEFT, 14, 10));
@@ -4558,16 +4567,25 @@ public class ManHinhThongKe extends JPanel {
                     JTable t, Object val, boolean sel, boolean foc, int row, int col) {
                 super.getTableCellRendererComponent(t, val, sel, foc, row, col);
                 if (!sel) {
+                    String lyDo = modelGoiYKM.getRowCount() > row
+                            ? String.valueOf(modelGoiYKM.getValueAt(row, 4))
+                            : "";
                     String goiY = modelGoiYKM.getRowCount() > row
                             ? String.valueOf(modelGoiYKM.getValueAt(row, 3))
                             : "";
-                    if (goiY.contains("Giảm"))
+                    if (lyDo.contains("[Sắp HH]")) {
+                        setBackground(new Color(255, 235, 238)); // đỏ nhạt – hàng sắp HH
+                        setForeground(Color.decode("#B71C1C"));
+                    } else if (goiY.contains("[Giảm]")) {
                         setBackground(new Color(255, 243, 224));
-                    else if (goiY.contains("Combo"))
+                        setForeground(Color.decode("#152A4B"));
+                    } else if (goiY.contains("[Quà]")) {
                         setBackground(new Color(232, 245, 233));
-                    else
+                        setForeground(Color.decode("#152A4B"));
+                    } else {
                         setBackground(Color.WHITE);
-                    setForeground(Color.decode("#152A4B"));
+                        setForeground(Color.decode("#152A4B"));
+                    }
                 }
                 setBorder(new javax.swing.border.EmptyBorder(0, 6, 0, 6));
                 return this;
@@ -4583,29 +4601,33 @@ public class ManHinhThongKe extends JPanel {
                 setHorizontalAlignment(CENTER);
                 setFont(new Font("Segoe UI", Font.BOLD, 12));
                 if (!sel) {
-                    double pct = 0;
-                    try {
-                        pct = Double.parseDouble(s.replace("%", "").trim());
-                    } catch (Exception ignored) {
+                    // Hàng sắp HH: cột biên LN hiển thị "Sắp HH" thay vì %
+                    String lyDo = modelGoiYKM.getRowCount() > row
+                            ? String.valueOf(modelGoiYKM.getValueAt(row, 4)) : "";
+                    if (lyDo.contains("[Sắp HH]")) {
+                        setForeground(Color.decode("#B71C1C"));
+                        setBackground(new Color(255, 235, 238));
+                    } else {
+                        double pct = 0;
+                        try { pct = Double.parseDouble(s.replace("%", "").trim()); } catch (Exception ignored) {}
+                        if (pct >= 40) setForeground(Color.decode("#00875A"));
+                        else if (pct >= 20) setForeground(Color.decode("#B95000"));
+                        else setForeground(Color.decode("#BF2600"));
+                        setBackground(row % 2 == 0 ? new Color(255, 250, 245) : Color.WHITE);
                     }
-                    if (pct >= 40)
-                        setForeground(Color.decode("#00875A"));
-                    else if (pct >= 20)
-                        setForeground(Color.decode("#B95000"));
-                    else
-                        setForeground(Color.decode("#BF2600"));
-                    setBackground(row % 2 == 0 ? new Color(255, 250, 245) : Color.WHITE);
                 }
                 setBorder(new javax.swing.border.EmptyBorder(0, 4, 0, 4));
                 return this;
             }
         });
 
-        tbl.getColumnModel().getColumn(0).setPreferredWidth(140);
+        tbl.setFillsViewportHeight(false);
+        tbl.setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN);
+        tbl.getColumnModel().getColumn(0).setPreferredWidth(150);
         tbl.getColumnModel().getColumn(1).setPreferredWidth(60);
         tbl.getColumnModel().getColumn(2).setPreferredWidth(65);
-        tbl.getColumnModel().getColumn(3).setPreferredWidth(105);
-        tbl.getColumnModel().getColumn(4).setPreferredWidth(200);
+        tbl.getColumnModel().getColumn(3).setPreferredWidth(130);
+        tbl.getColumnModel().getColumn(4).setMinWidth(200);
 
         JScrollPane sp = new JScrollPane(tbl);
         sp.setBorder(BorderFactory.createEmptyBorder());
@@ -4615,19 +4637,43 @@ public class ManHinhThongKe extends JPanel {
         btnTaoKM.addActionListener(e -> {
             int row = tbl.getSelectedRow();
             if (row == -1) {
-                JOptionPane.showMessageDialog(p, "Chọn 1 sản phẩm gợi ý để tạo KM nha Pột ơi!", "Nhắc nhở", JOptionPane.WARNING_MESSAGE);
+                showCustomDialog("Vui lòng chọn 1 sản phẩm trong danh sách gợi ý\ntrước khi tạo chương trình khuyến mãi.", "WARNING");
                 return;
             }
-            String tenSP = modelGoiYKM.getValueAt(row, 0).toString();
+
+            String tenSP    = modelGoiYKM.getValueAt(row, 0).toString();
             String goiYText = modelGoiYKM.getValueAt(row, 3).toString();
-            
-            String inputDetail = JOptionPane.showInputDialog(p, "Nhập phần trăm giảm hoặc chi tiết chương trình cho [" + tenSP + "]:\nGợi ý hệ thống: " + goiYText, "Cấu hình Khuyến Mãi", JOptionPane.QUESTION_MESSAGE);
-            if (inputDetail != null && !inputDetail.trim().isEmpty()) {
-                JOptionPane.showMessageDialog(p, "Hệ thống đang chuyển sang Màn Hình Khuyến Mãi...", "Thành công", JOptionPane.INFORMATION_MESSAGE);
-                // Tìm MainDashboard để gọi hàm đổi tab sang KhuyenMai 
-                Window win = SwingUtilities.getWindowAncestor(p);
-                if (win instanceof Frame) {
+            String lyDo     = modelGoiYKM.getValueAt(row, 4).toString();
+            boolean isHetHan = lyDo.contains("[Sắp HH]");
+
+            java.util.Map<String, Object> data = new java.util.HashMap<>();
+            data.put("isAutoFill", true);
+
+            if (isHetHan) {
+                // Hàng sắp HH: tên KM gợi ý kèm cảnh báo
+                data.put("1", "[Giải phóng tồn] Mua kèm " + tenSP);
+                data.put("2", "Sản phẩm kèm theo");
+                // SP tặng = tenSP (hàng sắp HH), slTang = 1
+                data.put("15", tenSP);  // fldMaSPTang
+                data.put("16", "1");    // fldSoLuongTang
+            } else if (goiYText.startsWith("[Quà]")) {
+                data.put("1", "KM - " + tenSP);
+                data.put("2", "Sản phẩm kèm theo");
+            } else {
+                data.put("1", "KM - " + tenSP);
+                data.put("2", "Giảm theo phần trăm (%)");
+                try {
+                    String mucGiam = goiYText.replaceAll(".*\\[Giảm\\]\\s*(\\d+)%.*", "$1");
+                    data.put("10", mucGiam);
+                } catch (Exception ex) {
+                    data.put("10", "5");
                 }
+            }
+            data.put("5", "HoaDon");
+
+            Window win = SwingUtilities.getWindowAncestor(p);
+            if (win instanceof MainDashboard) {
+                ((MainDashboard) win).chuyenSangTabKhuyenMaiVaTaoMoi(data);
             }
         });
 
@@ -4737,31 +4783,32 @@ public class ManHinhThongKe extends JPanel {
                     return;
                 }
                 for (Object[] r : list) {
-                    // r: {tenSP[0], danhMuc[1], soLuong[2], dt[3], giaVon[4], bienLN[5], coKM[6],
-                    // loaiKM[7], lyDo[8], mucGiam[9]}
-                    String ten = String.valueOf(r[0]);
-                    int slBan = (int) r[2];
-                    double bienLN = (double) r[5];
-                    String loaiKM = String.valueOf(r[7]);
-                    String lyDo = String.valueOf(r[8]);
+                    // BUS đã phân tích: r[10] = isHetHan (Boolean)
+                    String ten     = String.valueOf(r[0]);
+                    int slBan      = 0;
+                    try { slBan = r[2] instanceof Integer ? (int) r[2] : Integer.parseInt(String.valueOf(r[2])); } catch (Exception ignored) {}
+                    double bienLN  = (double) r[5];
+                    String loaiKM  = String.valueOf(r[7]);
+                    String lyDo    = String.valueOf(r[8]);
                     String mucGiam = String.valueOf(r[9]);
+                    boolean isHetHan = r.length > 10 && Boolean.TRUE.equals(r[10]);
 
+                    // Hàng HH: loaiKM dạng "Mua [SP bán chạy] tặng [SP HH]"
                     String goiYText;
-                    if (loaiKM.contains("giảm giá") || loaiKM.contains("Giảm")) {
-                        goiYText = "[Giảm] " + mucGiam + " giá bán";
-                    } else if (loaiKM.contains("Mua") || loaiKM.contains("tặng")) {
+                    if (isHetHan) {
                         goiYText = "[Quà] " + loaiKM;
-                    } else if (loaiKM.contains("Tích điểm")) {
-                        goiYText = "[Điểm] " + loaiKM;
+                    } else if ("Đang có KM".equals(loaiKM)) {
+                        goiYText = "⚠ Đang có KM";
+                    } else if (loaiKM.contains("Mua")) {
+                        goiYText = "[Quà] " + loaiKM;
                     } else {
-                        goiYText = "[KM] " + loaiKM;
+                        goiYText = "[Giảm] " + mucGiam + "% giá bán";
                     }
 
-                    String bienStr = bienLN > 0
-                            ? String.format("%.0f%%", bienLN)
-                            : "N/A";
+                    // Cột Biên LN: hàng thường hiện %, hàng HH hiện "Sắp HH"
+                    String bienStr = isHetHan ? "Sắp HH" : String.format("%.0f%%", bienLN);
 
-                    modelGoiYKM.addRow(new Object[] {
+                    modelGoiYKM.addRow(new Object[]{
                             ten,
                             String.format("%,d", slBan),
                             bienStr,
