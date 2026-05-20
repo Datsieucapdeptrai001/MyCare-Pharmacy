@@ -2,6 +2,7 @@ package GUI;
 
 import Utils.MenuIcon;
 import Utils.TelexFix;
+
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
@@ -24,9 +25,11 @@ public class ManHinhNhatKyKho extends JPanel {
 
     private TabButton tabXuat;
     private TabButton tabNhap;
+    private TabButton tabKiemKe;
 
     private ManHinhLichSuXuat pnlLichSuXuat;
     private ManHinhLichSuNhap pnlLichSuNhap;
+    private ManHinhLichSuKiemKeKho pnlLichSuKiemKe;
 
     public ManHinhNhatKyKho() {
         setLayout(new BorderLayout());
@@ -34,6 +37,7 @@ public class ManHinhNhatKyKho extends JPanel {
 
         add(createHeader(), BorderLayout.NORTH);
         add(createBody(), BorderLayout.CENTER);
+
         TelexFix.applyDeep(this);
     }
 
@@ -81,9 +85,11 @@ public class ManHinhNhatKyKho extends JPanel {
 
         pnlLichSuXuat = new ManHinhLichSuXuat();
         pnlLichSuNhap = new ManHinhLichSuNhap();
+        pnlLichSuKiemKe = new ManHinhLichSuKiemKeKho();
 
         pnlContent.add(pnlLichSuXuat, "XUAT");
         pnlContent.add(pnlLichSuNhap, "NHAP");
+        pnlContent.add(pnlLichSuKiemKe, "KIEM_KE");
 
         body.add(pnlContent, BorderLayout.CENTER);
 
@@ -99,30 +105,60 @@ public class ManHinhNhatKyKho extends JPanel {
 
         tabXuat = new TabButton("Lịch sử phiếu xuất kho", new MenuIcon("BOX"));
         tabNhap = new TabButton("Lịch sử phiếu lô hàng", new MenuIcon("TIME"));
+        tabKiemKe = new TabButton("Lịch sử kiểm kê kho", new MenuIcon("LIST"));
 
         tabXuat.addActionListener(e -> setActiveTab("XUAT"));
         tabNhap.addActionListener(e -> setActiveTab("NHAP"));
+        tabKiemKe.addActionListener(e -> setActiveTab("KIEM_KE"));
 
         pnlTabs.add(tabXuat);
         pnlTabs.add(tabNhap);
+        pnlTabs.add(tabKiemKe);
 
         return pnlTabs;
     }
 
     private void setActiveTab(String tab) {
         boolean isXuat = "XUAT".equals(tab);
+        boolean isNhap = "NHAP".equals(tab);
+        boolean isKiemKe = "KIEM_KE".equals(tab);
 
-        tabXuat.setActive(isXuat);
-        tabNhap.setActive(!isXuat);
+        if (tabXuat != null) {
+            tabXuat.setActive(isXuat);
+        }
 
-        cardLayout.show(pnlContent, tab);
+        if (tabNhap != null) {
+            tabNhap.setActive(isNhap);
+        }
+
+        if (tabKiemKe != null) {
+            tabKiemKe.setActive(isKiemKe);
+        }
+
+        if (cardLayout != null && pnlContent != null) {
+            cardLayout.show(pnlContent, tab);
+        }
     }
 
     private void refreshCurrentTab() {
-        if (tabXuat.isActive()) {
-            pnlLichSuXuat.loadData();
-        } else {
-            pnlLichSuNhap.loadData();
+        if (tabXuat != null && tabXuat.isActive()) {
+            if (pnlLichSuXuat != null) {
+                pnlLichSuXuat.loadData();
+            }
+            return;
+        }
+
+        if (tabNhap != null && tabNhap.isActive()) {
+            if (pnlLichSuNhap != null) {
+                pnlLichSuNhap.loadData();
+            }
+            return;
+        }
+
+        if (tabKiemKe != null && tabKiemKe.isActive()) {
+            if (pnlLichSuKiemKe != null) {
+                pnlLichSuKiemKe.loadData();
+            }
         }
     }
 

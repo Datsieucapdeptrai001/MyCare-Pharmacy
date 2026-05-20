@@ -1310,168 +1310,261 @@ public class ManHinhNhapLoHangMoi extends JDialog {
     }
 
     private boolean[] showPrintConfirmDialog() {
-        final boolean[] result = { false, false };
+        final boolean[] result = {false, false};
 
-        JDialog dialog = new JDialog(this, "Xác nhận In ấn", Dialog.ModalityType.APPLICATION_MODAL);
+        JDialog dialog = new JDialog(this, "Xác nhận in ấn", Dialog.ModalityType.APPLICATION_MODAL);
         dialog.setUndecorated(true);
         dialog.setBackground(BG_TRANSPARENT);
 
-        JPanel pnlMain = new JPanel(new BorderLayout(20, 0));
-        pnlMain.setBackground(DARK_OVERLAY_BG);
-        pnlMain.setBorder(new EmptyBorder(24, 24, 24, 24));
+        JPanel root = new JPanel(new BorderLayout());
+        root.setBackground(Color.WHITE);
+        root.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(PRIMARY, 2),
+                new EmptyBorder(0, 0, 0, 0)
+        ));
 
-        JPanel pnlIcon = new JPanel() {
+        JPanel header = new JPanel(new BorderLayout());
+        header.setBackground(PRIMARY);
+        header.setBorder(new EmptyBorder(14, 20, 14, 18));
+
+        JLabel lblTitle = new JLabel("Xác nhận in ấn");
+        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 19));
+        lblTitle.setForeground(Color.WHITE);
+
+        JButton btnX = new JButton("×");
+        btnX.setFont(new Font("Segoe UI", Font.BOLD, 24));
+        btnX.setForeground(new Color(255, 255, 255, 210));
+        btnX.setFocusPainted(false);
+        btnX.setBorderPainted(false);
+        btnX.setContentAreaFilled(false);
+        btnX.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btnX.addActionListener(e -> dialog.dispose());
+
+        btnX.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                btnX.setForeground(Color.WHITE);
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                btnX.setForeground(new Color(255, 255, 255, 210));
+            }
+        });
+
+        header.add(lblTitle, BorderLayout.WEST);
+        header.add(btnX, BorderLayout.EAST);
+
+        JPanel body = new JPanel(new BorderLayout(18, 0));
+        body.setBackground(Color.WHITE);
+        body.setBorder(new EmptyBorder(24, 26, 18, 26));
+
+        JPanel iconBox = new JPanel() {
             @Override
             protected void paintComponent(Graphics g) {
                 super.paintComponent(g);
+
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(new Color(167, 243, 208));
-                g2.fillRect(0, 0, 48, 48);
 
-                g2.setColor(new Color(6, 78, 59));
-                g2.setStroke(new BasicStroke(5f, BasicStroke.CAP_SQUARE, BasicStroke.JOIN_MITER));
-                g2.drawArc(16, 10, 16, 16, 180, -220);
-                g2.drawLine(24, 26, 24, 30);
-                g2.fillRect(22, 36, 5, 5);
+                g2.setColor(new Color(224, 242, 254));
+                g2.fillOval(0, 0, 56, 56);
+
+                g2.setColor(PRIMARY);
+                g2.setStroke(new BasicStroke(3.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+
+                g2.drawRoundRect(15, 13, 26, 18, 4, 4);
+                g2.drawRoundRect(12, 28, 32, 18, 5, 5);
+                g2.drawLine(18, 36, 38, 36);
+                g2.drawLine(18, 41, 35, 41);
+
+                g2.fillOval(36, 31, 4, 4);
+
                 g2.dispose();
             }
         };
-        pnlIcon.setPreferredSize(new Dimension(48, 48));
-        pnlIcon.setOpaque(false);
-        JPanel pnlIconWrapper = new JPanel(new BorderLayout());
-        pnlIconWrapper.setOpaque(false);
-        pnlIconWrapper.add(pnlIcon, BorderLayout.NORTH);
+        iconBox.setPreferredSize(new Dimension(56, 56));
+        iconBox.setOpaque(false);
 
-        JPanel pnlText = new JPanel();
-        pnlText.setLayout(new BoxLayout(pnlText, BoxLayout.Y_AXIS));
-        pnlText.setOpaque(false);
+        JPanel content = new JPanel();
+        content.setOpaque(false);
+        content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
 
-        JLabel lblTitle = new JLabel("Xác nhận In ấn");
-        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 22));
-        lblTitle.setForeground(Color.WHITE);
-        lblTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
+        JLabel lblMain = new JLabel("Chọn nội dung muốn in sau khi nhập lô");
+        lblMain.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        lblMain.setForeground(TEXT_PRIMARY);
+        lblMain.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        Icon iconUnselected = new Icon() {
-            public int getIconWidth() {
-                return 20;
-            }
+        JLabel lblSub = new JLabel("Có thể in phiếu nhập, tem mã vạch hoặc cả hai.");
+        lblSub.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        lblSub.setForeground(TEXT_SECONDARY);
+        lblSub.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-            public int getIconHeight() {
-                return 20;
-            }
+        JCheckBox chkPhieu = createPrintOptionCheckBox(
+                "In phiếu nhập lô hàng",
+                "Dùng để lưu hồ sơ nhập kho và đối chiếu sau này."
+        );
 
-            public void paintIcon(Component c, Graphics g, int x, int y) {
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(new Color(51, 65, 85));
-                g2.fillRoundRect(x, y, 20, 20, 6, 6);
-                g2.setColor(DARK_OVERLAY_BG);
-                g2.fillRoundRect(x + 2, y + 2, 16, 16, 4, 4);
-                g2.dispose();
-            }
-        };
+        JCheckBox chkTem = createPrintOptionCheckBox(
+                "In tem mã vạch lô hàng",
+                "Dán lên lô hàng để quét mã nhanh khi xuất / kiểm kê."
+        );
 
-        Icon iconSelected = new Icon() {
-            public int getIconWidth() {
-                return 20;
-            }
-
-            public int getIconHeight() {
-                return 20;
-            }
-
-            public void paintIcon(Component c, Graphics g, int x, int y) {
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(new Color(226, 232, 240));
-                g2.fillRoundRect(x, y, 20, 20, 6, 6);
-                g2.setColor(DARK_OVERLAY_BG);
-                g2.setStroke(new BasicStroke(2.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-                g2.drawPolyline(new int[] { x + 4, x + 8, x + 15 }, new int[] { y + 10, y + 14, y + 6 }, 3);
-                g2.dispose();
-            }
-        };
-
-        JCheckBox chkPhieu = new JCheckBox("In phiếu nhập lô hàng");
-        chkPhieu.setFont(new Font("Segoe UI", Font.PLAIN, 16));
-        chkPhieu.setForeground(new Color(226, 232, 240));
-        chkPhieu.setOpaque(false);
-        chkPhieu.setFocusPainted(false);
-        chkPhieu.setIcon(iconUnselected);
-        chkPhieu.setSelectedIcon(iconSelected);
-        chkPhieu.setIconTextGap(12);
         chkPhieu.setSelected(true);
-        chkPhieu.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        JCheckBox chkTem = new JCheckBox("In tem mã vạch lô hàng");
-        chkTem.setFont(new Font("Segoe UI", Font.PLAIN, 16));
-        chkTem.setForeground(new Color(226, 232, 240));
-        chkTem.setOpaque(false);
-        chkTem.setFocusPainted(false);
-        chkTem.setIcon(iconUnselected);
-        chkTem.setSelectedIcon(iconSelected);
-        chkTem.setIconTextGap(12);
         chkTem.setSelected(true);
-        chkTem.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        pnlText.add(lblTitle);
-        pnlText.add(Box.createVerticalStrut(20));
-        pnlText.add(chkPhieu);
-        pnlText.add(Box.createVerticalStrut(15));
-        pnlText.add(chkTem);
+        content.add(lblMain);
+        content.add(Box.createVerticalStrut(4));
+        content.add(lblSub);
+        content.add(Box.createVerticalStrut(18));
+        content.add(chkPhieu);
+        content.add(Box.createVerticalStrut(10));
+        content.add(chkTem);
 
-        JPanel pnlAction = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 0));
-        pnlAction.setOpaque(false);
-        pnlAction.setBorder(new EmptyBorder(30, 0, 0, 0));
-        pnlAction.setAlignmentX(Component.LEFT_ALIGNMENT);
+        body.add(iconBox, BorderLayout.WEST);
+        body.add(content, BorderLayout.CENTER);
 
-        JButton btnCancel = new JButton("Hủy");
-        btnCancel.setFocusPainted(false);
-        btnCancel.setForeground(new Color(203, 213, 225));
-        btnCancel.setBackground(DARK_OVERLAY_BG);
-        btnCancel.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        btnCancel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        btnCancel.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(new Color(71, 85, 105)),
-                new EmptyBorder(8, 30, 8, 30)));
+        JPanel footer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 0));
+        footer.setBackground(new Color(248, 250, 252));
+        footer.setBorder(new EmptyBorder(14, 22, 14, 22));
 
-        JButton btnConfirm = new JButton("Đồng ý");
-        btnConfirm.setFocusPainted(false);
-        btnConfirm.setForeground(Color.WHITE);
-        btnConfirm.setBackground(PRIMARY);
-        btnConfirm.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        btnConfirm.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        btnConfirm.setBorder(new EmptyBorder(9, 30, 9, 30));
-        btnConfirm.setOpaque(true);
+        JButton btnCancel = createSecondaryButton("Hủy");
+        JButton btnConfirm = createPrimaryButton("Đồng ý");
+
+        btnCancel.setPreferredSize(new Dimension(105, 40));
+        btnConfirm.setPreferredSize(new Dimension(120, 40));
 
         btnCancel.addActionListener(e -> dialog.dispose());
+
         btnConfirm.addActionListener(e -> {
             result[0] = chkPhieu.isSelected();
             result[1] = chkTem.isSelected();
+
+            if (!result[0] && !result[1]) {
+                boolean confirmNoPrint = showModernQuestionDialog(
+                        "Không in gì?",
+                        "Bạn chưa chọn nội dung in nào.\nBạn vẫn muốn tiếp tục mà không in?"
+                );
+
+                if (!confirmNoPrint) {
+                    return;
+                }
+            }
+
             dialog.dispose();
         });
 
-        pnlAction.add(btnCancel);
-        pnlAction.add(btnConfirm);
+        footer.add(btnCancel);
+        footer.add(btnConfirm);
 
-        JPanel pnlCenterRight = new JPanel(new BorderLayout());
-        pnlCenterRight.setOpaque(false);
-        pnlCenterRight.add(pnlText, BorderLayout.CENTER);
-        pnlCenterRight.add(pnlAction, BorderLayout.SOUTH);
+        root.add(header, BorderLayout.NORTH);
+        root.add(body, BorderLayout.CENTER);
+        root.add(footer, BorderLayout.SOUTH);
 
-        pnlMain.add(pnlIconWrapper, BorderLayout.WEST);
-        pnlMain.add(pnlCenterRight, BorderLayout.CENTER);
-
-        dialog.setContentPane(pnlMain);
+        dialog.setContentPane(root);
         dialog.pack();
-        dialog.setSize(480, dialog.getHeight());
-        dialog.setShape(new RoundRectangle2D.Double(0, 0, dialog.getWidth(), dialog.getHeight(), 12, 12));
+        dialog.setSize(560, dialog.getHeight());
+        dialog.setShape(new RoundRectangle2D.Double(0, 0, dialog.getWidth(), dialog.getHeight(), 18, 18));
         dialog.setLocationRelativeTo(this);
         dialog.setVisible(true);
 
         return result;
     }
+    private JCheckBox createPrintOptionCheckBox(String title, String description) {
+        JCheckBox checkBox = new JCheckBox();
+        checkBox.setOpaque(false);
+        checkBox.setFocusPainted(false);
+        checkBox.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        checkBox.setAlignmentX(Component.LEFT_ALIGNMENT);
+        checkBox.setIconTextGap(12);
 
+        Icon iconUnchecked = new Icon() {
+            @Override
+            public int getIconWidth() {
+                return 22;
+            }
+
+            @Override
+            public int getIconHeight() {
+                return 22;
+            }
+
+            @Override
+            public void paintIcon(Component c, Graphics g, int x, int y) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+                g2.setColor(Color.WHITE);
+                g2.fillRoundRect(x + 1, y + 1, 20, 20, 7, 7);
+
+                g2.setColor(new Color(203, 213, 225));
+                g2.setStroke(new BasicStroke(1.6f));
+                g2.drawRoundRect(x + 1, y + 1, 20, 20, 7, 7);
+
+                g2.dispose();
+            }
+        };
+
+        Icon iconChecked = new Icon() {
+            @Override
+            public int getIconWidth() {
+                return 22;
+            }
+
+            @Override
+            public int getIconHeight() {
+                return 22;
+            }
+
+            @Override
+            public void paintIcon(Component c, Graphics g, int x, int y) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+                g2.setColor(PRIMARY);
+                g2.fillRoundRect(x + 1, y + 1, 20, 20, 7, 7);
+
+                g2.setColor(Color.WHITE);
+                g2.setStroke(new BasicStroke(2.6f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                g2.drawLine(x + 6, y + 11, x + 10, y + 15);
+                g2.drawLine(x + 10, y + 15, x + 17, y + 7);
+
+                g2.dispose();
+            }
+        };
+
+        checkBox.setIcon(iconUnchecked);
+        checkBox.setSelectedIcon(iconChecked);
+
+        checkBox.setText(
+                "<html>" +
+                        "<div style='font-family: Segoe UI; width: 360px;'>" +
+                        "<div style='font-size: 14px; font-weight: 700; color: #0f172a;'>" +
+                        title +
+                        "</div>" +
+                        "<div style='font-size: 12px; color: #64748b; margin-top: 2px;'>" +
+                        description +
+                        "</div>" +
+                        "</div>" +
+                        "</html>"
+        );
+
+        JPanel hoverBg = new JPanel();
+
+        checkBox.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                checkBox.setForeground(PRIMARY);
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                checkBox.setForeground(TEXT_PRIMARY);
+            }
+        });
+
+        return checkBox;
+    }
     private void handleSubmit() {
         clearErrors();
         String spText = txtTimSanPham.getText().trim();
