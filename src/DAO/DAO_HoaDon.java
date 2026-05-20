@@ -922,7 +922,7 @@ try { if (con != null) con.setAutoCommit(true); } catch (SQLException e) { e.pri
 				}
 
 // 3. Insert Chi Tiết Hóa Đơn và Quà Tặng (Đã gộp trùng lặp)
-				String sqlInsertCT = "INSERT INTO ChiTietHoaDon (hoaDonId, sanPhamId, donViDoLuongId, soLuong) VALUES (?, ?, ?, ?)";
+				String sqlInsertCT = "INSERT INTO ChiTietHoaDon (hoaDonId, sanPhamId, donViDoLuongId, soLuong, donGiaThucTe, thanhTien) VALUES (?, ?, ?, ?, ?, ?)";
 				try (PreparedStatement pstCT = con.prepareStatement(sqlInsertCT)) {
                     List<ChiTietHoaDon> dsTongGop = new ArrayList<>();
                     java.util.function.Consumer<ChiTietHoaDon> addOrMerge = (newItem) -> {
@@ -947,10 +947,14 @@ try { if (con != null) con.setAutoCommit(true); } catch (SQLException e) { e.pri
                         }
                     }
 					for (ChiTietHoaDon ct : dsTongGop) {
+						double donGiaThucTe = ct.getDonGiaThucTe();
+						double thanhTien = donGiaThucTe * ct.getSoLuong();
 						pstCT.setString(1, hd.getId());
 						pstCT.setString(2, ct.getSanPhamId().getId());
 						pstCT.setString(3, ct.getDonViDoLuongId().getId());
 						pstCT.setInt(4, ct.getSoLuong());
+						pstCT.setDouble(5, donGiaThucTe);
+						pstCT.setDouble(6, thanhTien);
 						pstCT.addBatch();
 					}
 					pstCT.executeBatch();

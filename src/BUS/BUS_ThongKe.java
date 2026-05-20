@@ -4,6 +4,7 @@ import DAO.DAO_ThongKe;
 import java.time.LocalDateTime;
 import java.time.LocalDate;
 import java.util.*;
+import java.util.List;
 
 public class BUS_ThongKe {
 
@@ -99,6 +100,57 @@ public class BUS_ThongKe {
     public double getTienMatBanHangTheoCa(String maNV, LocalDateTime start) {
         List<Object[]> raw = dao.getRawHDTheoCa(maNV, start, "TIEN_MAT");
         return sumThucThu(raw);
+    }
+
+    /**
+     * Doanh thu bán hàng bằng CHUYỂN KHOẢN trong ca.
+     * Tính bằng: Tổng bán hàng - Tiền mặt bán hàng
+     * (Tránh vấn đề enum CHUYEN_KHOAN vs CHUYEN_KHOAN_NGAN_HANG)
+     * Chỉ dùng để HIỂN THỊ — không ảnh hưởng công thức quỹ tiền mặt.
+     */
+    public double getTienCKBanHangTheoCa(String maNV, LocalDateTime start) {
+        List<Object[]> rawAll = dao.getRawHDTheoCa(maNV, start, null);
+        List<Object[]> rawMat = dao.getRawHDTheoCa(maNV, start, "TIEN_MAT");
+        return Math.max(0, sumThucThu(rawAll) - sumThucThu(rawMat));
+    }
+
+    // === BUG 1 + BUG 3 FIX ===
+    // Thay thế tinhDieuChinhDoiTra() (parse ghiChu fragile) bằng
+    // dao.getTienDoiHangTheoCa() / dao.getTienDoiHangTheoCaMat() (query SQL chính xác)
+
+    /**
+     * Bọc dao.getTienDoiHangTheoCaMat() để BUS_CaLamViec dùng khi tính tienHeThongGhiNhan.
+     * Trả về double[2]: [0]=tienBuThem, [1]=tienHoanLai (chỉ giao dịch tiền mặt)
+     */
+    public double[] getTienDoiHangMatTheoCa(String maNV, LocalDateTime start) {
+        return dao.getTienDoiHangTheoCaMat(maNV, start);
+    }
+
+    /**
+     * Tổng tiền đổi hàng theo ca — TẤT CẢ phương thức thanh toán (dùng cho tab Đối chiếu doanh thu).
+     * Trả về double[2]: [0]=tienBuThem (khách trả thêm), [1]=tienHoanLai (tiệm hoàn lại)
+     */
+    public double[] getDoiHangSummaryTheoCa(String maNV, LocalDateTime start) {
+        return dao.getTienDoiHangTheoCa(maNV, start);
+    }
+
+    // BUG 1 FIX: Không còn cộng tinhDieuChinhDoiTra() (parse ghiChu, bỏ sót DOI_HANG)
+    // Thay bằng dao.getTienDoiHangTheoCa() trả về số tiền chính xác từ DB
+    public double getDoanhThuTheoCa(String maNV, LocalDateTime start) {
+        List<Object[]> raw = dao.getRawHDTheoCa(maNV, start, null);
+        double doanhThuBanHang = sumThucThu(raw);
+        double[] doiHang = dao.getTienDoiHangTheoCa(maNV, start);
+        // doiHang[0] = tienBuThem (khách trả thêm → tăng doanh thu)
+        // doiHang[1] = tienHoanLai (tiệm hoàn lại  → giảm doanh thu)
+        return doanhThuBanHang + doiHang[0] - doiHang[1];
+    }
+
+    // BUG 3 FIX: Tương tự getDoanhThuTheoCa() nhưng chỉ tính tiền mặt
+    public double getDoanhThuTienMatTheoCa(String maNV, LocalDateTime start) {
+        List<Object[]> raw = dao.getRawHDTheoCa(maNV, start, "TIEN_MAT");
+        double doanhThuBanHang = sumThucThu(raw);
+        double[] doiMat = dao.getTienDoiHangTheoCaMat(maNV, start);
+        return doanhThuBanHang + doiMat[0] - doiMat[1];
     }
 
     private boolean kiemTraThoiGianHople(LocalDateTime tu, LocalDateTime den) {
@@ -206,26 +258,6 @@ public class BUS_ThongKe {
         return getDoanhThuThuanHomNay(f);
     }
 
-    public double getDoanhThuTheoCa(String maNV, LocalDateTime start) {
-        List<Object[]> raw = dao.getRawHDTheoCa(maNV, start, null);
-        double dt = sumThucThu(raw);
-        ThongKeFilter f = new ThongKeFilter();
-        f.maNV = maNV;
-        java.time.format.DateTimeFormatter fmt = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS");
-        dt += tinhDieuChinhDoiTra("hd.ngayLapHD>='" + start.format(fmt) + "'", f);
-        return dt;
-    }
-
-    public double getDoanhThuTienMatTheoCa(String maNV, LocalDateTime start) {
-        List<Object[]> raw = dao.getRawHDTheoCa(maNV, start, "TIEN_MAT");
-        double dt = sumThucThu(raw);
-        ThongKeFilter f = new ThongKeFilter();
-        f.maNV = maNV;
-        java.time.format.DateTimeFormatter fmt = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS");
-        dt += tinhDieuChinhDoiTra("hd.ngayLapHD>='" + start.format(fmt) + "'", f);
-        return dt;
-    }
-
     public double[] getDoanhThu12Thang(int year, ThongKeFilter filter) {
         if (year <= 0) return new double[12];
         double[] data = new double[12];
@@ -257,9 +289,11 @@ public class BUS_ThongKe {
         List<Object[]> doiTraList = dao.getRawHDDoiTra12Thang(year, filter);
         for (Object[] row : doiTraList) {
             int m = (Integer) row[0];
-            double refundChuaVAT = (Double) row[1]; 
-            if (m >= 1 && m <= 12 && refundChuaVAT > 0) {
-                data[m - 1] -= refundChuaVAT / 1_000_000.0;
+            double netDelta = (Double) row[1]; // âm = hoàn trả nhiều hơn đổi, dương = đổi mới đắt hơn cũ
+            if (m >= 1 && m <= 12) {
+                // netDelta < 0: doanh thu giảm (khách trả nhiều hơn lấy) → trừ ABS
+                // netDelta > 0: doanh thu tăng (hàng mới đắt hơn cũ) → cộng
+                data[m - 1] += netDelta / 1_000_000.0;
             }
         }
         for(int i = 0; i < 12; i++) data[i] = Math.max(0, data[i]); 
@@ -295,9 +329,10 @@ public class BUS_ThongKe {
         List<Object[]> doiTraList = dao.getRawHDDoiTra30Ngay(filter);
         for (Object[] row : doiTraList) {
             String date = (String) row[0];
-            double refund = (Double) row[1];
+            double netDelta = (Double) row[1]; // âm = trả nhiều, dương = đổi lấy đắt hơn
             if (dailyData.containsKey(date)) {
-                dailyData.get(date)[1] = Math.max(0, dailyData.get(date)[1] - refund);
+                // cộng netDelta trực tiếp (netDelta âm → trừ DT, dương → tăng DT)
+                dailyData.get(date)[1] = Math.max(0, dailyData.get(date)[1] + netDelta);
             }
         }
 
@@ -349,8 +384,9 @@ public class BUS_ThongKe {
         List<Object[]> doiTraList = dao.getRawHDDoiTraGio("CAST(hd.ngayLapHD AS DATE)='" + dateYMD + "'", filter);
         for (Object[] row : doiTraList) {
             int h = (Integer) row[2];
-            double coVATRefund = (row.length >= 4 && row[3] instanceof Double) ? (Double) row[3] : 0;
-            if (h >= 0 && h < 24 && coVATRefund > 0) data[h] -= coVATRefund / 1_000_000.0;
+            double netDelta_coVAT = (row.length >= 4 && row[3] instanceof Double) ? (Double) row[3] : 0;
+            // netDelta_coVAT < 0: doanh thu giờ đó giảm; > 0: tăng
+            if (h >= 0 && h < 24) data[h] = Math.max(0, data[h] + netDelta_coVAT / 1_000_000.0);
         }
         return data;
     }
@@ -446,9 +482,14 @@ public class BUS_ThongKe {
             if (!s.isEmpty()) tien = Double.parseDouble(s);
         } else if ("DOI_HANG".equals(loai) && parts.length >= 4) {
             String chenhLech = parts[3].trim();
-            if (chenhLech.contains("Hoàn")) {
-                String s = chenhLech.replaceAll("[^0-9]", "");
-                if (!s.isEmpty()) tien = Double.parseDouble(s);
+            String s = chenhLech.replaceAll("[^0-9]", "");
+            if (!s.isEmpty()) {
+                double amount = Double.parseDouble(s);
+                if (chenhLech.contains("Hoàn")) {
+                    tien = amount;        // Cửa hàng hoàn tiền → dương → caller -tien → âm (tiền ra)
+                } else if (chenhLech.contains("Bù")) {
+                    tien = -amount;       // Khách bù thêm → âm → caller -tien → dương (tiền vào)
+                }
             }
         }
         return tien;
@@ -492,7 +533,16 @@ public class BUS_ThongKe {
 
     public double[] getKpiDoiChieu(ThongKeFilter f) {
         int soHD = dao.getSoHoaDonHomNay(f);
-        List<Object[]> rows = dao.getRawHDByDay(LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")), f);
+        // Lấy đúng danh sách HĐ theo filter: nếu có startTime thì lọc từ giờ bắt đầu ca
+        List<Object[]> rows;
+        String dateCondForTra;
+        if (f != null && f.startTime != null) {
+            rows = dao.getRawHDByFilter(f);
+            dateCondForTra = "hd.ngayLapHD >= '" + f.startTime.toString().replace("T", " ") + "'";
+        } else {
+            rows = dao.getRawHDByDay(LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")), f);
+            dateCondForTra = "CAST(hd.ngayLapHD AS DATE) = CAST(GETDATE() AS DATE)";
+        }
 
         double tGocChuaVAT = 0, tKhuyenMai = 0, tDoanhThuThuan = 0, tVAT = 0, tThucThuBanHang = 0, tMat = 0, tCK = 0;               
 
@@ -522,7 +572,7 @@ public class BUS_ThongKe {
             if ("TIEN_MAT".equalsIgnoreCase(pttt)) tMat += thucThuHD; else tCK += thucThuHD;
         }
 
-        double[] traHang = dao.getTienTraHangChinhXac("CAST(hd.ngayLapHD AS DATE) = CAST(GETDATE() AS DATE)", f);
+        double[] traHang = dao.getTienTraHangChinhXac(dateCondForTra, f);
         int soPhieuTra = dao.getTongPhieuDoiTra(f);
         return new double[] { Math.max(0, soHD - soPhieuTra), tGocChuaVAT, tKhuyenMai, tVAT, tThucThuBanHang, tMat, tCK, traHang[0], Math.max(0, tDoanhThuThuan - traHang[1]) };
     }
@@ -573,6 +623,15 @@ public class BUS_ThongKe {
     		ThongKeFilter f = new ThongKeFilter(); f.maNV = maNV; 
     	return tinhDieuChinhDoiTra("hd.ngayLapHD>=DATEADD(DAY,-7,GETDATE())", f); 
     }
+    /**
+     * Tổng số lượng sản phẩm thực tế hôm nay (đã tính đổi/trả).
+     * Công thức: SP bán (BAN_HANG) + SP xuất ra (DOI_HANG soLuong>0)
+     *           - SP khách trả (TRA_HANG) - SP lấy lại khi đổi (DOI_HANG soLuong<0)
+     */
+    public int getTongSoLuongSPHomNay(ThongKeFilter filter) {
+        return dao.getTongSoLuongSPHomNay(filter);
+    }
+
     public int getTongSanPham() { 
     	return dao.getTongSanPham(); 
     }
@@ -697,61 +756,114 @@ public class BUS_ThongKe {
     }
 
     public double[] getKpiTongQuat(ThongKeFilter f) {
-        List<Object[]> rows = dao.getRawHDByFilter(f); 
-        double tGoc = 0, tKM = 0, tThuannChuaVAT = 0, tVAT = 0, tThucThu = 0;
+        // ---- Phần doanh thu: giữ nguyên logic cũ (bóc VAT + KM + điểm) ----
+        List<Object[]> rows = dao.getRawHDByFilter(f);
+        double tGocChuaVAT = 0, tKhuyenMai = 0, tDoanhThuThuan = 0,
+               tVAT = 0, tThucThuBanHang = 0;
         int soHD = rows.size();
-
+ 
         for (Object[] row : rows) {
-            String hdId = (String) row[0];
+            String hdId   = (String) row[0];
+            String ghiChu = (String) row[2];
+ 
             List<Object[]> items = dao.getRawLineItems(hdId);
             double thuanHD = 0, vatHD = 0;
-
+ 
             for (Object[] it : items) {
                 double giaGoc    = (double) it[1];
                 double vatRate   = (double) it[2];
                 double thanhTien = (double) it[3];
-                
+ 
                 double thuanDong = Math.round(thanhTien / (1.0 + vatRate / 100.0));
                 double vatDong   = Math.round(thanhTien - thuanDong);
-                
-                tThuannChuaVAT += thuanDong;
-                tVAT += vatDong;
-                thuanHD += thuanDong;
-                vatHD   += vatDong;
+ 
+                tDoanhThuThuan += thuanDong;
+                tVAT           += vatDong;
+                thuanHD        += thuanDong;
+                vatHD          += vatDong;
             }
-            String ghiChuHD = (String) row[2];
-            if (ghiChuHD != null && ghiChuHD.contains("m: -")) {
+ 
+            if (ghiChu != null && ghiChu.contains("m: -")) {
                 try {
-                    String ds = ghiChuHD.substring(ghiChuHD.lastIndexOf("-") + 1).replaceAll("[^0-9]", "");
+                    String ds = ghiChu.substring(ghiChu.lastIndexOf("-") + 1)
+                                      .replaceAll("[^0-9]", "");
                     if (!ds.isEmpty()) {
                         double diem = Double.parseDouble(ds);
-                        tThuannChuaVAT = Math.max(0, tThuannChuaVAT - diem);
+                        tDoanhThuThuan = Math.max(0, tDoanhThuThuan - diem);
                     }
                 } catch (Exception ignored) {}
             }
-            tThucThu += tinhTienThucTe(thuanHD + vatHD, ghiChuHD);
+            tThucThuBanHang += tinhTienThucTe(thuanHD + vatHD, ghiChu);
         }
-
-        double[] dataTraHang = dao.getTienVaGiaVonHangTra(f);
-        double tienHoanCoVAT = dataTraHang[0];
-        double tienHoanChuaVAT = dataTraHang[1];
-        double giaVonHoanLaiKho = dataTraHang[2]; 
-
-        double doanhThuRong = Math.max(0, tThuannChuaVAT - tienHoanChuaVAT);
-        double chiPhiRong = Math.max(0, tGiaVon - giaVonHoanLaiKho);
-        double loiNhuan = doanhThuRong - chiPhiRong;
-
+ 
+        // ---- Hàng trả: giữ nguyên logic cũ ----
+        double[] dataTraHang       = dao.getTienVaGiaVonHangTra(f);
+        double tienHoanCoVAT       = dataTraHang[0];
+        double tienHoanChuaVAT     = dataTraHang[1];
+        double giaVonHoanLaiKho    = dataTraHang[2];
+ 
+        // ---- [FIX] COGS bán hàng — lấy từ PhanBoLoHang ----
+        // Bản cũ dùng `tGiaVon` (= 0 mãi mãi) → sai
+        double[] cogsData  = dao.getCogsTheoFilter(f);
+        double giaVonBan   = cogsData[0]; // giaVon xuất bán
+        // giaVonHoanLaiKho đã được tính bởi getTienVaGiaVonHangTra(), dùng lại.
+ 
+        double doanhThuRong = Math.max(0, tDoanhThuThuan - tienHoanChuaVAT);
+        double chiPhiRong   = Math.max(0, giaVonBan - giaVonHoanLaiKho); // NET COGS
+        double loiNhuan     = doanhThuRong - chiPhiRong;
+ 
         return new double[] {
-            doanhThuRong, 
-            Math.max(0, soHD - dao.getTongPhieuDoiTra(f)), 
-            0,  
-            loiNhuan, 
-            Math.max(0, tVAT - (tienHoanCoVAT - tienHoanChuaVAT)), 
-            Math.max(0, tThucThu - tienHoanCoVAT) 
+            doanhThuRong,                                            // [0]
+            Math.max(0, soHD - dao.getTongPhieuDoiTra(f)),          // [1]
+            0,                                                        // [2] reserved
+            loiNhuan,                                                // [3] ← đúng bây giờ
+            Math.max(0, tVAT - (tienHoanCoVAT - tienHoanChuaVAT)), // [4]
+            Math.max(0, tThucThuBanHang - tienHoanCoVAT)           // [5]
         };
     }
     
     public double[] getThongKeTraHangNV(String nvId, int year, ThongKeFilter filter) {
         return dao.getThongKeTraHangNV(nvId, year, filter);
+    }
+    
+    public List<Object[]> getBaoCaoTaiChinh(ThongKeFilter filter, String groupBy) {
+        return dao.getBaoCaoTaiChinh(filter, groupBy);
+    }
+ 
+    public double[] getKpiTaiChinh(ThongKeFilter filter) {
+        List<Object[]> rows = dao.getBaoCaoTaiChinh(filter, "NGAY"); // NGAY cho granularity cao
+ 
+        double sumDTG  = 0, sumVAT = 0, sumTra  = 0;
+        double sumDTT  = 0, sumCOGS = 0, sumLN  = 0;
+ 
+        for (Object[] row : rows) {
+            sumDTG  += (double) row[1];
+            sumVAT  += (double) row[2];
+            sumTra  += (double) row[3];
+            sumDTT  += (double) row[4];
+            sumCOGS += (double) row[5];
+            sumLN   += (double) row[6];
+        }
+ 
+        double tyLe = (sumDTT > 0) ? sumLN / sumDTT * 100.0 : 0.0;
+ 
+        return new double[]{
+            sumDTG,   // [0] Doanh Thu Gộp
+            sumVAT,   // [1] Thuế VAT
+            sumTra,   // [2] Hàng Bán Bị Trả Lại
+            sumDTT,   // [3] Doanh Thu Thuần
+            sumCOGS,  // [4] Giá Vốn Hàng Bán
+            sumLN,    // [5] Lợi Nhuận Gộp
+            tyLe      // [6] Tỷ lệ LN/DTT (%)
+        };
+    }
+    
+    public BUS.KetQuaDoiChieuCa layDoiChieuDoanhThuTheoCa(ThongKeFilter filter) {
+        return dao.layDoiChieuDoanhThuTheoCa(filter);
+    }
+    
+    public String formatTien(double tien) {
+        java.text.DecimalFormat df = new java.text.DecimalFormat("#,### đ");
+        return df.format(tien);
     }
 }

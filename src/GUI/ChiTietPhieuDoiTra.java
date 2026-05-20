@@ -24,6 +24,90 @@ public class ChiTietPhieuDoiTra extends JDialog {
     
     private BUS_TraHang busTraHang = new BUS_TraHang(); 
 
+    public ChiTietPhieuDoiTra(Frame parent, String maPhieu) {
+        super(parent, "Chi tiết phiếu đổi/trả", true);
+        this.maPhieu = maPhieu;
+
+        // ── Tải dữ liệu hoàn toàn từ BUS ──────────────────────────────────────
+        try {
+            BUS.BUS_HoaDon busHD = new BUS.BUS_HoaDon();
+            Entity.HoaDon hd = busHD.layHoaDonTheoMa(maPhieu);
+
+            if (hd != null) {
+                // Loại phiếu
+                String loaiHDStr = hd.getLoaiHD() != null ? hd.getLoaiHD().toString() : "";
+                this.loaiPhieu = "TRA_HANG".equals(loaiHDStr) ? "Trả hàng" : "Đổi hàng";
+
+                // Trạng thái — mặc định "Hoàn thành"; có thể mở rộng theo hd.getTrangThai() nếu entity hỗ trợ
+                this.trangThai = "Hoàn thành";
+
+                // Ngày tạo
+                this.ngayTao = hd.getNgayLapHD() != null
+                        ? hd.getNgayLapHD().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss"))
+                        : "—";
+
+                // Khách hàng
+                this.khachHang = hd.getKhachHangId() != null
+                        ? hd.getKhachHangId().getHoVaTen() : "Khách lẻ";
+
+                // Nhân viên — ưu tiên từ HoaDon entity, fallback về Session
+                if (hd.getNhanVienId() != null && hd.getNhanVienId().getHoVaTen() != null) {
+                    this.nhanVien = hd.getNhanVienId().getHoVaTen();
+                } else {
+                    String tenNVSession = Utils.UserSession.getInstance().getTenHienThi();
+                    this.nhanVien = (tenNVSession != null && !tenNVSession.isEmpty())
+                            ? tenNVSession : "Nhân viên hệ thống";
+                }
+
+                // Lấy hoaDonGoc từ entity (field hoaDonGocId), không parse ghiChu
+                Entity.HoaDon hdGoc = hd.getHoaDonGocId();
+                this.hoaDonGoc = (hdGoc != null && hdGoc.getId() != null) ? hdGoc.getId() : "";
+
+                // Lấy lyDo từ parts[1] của ghiChu (format: "trangThai|lyDo|tienHoan|chenhLech|TRA:...|DOI:...")
+                String ghiChu = hd.getGhiChu() != null ? hd.getGhiChu() : "";
+                String[] parts = ghiChu.split("\\|");
+                this.lyDo = parts.length > 1 ? parts[1].trim()
+                        : (!ghiChu.isEmpty() ? ghiChu : "Không có ghi chú");
+
+                // tienHoanThucTe và chenhLechThucTe:
+                // createProductListPanel() sẽ tự tính từ busTraHang → truyền chuỗi rỗng là an toàn.
+                // (Nếu rỗng, summary panel sẽ hiển thị giá trị đã tính từ danh sách sản phẩm.)
+                this.tienHoanThucTe  = "";
+                this.chenhLechThucTe = "";
+
+            } else {
+                // HoaDon không tìm thấy — set giá trị mặc định an toàn
+                this.loaiPhieu       = "Đổi hàng";
+                this.trangThai       = "—";
+                this.ngayTao         = "—";
+                this.khachHang       = "Khách lẻ";
+                this.nhanVien        = "Nhân viên hệ thống";
+                this.hoaDonGoc       = "";
+                this.lyDo            = "Không tìm thấy hóa đơn";
+                this.tienHoanThucTe  = "";
+                this.chenhLechThucTe = "";
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            this.loaiPhieu       = "Đổi hàng";
+            this.trangThai       = "—";
+            this.ngayTao         = "—";
+            this.khachHang       = "Khách lẻ";
+            this.nhanVien        = "Nhân viên hệ thống";
+            this.hoaDonGoc       = "";
+            this.lyDo            = "Lỗi tải dữ liệu";
+            this.tienHoanThucTe  = "";
+            this.chenhLechThucTe = "";
+        }
+
+        // Cập nhật tiêu đề dialog sau khi đã biết loại phiếu
+        setTitle("Chi tiết phiếu " + loaiPhieu);
+        initUI();
+    }
+
+    /**
+     * Constructor đầy đủ tham số — dùng khi gọi từ ManHinhBanHang (đã có dữ liệu sẵn).
+     */
     public ChiTietPhieuDoiTra(Frame parent, String maPhieu, String loaiPhieu, String trangThai, 
             String ngayTao, String hoaDonGoc, String khachHang, String lyDo, String nhanVienTruyenVao,
             String tienHoan, String chenhLech) {
@@ -296,7 +380,8 @@ public class ChiTietPhieuDoiTra extends JDialog {
                     if (sp[1] != null) sl = Integer.parseInt(sp[1].toString().replaceAll("[^0-9]", "")); 
                 } catch(Exception e){}
                 
-                String dvt = "Hộp";
+                // [2]=dvt, [3]=donGia (sau khi BUS_TraHang đã fix thứ tự đúng)
+                String dvt = sp[2] != null ? sp[2].toString() : "Hộp";
                 long gia = 0;
                 
                 // LỚP BẢO VỆ 1: Lọc sạch chuỗi, chỉ lấy số
@@ -346,7 +431,8 @@ public class ChiTietPhieuDoiTra extends JDialog {
                     if (sp[1] != null) sl = Integer.parseInt(sp[1].toString().replaceAll("[^0-9]", "")); 
                 } catch(Exception e){}
                 
-                String dvt = "Hộp";
+                // [2]=dvt, [3]=donGia (sau khi BUS_TraHang đã fix thứ tự đúng)
+                String dvt = sp[2] != null ? sp[2].toString() : "Hộp";
                 long gia = 0;
                 
                 try { 

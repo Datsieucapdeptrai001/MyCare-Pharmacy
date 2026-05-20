@@ -65,12 +65,13 @@ public class BUS_Kho {
         return dsCanhBao;
     }
 
-    public int xuLyXuatKhoFEFO(String maSP, int soLuongCanXuat) {
+    public int xuLyXuatKhoFEFO(String maSP, int soLuongCanXuat, double heSoQuyDoi) {
         if (maSP == null || maSP.trim().isEmpty() || soLuongCanXuat <= 0) {
             throw new IllegalArgumentException("Mã sản phẩm hoặc số lượng cần xuất không hợp lệ.");
         }
 
-        return daoLoHang.xuatKhoFEFO(maSP, soLuongCanXuat);
+        int soLuongCoSo = (int) Math.round(soLuongCanXuat * heSoQuyDoi);
+        return daoLoHang.xuatKhoFEFO(maSP, soLuongCoSo);
     }
 
     public boolean kiemKeKho() {

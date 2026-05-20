@@ -4,9 +4,6 @@ import Entity.CaLamViec;
 import Entity.TaiKhoan;
 import Enumeration.VaiTro;
 
-/**
- * Singleton lưu toàn bộ trạng thái phiên đăng nhập.
- */
 public class UserSession {
 
     private static UserSession instance;

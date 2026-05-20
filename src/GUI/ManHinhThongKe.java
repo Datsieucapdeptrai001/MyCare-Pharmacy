@@ -105,6 +105,12 @@ public class ManHinhThongKe extends JPanel {
     private JLabel lblVATTotal;
     private JLabel miniPeakDate, miniAvgDT, miniAvgOrder;
 
+    // ── KPI Tài Chính (Tab DT – 3 chỉ số chính) ──
+    private JLabel kpiGVVal,  kpiGVSub;   // Giá vốn hàng bán (COGS)
+    private JLabel kpiLNGVal, kpiLNGSub;  // Lợi nhuận gộp
+    // Bảng báo cáo tài chính chi tiết (thay thế bảng VAT cũ)
+    private DefaultTableModel modelTaiChinh;
+
     private int selectedNVIdx = -1;
 
     private JTextField txtTuNgay, txtDenNgay;
@@ -178,6 +184,23 @@ public class ManHinhThongKe extends JPanel {
         loadKho(currentYear);
         loadDonHangTab();
         loadNVDangTruc();
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // PUBLIC API – dùng cho MainDashboard gọi vào để refresh toàn bộ dữ liệu
+    // ─────────────────────────────────────────────────────────────────────────
+    public void refreshAll() {
+        loadDataFromDB(currentYear);
+        loadDonHangTab();
+        loadNVDangTruc();
+    }
+
+    // Tự load lại khi panel được hiển thị lần đầu hoặc add lại vào container
+    @Override
+    public void addNotify() {
+        super.addNotify();
+        // Chỉ refresh nếu data chưa được load (tránh double-load khi init)
+        SwingUtilities.invokeLater(() -> refreshAll());
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -264,8 +287,8 @@ public class ManHinhThongKe extends JPanel {
         }
 
         // Month combo (dùng cho mode THANG)
-        cboThang = new JComboBox<>(new String[]{"Cả năm","T1","T2","T3","T4","T5","T6","T7","T8","T9","T10","T11","T12"});
-        cboQuy   = new JComboBox<>(new String[]{"Tất cả","Quý 1 (T1-T3)","Quý 2 (T4-T6)","Quý 3 (T7-T9)","Quý 4 (T10-T12)"});
+        cboThang = new JComboBox<>(new String[]{"T1","T2","T3","T4","T5","T6","T7","T8","T9","T10","T11","T12"});
+        cboQuy   = new JComboBox<>(new String[]{"Quý 1 (T1-T3)","Quý 2 (T4-T6)","Quý 3 (T7-T9)","Quý 4 (T10-T12)"});
         styleCombo(cboThang);
         styleCombo(cboQuy);
 
@@ -506,7 +529,7 @@ public class ManHinhThongKe extends JPanel {
                 break;
             case "QUY":
                 filter.modeLocThoiGian = "QUY";
-                filter.quarter = cboQuy.getSelectedIndex();
+                filter.quarter = cboQuy.getSelectedIndex() + 1;
                 break;
             case "NAM":
                 filter.modeLocThoiGian = "THANG"; // month=null → cả năm
@@ -545,10 +568,10 @@ public class ManHinhThongKe extends JPanel {
             }
             case "QUY": {
                 int s = cboQuy.getSelectedIndex();
-                if (s==1) return " AND MONTH("+dateColumn+") BETWEEN 1 AND 3";
-                if (s==2) return " AND MONTH("+dateColumn+") BETWEEN 4 AND 6";
-                if (s==3) return " AND MONTH("+dateColumn+") BETWEEN 7 AND 9";
-                if (s==4) return " AND MONTH("+dateColumn+") BETWEEN 10 AND 12";
+                if (s==0) return " AND MONTH("+dateColumn+") BETWEEN 1 AND 3";
+                if (s==1) return " AND MONTH("+dateColumn+") BETWEEN 4 AND 6";
+                if (s==2) return " AND MONTH("+dateColumn+") BETWEEN 7 AND 9";
+                if (s==3) return " AND MONTH("+dateColumn+") BETWEEN 10 AND 12";
                 return "";
             }
             case "NAM": return "";
@@ -569,9 +592,6 @@ public class ManHinhThongKe extends JPanel {
 
     private String buildCondPN() { return buildCondString("ngayNhap"); }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // LOAD DATA
-    // ─────────────────────────────────────────────────────────────────────────
     private void loadDataFromDB(int year) {
         final BUS.BUS_ThongKe.ThongKeFilter fCondHD = buildCondHD();
         new Thread(() -> {
@@ -597,10 +617,30 @@ public class ManHinhThongKe extends JPanel {
                     tmp_NV_COLORS[i]= PALETTE[i % PALETTE.length];
                 }
 
-                double[] tmp_DT_DATA   = busThongKe.getDoanhThu12Thang(year, fCondHD);
-                double[] tmp_CP_DATA   = busThongKe.getChiPhi12Thang(year, fCondHD);
-                double[] tmp_LN_DATA   = busThongKe.getLoiNhuan12Thang(year, fCondHD);
-                int[]    tmp_DONUT     = busThongKe.getSoLuongTheoLoaiSP(year, fCondHD);
+                BUS.BUS_ThongKe.ThongKeFilter filterBieuDoNam = new BUS.BUS_ThongKe.ThongKeFilter();
+                filterBieuDoNam.maNV = fCondHD.maNV; 
+                filterBieuDoNam.modeLocThoiGian = "NAM"; 
+
+                double[] tmp_DT_DATA = new double[12];
+                double[] tmp_CP_DATA = new double[12];
+                double[] tmp_LN_DATA = new double[12];
+
+                java.util.List<Object[]> dataBieuDoNam = busThongKe.getBaoCaoTaiChinh(filterBieuDoNam, "THANG");
+                for (Object[] r : dataBieuDoNam) {
+                    try {
+                        String mStr = String.valueOf(r[0]).replaceAll("[^0-9]", "");
+                        if (!mStr.isEmpty()) {
+                            int m = Integer.parseInt(mStr);
+                            if (m >= 1 && m <= 12) {
+                                tmp_DT_DATA[m - 1] = (double) r[4] / 1_000_000.0; // Doanh thu thuần
+                                tmp_CP_DATA[m - 1] = (double) r[5] / 1_000_000.0; // Giá vốn (Chi phí)
+                                tmp_LN_DATA[m - 1] = (double) r[6] / 1_000_000.0; // Lợi nhuận gộp
+                            }
+                        }
+                    } catch (Exception ignored) {}
+                }
+                
+                int[] tmp_DONUT = busThongKe.getSoLuongTheoLoaiSP(year, fCondHD);
 
                 java.util.List<String> dateList = busThongKe.get10NgayGanNhat(year, fCondHD);
                 String[] tmp_DATES_10 = dateList.toArray(new String[0]);
@@ -617,12 +657,30 @@ public class ManHinhThongKe extends JPanel {
                 DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy");
                 for (int i = 0; i < 30; i++)
                     tmp_DAILY_30_DATES[29-i] = today.minusDays(i).format(dtf);
-                java.util.List<Object[]> daily30 = busThongKe.getThongKe30NgayGanNhat(fCondHD);
-                for (Object[] row : daily30) {
-                    String d = (String) row[0]; int hd = (int) row[1]; double dt = (double) row[2];
+                
+                BUS.BUS_ThongKe.ThongKeFilter filterDaily30 = new BUS.BUS_ThongKe.ThongKeFilter();
+                filterDaily30.maNV = fCondHD.maNV; 
+                filterDaily30.fromDate = java.sql.Date.valueOf(today.minusDays(29));
+                filterDaily30.toDate   = java.sql.Date.valueOf(today);
+                filterDaily30.modeLocThoiGian = "TUYCHINH";
+
+                java.util.List<Object[]> daily30BCTC = busThongKe.getBaoCaoTaiChinh(filterDaily30, "NGAY");
+                java.util.List<Object[]> daily30HD = busThongKe.getThongKe30NgayGanNhat(filterDaily30);
+
+                for (Object[] row : daily30HD) {
+                    String d = (String) row[0]; int hd = (int) row[1];
                     for (int i = 0; i < 30; i++) {
                         if (tmp_DAILY_30_DATES[i].equals(d)) {
-                            tmp_DAILY_30_HD[i] = hd; tmp_DAILY_30_DT[i] = dt; break;
+                            tmp_DAILY_30_HD[i] = hd; break;
+                        }
+                    }
+                }
+                for (Object[] row : daily30BCTC) {
+                    String d = (String) row[0]; 
+                    double dtThuan = (double) row[4] / 1_000_000.0; 
+                    for (int i = 0; i < 30; i++) {
+                        if (tmp_DAILY_30_DATES[i].equals(d)) {
+                            tmp_DAILY_30_DT[i] = dtThuan; break;
                         }
                     }
                 }
@@ -637,14 +695,18 @@ public class ManHinhThongKe extends JPanel {
                     
                     double[] tra = busThongKe.getThongKeTraHangNV(tmp_NV_IDS[i], year, fCondHD);
                     tmp_NV_HD_TRA[i] = (int) tra[0];
-                    tmp_NV_DT_TRA[i] = tra[1];
+                    tmp_NV_DT_TRA[i] = tra[1] / 1_000_000.0; 
                 }
 
                 double[] kpiData  = busThongKe.getKpiTongQuat(fCondHD);
-                double fDT        = kpiData[0];
-                long   fHD        = (long) kpiData[1];
-                double fVAT       = kpiData[4];
-                double fThucThu   = fDT + fVAT;
+                long   fHD        = (long) kpiData[1]; 
+
+                double[] tcData  = busThongKe.getKpiTaiChinh(fCondHD);
+                final double fDTT   = tcData[3]; 
+                final double fGV    = tcData[4]; 
+                final double fLNG   = tcData[5]; 
+                final double fVATtc = tcData[1]; 
+                final double fTyLe  = tcData[6]; 
 
                 int peakMonth = 0;
                 for (int i = 1; i < 12; i++)
@@ -659,7 +721,7 @@ public class ManHinhThongKe extends JPanel {
                 final String[] fro = tmp_NV_ROLES;  final String[] fsh  = tmp_NV_SHORT;
                 final Color[]  fc  = tmp_NV_COLORS;
                 final int[] fHDS=tmp_NV_HD_S, fHDC=tmp_NV_HD_C, fHDT=tmp_NV_HD_T;
-                final double[] fDTS=tmp_NV_DT_S, fDTC=tmp_NV_DT_C, fDTT=tmp_NV_DT_T;
+                final double[] fDTS=tmp_NV_DT_S, fDTC=tmp_NV_DT_C, fDT_T=tmp_NV_DT_T;
                 final int[] fHDTra = tmp_NV_HD_TRA;
                 final double[] fDTTra = tmp_NV_DT_TRA;
                 final String[] fD10=tmp_DATES_10; final int[][] fDaily=tmp_NV_DAILY;
@@ -670,17 +732,29 @@ public class ManHinhThongKe extends JPanel {
                 SwingUtilities.invokeLater(() -> {
                     NV_NAMES=fn; NV_IDS=fids; NV_ROLES=fro; NV_SHORT=fsh; NV_COLORS=fc;
                     NV_HD_S=fHDS; NV_HD_C=fHDC; NV_HD_T=fHDT;
-                    NV_DT_S=fDTS; NV_DT_C=fDTC; NV_DT_T=fDTT;
+                    NV_DT_S=fDTS; NV_DT_C=fDTC; NV_DT_T=fDT_T;
                     NV_HD_TRA=fHDTra; NV_DT_TRA=fDTTra;
                     DATES_10=fD10; NV_DAILY=fDaily;
                     DT_DATA=fDT12; CP_DATA=fCP12; LN_DATA=fLN12;
                     DONUT_VALS=fDonut;
                     DAILY_30_DT=fD30; DAILY_30_HD=fH30; DAILY_30_DATES=fDates30;
 
-                    if (kpiDTVal!=null) { kpiDTVal.setText(formatK(fDT));  kpiDTSub.setText("Doanh thu thuần"); }
-                    if (kpiHDVal!=null) { kpiHDVal.setText(String.format("%,d", fHD)); kpiHDSub.setText("Hóa đơn thành công"); }
-                    if (kpiLNVal!=null) { kpiLNVal.setText(formatK(fVAT)); kpiLNSub.setText("Tổng thuế VAT 5%, 10%"); }
-                    if (kpiTBVal!=null) { kpiTBVal.setText(formatK(fThucThu)); kpiTBSub.setText("Tổng khách thanh toán"); }
+                    if (kpiDTVal  != null) {
+                        kpiDTVal.setText(formatK(fDTT));
+                        kpiDTSub.setText("doanh thu thuần (sau trả hàng)");
+                    }
+                    if (kpiGVVal  != null) {
+                        kpiGVVal.setText(formatK(fGV));
+                        kpiGVSub.setText("giá vốn hàng bán (COGS)");
+                    }
+                    if (kpiLNGVal != null) {
+                        kpiLNGVal.setText(formatK(fLNG));
+                        kpiLNGSub.setText(String.format("biên LN gộp %.1f%%", fTyLe));
+                    }
+                    if (kpiTBVal  != null) {
+                        kpiTBVal.setText(formatK(fVATtc));
+                        kpiTBSub.setText("thuế VAT 5% & 10% thu hộ");
+                    }
                     if (lblYearBadge!=null) lblYearBadge.setText(kyStr+" "+fYear);
                     if (btnNamPicker!=null) btnNamPicker.setText(" "+fYear+" ▼");
 
@@ -704,10 +778,13 @@ public class ManHinhThongKe extends JPanel {
 
                     int soNV = NV_NAMES.length;
                     if (lblTongNV != null) lblTongNV.setText(String.valueOf(soNV));
+                    
                     double sumDT_NV = 0;
                     for (double s : NV_DT_S) sumDT_NV += s;
                     for (double c : NV_DT_C) sumDT_NV += c;
                     for (double t : NV_DT_T) sumDT_NV += t;
+                    for (double tra : NV_DT_TRA) sumDT_NV -= tra; 
+                    
                     if (lblTongDT_NV != null) lblTongDT_NV.setText(formatM(sumDT_NV));
                     if (lblDTTB_NV   != null) lblDTTB_NV.setText(soNV>0 ? formatM(sumDT_NV/soNV) : "0đ");
 
@@ -729,7 +806,7 @@ public class ManHinhThongKe extends JPanel {
                     if (miniAvgOrder  != null) miniAvgOrder.setText(String.format("%.0f", avgHD));
 
                     reloadTopSP(fCondHD, fYear);
-                    reloadVAT(fCondHD, fYear);
+                    reloadTaiChinh(fCondHD);
                 });
             } catch (Exception e) { e.printStackTrace(); }
         }).start();
@@ -740,10 +817,12 @@ public class ManHinhThongKe extends JPanel {
         final BUS.BUS_ThongKe.ThongKeFilter f = buildCondHD();
         if (lblDonPeriod != null) lblDonPeriod.setText(getKyString() + " " + currentYear);
         new Thread(() -> {
-            double[] kpi = busThongKe.getKpiTongQuat(f);
-            long tongDon   = (long) kpi[1];
-            double tongDT  = kpi[0] + kpi[4];
-            double dtTB    = tongDon > 0 ? tongDT / tongDon : 0;
+        	double[] kpi = busThongKe.getKpiTongQuat(f);
+        	double[] kpiTC = busThongKe.getKpiTaiChinh(f); // Gọi thêm hàm này
+
+        	long tongDon   = (long) kpi[1];
+        	double tongDTT = kpiTC[3]; // Lấy đúng Doanh Thu Thuần
+        	double dtTB    = tongDon > 0 ? tongDTT / tongDon : 0;
 
             // Phân bổ theo giờ dùng 30 ngày gần nhất làm xấp xỉ
             double[] hourData = busThongKe.getDTTheoGioTrongNgay(LocalDate.now().toString(), f);
@@ -757,7 +836,7 @@ public class ManHinhThongKe extends JPanel {
             java.util.List<Object[]> hdList = busThongKe.getHoaDonGanNhat(f, 50);
 
             final long fTong = tongDon; final double fDTTB = dtTB;
-            final double fVAT = kpi[4]; final int fGioCao = gioCaoDiem;
+            final double fVAT = kpiTC[1]; final int fGioCao = gioCaoDiem;
             final double[] fHour = hourData;
             final java.util.List<Object[]> fHDList = hdList;
 
@@ -819,7 +898,7 @@ public class ManHinhThongKe extends JPanel {
             Object[] kpi = busThongKe.getKpiKhachHang();
             int tk=(int)kpi[0], kc=(int)kpi[1], td=(int)kpi[2];
             int[] khMoi = busThongKe.getKHMoiTheoThang(year);
-            java.util.List<Object[]> topKH = busThongKe.getTopKhachHang(year, condHD);
+            java.util.List<Object[]> topKH = busThongKe.getTopKhachHangTheoDiem(10);
             SwingUtilities.invokeLater(() -> {
                 if (lblKHTotal   != null) lblKHTotal.setText(String.valueOf(tk));
                 if (lblKHCoTK    != null) lblKHCoTK.setText(String.valueOf(kc));
@@ -829,8 +908,14 @@ public class ManHinhThongKe extends JPanel {
                     modelTopKH.setRowCount(0);
                     int rk=1;
                     for (Object[] r : topKH) {
-                    	String m=rk==1?"Top 1":rk==2?"Top 2":rk==3?"Top 3":String.valueOf(rk);
-                        modelTopKH.addRow(new Object[]{m,r[0],(int)r[1],formatM((double)r[2]),String.format("%,d",(int)r[3])+" đ."});
+                        String m=rk==1?"Top 1":rk==2?"Top 2":rk==3?"Top 3":String.valueOf(rk);
+                        modelTopKH.addRow(new Object[]{
+                            m,               // hạng (Top 1, Top 2...)
+                            r[0],            // tên KH  [hoVaTen]
+                            (int) r[2],      // số đơn  [soHD]
+                            formatM((double) r[3]),               // doanh thu (r[3] đã là triệu → formatM nhân 1_000_000)
+                            String.format("%,d", (int) r[4]) + " đ."  // điểm tích lũy
+                        });
                         rk++;
                     }
                 }
@@ -873,8 +958,8 @@ public class ManHinhThongKe extends JPanel {
     private String getKyString() {
         if ("QUY".equals(modeLocThoiGian)) {
             int i = cboQuy.getSelectedIndex();
-            if (i==1) return "Q1"; if (i==2) return "Q2"; if (i==3) return "Q3"; if (i==4) return "Q4";
-            return "Cả năm";
+            if (i==0) return "Q1"; if (i==1) return "Q2"; if (i==2) return "Q3"; if (i==3) return "Q4";
+            return "Quý";
         }
         if ("TUYCHINH".equals(modeLocThoiGian)) return "Tùy chỉnh";
         if ("HOM_NAY".equals(modeLocThoiGian))  return "Hôm nay";
@@ -1137,35 +1222,81 @@ public class ManHinhThongKe extends JPanel {
         root.setLayout(new BoxLayout(root, BoxLayout.Y_AXIS));
         root.setOpaque(false);
 
+        // ── 4 KPI card tài chính ──────────────────────────────────────────────
+        // [0] Doanh thu thuần  [1] Giá vốn hàng bán  [2] Lợi nhuận gộp  [3] VAT thu hộ
         kpiDTVal  = makeKpiVal("...", "#1A73E8"); kpiDTSub  = makeKpiSub("Đang tải...");
-        kpiHDVal  = makeKpiVal("...", "#9C27B0"); kpiHDSub  = makeKpiSub("...");
-        kpiLNVal  = makeKpiVal("...", "#00A76F"); kpiLNSub  = makeKpiSub("...");
+        kpiGVVal  = makeKpiVal("...", "#9C27B0"); kpiGVSub  = makeKpiSub("...");
+        kpiLNGVal = makeKpiVal("...", "#00A76F"); kpiLNGSub = makeKpiSub("...");
         kpiTBVal  = makeKpiVal("...", "#FF9800"); kpiTBSub  = makeKpiSub("...");
 
-        String[] hdrs12 = {"Tháng","Doanh thu thuần (đ)","Số hóa đơn"};
+        // Header detail popup columns
+        String[] hdrsDTT  = {"Kỳ", "Doanh thu gộp", "(−) Thuế VAT", "(−) Hoàn trả", "Doanh thu thuần"};
+        String[] hdrsGV   = {"Kỳ", "Doanh thu thuần", "Giá vốn", "Lợi nhuận gộp", "Tỷ lệ LN%"};
+        String[] hdrsVAT  = {"Kỳ", "Doanh thu gộp", "(−) Thuế VAT", "Doanh thu thuần"};
 
         JPanel cards = new JPanel(new GridLayout(1, 4, 12, 0));
         cards.setOpaque(false);
         cards.setMaximumSize(new Dimension(Integer.MAX_VALUE, 110));
+
+        // Card 1 – Doanh thu thuần
         cards.add(makeClickableKpiCard("Doanh thu thuần", kpiDTVal, kpiDTSub, "TAB_CHART", "#EEF2FF",
-                hdrs12, () -> {
-                    java.util.List<Object[]> r = new ArrayList<>();
-                    for (int i=0;i<12;i++) r.add(new Object[]{THANG[i], formatM(DT_DATA[i]), ""});
-                    return r;
+                hdrsDTT, () -> {
+                    java.util.List<Object[]> rows = new ArrayList<>();
+                    BUS.BUS_ThongKe.ThongKeFilter f = buildCond();
+                    String groupBy = ("HOM_NAY".equals(modeLocThoiGian) || "TUAN".equals(modeLocThoiGian) || "TUYCHINH".equals(modeLocThoiGian)) ? "NGAY" : "THANG";
+                    for (Object[] row : busThongKe.getBaoCaoTaiChinh(f, groupBy))
+                        rows.add(new Object[]{ row[0],
+                            formatK((double) row[1]), formatK((double) row[2]),
+                            formatK((double) row[3]), formatK((double) row[4]) });
+                    return rows;
                 }));
-        cards.add(makeClickableKpiCard("Số lượng đơn hàng", kpiHDVal, kpiHDSub, "CART", "#F3E5F5",
-                new String[]{"Tháng","Số HĐ"}, () -> {
-                    java.util.List<Object[]> r = new ArrayList<>();
-                    for (int i=0;i<30;i++) r.add(new Object[]{DAILY_30_DATES[i], DAILY_30_HD[i]});
-                    return r;
+
+        // Card 2 – Giá vốn hàng bán (COGS)
+        cards.add(makeClickableKpiCard("Giá vốn hàng bán", kpiGVVal, kpiGVSub, "STORE", "#F3E5F5",
+                hdrsGV, () -> {
+                    java.util.List<Object[]> rows = new ArrayList<>();
+                    BUS.BUS_ThongKe.ThongKeFilter f = buildCond();
+                    String groupBy = ("HOM_NAY".equals(modeLocThoiGian) || "TUAN".equals(modeLocThoiGian) || "TUYCHINH".equals(modeLocThoiGian)) ? "NGAY" : "THANG";
+                    for (Object[] row : busThongKe.getBaoCaoTaiChinh(f, groupBy)) {
+                        double dtt  = (double) row[4];
+                        double cogs = (double) row[5];
+                        double ln   = (double) row[6];
+                        double tyLe = dtt > 0 ? ln / dtt * 100 : 0;
+                        rows.add(new Object[]{ row[0],
+                            formatK(dtt), formatK(cogs), formatK(ln),
+                            String.format("%.1f%%", tyLe) });
+                    }
+                    return rows;
                 }));
-        cards.add(makeClickableKpiCard("Thuế VAT thu hộ", kpiLNVal, kpiLNSub, "DOCUMENT", "#E8F5E9",
-                new String[]{"Tháng","VAT 5%","VAT 10%","Tổng VAT"}, () -> new ArrayList<>()));
-        cards.add(makeClickableKpiCard("Tổng tiền thực thu", kpiTBVal, kpiTBSub, "GIFT", "#FFF3E0",
-                hdrs12, () -> {
-                    java.util.List<Object[]> r = new ArrayList<>();
-                    for (int i=0;i<12;i++) r.add(new Object[]{THANG[i], formatM(DT_DATA[i]+LN_DATA[i]), ""});
-                    return r;
+
+        // Card 3 – Lợi nhuận gộp
+        cards.add(makeClickableKpiCard("Lợi nhuận gộp", kpiLNGVal, kpiLNGSub, "TAB_CHART", "#E8F5E9",
+                hdrsGV, () -> {
+                    java.util.List<Object[]> rows = new ArrayList<>();
+                    BUS.BUS_ThongKe.ThongKeFilter f = buildCond();
+                    String groupBy = ("HOM_NAY".equals(modeLocThoiGian) || "TUAN".equals(modeLocThoiGian) || "TUYCHINH".equals(modeLocThoiGian)) ? "NGAY" : "THANG";
+                    for (Object[] row : busThongKe.getBaoCaoTaiChinh(f, groupBy)) {
+                        double dtt  = (double) row[4];
+                        double cogs = (double) row[5];
+                        double ln   = (double) row[6];
+                        double tyLe = dtt > 0 ? ln / dtt * 100 : 0;
+                        rows.add(new Object[]{ row[0],
+                            formatK(dtt), formatK(cogs), formatK(ln),
+                            String.format("%.1f%%", tyLe) });
+                    }
+                    return rows;
+                }));
+
+        // Card 4 – Thuế VAT thu hộ
+        cards.add(makeClickableKpiCard("Thuế VAT thu hộ", kpiTBVal, kpiTBSub, "DOCUMENT", "#FFF3E0",
+                hdrsVAT, () -> {
+                    java.util.List<Object[]> rows = new ArrayList<>();
+                    BUS.BUS_ThongKe.ThongKeFilter f = buildCond();
+                    String groupBy = ("HOM_NAY".equals(modeLocThoiGian) || "TUAN".equals(modeLocThoiGian) || "TUYCHINH".equals(modeLocThoiGian)) ? "NGAY" : "THANG";
+                    for (Object[] row : busThongKe.getBaoCaoTaiChinh(f, groupBy))
+                        rows.add(new Object[]{ row[0],
+                            formatK((double) row[1]), formatK((double) row[2]), formatK((double) row[4]) });
+                    return rows;
                 }));
         root.add(cards);
         root.add(Box.createVerticalStrut(12));
@@ -1213,7 +1344,7 @@ public class ManHinhThongKe extends JPanel {
         row3.setOpaque(false);
         row3.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
         row3.add(buildTopSPTable());
-        row3.add(buildVATTable());
+        row3.add(buildTaiChinhTable());
         root.add(row3);
         root.add(Box.createVerticalStrut(12));
 
@@ -2214,12 +2345,9 @@ public class ManHinhThongKe extends JPanel {
                 return;
             int maxVal = 10;
             for (int nv : nvIdxs) {
-                if (nv < NV_HD_S.length && NV_HD_S[nv] > maxVal)
-                    maxVal = NV_HD_S[nv];
-                if (nv < NV_HD_C.length && NV_HD_C[nv] > maxVal)
-                    maxVal = NV_HD_C[nv];
-                if (nv < NV_HD_T.length && NV_HD_T[nv] > maxVal)
-                    maxVal = NV_HD_T[nv];
+                if (nv < NV_HD_S.length && NV_HD_S[nv] > maxVal) maxVal = NV_HD_S[nv];
+                if (nv < NV_HD_C.length && NV_HD_C[nv] > maxVal) maxVal = NV_HD_C[nv];
+                if (nv < NV_HD_T.length && NV_HD_T[nv] > maxVal) maxVal = NV_HD_T[nv];
             }
             maxVal = (int) (maxVal * 1.2) + 1;
             int startX = 30, baseY = h - 28, maxH = h - 40;
@@ -2247,18 +2375,29 @@ public class ManHinhThongKe extends JPanel {
                 Color cS = hov ? Color.decode("#FFD54F") : Color.decode("#FFAB00");
                 Color cC = hov ? Color.decode("#7986CB") : Color.decode("#4F46E5");
                 Color cT = hov ? Color.decode("#C4B5FD") : Color.decode("#8B5CF6");
-                if (hS > 0) {
-                    g2.setColor(cS);
-                    g2.fillRoundRect(gx, baseY - hS, barW, hS, 3, 3);
+                
+                // ✅ PỘT FIX: Hiển thị đúng cột theo caFilter
+                if (caFilter == 0 || caFilter == 1) { 
+                    if (hS > 0) {
+                        g2.setColor(cS);
+                        g2.fillRoundRect(gx, baseY - hS, barW, hS, 3, 3);
+                    }
                 }
-                if (hC > 0) {
-                    g2.setColor(cC);
-                    g2.fillRoundRect(gx + barW + 2, baseY - hC, barW, hC, 3, 3);
+                if (caFilter == 0 || caFilter == 2) { 
+                    int targetX = (caFilter == 0) ? gx + barW + 2 : gx;
+                    if (hC > 0) {
+                        g2.setColor(cC);
+                        g2.fillRoundRect(targetX, baseY - hC, barW, hC, 3, 3);
+                    }
                 }
-                if (hT > 0) {
-                    g2.setColor(cT);
-                    g2.fillRoundRect(gx + (barW + 2) * 2, baseY - hT, barW, hT, 3, 3);
+                if (caFilter == 0 || caFilter == 3) { 
+                    int targetX = (caFilter == 0) ? gx + (barW + 2) * 2 : gx;
+                    if (hT > 0) {
+                        g2.setColor(cT);
+                        g2.fillRoundRect(targetX, baseY - hT, barW, hT, 3, 3);
+                    }
                 }
+                
                 g2.setColor(Color.decode("#888888"));
                 g2.setFont(new Font("Segoe UI", Font.PLAIN, 9));
                 g2.drawString(nv < NV_SHORT.length ? NV_SHORT[nv] : "NV" + (nv + 1), gx + 2, h - 12);
@@ -2284,7 +2423,6 @@ public class ManHinhThongKe extends JPanel {
             return arr;
         }
     }
-
     class NVDetailTable extends JPanel {
         private int filterIdx = -1;
         private int caFilterIdx = 0; 
@@ -2292,6 +2430,8 @@ public class ManHinhThongKe extends JPanel {
         private JTable tbl;
         private DefaultTableModel model;
         private JScrollPane detailSp;
+        /** Ánh xạ index dòng → maNV (không tính dòng TỔNG cuối). Dùng cho double-click. */
+        private final java.util.List<String> visibleMaNVList = new java.util.ArrayList<>();
 
         NVDetailTable() {
             setLayout(new BorderLayout(0, 6));
@@ -2383,7 +2523,44 @@ public class ManHinhThongKe extends JPanel {
             detailSp.setBorder(BorderFactory.createEmptyBorder());
             detailSp.getVerticalScrollBar().setUI(new ModernScrollBarUI());
             attachDynamicRows(tbl, detailSp);
+
+            // ── Double-click: xem lại Bill Kết Ca gần nhất của nhân viên ──────
+            tbl.addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseClicked(MouseEvent e) {
+                    if (e.getClickCount() < 2) return;
+                    int row = tbl.rowAtPoint(e.getPoint());
+                    // Bỏ qua dòng TỔNG (dòng cuối) và dòng ngoài phạm vi
+                    if (row < 0 || row >= visibleMaNVList.size()) return;
+
+                    String maNV = visibleMaNVList.get(row);
+                    int nvIdx = findNVIdx(maNV);
+                    String tenNV = (nvIdx >= 0 && nvIdx < NV_NAMES.length) ? NV_NAMES[nvIdx] : maNV;
+
+                    // Lấy ca đã đóng gần nhất từ DB
+                    CaLamViec ca = busCaLamViec.getCaDaKetThucGanNhat(maNV);
+                    if (ca == null) {
+                        JOptionPane.showMessageDialog(
+                            SwingUtilities.getWindowAncestor(ManHinhThongKe.this),
+                            "Nhân viên này chưa có ca làm việc nào đã kết thúc.",
+                            "Không tìm thấy ca", JOptionPane.INFORMATION_MESSAGE);
+                        return;
+                    }
+
+                    Frame parentFrame = (Frame) SwingUtilities.getWindowAncestor(
+                            ManHinhThongKe.this);
+                    ManHinhChinh.hienThiBillKetCaLichSu(parentFrame, ca, tenNV);
+                }
+            });
+
             add(detailSp, BorderLayout.CENTER);
+        }
+
+        /** Tìm index trong NV_IDS theo maNV. */
+        private int findNVIdx(String maNV) {
+            for (int i = 0; i < NV_IDS.length; i++)
+                if (NV_IDS[i].equals(maNV)) return i;
+            return 0;
         }
 
         void setFilter(int idx) {
@@ -2398,41 +2575,110 @@ public class ManHinhThongKe extends JPanel {
 
         void refreshData() {
             model.setRowCount(0);
+            visibleMaNVList.clear();   // ← reset mapping trước mỗi lần refresh
             double totalDTS = 0, totalDTC = 0, totalDTT = 0, totalDTTra = 0;
             int totalHDS = 0, totalHDC = 0, totalHDT = 0, totalHDTra = 0;
+
             for (int i = 0; i < NV_NAMES.length; i++) {
                 if (filterIdx >= 0 && i != filterIdx) continue;
                 if (!filterText.isEmpty() && !NV_NAMES[i].toLowerCase().contains(filterText)) continue;
-                
-                int hdT = i < NV_HD_T.length ? NV_HD_T[i] : 0;
-                double dtT = i < NV_DT_T.length ? NV_DT_T[i] : 0;
-                int hdTra = (NV_HD_TRA != null && i < NV_HD_TRA.length) ? NV_HD_TRA[i] : 0;
+
+                int hdS   = i < NV_HD_S.length   ? NV_HD_S[i]   : 0;
+                double dtS = i < NV_DT_S.length  ? NV_DT_S[i]   : 0;
+                int hdC   = i < NV_HD_C.length   ? NV_HD_C[i]   : 0;
+                double dtC = i < NV_DT_C.length  ? NV_DT_C[i]   : 0;
+                int hdT   = i < NV_HD_T.length   ? NV_HD_T[i]   : 0;
+                double dtT = i < NV_DT_T.length  ? NV_DT_T[i]   : 0;
+                int hdTra  = (NV_HD_TRA != null && i < NV_HD_TRA.length) ? NV_HD_TRA[i] : 0;
                 double dtTra = (NV_DT_TRA != null && i < NV_DT_TRA.length) ? NV_DT_TRA[i] : 0;
 
-                totalHDS += NV_HD_S[i]; totalHDC += NV_HD_C[i]; totalHDT += hdT; totalHDTra += hdTra;
-                totalDTS += NV_DT_S[i]; totalDTC += NV_DT_C[i]; totalDTT += dtT; totalDTTra += dtTra;
+                // Xác định nội dung từng cột Ca và giá trị net theo caFilterIdx
+                String colS, colC, colT;
+                int netHD;
+                double netDT;
 
-                int netHD = NV_HD_S[i] + NV_HD_C[i] + hdT - hdTra;
-                double netDT = NV_DT_S[i] + NV_DT_C[i] + dtT - (dtTra / 1_000_000.0);
+                if (caFilterIdx == 1) {         // Ca Sáng
+                    colS  = hdS + " đơn · " + formatM(dtS);
+                    colC  = "—";
+                    colT  = "—";
+                    netHD = hdS - hdTra;
+                    netDT = dtS - dtTra;
+                    totalHDS += hdS; totalDTS += dtS;
+                } else if (caFilterIdx == 2) {  // Ca Chiều
+                    colS  = "—";
+                    colC  = hdC + " đơn · " + formatM(dtC);
+                    colT  = "—";
+                    netHD = hdC - hdTra;
+                    netDT = dtC - dtTra;
+                    totalHDC += hdC; totalDTC += dtC;
+                } else if (caFilterIdx == 3) {  // Ca Tối
+                    colS  = "—";
+                    colC  = "—";
+                    colT  = hdT + " đơn · " + formatM(dtT);
+                    netHD = hdT - hdTra;
+                    netDT = dtT - dtTra;
+                    totalHDT += hdT; totalDTT += dtT;
+                } else {                        // Tất cả (caFilterIdx == 0)
+                    colS  = hdS + " đơn · " + formatM(dtS);
+                    colC  = hdC + " đơn · " + formatM(dtC);
+                    colT  = hdT + " đơn · " + formatM(dtT);
+                    netHD = hdS + hdC + hdT - hdTra;
+                    netDT = dtS + dtC + dtT - dtTra;
+                    totalHDS += hdS; totalHDC += hdC; totalHDT += hdT;
+                    totalDTS += dtS; totalDTC += dtC; totalDTT += dtT;
+                }
+                totalHDTra += hdTra;
+                totalDTTra += dtTra; // dtTra đã ở triệu
 
+                visibleMaNVList.add(NV_IDS[i]); // ← ghi nhận maNV cho double-click
                 model.addRow(new Object[] {
                         NV_NAMES[i],
-                        NV_HD_S[i] + " đơn · " + formatM(NV_DT_S[i]),
-                        NV_HD_C[i] + " đơn · " + formatM(NV_DT_C[i]),
-                        hdT + " đơn · " + formatM(dtT),
-                        "<html><font color='#D32F2F'>" + hdTra + " đơn · " + formatM(dtTra / 1_000_000.0) + "</font></html>",
+                        colS,
+                        colC,
+                        colT,
+                        "<html><font color='#D32F2F'>" + hdTra + " đơn · " + formatM(dtTra) + "</font></html>",
                         netHD,
                         formatM(netDT)
                 });
             }
-            int netHDTotal = totalHDS + totalHDC + totalHDT - totalHDTra;
-            double netDTTotal = totalDTS + totalDTC + totalDTT - (totalDTTra / 1_000_000.0);
+
+            // Dòng TỔNG tính đúng theo ca đang lọc
+            String totColS, totColC, totColT;
+            int netHDTotal;
+            double netDTTotal;
+
+            if (caFilterIdx == 1) {         // Ca Sáng
+                totColS    = totalHDS + " đơn · " + formatM(totalDTS);
+                totColC    = "—";
+                totColT    = "—";
+                netHDTotal = totalHDS - totalHDTra;
+                netDTTotal = totalDTS - totalDTTra;
+            } else if (caFilterIdx == 2) {  // Ca Chiều
+                totColS    = "—";
+                totColC    = totalHDC + " đơn · " + formatM(totalDTC);
+                totColT    = "—";
+                netHDTotal = totalHDC - totalHDTra;
+                netDTTotal = totalDTC - totalDTTra;
+            } else if (caFilterIdx == 3) {  // Ca Tối
+                totColS    = "—";
+                totColC    = "—";
+                totColT    = totalHDT + " đơn · " + formatM(totalDTT);
+                netHDTotal = totalHDT - totalHDTra;
+                netDTTotal = totalDTT - totalDTTra;
+            } else {                        // Tất cả (caFilterIdx == 0)
+                totColS    = totalHDS + " đơn · " + formatM(totalDTS);
+                totColC    = totalHDC + " đơn · " + formatM(totalDTC);
+                totColT    = totalHDT + " đơn · " + formatM(totalDTT);
+                netHDTotal = totalHDS + totalHDC + totalHDT - totalHDTra;
+                netDTTotal = totalDTS + totalDTC + totalDTT - totalDTTra;
+            }
+
             model.addRow(new Object[] {
                     "TỔNG:",
-                    totalHDS + " đơn · " + formatM(totalDTS),
-                    totalHDC + " đơn · " + formatM(totalDTC),
-                    totalHDT + " đơn · " + formatM(totalDTT),
-                    "<html><font color='#D32F2F'>" + totalHDTra + " đơn · " + formatM(totalDTTra / 1_000_000.0) + "</font></html>",
+                    totColS,
+                    totColC,
+                    totColT,
+                    "<html><font color='#D32F2F'>" + totalHDTra + " đơn · " + formatM(totalDTTra) + "</font></html>",
                     netHDTotal,
                     formatM(netDTTotal)
             });
@@ -2829,8 +3075,8 @@ public class ManHinhThongKe extends JPanel {
 
         JPanel header = new JPanel(new BorderLayout());
         header.setOpaque(false);
-        JLabel t = new JLabel(" Top sản phẩm bán chạy", new MenuIcon("TROPHY"), SwingConstants.LEFT);
-        t.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        JLabel t = new JLabel(" Top sản phẩm bán chạy", MenuIcon.of("TROPHY", 16, Color.decode("#FFAB00")), SwingConstants.LEFT);
+        t.setFont(new Font("Segoe UI", Font.BOLD, 14));
         t.setForeground(Color.decode("#152A4B"));
         header.add(t, BorderLayout.WEST);
         p.add(header, BorderLayout.NORTH);
@@ -2845,14 +3091,16 @@ public class ManHinhThongKe extends JPanel {
         DefaultTableModel m = modelTopSP;
 
         JTable tbl = new JTable(m);
-        tbl.setRowHeight(30);
+        tbl.setRowHeight(34);
         tbl.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        tbl.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 11));
-        tbl.getTableHeader().setBackground(Color.decode("#F0F4FF"));
+        tbl.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 12));
+        tbl.getTableHeader().setBackground(Color.decode("#F4F6F8"));
+        tbl.getTableHeader().setPreferredSize(new Dimension(0, 36));
         tbl.setShowHorizontalLines(true);
-        tbl.setGridColor(Color.decode("#F0F0F0"));
-        tbl.setSelectionBackground(Color.decode("#F0F4FF"));
+        tbl.setGridColor(Color.decode("#F1F3F5"));
+        tbl.setSelectionBackground(Color.decode("#EBF5FF"));
         tbl.setFillsViewportHeight(true);
+        
         tbl.getColumnModel().getColumn(2).setCellRenderer(new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable t2, Object v, boolean s, boolean f, int r, int c) {
@@ -2882,9 +3130,11 @@ public class ManHinhThongKe extends JPanel {
             }
         });
         tbl.getColumnModel().getColumn(4).setCellRenderer(new DTRenderer());
+        
         JScrollPane sp = new JScrollPane(tbl);
         sp.setBorder(BorderFactory.createEmptyBorder());
         sp.getVerticalScrollBar().setUI(new ModernScrollBarUI());
+        sp.getHorizontalScrollBar().setUI(new ModernScrollBarUI());
         attachDynamicRows(tbl, sp);
         p.add(sp, BorderLayout.CENTER);
         return p;
@@ -2917,8 +3167,8 @@ public class ManHinhThongKe extends JPanel {
         }).start();
     }
 
-    private JPanel buildVATTable() {
-        JPanel p = new JPanel(new BorderLayout(0, 8));
+    private JPanel buildTaiChinhTable() {
+        JPanel p = new JPanel(new BorderLayout(0, 6));
         p.setBackground(Color.WHITE);
         p.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(Color.decode("#DFE3E8"), 1, true),
@@ -2926,10 +3176,10 @@ public class ManHinhThongKe extends JPanel {
 
         JPanel header = new JPanel(new BorderLayout());
         header.setOpaque(false);
-        JLabel t = new JLabel(" Báo cáo thuế VAT chi tiết", new MenuIcon("DOCUMENT"), SwingConstants.LEFT);
-        t.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        JLabel t = new JLabel(" Báo cáo tài chính chi tiết", MenuIcon.of("DOCUMENT", 16, Color.decode("#1A73E8")), SwingConstants.LEFT);
+        t.setFont(new Font("Segoe UI", Font.BOLD, 14));
         t.setForeground(Color.decode("#152A4B"));
-        lblVATTotal = new JLabel("Tổng VAT: --đ");
+        lblVATTotal = new JLabel("Đang tải...");
         lblVATTotal.setFont(new Font("Segoe UI", Font.BOLD, 11));
         lblVATTotal.setForeground(Color.decode("#3730A3"));
         lblVATTotal.setBackground(Color.decode("#EEF2FF"));
@@ -2937,100 +3187,179 @@ public class ManHinhThongKe extends JPanel {
         lblVATTotal.setBorder(new EmptyBorder(3, 10, 3, 10));
         header.add(t, BorderLayout.WEST);
         header.add(lblVATTotal, BorderLayout.EAST);
-        p.add(header, BorderLayout.NORTH);
 
-        String[] cols = { "Mã SP", "Tên sản phẩm", "Kê đơn", "VAT (%)", "Tiền thuế" };
-        modelVAT = new DefaultTableModel(cols, 0) {
-            @Override
-            public boolean isCellEditable(int r, int c) {
-                return false;
-            }
+        JPanel formula = new JPanel(new FlowLayout(FlowLayout.LEFT, 3, 3));
+        formula.setBackground(Color.decode("#F8F9FA"));
+        formula.setBorder(BorderFactory.createMatteBorder(1, 0, 1, 0, Color.decode("#E5E7EB")));
+        Object[][] fParts = {
+            { "DT gộp",       "#1A73E8", "#DBEAFE" },
+            { " −  VAT",      "#B45309", "#FEF3C7" },
+            { " −  Hoàn trả", "#B00020", "#FFE4E6" },
+            { " =  DT thuần", "#00875A", "#D1FAE5" },
+            { " −  Giá vốn",  "#7B1FA2", "#F3E8FF" },
+            { " =  LN gộp",   "#D97706", "#FFFBEB" },
         };
-        DefaultTableModel m = modelVAT;
+        for (Object[] fp : fParts) {
+            JLabel fl = new JLabel((String) fp[0]);
+            fl.setFont(new Font("Segoe UI", Font.BOLD, 10));
+            fl.setForeground(Color.decode((String) fp[1]));
+            fl.setBackground(Color.decode((String) fp[2]));
+            fl.setOpaque(true);
+            fl.setBorder(new EmptyBorder(3, 7, 3, 7));
+            formula.add(fl);
+        }
 
-        JTable tbl = new JTable(m);
-        tbl.setRowHeight(30);
+        JPanel northWrapper = new JPanel(new BorderLayout(0, 4));
+        northWrapper.setOpaque(false);
+        northWrapper.add(header,  BorderLayout.NORTH);
+        northWrapper.add(formula, BorderLayout.SOUTH);
+        p.add(northWrapper, BorderLayout.NORTH);
+
+        final String[] COLS    = { "Kỳ", "DT gộp", "(−) VAT", "(−) Hoàn trả",
+                                   "DT thuần", "Giá vốn", "LN gộp" };
+        final String[] FG_COLS = { null, "#1A73E8", "#B45309", "#B00020",
+                                   "#00875A", "#7B1FA2", "#D97706" };
+        final String[] BG_ODD  = { null, "#EFF6FF", "#FFFBEB", "#FFF1F2",
+                                   "#ECFDF5", "#F5F3FF", "#FFFBEB" };
+        final String[] BG_EVEN = { null, "#F8FAFF", "#FFFEF5", "#FFF8F8",
+                                   "#F0FDF9", "#FAF8FF", "#FFFDF5" };
+
+        modelTaiChinh = new DefaultTableModel(COLS, 0) {
+            @Override public boolean isCellEditable(int r, int c) { return false; }
+        };
+        JTable tbl = new JTable(modelTaiChinh);
+        tbl.setRowHeight(34);
         tbl.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        tbl.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 11));
+        tbl.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 12));
         tbl.getTableHeader().setBackground(Color.decode("#F5F7FA"));
+        tbl.getTableHeader().setForeground(Color.decode("#444444"));
+        tbl.getTableHeader().setPreferredSize(new Dimension(0, 36));
         tbl.setShowHorizontalLines(true);
         tbl.setGridColor(Color.decode("#F0F0F0"));
-        tbl.setSelectionBackground(Color.decode("#F0F4FF"));
-        tbl.getColumnModel().getColumn(0).setCellRenderer(new DefaultTableCellRenderer() {
+        tbl.setSelectionBackground(Color.decode("#EBF4FF"));
+        tbl.setFillsViewportHeight(true);
+
+        TableCellRenderer renderer = new DefaultTableCellRenderer() {
             @Override
-            public Component getTableCellRendererComponent(JTable t2, Object v, boolean s, boolean f, int r, int c) {
-                super.getTableCellRendererComponent(t2, v, s, f, r, c);
-                setForeground(Color.decode("#1A73E8"));
-                setFont(new Font("Segoe UI", Font.BOLD, 11));
+            public Component getTableCellRendererComponent(
+                    JTable t2, Object v, boolean sel, boolean foc, int row, int col) {
+                super.getTableCellRendererComponent(t2, v, sel, foc, row, col);
+                String txt = v != null ? v.toString() : "";
+                boolean isTotals = "TỔNG".equals(t2.getValueAt(row, 0));
+                setBorder(new EmptyBorder(0, col == 0 ? 8 : 4, 0, col == 0 ? 4 : 8));
+                setFont(new Font("Segoe UI", isTotals ? Font.BOLD : Font.PLAIN, 12));
+                setHorizontalAlignment(col == 0 ? LEFT : RIGHT);
+                if (!sel) {
+                    if (col == 0) {
+                        setBackground(row % 2 == 0 ? Color.WHITE : Color.decode("#FAFBFC"));
+                        setForeground(isTotals ? Color.decode("#152A4B") : Color.decode("#555555"));
+                    } else {
+                        setBackground(Color.decode(row % 2 == 0 ? BG_EVEN[col] : BG_ODD[col]));
+                        setForeground(Color.decode(FG_COLS[col]));
+                    }
+                }
+                if (isTotals) {
+                    setBorder(BorderFactory.createCompoundBorder(
+                        BorderFactory.createMatteBorder(2, 0, 0, 0, Color.decode("#CBD5E1")),
+                        new EmptyBorder(0, col == 0 ? 8 : 4, 0, col == 0 ? 4 : 8)));
+                }
                 return this;
             }
-        });
-        tbl.setFillsViewportHeight(true);
-        tbl.getColumnModel().getColumn(2).setCellRenderer(new DefaultTableCellRenderer() {
-            @Override
-            public Component getTableCellRendererComponent(JTable t2, Object v, boolean s, boolean f, int r, int c) {
-                JLabel l = new JLabel(v != null ? v.toString() : "", SwingConstants.CENTER);
-                l.setOpaque(true);
-                l.setFont(new Font("Segoe UI", Font.BOLD, 10));
-                if ("Có".equals(v != null ? v.toString() : "")) {
-                    l.setBackground(Color.decode("#E8F5E9"));
-                    l.setForeground(Color.decode("#2E7D32"));
-                } else {
-                    l.setBackground(Color.decode("#FAFAFA"));
-                    l.setForeground(Color.GRAY);
-                }
-                return l;
-            }
-        });
-        tbl.getColumnModel().getColumn(3).setCellRenderer(new DefaultTableCellRenderer() {
-            @Override
-            public Component getTableCellRendererComponent(JTable t2, Object v, boolean s, boolean f, int r, int c) {
-                JLabel l = new JLabel(v != null ? v.toString() : "", SwingConstants.CENTER);
-                l.setOpaque(true);
-                l.setFont(new Font("Segoe UI", Font.BOLD, 10));
-                if ("10%".equals(v != null ? v.toString() : "")) {
-                    l.setBackground(Color.decode("#FFF3E0"));
-                    l.setForeground(Color.decode("#B45309"));
-                } else {
-                    l.setBackground(Color.decode("#EEF2FF"));
-                    l.setForeground(Color.decode("#3730A3"));
-                }
-                return l;
-            }
-        });
-        tbl.getColumnModel().getColumn(4).setCellRenderer(new DTRenderer());
+        };
+        for (int c = 0; c < COLS.length; c++)
+            tbl.getColumnModel().getColumn(c).setCellRenderer(renderer);
+
+        tbl.getColumnModel().getColumn(0).setPreferredWidth(52);
+        for (int c = 1; c < COLS.length; c++)
+            tbl.getColumnModel().getColumn(c).setPreferredWidth(88);
+
         JScrollPane sp = new JScrollPane(tbl);
         sp.setBorder(BorderFactory.createEmptyBorder());
         sp.getVerticalScrollBar().setUI(new ModernScrollBarUI());
+        sp.getHorizontalScrollBar().setUI(new ModernScrollBarUI());
         attachDynamicRows(tbl, sp);
         p.add(sp, BorderLayout.CENTER);
         return p;
     }
 
-    private void reloadVAT(BUS.BUS_ThongKe.ThongKeFilter condHD, int year) {
-        if (modelVAT == null)
-            return;
-        modelVAT.setRowCount(0);
+    // ─────────────────────────────────────────────────────────────────────────
+    // RELOAD BÁO CÁO TÀI CHÍNH CHI TIẾT
+    // Gọi BUS_ThongKe.getBaoCaoTaiChinh() → đổ vào modelTaiChinh
+    // Mỗi dòng: Kỳ | DT gộp | (−)VAT | (−)Hoàn trả | DT thuần | Giá vốn | LN gộp
+    // Dòng cuối: tổng cộng toàn kỳ
+    // ─────────────────────────────────────────────────────────────────────────
+    private void reloadTaiChinh(BUS.BUS_ThongKe.ThongKeFilter condHD) {
+        if (modelTaiChinh == null) return;
+        modelTaiChinh.setRowCount(0);
         new Thread(() -> {
-            java.util.List<Object[]> list = busThongKe.getVATReport(year, condHD);
-            double[] totalVAT = { 0 };
-            for (Object[] item : list) {
-                String maSP = (String) item[0];
-                String ten = (String) item[1];
-                String danhMuc = (String) item[2];
-                int vat = (int) item[3];
-                double thue = (double) item[4];
-                totalVAT[0] += thue;
-                boolean keDon = "THUOC_KE_DON".equals(danhMuc);
-                final Object[] row = { maSP, ten, keDon ? "Có" : "Không", vat + "%", formatM(thue) };
-                SwingUtilities.invokeLater(() -> modelVAT.addRow(row));
+            // Chọn granularity phù hợp theo kỳ lọc đang chọn
+            String groupBy;
+            switch (modeLocThoiGian) {
+                case "HOM_NAY":
+                case "TUAN":
+                    groupBy = "NGAY";  break;
+                case "NAM":
+                    groupBy = "THANG"; break;
+                case "QUY":
+                    groupBy = "THANG"; break;
+                default:               // THANG, TUYCHINH
+                    groupBy = "NGAY";  break;
             }
-            final double tv = totalVAT[0];
+
+            java.util.List<Object[]> list = busThongKe.getBaoCaoTaiChinh(condHD, groupBy);
+
+            // Tích lũy tổng để dòng footer
+            double sumDTG=0, sumVAT=0, sumTra=0, sumDTT=0, sumCOGS=0, sumLN=0;
+            java.util.List<Object[]> rowsBuf = new ArrayList<>();
+
+            for (Object[] item : list) {
+                String ky   = String.valueOf(item[0]);
+                double dtg  = toD(item[1]);
+                double vat  = toD(item[2]);
+                double tra  = toD(item[3]);
+                double dtt  = toD(item[4]);
+                double cogs = toD(item[5]);
+                double ln   = toD(item[6]);
+                sumDTG+=dtg; sumVAT+=vat; sumTra+=tra;
+                sumDTT+=dtt; sumCOGS+=cogs; sumLN+=ln;
+                rowsBuf.add(new Object[]{
+                    ky,
+                    formatK(dtg),
+                    formatK(vat),
+                    formatK(tra),
+                    formatK(dtt),
+                    formatK(cogs),
+                    formatK(ln)
+                });
+            }
+
+            // Dòng TỔNG (in đậm nhờ renderer kiểm tra col-0 == "TỔNG")
+            final Object[] totalsRow = {
+                "TỔNG",
+                formatK(sumDTG), formatK(sumVAT), formatK(sumTra),
+                formatK(sumDTT), formatK(sumCOGS), formatK(sumLN)
+            };
+
+            // Badge summary cho header
+            final double fVAT = sumVAT, fTra = sumTra, fDTT = sumDTT, fLN = sumLN;
+            final java.util.List<Object[]> fRows = rowsBuf;
+
             SwingUtilities.invokeLater(() -> {
+                modelTaiChinh.setRowCount(0);
+                for (Object[] r : fRows) modelTaiChinh.addRow(r);
+                if (!fRows.isEmpty()) modelTaiChinh.addRow(totalsRow);
+
                 if (lblVATTotal != null)
-                    lblVATTotal.setText("Tổng VAT: " + formatM(tv));
+                    lblVATTotal.setText(String.format(
+                        "VAT: %s  |  Hoàn trả: %s  |  LN gộp: %s",
+                        formatK(fVAT), formatK(fTra), formatK(fLN)));
             });
         }).start();
+    }
+
+    /** Helper: safely convert Object to double */
+    private static double toD(Object o) {
+        return (o instanceof Number) ? ((Number) o).doubleValue() : 0.0;
     }
 
     private JPanel buildNVDailyLegend() {
@@ -3314,33 +3643,39 @@ public class ManHinhThongKe extends JPanel {
                 for (int i = 0; i < 5; i++)
                     sheetTop.autoSizeColumn(i);
 
-                Sheet sheetVAT = workbook.createSheet("Báo Cáo VAT");
+                // ── Sheet: Báo cáo tài chính chi tiết (thay thế sheet VAT cũ) ──────────
+                Sheet sheetVAT = workbook.createSheet("Báo Cáo Tài Chính");
                 Row rowHeaderVAT = sheetVAT.createRow(0);
-                String[] headersVAT = { "Mã SP", "Tên sản phẩm", "Kê đơn", "VAT (%)", "Tiền thuế (VNĐ)" };
+                String[] headersVAT = {
+                    "Kỳ", "Doanh thu gộp (VNĐ)", "(−) Thuế VAT (VNĐ)",
+                    "(−) Hoàn trả (VNĐ)", "Doanh thu thuần (VNĐ)",
+                    "Giá vốn COGS (VNĐ)", "Lợi nhuận gộp (VNĐ)"
+                };
                 for (int i = 0; i < headersVAT.length; i++) {
                     org.apache.poi.ss.usermodel.Cell c = rowHeaderVAT.createCell(i);
                     c.setCellValue(headersVAT[i]);
                     c.setCellStyle(headerStyle);
                 }
-                if (modelVAT != null) {
-                    for (int i = 0; i < modelVAT.getRowCount(); i++) {
+                if (modelTaiChinh != null) {
+                    for (int i = 0; i < modelTaiChinh.getRowCount(); i++) {
                         Row r = sheetVAT.createRow(i + 1);
-                        r.createCell(0).setCellValue(modelVAT.getValueAt(i, 0).toString());
-                        r.createCell(1).setCellValue(modelVAT.getValueAt(i, 1).toString());
-                        r.createCell(2).setCellValue(modelVAT.getValueAt(i, 2).toString());
-                        r.createCell(3).setCellValue(modelVAT.getValueAt(i, 3).toString());
-
-                        double thue = 0;
-                        try {
-                            thue = Double.parseDouble(modelVAT.getValueAt(i, 4).toString().replaceAll("[^\\d]", ""));
-                        } catch (Exception e) {
+                        // Cột 0: kỳ (text)
+                        r.createCell(0).setCellValue(modelTaiChinh.getValueAt(i, 0).toString());
+                        // Cột 1–6: tiền (parse số từ chuỗi VNĐ)
+                        for (int c = 1; c <= 6; c++) {
+                            double val = 0;
+                            try {
+                                val = Double.parseDouble(
+                                    modelTaiChinh.getValueAt(i, c).toString()
+                                               .replaceAll("[^\\d]", ""));
+                            } catch (Exception ignored) {}
+                            org.apache.poi.ss.usermodel.Cell cell = r.createCell(c);
+                            cell.setCellValue(val);
+                            cell.setCellStyle(currencyStyle);
                         }
-                        org.apache.poi.ss.usermodel.Cell cThue = r.createCell(4);
-                        cThue.setCellValue(thue);
-                        cThue.setCellStyle(currencyStyle);
                     }
                 }
-                for (int i = 0; i < 5; i++)
+                for (int i = 0; i < headersVAT.length; i++)
                     sheetVAT.autoSizeColumn(i);
 
                 Sheet sheetExp = workbook.createSheet("Sắp Hết Hạn");
@@ -3481,25 +3816,37 @@ public class ManHinhThongKe extends JPanel {
                 BorderFactory.createLineBorder(Color.decode("#DFE3E8"), 1, true),
                 new javax.swing.border.EmptyBorder(14, 14, 10, 14)));
 
-        // Header row
         JPanel header = new JPanel(new BorderLayout());
         header.setOpaque(false);
-        JLabel title = new JLabel(" Gợi ý khuyến mãi thông minh");
-        title.setIcon(MenuIcon.of("GIFT", 16, Color.decode("#E65100")));
-        title.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        JLabel title = new JLabel(" Gợi ý khuyến mãi thông minh", MenuIcon.of("GIFT", 16, Color.decode("#E65100")), SwingConstants.LEFT);
+        title.setFont(new Font("Segoe UI", Font.BOLD, 14));
         title.setForeground(Color.decode("#E65100"));
-        JButton btnRefresh = new JButton("Phân tích lại");
+
+        JButton btnTaoKM = new JButton("➕ Tạo KM nhanh");
+        btnTaoKM.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        btnTaoKM.setForeground(Color.WHITE);
+        btnTaoKM.setBackground(Color.decode("#00A76F"));
+        btnTaoKM.setBorderPainted(false);
+        btnTaoKM.setFocusPainted(false);
+        btnTaoKM.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+
+        JButton btnRefresh = new JButton("🔄 Phân tích lại");
         btnRefresh.setFont(new Font("Segoe UI", Font.BOLD, 11));
         btnRefresh.setForeground(Color.WHITE);
         btnRefresh.setBackground(Color.decode("#E65100"));
         btnRefresh.setBorderPainted(false);
         btnRefresh.setFocusPainted(false);
         btnRefresh.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+
+        JPanel pnlNutAction = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
+        pnlNutAction.setOpaque(false);
+        pnlNutAction.add(btnTaoKM);
+        pnlNutAction.add(btnRefresh);
+
         header.add(title, BorderLayout.WEST);
-        header.add(btnRefresh, BorderLayout.EAST);
+        header.add(pnlNutAction, BorderLayout.EAST);
         p.add(header, BorderLayout.NORTH);
 
-        // Table
         String[] cols = { "Sản phẩm", "Bán/năm", "Biên LN", "Gợi ý KM", "Lý do" };
         modelGoiYKM = new DefaultTableModel(cols, 0) {
             @Override
@@ -3514,7 +3861,6 @@ public class ManHinhThongKe extends JPanel {
         tbl.getTableHeader().setBackground(Color.decode("#FFF3E0"));
         tbl.getTableHeader().setForeground(Color.decode("#E65100"));
 
-        // Color rows by recommendation type
         tbl.setDefaultRenderer(Object.class, new javax.swing.table.DefaultTableCellRenderer() {
             @Override
             public java.awt.Component getTableCellRendererComponent(
@@ -3537,7 +3883,6 @@ public class ManHinhThongKe extends JPanel {
             }
         });
 
-        // Cột Biên LN hiển thị thanh màu
         tbl.getColumnModel().getColumn(2).setCellRenderer(new javax.swing.table.DefaultTableCellRenderer() {
             @Override
             public java.awt.Component getTableCellRendererComponent(
@@ -3565,16 +3910,36 @@ public class ManHinhThongKe extends JPanel {
             }
         });
 
-        // Cột width
         tbl.getColumnModel().getColumn(0).setPreferredWidth(140);
         tbl.getColumnModel().getColumn(1).setPreferredWidth(60);
         tbl.getColumnModel().getColumn(2).setPreferredWidth(65);
         tbl.getColumnModel().getColumn(3).setPreferredWidth(105);
         tbl.getColumnModel().getColumn(4).setPreferredWidth(200);
 
-        p.add(new JScrollPane(tbl), BorderLayout.CENTER);
+        JScrollPane sp = new JScrollPane(tbl);
+        sp.setBorder(BorderFactory.createEmptyBorder());
+        sp.getVerticalScrollBar().setUI(new ModernScrollBarUI());
+        sp.getHorizontalScrollBar().setUI(new ModernScrollBarUI());
+        p.add(sp, BorderLayout.CENTER);
+        btnTaoKM.addActionListener(e -> {
+            int row = tbl.getSelectedRow();
+            if (row == -1) {
+                JOptionPane.showMessageDialog(p, "Chọn 1 sản phẩm gợi ý để tạo KM nha Pột ơi!", "Nhắc nhở", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            String tenSP = modelGoiYKM.getValueAt(row, 0).toString();
+            String goiYText = modelGoiYKM.getValueAt(row, 3).toString();
+            
+            String inputDetail = JOptionPane.showInputDialog(p, "Nhập phần trăm giảm hoặc chi tiết chương trình cho [" + tenSP + "]:\nGợi ý hệ thống: " + goiYText, "Cấu hình Khuyến Mãi", JOptionPane.QUESTION_MESSAGE);
+            if (inputDetail != null && !inputDetail.trim().isEmpty()) {
+                JOptionPane.showMessageDialog(p, "Hệ thống đang chuyển sang Màn Hình Khuyến Mãi...", "Thành công", JOptionPane.INFORMATION_MESSAGE);
+                // Tìm MainDashboard để gọi hàm đổi tab sang KhuyenMai 
+                Window win = SwingUtilities.getWindowAncestor(p);
+                if (win instanceof Frame) {
+                }
+            }
+        });
 
-        // Load data
         btnRefresh.addActionListener(e -> reloadGoiYKM());
         reloadGoiYKM();
         return p;

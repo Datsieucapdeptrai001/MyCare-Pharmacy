@@ -18,6 +18,8 @@ import java.util.Map;
 public class ManHinhDoiTra extends JPanel {
 	private Timer autoCancelTimer;
 	private java.util.Map<String, java.time.LocalDateTime> mapThoiGianTao = new java.util.HashMap<>();
+    /** Dùng để điều hướng từ Live Notification — set trước khi switchTabAndFilter */
+    public static String pendingDoiTraIdToOpen = null;
     private JTable table;
     private DefaultTableModel model;
     private TableRowSorter<DefaultTableModel> sorter;
@@ -39,7 +41,27 @@ public class ManHinhDoiTra extends JPanel {
         
         // Kích hoạt đồng hồ đếm ngược trên bảng
         khoiDongBoDemNguoc(); 
-        
+
+        // ── Timer tự động mở phiếu khi điều hướng từ Live Notification ─────────
+        // Hoạt động giống ManHinhBanHang.autoOpenTimer: poll 500ms, chờ isShowing()
+        javax.swing.Timer autoOpenDoiTraTimer = new javax.swing.Timer(500, evt -> {
+            if (ManHinhDoiTra.pendingDoiTraIdToOpen != null
+                    && !ManHinhDoiTra.pendingDoiTraIdToOpen.isEmpty()
+                    && this.isShowing()) {
+                String maPhieu = ManHinhDoiTra.pendingDoiTraIdToOpen;
+                ManHinhDoiTra.pendingDoiTraIdToOpen = null;
+                ((javax.swing.Timer) evt.getSource()).stop();
+                SwingUtilities.invokeLater(() -> {
+                    try {
+                        moLaiPhieuDoiTra(maPhieu);
+                    } finally {
+                        ((javax.swing.Timer) evt.getSource()).start();
+                    }
+                });
+            }
+        });
+        autoOpenDoiTraTimer.start();
+
         this.addComponentListener(new java.awt.event.ComponentAdapter() {
             @Override
             public void componentShown(java.awt.event.ComponentEvent e) {
@@ -1207,5 +1229,58 @@ public class ManHinhDoiTra extends JPanel {
         } catch (Exception ex) {
             ex.printStackTrace();
         }
+    }
+
+    /**
+     * Tìm và mở phiếu đổi/trả theo mã — được gọi từ Timer sau khi điều hướng
+     * từ Live Notification. Tương tự moLaiHoaDonNhap() của ManHinhBanHang.
+     *
+     * Logic:
+     *  1. Set ô tìm kiếm về maPhieu → applyFilter() (reset accordion)
+     *  2. Duyệt bảng tìm dòng khớp → mở accordion chi tiết
+     *  3. Cuộn bảng đến dòng vừa mở
+     */
+    public void moLaiPhieuDoiTra(String maPhieu) {
+        SwingUtilities.invokeLater(() -> {
+            // 1. Đặt ô tìm kiếm và reset bộ lọc trạng thái về "Tất cả"
+            if (txtSearch != null) {
+                txtSearch.setText(maPhieu);
+                txtSearch.setForeground(Color.BLACK);
+            }
+            if (statusBtns != null) {
+                for (JButton b : statusBtns) setBtnNormal(b);
+                setBtnActive(statusBtns[0]);
+                filterStatus = "Tất cả";
+            }
+            // applyFilter() sẽ reset expandedMaPhieu = "" và ẩn pnlDetail
+            applyFilter();
+
+            // 2. Tìm dòng khớp mã phiếu trong kết quả lọc và mở accordion
+            boolean found = false;
+            for (int i = 0; i < table.getRowCount(); i++) {
+                int modelRow = table.convertRowIndexToModel(i);
+                Object objMa = model.getValueAt(modelRow, 0);
+                if (objMa != null && maPhieu.equals(objMa.toString())) {
+                    expandedMaPhieu = maPhieu;
+                    Object objNgay = model.getValueAt(modelRow, 8);
+                    String ngayTao = objNgay != null ? objNgay.toString() : "---";
+                    currentDetailHeight = showDetailPanel(maPhieu, ngayTao);
+                    pnlDetail.setVisible(true);
+                    updateRowHeights();
+                    // 3. Cuộn bảng đến dòng vừa mở
+                    table.scrollRectToVisible(table.getCellRect(i, 0, true));
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found) {
+                Utils.ThongBao.show(ManHinhDoiTra.this,
+                        "KHÔNG TÌM THẤY",
+                        "Phiếu \"" + maPhieu + "\" không nằm trong danh sách hiện tại!\n"
+                                + "Có thể phiếu thuộc ca khác hoặc đã bị lọc.",
+                        "WARNING");
+            }
+        });
     }
 }

@@ -113,16 +113,13 @@ public class ChiTietHoaDon extends JDialog {
                         } catch (Exception ex) { }
                     }
                     else if (p.startsWith("LIEU_MAU:")) {
-                    	String danhSachTen = p.substring(9).trim(); // Cắt bỏ chữ "LIEU_MAU:"
-                        String[] mangTen = danhSachTen.split(",");
+                        String danhSachTen = p.substring(9).trim(); 
+                        String[] mangTen = danhSachTen.split("~"); // Đã đổi sang cắt bằng dấu ~
                         for (String item : mangTen) {
                             if (item.contains("=")) {
                                 String[] splitItem = item.split("=");
-                                // Key = Tên thuốc, Value = Tên Liều (vd: "Liều Cảm Cúm Ho Nhẹ")
                                 this.mapThuocLieuMau.put(splitItem[0].trim().toLowerCase(), splitItem[1].trim());
-                            } else {
-                                this.mapThuocLieuMau.put(item.trim().toLowerCase(), "Thuốc liều mẫu");
-                            }
+                            } 
                         }
                     }
                     else if (p.startsWith("CUT_LIEU:")) {
@@ -471,48 +468,135 @@ public class ChiTietHoaDon extends JDialog {
         lblTitle.setForeground(textGray);
         pnl.add(lblTitle, BorderLayout.NORTH);
 
-        // BỔ SUNG: Tách riêng cột ĐVT và SL thành 5 cột
-     // BỔ SUNG: Tách riêng cột ĐVT, SL và thêm cột VAT thành 6 cột
         String[] cols = {"Sản phẩm", "ĐVT", "SL", "Đơn giá", "KM%", "Thành tiền"};
-        Object[][] data = new Object[dsSanPham.size()][6];
+        
+        // ====================================================================
+        // BƯỚC 1: PHÂN LOẠI VÀ GOM NHÓM DỮ LIỆU TRƯỚC KHI IN (FIX LỖI RỜI RẠC LIỀU)
+        // ====================================================================
+        java.util.List<Object[]> displayList = new java.util.ArrayList<>();
+        java.util.Map<String, java.util.List<Object[]>> lieuGroups = new java.util.LinkedHashMap<>();
+        java.util.List<Object[]> standaloneItems = new java.util.ArrayList<>();
+        java.util.List<Object[]> giftItems = new java.util.ArrayList<>();
 
-        for (int i = 0; i < dsSanPham.size(); i++) { 
-            Object[] sp = dsSanPham.get(i);
-            
-            // --- BẮT ĐẦU ĐOẠN XỬ LÝ HTML ---
+        for (Object[] sp : dsSanPham) {
             String tenSP = sp[1] != null ? sp[1].toString() : "";
-            String tenHienThi = tenSP; // Mặc định giữ nguyên tên gốc
             
-            // TUYỆT ĐỐI BỎ QUA QUÀ TẶNG: Chỉ kiểm tra và gắn chữ mờ cho sản phẩm mua thật
-            if (!tenSP.contains("QUÀ TẶNG") && !tenSP.contains("[QUÀ TẶNG]")) {
-                String tenCheck = tenSP.trim().toLowerCase();
-                
-                // 1. Dò xem có phải Liều Mẫu không
-                if (this.mapThuocLieuMau.containsKey(tenCheck)) {
-                    String tenLieuCuaThuoc = this.mapThuocLieuMau.get(tenCheck); // Lấy tên Liều động
-                    
-                    tenHienThi = "<html><div style='padding-top: 2px;'>"
-                               + "<span style='font-family: Segoe UI; font-size: 14px; color: #111827;'>" + tenSP + "</span><br>"
-                               + "<span style='font-family: Segoe UI; font-size: 11px; font-style: italic; color: #6B7280;'>(" + tenLieuCuaThuoc + ")</span>"
-                               + "</div></html>";
-                } 
-                // 2. Dò xem có phải Cắt Liều không
-                else if (this.dsThuocCutLieu.contains(tenCheck)) {
-                    tenHienThi = "<html><div style='padding-top: 2px;'>"
-                               + "<span style='font-family: Segoe UI; font-size: 14px; color: #111827;'>" + tenSP + "</span><br>"
-                               + "<span style='font-family: Segoe UI; font-size: 11px; font-style: italic; color: #6B7280;'>(Thuốc cắt liều)</span>"
-                               + "</div></html>";
+            // Tách riêng quà tặng
+            if (tenSP.contains("QUÀ TẶNG") || tenSP.contains("[QUÀ TẶNG]")) {
+                giftItems.add(sp);
+                continue;
+            }
+
+            String tenCheck = tenSP.trim().toLowerCase();
+            String tenLieuCuaThuoc = null;
+
+            // Kiểm tra xem thuốc này có thuộc Liều phối sẵn nào không
+            for (java.util.Map.Entry<String, String> entry : this.mapThuocLieuMau.entrySet()) {
+                if (tenCheck.contains(entry.getKey()) || entry.getKey().contains(tenCheck)) {
+                    tenLieuCuaThuoc = entry.getValue();
+                    break;
                 }
             }
-            
-            data[i][0] = tenHienThi; // Nạp tên đã bọc HTML vào mảng dữ liệu thay vì tên gốc
-            // --- KẾT THÚC ĐOẠN XỬ LÝ HTML ---
 
-            data[i][1] = sp[2]; // Đơn vị tính (Hộp, Viên...)
-            data[i][2] = sp[3]; // Số lượng
-            data[i][3] = sp[4]; // Đơn giá
-            data[i][4] = sp[5]; // VAT% 
-            data[i][5] = sp[6]; // Thành tiền                        
+            if (tenLieuCuaThuoc != null) {
+                // Gom vào nhóm Liều tương ứng
+                lieuGroups.computeIfAbsent(tenLieuCuaThuoc, k -> new java.util.ArrayList<>()).add(sp);
+            } else {
+                // Thuốc lẻ bình thường (Giữ nguyên từng dòng độc lập, không gộp chung nếu khác Lô/HSD)
+                standaloneItems.add(sp);
+            }
+        }
+
+        // ====================================================================
+        // BƯỚC 2: TIẾN HÀNH DỰNG NỘI DUNG THEO THỨ TỰ TRỰC QUAN (GIỐNG FIGMA)
+        // ====================================================================
+        
+        // --- 1. Sổ toàn bộ các nhóm LIỀU (Các thuốc con sẽ gom cụm đi liền nhau) ---
+        for (java.util.Map.Entry<String, java.util.List<Object[]>> entry : lieuGroups.entrySet()) {
+            String tenLieu = entry.getKey();
+            java.util.List<Object[]> itemsInLieu = entry.getValue();
+
+            // Tạo dòng Header của Liều
+            Object[] headerLieu = new Object[7];
+            headerLieu[0] = "HEADER";
+            headerLieu[1] = "<html><span style='font-family: Segoe UI; font-size: 12px; font-weight: bold; color: #1E40AF;'>[LIỀU] " + tenLieu.toUpperCase() + "</span></html>";
+            headerLieu[2] = "Liều"; 
+            headerLieu[3] = ""; 
+            headerLieu[4] = ""; 
+            headerLieu[5] = ""; 
+            headerLieu[6] = ""; 
+            displayList.add(headerLieu);
+
+            // Đẩy toàn bộ các thuốc con thuộc liều này vào ngay phía dưới
+            for (Object[] sp : itemsInLieu) {
+                Object[] childRow = sp.clone();
+                String name = sp[1].toString();
+                String hsdInfo = "";
+                
+                if (sp.length > 7 && sp[7] != null) {
+                    String hsdRaw = sp[7].toString();
+                    if (hsdRaw.startsWith("HSD_")) {
+                        String[] splitHsd = hsdRaw.split("HSD_.*?(?=\\d{2}/)");
+                        if (splitHsd.length > 1) hsdInfo = "<br><span style='color: #059669; font-size: 10.5px;'>HSD: " + splitHsd[1] + "</span>";
+                    } else if (!hsdRaw.trim().isEmpty()) {
+                        hsdInfo = "<br><span style='color: #059669; font-size: 10.5px;'>HSD: " + hsdRaw + "</span>";
+                    }
+                }
+
+                childRow[1] = "<html><div style='padding-top: 2px; margin-left: 15px;'>" 
+                           + "<span style='font-family: Segoe UI; font-size: 12px; color: #111827;'>- " + name + "</span>" + hsdInfo
+                           + "</div></html>";
+                displayList.add(childRow);
+            }
+        }
+
+        // --- 2. Sổ các loại thuốc lẻ bình thường (Mỗi lô/HSD sẽ là một dòng riêng biệt hoàn toàn) ---
+        for (Object[] sp : standaloneItems) {
+            Object[] normalRow = sp.clone();
+            String name = sp[1].toString();
+            String hsdInfo = "";
+            
+            if (sp.length > 7 && sp[7] != null) {
+                String hsdRaw = sp[7].toString();
+                if (hsdRaw.startsWith("HSD_")) {
+                    String[] splitHsd = hsdRaw.split("HSD_.*?(?=\\d{2}/)");
+                    if (splitHsd.length > 1) hsdInfo = "<br><span style='color: #059669; font-size: 10.5px;'>HSD: " + splitHsd[1] + "</span>";
+                } else if (!hsdRaw.trim().isEmpty()) {
+                    hsdInfo = "<br><span style='color: #059669; font-size: 10.5px;'>HSD: " + hsdRaw + "</span>";
+                }
+            }
+
+            String tenCheck = name.trim().toLowerCase();
+            if (this.dsThuocCutLieu.contains(tenCheck)) {
+                normalRow[1] = "<html><div style='padding-top: 2px;'>"
+                           + "<span style='font-family: Segoe UI; font-size: 12px; color: #111827;'>" + name + "</span>" + hsdInfo + "<br>"
+                           + "<span style='font-family: Segoe UI; font-size: 10px; font-style: italic; color: #6B7280;'>(Thuốc cắt liều)</span>"
+                           + "</div></html>";
+            } else {
+                normalRow[1] = "<html><span style='font-family: Segoe UI; font-size: 12px; color: #111827;'>" + name + hsdInfo + "</span></html>";
+            }
+            displayList.add(normalRow);
+        }
+
+        // --- 3. Sổ danh sách quà tặng xuống cuối cùng ---
+        for (Object[] sp : giftItems) {
+            Object[] giftRow = sp.clone();
+            giftRow[1] = "<html><span style='font-family: Segoe UI; font-size: 12px; color: #111827;'>" + sp[1].toString() + "</span></html>";
+            displayList.add(giftRow);
+        }
+
+        // ====================================================================
+        // BƯỚC 3: ĐỔ DỮ LIỆU VÀO JTABLE VÀ RENDER GIAO DIỆN
+        // ====================================================================
+        Object[][] data = new Object[displayList.size()][6];
+        for (int i = 0; i < displayList.size(); i++) {
+            Object[] rowObj = displayList.get(i);
+            data[i][0] = rowObj[1];
+            data[i][1] = rowObj[2];
+            data[i][2] = rowObj[3];
+            data[i][3] = rowObj[4];
+            data[i][4] = rowObj[5];
+            data[i][5] = rowObj[6];
         }
 
         DefaultTableModel model = new DefaultTableModel(data, cols) { 
@@ -521,27 +605,24 @@ public class ChiTietHoaDon extends JDialog {
         
         JTable table = new JTable(model);
         int totalTableHeight = 0;
+        
         for (int row = 0; row < table.getRowCount(); row++) {
-            int rowHeight = 35; // Chiều cao mặc định cho thuốc thông thường
-            Object val = table.getValueAt(row, 0); // Lấy cột tên sản phẩm
-            
+            int rowHeight = 30; 
+            Object val = table.getValueAt(row, 0); 
             if (val != null) {
                 String valStr = val.toString().toLowerCase();
-                // Kiểm tra xem có chứa thẻ xuống dòng của HTML không
-                if (valStr.contains("<br")) {
-                    // Đếm số dòng chữ nhỏ
-                    int lines = valStr.split("<br").length;
-                    // 32px gốc + 16px cho mỗi dòng ghi chú/HSD
-                    rowHeight = 32 + (lines * 16); 
+                if (valStr.contains("[liều]")) {
+                    rowHeight = 28; 
+                } else if (valStr.contains("<br")) {
+                    rowHeight = 38; // Tự động tăng chiều cao cho các dòng có kèm HSD để tránh bị khuất chữ
                 }
             }
             table.setRowHeight(row, rowHeight);
             totalTableHeight += rowHeight;
         }
+        
         table.setShowGrid(false); 
         table.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        
-        // Bật tự động giãn cột
         table.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
         
         JTableHeader header = table.getTableHeader(); 
@@ -551,7 +632,6 @@ public class ChiTietHoaDon extends JDialog {
         header.setPreferredSize(new Dimension(0, 35));
         header.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, borderGray));
 
-        // Render Icon Quà Tặng
         table.getColumnModel().getColumn(0).setCellRenderer(new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable t, Object value, boolean isS, boolean hasF, int r, int c) {
@@ -562,11 +642,8 @@ public class ChiTietHoaDon extends JDialog {
                     text = text.replace("[QUÀ TẶNG]", "").trim();
                     lbl.setIcon(new MenuIcon("QUA_TANG", 14)); 
                     lbl.setForeground(Color.decode("#DC2626")); 
-                    lbl.setFont(new Font("Segoe UI", Font.BOLD, 12));
                 } else {
                     lbl.setIcon(null);
-                    lbl.setForeground(textDark);
-                    lbl.setFont(new Font("Segoe UI", Font.PLAIN, 12));
                 }
                 
                 lbl.setText(text);
@@ -578,43 +655,25 @@ public class ChiTietHoaDon extends JDialog {
         DefaultTableCellRenderer center = new DefaultTableCellRenderer(); center.setHorizontalAlignment(JLabel.CENTER);
         DefaultTableCellRenderer right = new DefaultTableCellRenderer(); right.setHorizontalAlignment(JLabel.RIGHT);
         
-     // KHÓA CỨNG ĐỘ RỘNG 5 CỘT CUỐI ĐỂ BẢNG ĐẸP HƠN
-        table.getColumnModel().getColumn(1).setMinWidth(50); // Cột ĐVT
-        table.getColumnModel().getColumn(1).setMaxWidth(60);
-
-        table.getColumnModel().getColumn(2).setMinWidth(35); // Cột SL
-        table.getColumnModel().getColumn(2).setMaxWidth(45);
-
-        table.getColumnModel().getColumn(3).setMinWidth(80); // Cột Đơn giá
-        table.getColumnModel().getColumn(3).setMaxWidth(90);
-
-        // Bổ sung căn lề và độ rộng cho cột VAT
-        table.getColumnModel().getColumn(4).setCellRenderer(center);
-        table.getColumnModel().getColumn(4).setMinWidth(45); // Cột VAT
-        table.getColumnModel().getColumn(4).setMaxWidth(55);
-
-        table.getColumnModel().getColumn(5).setCellRenderer(right);
-        table.getColumnModel().getColumn(5).setMinWidth(90); // Cột Thành tiền
-        table.getColumnModel().getColumn(5).setMaxWidth(105);
-
-        // Cột 0 (Sản phẩm) tự do giãn để lấp đầy phần diện tích còn trống
+        table.getColumnModel().getColumn(1).setMinWidth(50); table.getColumnModel().getColumn(1).setMaxWidth(60);
+        table.getColumnModel().getColumn(2).setMinWidth(35); table.getColumnModel().getColumn(2).setMaxWidth(45);
+        table.getColumnModel().getColumn(3).setMinWidth(80); table.getColumnModel().getColumn(3).setMaxWidth(90);
+        table.getColumnModel().getColumn(4).setCellRenderer(center); table.getColumnModel().getColumn(4).setMinWidth(45); table.getColumnModel().getColumn(4).setMaxWidth(55);
+        table.getColumnModel().getColumn(5).setCellRenderer(right); table.getColumnModel().getColumn(5).setMinWidth(90); table.getColumnModel().getColumn(5).setMaxWidth(105);
         table.getColumnModel().getColumn(0).setMinWidth(150);
 
         JScrollPane sp = new JScrollPane(table); 
         sp.getViewport().setBackground(Color.WHITE); 
         sp.setBorder(BorderFactory.createLineBorder(borderGray));
-        
         sp.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         sp.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER);
         
-        int actualTableHeight = totalTableHeight + 35;
-        
+        int actualTableHeight = totalTableHeight + 35; 
         sp.setPreferredSize(new Dimension(0, actualTableHeight));
         sp.setMinimumSize(new Dimension(0, actualTableHeight));
         sp.setMaximumSize(new Dimension(Integer.MAX_VALUE, actualTableHeight));
         
         pnl.setMaximumSize(new Dimension(Integer.MAX_VALUE, actualTableHeight + 35));
-
         pnl.add(sp, BorderLayout.CENTER); 
         return pnl;
     }

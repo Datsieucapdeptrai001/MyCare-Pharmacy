@@ -56,12 +56,13 @@ public class BUS_ChiTietHoaDon {
     }
     
     // Hàm thêm chi tiết riêng cho tính năng Đổi / Trả Hàng
-    public boolean themChiTietDoiTra(String maHD, String tenSP, String dvt, int soLuong, double donGia, String ghiChu) {
+    // isTraLai=true  → hàng khách trả lại  → DAO sẽ lưu soLuong ÂM
+    // isTraLai=false → hàng khách đổi mới  → DAO sẽ lưu soLuong DƯƠNG
+    public boolean themChiTietDoiTra(String maHD, String tenSP, String dvt, int soLuong, double donGia, String ghiChu, boolean isTraLai) {
         if (maHD == null || maHD.trim().isEmpty() || tenSP == null || tenSP.trim().isEmpty() || soLuong <= 0) {
             return false;
         }
-        // Truyền đủ 6 tham số xuống DAO
-        return daoCTHD.themChiTietDoiTra(maHD, tenSP, dvt, soLuong, donGia, ghiChu);
+        return daoCTHD.themChiTietDoiTra(maHD, tenSP, dvt, soLuong, donGia, ghiChu, isTraLai);
     }
 
     // =======================================================
