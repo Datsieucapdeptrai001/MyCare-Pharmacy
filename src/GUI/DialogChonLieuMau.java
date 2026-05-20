@@ -43,9 +43,12 @@ public class DialogChonLieuMau extends JDialog {
         lblDialogTitle.setForeground(Color.WHITE);
         pnlHeaderBar.add(lblDialogTitle, BorderLayout.WEST);
 
-        JButton btnClose = new JButton("✕");
-        btnClose.setFont(new Font("Segoe UI", Font.BOLD, 18));
-        btnClose.setForeground(Color.WHITE);
+        JButton btnClose = new JButton(); 
+
+     // Dùng method 'of' trong MenuIcon để tạo icon CLOSE, kích thước 16px, màu Trắng
+        btnClose.setIcon(Utils.MenuIcon.of("CLOSE", 16, Color.WHITE));
+
+     // Các thuộc tính dưới giữ nguyên
         btnClose.setContentAreaFilled(false);
         btnClose.setBorderPainted(false);
         btnClose.setFocusPainted(false);
@@ -237,7 +240,7 @@ public class DialogChonLieuMau extends JDialog {
                             row.lblStatus.setBackground(Color.decode("#D1FAE5"));
                             row.lblStatus.setBorder(BorderFactory.createCompoundBorder(
                                 BorderFactory.createLineBorder(Color.decode("#34D399"), 1, true),
-                                new EmptyBorder(6, 8, 6, 8)
+                                new EmptyBorder(4, 4, 4, 4) // Đổi thành số 4 để vừa khít, không bị đẩy chữ
                             ));
                             
                             found = true;
@@ -259,7 +262,7 @@ public class DialogChonLieuMau extends JDialog {
         gbcH.fill = GridBagConstraints.BOTH; gbcH.insets = new Insets(10, 5, 10, 5);
         
         String[] headers = {"Thuốc thành phần", "Vị trí kệ", "Số lượng/Ngày", "Lô & HSD", "Trạng thái"};
-        double[] weights = {3.5, 1.5, 1.0, 2.5, 1.5}; 
+        double[] weights = {3.2, 1.1, 1.0, 2.2, 2.5}; 
         
         for (int i = 0; i < headers.length; i++) {
         	JLabel lbl = new JLabel(headers[i], i > 1 ? SwingConstants.CENTER : SwingConstants.LEFT);
@@ -494,10 +497,10 @@ public class DialogChonLieuMau extends JDialog {
             JLabel lblTen = new JLabel(htmlTen);
             
             pnlTen.add(chkChon, BorderLayout.WEST); pnlTen.add(lblTen, BorderLayout.CENTER);
-            gbc.gridx = 0; gbc.weightx = 3.5; pnlRow.add(pnlTen, gbc);
+            gbc.gridx = 0; gbc.weightx = 3.2; pnlRow.add(pnlTen, gbc);
 
-            JLabel lblViTri = new JLabel("<html><span style='color:#6B7280; font-size:12px;'>Tủ A - Ngăn 1</span></html>", SwingConstants.CENTER);
-            gbc.gridx = 1; gbc.weightx = 1.5; pnlRow.add(lblViTri, gbc);
+            JLabel lblViTri = new JLabel("<html><span style='color:#6B7280; font-size:10px;'>Tủ A - Ngăn 1</span></html>", SwingConstants.CENTER);
+            gbc.gridx = 1; gbc.weightx = 1.1; pnlRow.add(lblViTri, gbc);
 
             spnSoLuong = new JSpinner(new SpinnerNumberModel(sl, 1, 999, 1));
             spnSoLuong.setFont(new Font("Segoe UI", Font.BOLD, 12));
@@ -524,17 +527,26 @@ public class DialogChonLieuMau extends JDialog {
                 }
             } catch(Exception e) {}
             if (cboLo.getItemCount() == 0) cboLo.addItem("Chưa có lô");
-            gbc.gridx = 3; gbc.weightx = 2.5; pnlRow.add(cboLo, gbc);
+            gbc.gridx = 3; gbc.weightx = 2.2; pnlRow.add(cboLo, gbc);
 
             lblStatus = new JLabel("Chưa quét", SwingConstants.CENTER);
-            lblStatus.setFont(new Font("Segoe UI", Font.BOLD, 12));
+            lblStatus.setFont(new Font("Segoe UI", Font.BOLD, 11));
             lblStatus.setForeground(Color.decode("#94A3B8"));
-            lblStatus.setBackground(Color.decode("#F1F5F9")); lblStatus.setOpaque(true);
-            lblStatus.setBorder(BorderFactory.createEmptyBorder(6, 8, 6, 8));
+            lblStatus.setBackground(Color.decode("#F1F5F9")); 
+            lblStatus.setOpaque(true);
+
+            // --- THÊM 2 DÒNG DƯỚI ĐÂY ĐỂ CHỐNG NHẢY GIAO DIỆN ---
             
+            // Ép cứng kích thước
+            lblStatus.setBorder(BorderFactory.createCompoundBorder(
+            	    BorderFactory.createLineBorder(Color.decode("#F1F5F9"), 1, true),
+            	    new EmptyBorder(4, 4, 4, 4) // Đệm trái/phải nhỏ lại
+            	));
+
             JPanel pnlStatusWrapper = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
-            pnlStatusWrapper.setOpaque(false); pnlStatusWrapper.add(lblStatus);
-            gbc.gridx = 4; gbc.weightx = 1.5; pnlRow.add(pnlStatusWrapper, gbc);
+            pnlStatusWrapper.setOpaque(false); 
+            pnlStatusWrapper.add(lblStatus);
+            gbc.gridx = 4; gbc.weightx = 2.5; pnlRow.add(pnlStatusWrapper, gbc);
         }
     }
 
