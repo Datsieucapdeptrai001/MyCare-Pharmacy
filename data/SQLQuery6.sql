@@ -299,6 +299,38 @@ ALTER TABLE [dbo].[TaiKhoan] ADD CONSTRAINT [CK_TaiKhoan_VaiTro] CHECK (([vaiTro
 ALTER TABLE [dbo].[ChiTietLieuMau] ADD CONSTRAINT [FK_ChiTietLieuMau_LieuMau] FOREIGN KEY([lieuMauId]) REFERENCES [dbo].[LieuMau] ([id]) ON DELETE CASCADE;
 ALTER TABLE [dbo].[ChiTietLieuMau] ADD CONSTRAINT [FK_ChiTietLieuMau_SanPham] FOREIGN KEY([sanPhamId]) REFERENCES [dbo].[SanPham] ([id]) ON DELETE CASCADE ON UPDATE CASCADE;
 GO
+
+-- ==============================================================================
+-- PHIẾU KIỂM KÊ KHO / CHI TIẾT PHIẾU KIỂM KÊ KHO
+-- Đồng bộ từ SQLQuery4, đặt trong SQL_FINAL theo đúng thứ tự tạo bảng.
+-- FK sẽ được add ở cuối sau khi đủ bảng cha: KhoHang, NhanVien, LoHang, SanPham.
+-- ==============================================================================
+CREATE TABLE [dbo].[PhieuKiemKeKho] (
+    [id] NVARCHAR(50) NOT NULL PRIMARY KEY,
+    [ngayKiemKe] DATETIME2(7) NOT NULL DEFAULT SYSDATETIME(),
+    [khoHangId] NVARCHAR(50) NOT NULL,
+    [nhanVienId] NVARCHAR(50) NULL,
+    [tongSoDong] INT NOT NULL DEFAULT 0,
+    [tongChenhLech] INT NOT NULL DEFAULT 0,
+    [ghiChu] NVARCHAR(255) NULL,
+    [trangThai] NVARCHAR(30) NOT NULL DEFAULT N'HOAN_THANH'
+)
+GO
+
+CREATE TABLE [dbo].[ChiTietPhieuKiemKeKho] (
+    [id] NVARCHAR(50) NOT NULL PRIMARY KEY,
+    [phieuKiemKeId] NVARCHAR(50) NOT NULL,
+    [loHangId] NVARCHAR(50) NOT NULL,
+    [sanPhamId] NVARCHAR(50) NOT NULL,
+    [khoHangId] NVARCHAR(50) NOT NULL,
+    [soLoHang] NVARCHAR(100) NOT NULL,
+    [tonHeThong] INT NOT NULL,
+    [tonThucTe] INT NOT NULL,
+    [chenhLech] INT NOT NULL,
+    [lyDo] NVARCHAR(255) NULL
+)
+GO
+
 -- ==============================================================================
 -- 5. CHÈN DỮ LIỆU ĐÚNG THỨ TỰ CHA - CON
 -- ==============================================================================
@@ -635,10 +667,195 @@ INSERT [dbo].[ChiTietPhieuNhapHang] VALUES (N'CTPN-0039', N'PN-0039', N'LH-0039'
 INSERT [dbo].[ChiTietPhieuNhapHang] VALUES (N'CTPN-0040', N'PN-0040', N'LH-0040', N'SP2024-0040', N'KHO-0002', N'LOT-PHO-260410', 25, CAST(7700.00 AS Decimal(18,2)), CAST(192500.00 AS Decimal(18,2)), CAST(N'2029-11-30' AS DateTime2))
 GO
 
+
+-- ==============================================================================
+-- DỮ LIỆU LỊCH SỬ KIỂM KÊ KHO MẪU 2026
+-- Dữ liệu dùng cho màn hình Kiểm kê kho và Nhật ký lịch sử kiểm kê.
+-- Một số phiếu có chênh lệch nhỏ để kiểm thử màu chênh lệch, lý do và chi tiết phiếu.
+-- ==============================================================================
+INSERT [dbo].[PhieuKiemKeKho] VALUES (N'PKK-0001', CAST(N'2026-05-05T08:30:00.0000000' AS DateTime2), N'KHO-0001', N'QL-0001', 5, 0, N'Kiểm kê định kỳ đầu tháng 05/2026 - kho quầy chính', N'HOAN_THANH')
+INSERT [dbo].[PhieuKiemKeKho] VALUES (N'PKK-0002', CAST(N'2026-05-12T16:10:00.0000000' AS DateTime2), N'KHO-0002', N'QL-0001', 5, 1, N'Kiểm kê kho dự trữ, có chênh lệch nhỏ đã ghi nhận lý do', N'HOAN_THANH')
+INSERT [dbo].[PhieuKiemKeKho] VALUES (N'PKK-0003', CAST(N'2026-05-19T09:15:00.0000000' AS DateTime2), N'KHO-0001', N'DS-0001', 6, -2, N'Kiểm kê nhanh nhóm thuốc bán chạy tại quầy', N'HOAN_THANH')
+GO
+
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0001', N'PKK-0001', N'LH-0001', N'SP2024-0001', N'KHO-0001', N'LOT-AMX-260101', 200, 200, 0, NULL)
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0002', N'PKK-0001', N'LH-0002', N'SP2024-0002', N'KHO-0001', N'LOT-CEF-260102', 150, 150, 0, NULL)
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0003', N'PKK-0001', N'LH-0005', N'SP2024-0005', N'KHO-0001', N'LOT-AUG-260105', 100, 100, 0, NULL)
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0004', N'PKK-0001', N'LH-0006', N'SP2024-0006', N'KHO-0001', N'LOT-AZI-260106', 120, 120, 0, NULL)
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0005', N'PKK-0001', N'LH-0012', N'SP2024-0012', N'KHO-0001', N'LOT-CET-260202', 350, 350, 0, NULL)
+
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0006', N'PKK-0002', N'LH-0021', N'SP2024-0021', N'KHO-0002', N'LOT-VTD-260301', 100, 99, -1, N'Lẻ 1 viên do bể vỉ khi sắp xếp kho')
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0007', N'PKK-0002', N'LH-0022', N'SP2024-0022', N'KHO-0002', N'LOT-OMG-260302', 80, 80, 0, NULL)
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0008', N'PKK-0002', N'LH-0024', N'SP2024-0024', N'KHO-0002', N'LOT-COL-260304', 60, 62, 2, N'Tìm thấy 2 gói để sai vị trí trong kho dự trữ')
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0009', N'PKK-0002', N'LH-0028', N'SP2024-0028', N'KHO-0002', N'LOT-EUC-260308', 40, 40, 0, NULL)
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0010', N'PKK-0002', N'LH-0030', N'SP2024-0030', N'KHO-0002', N'LOT-CRV-260310', 40, 40, 0, NULL)
+
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0011', N'PKK-0003', N'LH-0001', N'SP2024-0001', N'KHO-0001', N'LOT-AMX-260101', 200, 198, -2, N'Rách vỉ trong quá trình trưng bày, đã loại khỏi tồn bán')
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0012', N'PKK-0003', N'LH-0004', N'SP2024-0004', N'KHO-0001', N'LOT-LOS-260104', 250, 250, 0, NULL)
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0013', N'PKK-0003', N'LH-0007', N'SP2024-0007', N'KHO-0001', N'LOT-AML-260107', 200, 200, 0, NULL)
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0014', N'PKK-0003', N'LH-0009', N'SP2024-0009', N'KHO-0001', N'LOT-PAR-260109', 500, 500, 0, NULL)
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0015', N'PKK-0003', N'LH-0012', N'SP2024-0012', N'KHO-0001', N'LOT-CET-260202', 350, 350, 0, NULL)
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0016', N'PKK-0003', N'LH-0039', N'SP2024-0039', N'KHO-0001', N'LOT-HAP-260409', 80, 80, 0, NULL)
+GO
+
+-- Đồng bộ tồn hiện tại theo phiếu kiểm kê mới nhất có chênh lệch.
+UPDATE [dbo].[LoHang] SET [soLuongLoHang] = 99 WHERE [id] = N'LH-0021';
+UPDATE [dbo].[LoHang] SET [soLuongLoHang] = 62 WHERE [id] = N'LH-0024';
+UPDATE [dbo].[LoHang] SET [soLuongLoHang] = 198 WHERE [id] = N'LH-0001';
+GO
+
 INSERT [dbo].[CaLamViec] VALUES (N'Ca-0001', N'DS-0001', CAST(N'2024-03-01T07:30:00.0000000' AS DateTime2), CAST(N'2024-03-01T17:30:00.0000000' AS DateTime2), CAST(2500000.00 AS Decimal(18,2)), CAST(500000.00 AS Decimal(18,2)), CAST(3000000.00 AS Decimal(18,2)), 1, N'Bình thường')
+
+-- ==============================================================================
+-- DỮ LIỆU LỊCH SỬ KIỂM KÊ KHO MẪU 2026
+-- Dữ liệu dùng cho màn hình Kiểm kê kho và Nhật ký lịch sử kiểm kê.
+-- Một số phiếu có chênh lệch nhỏ để kiểm thử màu chênh lệch, lý do và chi tiết phiếu.
+-- ==============================================================================
+INSERT [dbo].[PhieuKiemKeKho] VALUES (N'PKK-0001', CAST(N'2026-05-05T08:30:00.0000000' AS DateTime2), N'KHO-0001', N'QL-0001', 5, 0, N'Kiểm kê định kỳ đầu tháng 05/2026 - kho quầy chính', N'HOAN_THANH')
+INSERT [dbo].[PhieuKiemKeKho] VALUES (N'PKK-0002', CAST(N'2026-05-12T16:10:00.0000000' AS DateTime2), N'KHO-0002', N'QL-0001', 5, 1, N'Kiểm kê kho dự trữ, có chênh lệch nhỏ đã ghi nhận lý do', N'HOAN_THANH')
+INSERT [dbo].[PhieuKiemKeKho] VALUES (N'PKK-0003', CAST(N'2026-05-19T09:15:00.0000000' AS DateTime2), N'KHO-0001', N'DS-0001', 6, -2, N'Kiểm kê nhanh nhóm thuốc bán chạy tại quầy', N'HOAN_THANH')
+GO
+
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0001', N'PKK-0001', N'LH-0001', N'SP2024-0001', N'KHO-0001', N'LOT-AMX-260101', 200, 200, 0, NULL)
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0002', N'PKK-0001', N'LH-0002', N'SP2024-0002', N'KHO-0001', N'LOT-CEF-260102', 150, 150, 0, NULL)
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0003', N'PKK-0001', N'LH-0005', N'SP2024-0005', N'KHO-0001', N'LOT-AUG-260105', 100, 100, 0, NULL)
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0004', N'PKK-0001', N'LH-0006', N'SP2024-0006', N'KHO-0001', N'LOT-AZI-260106', 120, 120, 0, NULL)
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0005', N'PKK-0001', N'LH-0012', N'SP2024-0012', N'KHO-0001', N'LOT-CET-260202', 350, 350, 0, NULL)
+
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0006', N'PKK-0002', N'LH-0021', N'SP2024-0021', N'KHO-0002', N'LOT-VTD-260301', 100, 99, -1, N'Lẻ 1 viên do bể vỉ khi sắp xếp kho')
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0007', N'PKK-0002', N'LH-0022', N'SP2024-0022', N'KHO-0002', N'LOT-OMG-260302', 80, 80, 0, NULL)
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0008', N'PKK-0002', N'LH-0024', N'SP2024-0024', N'KHO-0002', N'LOT-COL-260304', 60, 62, 2, N'Tìm thấy 2 gói để sai vị trí trong kho dự trữ')
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0009', N'PKK-0002', N'LH-0028', N'SP2024-0028', N'KHO-0002', N'LOT-EUC-260308', 40, 40, 0, NULL)
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0010', N'PKK-0002', N'LH-0030', N'SP2024-0030', N'KHO-0002', N'LOT-CRV-260310', 40, 40, 0, NULL)
+
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0011', N'PKK-0003', N'LH-0001', N'SP2024-0001', N'KHO-0001', N'LOT-AMX-260101', 200, 198, -2, N'Rách vỉ trong quá trình trưng bày, đã loại khỏi tồn bán')
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0012', N'PKK-0003', N'LH-0004', N'SP2024-0004', N'KHO-0001', N'LOT-LOS-260104', 250, 250, 0, NULL)
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0013', N'PKK-0003', N'LH-0007', N'SP2024-0007', N'KHO-0001', N'LOT-AML-260107', 200, 200, 0, NULL)
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0014', N'PKK-0003', N'LH-0009', N'SP2024-0009', N'KHO-0001', N'LOT-PAR-260109', 500, 500, 0, NULL)
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0015', N'PKK-0003', N'LH-0012', N'SP2024-0012', N'KHO-0001', N'LOT-CET-260202', 350, 350, 0, NULL)
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0016', N'PKK-0003', N'LH-0039', N'SP2024-0039', N'KHO-0001', N'LOT-HAP-260409', 80, 80, 0, NULL)
+GO
+
+-- Đồng bộ tồn hiện tại theo phiếu kiểm kê mới nhất có chênh lệch.
+UPDATE [dbo].[LoHang] SET [soLuongLoHang] = 99 WHERE [id] = N'LH-0021';
+UPDATE [dbo].[LoHang] SET [soLuongLoHang] = 62 WHERE [id] = N'LH-0024';
+UPDATE [dbo].[LoHang] SET [soLuongLoHang] = 198 WHERE [id] = N'LH-0001';
+GO
+
 INSERT [dbo].[CaLamViec] VALUES (N'Ca-0002', N'DS-0002', CAST(N'2024-03-01T07:30:00.0000000' AS DateTime2), CAST(N'2024-03-01T17:30:00.0000000' AS DateTime2), CAST(1800000.00 AS Decimal(18,2)), CAST(500000.00 AS Decimal(18,2)), CAST(2300000.00 AS Decimal(18,2)), 1, N'Bình thường')
+
+-- ==============================================================================
+-- DỮ LIỆU LỊCH SỬ KIỂM KÊ KHO MẪU 2026
+-- Dữ liệu dùng cho màn hình Kiểm kê kho và Nhật ký lịch sử kiểm kê.
+-- Một số phiếu có chênh lệch nhỏ để kiểm thử màu chênh lệch, lý do và chi tiết phiếu.
+-- ==============================================================================
+INSERT [dbo].[PhieuKiemKeKho] VALUES (N'PKK-0001', CAST(N'2026-05-05T08:30:00.0000000' AS DateTime2), N'KHO-0001', N'QL-0001', 5, 0, N'Kiểm kê định kỳ đầu tháng 05/2026 - kho quầy chính', N'HOAN_THANH')
+INSERT [dbo].[PhieuKiemKeKho] VALUES (N'PKK-0002', CAST(N'2026-05-12T16:10:00.0000000' AS DateTime2), N'KHO-0002', N'QL-0001', 5, 1, N'Kiểm kê kho dự trữ, có chênh lệch nhỏ đã ghi nhận lý do', N'HOAN_THANH')
+INSERT [dbo].[PhieuKiemKeKho] VALUES (N'PKK-0003', CAST(N'2026-05-19T09:15:00.0000000' AS DateTime2), N'KHO-0001', N'DS-0001', 6, -2, N'Kiểm kê nhanh nhóm thuốc bán chạy tại quầy', N'HOAN_THANH')
+GO
+
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0001', N'PKK-0001', N'LH-0001', N'SP2024-0001', N'KHO-0001', N'LOT-AMX-260101', 200, 200, 0, NULL)
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0002', N'PKK-0001', N'LH-0002', N'SP2024-0002', N'KHO-0001', N'LOT-CEF-260102', 150, 150, 0, NULL)
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0003', N'PKK-0001', N'LH-0005', N'SP2024-0005', N'KHO-0001', N'LOT-AUG-260105', 100, 100, 0, NULL)
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0004', N'PKK-0001', N'LH-0006', N'SP2024-0006', N'KHO-0001', N'LOT-AZI-260106', 120, 120, 0, NULL)
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0005', N'PKK-0001', N'LH-0012', N'SP2024-0012', N'KHO-0001', N'LOT-CET-260202', 350, 350, 0, NULL)
+
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0006', N'PKK-0002', N'LH-0021', N'SP2024-0021', N'KHO-0002', N'LOT-VTD-260301', 100, 99, -1, N'Lẻ 1 viên do bể vỉ khi sắp xếp kho')
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0007', N'PKK-0002', N'LH-0022', N'SP2024-0022', N'KHO-0002', N'LOT-OMG-260302', 80, 80, 0, NULL)
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0008', N'PKK-0002', N'LH-0024', N'SP2024-0024', N'KHO-0002', N'LOT-COL-260304', 60, 62, 2, N'Tìm thấy 2 gói để sai vị trí trong kho dự trữ')
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0009', N'PKK-0002', N'LH-0028', N'SP2024-0028', N'KHO-0002', N'LOT-EUC-260308', 40, 40, 0, NULL)
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0010', N'PKK-0002', N'LH-0030', N'SP2024-0030', N'KHO-0002', N'LOT-CRV-260310', 40, 40, 0, NULL)
+
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0011', N'PKK-0003', N'LH-0001', N'SP2024-0001', N'KHO-0001', N'LOT-AMX-260101', 200, 198, -2, N'Rách vỉ trong quá trình trưng bày, đã loại khỏi tồn bán')
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0012', N'PKK-0003', N'LH-0004', N'SP2024-0004', N'KHO-0001', N'LOT-LOS-260104', 250, 250, 0, NULL)
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0013', N'PKK-0003', N'LH-0007', N'SP2024-0007', N'KHO-0001', N'LOT-AML-260107', 200, 200, 0, NULL)
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0014', N'PKK-0003', N'LH-0009', N'SP2024-0009', N'KHO-0001', N'LOT-PAR-260109', 500, 500, 0, NULL)
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0015', N'PKK-0003', N'LH-0012', N'SP2024-0012', N'KHO-0001', N'LOT-CET-260202', 350, 350, 0, NULL)
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0016', N'PKK-0003', N'LH-0039', N'SP2024-0039', N'KHO-0001', N'LOT-HAP-260409', 80, 80, 0, NULL)
+GO
+
+-- Đồng bộ tồn hiện tại theo phiếu kiểm kê mới nhất có chênh lệch.
+UPDATE [dbo].[LoHang] SET [soLuongLoHang] = 99 WHERE [id] = N'LH-0021';
+UPDATE [dbo].[LoHang] SET [soLuongLoHang] = 62 WHERE [id] = N'LH-0024';
+UPDATE [dbo].[LoHang] SET [soLuongLoHang] = 198 WHERE [id] = N'LH-0001';
+GO
+
 INSERT [dbo].[CaLamViec] VALUES (N'Ca-0003', N'DS-0003', CAST(N'2024-03-02T07:30:00.0000000' AS DateTime2), CAST(N'2024-03-02T17:30:00.0000000' AS DateTime2), CAST(3200000.00 AS Decimal(18,2)), CAST(500000.00 AS Decimal(18,2)), CAST(3700000.00 AS Decimal(18,2)), 1, N'Bình thường')
+
+-- ==============================================================================
+-- DỮ LIỆU LỊCH SỬ KIỂM KÊ KHO MẪU 2026
+-- Dữ liệu dùng cho màn hình Kiểm kê kho và Nhật ký lịch sử kiểm kê.
+-- Một số phiếu có chênh lệch nhỏ để kiểm thử màu chênh lệch, lý do và chi tiết phiếu.
+-- ==============================================================================
+INSERT [dbo].[PhieuKiemKeKho] VALUES (N'PKK-0001', CAST(N'2026-05-05T08:30:00.0000000' AS DateTime2), N'KHO-0001', N'QL-0001', 5, 0, N'Kiểm kê định kỳ đầu tháng 05/2026 - kho quầy chính', N'HOAN_THANH')
+INSERT [dbo].[PhieuKiemKeKho] VALUES (N'PKK-0002', CAST(N'2026-05-12T16:10:00.0000000' AS DateTime2), N'KHO-0002', N'QL-0001', 5, 1, N'Kiểm kê kho dự trữ, có chênh lệch nhỏ đã ghi nhận lý do', N'HOAN_THANH')
+INSERT [dbo].[PhieuKiemKeKho] VALUES (N'PKK-0003', CAST(N'2026-05-19T09:15:00.0000000' AS DateTime2), N'KHO-0001', N'DS-0001', 6, -2, N'Kiểm kê nhanh nhóm thuốc bán chạy tại quầy', N'HOAN_THANH')
+GO
+
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0001', N'PKK-0001', N'LH-0001', N'SP2024-0001', N'KHO-0001', N'LOT-AMX-260101', 200, 200, 0, NULL)
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0002', N'PKK-0001', N'LH-0002', N'SP2024-0002', N'KHO-0001', N'LOT-CEF-260102', 150, 150, 0, NULL)
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0003', N'PKK-0001', N'LH-0005', N'SP2024-0005', N'KHO-0001', N'LOT-AUG-260105', 100, 100, 0, NULL)
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0004', N'PKK-0001', N'LH-0006', N'SP2024-0006', N'KHO-0001', N'LOT-AZI-260106', 120, 120, 0, NULL)
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0005', N'PKK-0001', N'LH-0012', N'SP2024-0012', N'KHO-0001', N'LOT-CET-260202', 350, 350, 0, NULL)
+
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0006', N'PKK-0002', N'LH-0021', N'SP2024-0021', N'KHO-0002', N'LOT-VTD-260301', 100, 99, -1, N'Lẻ 1 viên do bể vỉ khi sắp xếp kho')
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0007', N'PKK-0002', N'LH-0022', N'SP2024-0022', N'KHO-0002', N'LOT-OMG-260302', 80, 80, 0, NULL)
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0008', N'PKK-0002', N'LH-0024', N'SP2024-0024', N'KHO-0002', N'LOT-COL-260304', 60, 62, 2, N'Tìm thấy 2 gói để sai vị trí trong kho dự trữ')
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0009', N'PKK-0002', N'LH-0028', N'SP2024-0028', N'KHO-0002', N'LOT-EUC-260308', 40, 40, 0, NULL)
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0010', N'PKK-0002', N'LH-0030', N'SP2024-0030', N'KHO-0002', N'LOT-CRV-260310', 40, 40, 0, NULL)
+
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0011', N'PKK-0003', N'LH-0001', N'SP2024-0001', N'KHO-0001', N'LOT-AMX-260101', 200, 198, -2, N'Rách vỉ trong quá trình trưng bày, đã loại khỏi tồn bán')
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0012', N'PKK-0003', N'LH-0004', N'SP2024-0004', N'KHO-0001', N'LOT-LOS-260104', 250, 250, 0, NULL)
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0013', N'PKK-0003', N'LH-0007', N'SP2024-0007', N'KHO-0001', N'LOT-AML-260107', 200, 200, 0, NULL)
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0014', N'PKK-0003', N'LH-0009', N'SP2024-0009', N'KHO-0001', N'LOT-PAR-260109', 500, 500, 0, NULL)
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0015', N'PKK-0003', N'LH-0012', N'SP2024-0012', N'KHO-0001', N'LOT-CET-260202', 350, 350, 0, NULL)
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0016', N'PKK-0003', N'LH-0039', N'SP2024-0039', N'KHO-0001', N'LOT-HAP-260409', 80, 80, 0, NULL)
+GO
+
+-- Đồng bộ tồn hiện tại theo phiếu kiểm kê mới nhất có chênh lệch.
+UPDATE [dbo].[LoHang] SET [soLuongLoHang] = 99 WHERE [id] = N'LH-0021';
+UPDATE [dbo].[LoHang] SET [soLuongLoHang] = 62 WHERE [id] = N'LH-0024';
+UPDATE [dbo].[LoHang] SET [soLuongLoHang] = 198 WHERE [id] = N'LH-0001';
+GO
+
 INSERT [dbo].[CaLamViec] VALUES (N'Ca-0004', N'DS-0004', CAST(N'2024-03-02T07:30:00.0000000' AS DateTime2), CAST(N'2024-03-02T17:30:00.0000000' AS DateTime2), CAST(2100000.00 AS Decimal(18,2)), CAST(500000.00 AS Decimal(18,2)), CAST(2600000.00 AS Decimal(18,2)), 1, N'Bình thường')
+
+-- ==============================================================================
+-- DỮ LIỆU LỊCH SỬ KIỂM KÊ KHO MẪU 2026
+-- Dữ liệu dùng cho màn hình Kiểm kê kho và Nhật ký lịch sử kiểm kê.
+-- Một số phiếu có chênh lệch nhỏ để kiểm thử màu chênh lệch, lý do và chi tiết phiếu.
+-- ==============================================================================
+INSERT [dbo].[PhieuKiemKeKho] VALUES (N'PKK-0001', CAST(N'2026-05-05T08:30:00.0000000' AS DateTime2), N'KHO-0001', N'QL-0001', 5, 0, N'Kiểm kê định kỳ đầu tháng 05/2026 - kho quầy chính', N'HOAN_THANH')
+INSERT [dbo].[PhieuKiemKeKho] VALUES (N'PKK-0002', CAST(N'2026-05-12T16:10:00.0000000' AS DateTime2), N'KHO-0002', N'QL-0001', 5, 1, N'Kiểm kê kho dự trữ, có chênh lệch nhỏ đã ghi nhận lý do', N'HOAN_THANH')
+INSERT [dbo].[PhieuKiemKeKho] VALUES (N'PKK-0003', CAST(N'2026-05-19T09:15:00.0000000' AS DateTime2), N'KHO-0001', N'DS-0001', 6, -2, N'Kiểm kê nhanh nhóm thuốc bán chạy tại quầy', N'HOAN_THANH')
+GO
+
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0001', N'PKK-0001', N'LH-0001', N'SP2024-0001', N'KHO-0001', N'LOT-AMX-260101', 200, 200, 0, NULL)
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0002', N'PKK-0001', N'LH-0002', N'SP2024-0002', N'KHO-0001', N'LOT-CEF-260102', 150, 150, 0, NULL)
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0003', N'PKK-0001', N'LH-0005', N'SP2024-0005', N'KHO-0001', N'LOT-AUG-260105', 100, 100, 0, NULL)
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0004', N'PKK-0001', N'LH-0006', N'SP2024-0006', N'KHO-0001', N'LOT-AZI-260106', 120, 120, 0, NULL)
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0005', N'PKK-0001', N'LH-0012', N'SP2024-0012', N'KHO-0001', N'LOT-CET-260202', 350, 350, 0, NULL)
+
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0006', N'PKK-0002', N'LH-0021', N'SP2024-0021', N'KHO-0002', N'LOT-VTD-260301', 100, 99, -1, N'Lẻ 1 viên do bể vỉ khi sắp xếp kho')
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0007', N'PKK-0002', N'LH-0022', N'SP2024-0022', N'KHO-0002', N'LOT-OMG-260302', 80, 80, 0, NULL)
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0008', N'PKK-0002', N'LH-0024', N'SP2024-0024', N'KHO-0002', N'LOT-COL-260304', 60, 62, 2, N'Tìm thấy 2 gói để sai vị trí trong kho dự trữ')
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0009', N'PKK-0002', N'LH-0028', N'SP2024-0028', N'KHO-0002', N'LOT-EUC-260308', 40, 40, 0, NULL)
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0010', N'PKK-0002', N'LH-0030', N'SP2024-0030', N'KHO-0002', N'LOT-CRV-260310', 40, 40, 0, NULL)
+
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0011', N'PKK-0003', N'LH-0001', N'SP2024-0001', N'KHO-0001', N'LOT-AMX-260101', 200, 198, -2, N'Rách vỉ trong quá trình trưng bày, đã loại khỏi tồn bán')
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0012', N'PKK-0003', N'LH-0004', N'SP2024-0004', N'KHO-0001', N'LOT-LOS-260104', 250, 250, 0, NULL)
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0013', N'PKK-0003', N'LH-0007', N'SP2024-0007', N'KHO-0001', N'LOT-AML-260107', 200, 200, 0, NULL)
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0014', N'PKK-0003', N'LH-0009', N'SP2024-0009', N'KHO-0001', N'LOT-PAR-260109', 500, 500, 0, NULL)
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0015', N'PKK-0003', N'LH-0012', N'SP2024-0012', N'KHO-0001', N'LOT-CET-260202', 350, 350, 0, NULL)
+INSERT [dbo].[ChiTietPhieuKiemKeKho] VALUES (N'CTPKK-0016', N'PKK-0003', N'LH-0039', N'SP2024-0039', N'KHO-0001', N'LOT-HAP-260409', 80, 80, 0, NULL)
+GO
+
+-- Đồng bộ tồn hiện tại theo phiếu kiểm kê mới nhất có chênh lệch.
+UPDATE [dbo].[LoHang] SET [soLuongLoHang] = 99 WHERE [id] = N'LH-0021';
+UPDATE [dbo].[LoHang] SET [soLuongLoHang] = 62 WHERE [id] = N'LH-0024';
+UPDATE [dbo].[LoHang] SET [soLuongLoHang] = 198 WHERE [id] = N'LH-0001';
+GO
+
 INSERT [dbo].[CaLamViec] VALUES (N'Ca-0005', N'DS-0005', CAST(N'2024-03-03T07:30:00.0000000' AS DateTime2), CAST(N'2024-03-03T17:30:00.0000000' AS DateTime2), CAST(1500000.00 AS Decimal(18,2)), CAST(500000.00 AS Decimal(18,2)), CAST(2000000.00 AS Decimal(18,2)), 1, N'Bình thường')
 
 -- HÓA ĐƠN NĂM 2024
@@ -822,6 +1039,34 @@ ALTER TABLE [dbo].[PhanBoLoHang] ADD CONSTRAINT [FK_PhanBoLoHang_ChiTietHoaDon] 
 ALTER TABLE [dbo].[PhanBoLoHang] ADD CONSTRAINT [FK_PhanBoLoHang_LoHang] FOREIGN KEY([loHangId]) REFERENCES [dbo].[LoHang] ([id])
 ALTER TABLE [dbo].[TaiKhoan] ADD CONSTRAINT [FK_TaiKhoan_NhanVien] FOREIGN KEY([nhanVienId]) REFERENCES [dbo].[NhanVien] ([id]) ON UPDATE CASCADE ON DELETE SET NULL
 GO
+ALTER TABLE [dbo].[PhieuKiemKeKho] ADD CONSTRAINT [FK_PKK_KhoHang]
+FOREIGN KEY([khoHangId]) REFERENCES [dbo].[KhoHang]([id]) ON UPDATE CASCADE
+ALTER TABLE [dbo].[PhieuKiemKeKho] ADD CONSTRAINT [FK_PKK_NhanVien]
+FOREIGN KEY([nhanVienId]) REFERENCES [dbo].[NhanVien]([id]) ON UPDATE CASCADE ON DELETE SET NULL
+ALTER TABLE [dbo].[PhieuKiemKeKho] ADD CONSTRAINT [CK_PKK_TongSoDong] CHECK ([tongSoDong] >= 0)
+ALTER TABLE [dbo].[PhieuKiemKeKho] ADD CONSTRAINT [CK_PKK_TrangThai] CHECK ([trangThai] IN (N'HOAN_THANH', N'DA_HUY'))
+
+ALTER TABLE [dbo].[ChiTietPhieuKiemKeKho] ADD CONSTRAINT [FK_CTPKK_PhieuKiemKe]
+FOREIGN KEY([phieuKiemKeId]) REFERENCES [dbo].[PhieuKiemKeKho]([id]) ON UPDATE CASCADE ON DELETE CASCADE
+ALTER TABLE [dbo].[ChiTietPhieuKiemKeKho] ADD CONSTRAINT [FK_CTPKK_LoHang]
+FOREIGN KEY([loHangId]) REFERENCES [dbo].[LoHang]([id])
+ALTER TABLE [dbo].[ChiTietPhieuKiemKeKho] ADD CONSTRAINT [FK_CTPKK_SanPham]
+FOREIGN KEY([sanPhamId]) REFERENCES [dbo].[SanPham]([id])
+ALTER TABLE [dbo].[ChiTietPhieuKiemKeKho] ADD CONSTRAINT [FK_CTPKK_KhoHang]
+FOREIGN KEY([khoHangId]) REFERENCES [dbo].[KhoHang]([id])
+ALTER TABLE [dbo].[ChiTietPhieuKiemKeKho] ADD CONSTRAINT [CK_CTPKK_TonKho] CHECK ([tonHeThong] >= 0 AND [tonThucTe] >= 0)
+ALTER TABLE [dbo].[ChiTietPhieuKiemKeKho] ADD CONSTRAINT [CK_CTPKK_ChenhLech] CHECK ([chenhLech] = [tonThucTe] - [tonHeThong])
+GO
+
+CREATE NONCLUSTERED INDEX [IX_PKK_NgayKiemKe]
+    ON [dbo].[PhieuKiemKeKho]([ngayKiemKe] DESC, [id] DESC);
+GO
+
+CREATE NONCLUSTERED INDEX [IX_CTPKK_PhieuKiemKe]
+    ON [dbo].[ChiTietPhieuKiemKeKho]([phieuKiemKeId]);
+GO
+
+
 USE [MYCAREPHARMACY];
 GO
 
