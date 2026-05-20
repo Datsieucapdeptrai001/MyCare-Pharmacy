@@ -65,7 +65,12 @@ public class BUS_TraHang {
     }
 
     public boolean xacNhanGiaoDichDoiTra(String maPhieu, String trangThaiMoi) {
-        return daoHoaDon.capNhatTrangThaiPhieuDoiTra(maPhieu, trangThaiMoi);
+        boolean ok = daoHoaDon.capNhatTrangThaiPhieuDoiTra(maPhieu, trangThaiMoi);
+        if (ok && "Hoàn thành".equals(trangThaiMoi)) {
+            // Xuất kho hàng đổi mới + nhập lại kho hàng trả (chỉ có tác dụng với DOI_HANG)
+            daoHoaDon.xuatKhoKhiDuyetDoiHang(maPhieu);
+        }
+        return ok;
     }
 
     // LOGIC BUS: BÓC TÁCH SẢN PHẨM TRỰC TIẾP TỪ GHI CHÚ HÓA ĐƠN

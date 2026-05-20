@@ -264,12 +264,18 @@ public class TaoPhieuDoiTra extends JDialog {
                             double giaBanMoi = 0;
                             
                             try (java.sql.Connection con = ConnectDB.ConnectDB.getInstance().getConnection()) {
-                                String sql = "SELECT dv.gia FROM DonViDoLuong dv JOIN SanPham sp ON dv.sanPhamId = sp.id WHERE sp.ten = ? AND dv.ten = ?";
+                                // Lấy cả thueVAT để tính đúng giá bán có VAT
+                                String sql = "SELECT dv.gia, ISNULL(sp.thueVAT, 0) AS thueVAT FROM DonViDoLuong dv JOIN SanPham sp ON dv.sanPhamId = sp.id WHERE sp.ten = ? AND dv.ten = ?";
                                 try (java.sql.PreparedStatement pst = con.prepareStatement(sql)) {
                                     pst.setString(1, tenSP);
                                     pst.setString(2, donViMoi);
                                     try (java.sql.ResultSet rs = pst.executeQuery()) {
-                                        if (rs.next()) giaBanMoi = rs.getDouble("gia");
+                                        if (rs.next()) {
+                                            double giaChuaVAT = rs.getDouble("gia");
+                                            double thueVAT = rs.getDouble("thueVAT");
+                                            // Giá bán = giá gốc × (1 + VAT%)
+                                            giaBanMoi = giaChuaVAT * (1.0 + thueVAT / 100.0);
+                                        }
                                     }
                                 }
                             } catch (Exception ex) {}

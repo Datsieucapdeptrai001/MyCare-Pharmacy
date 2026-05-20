@@ -20,11 +20,14 @@ public class DAO_ThongKe {
             String dateCol, String nvCol) {
         if (filter == null)
             return;
+            
+        // 1. Lọc theo nhân viên
         if (filter.maNV != null && !filter.maNV.isEmpty()) {
             sql.append(" AND ").append(nvCol).append(" = ?");
             params.add(filter.maNV);
         }
 
+        // 2. Lọc theo thời gian bắt đầu hoặc Ca làm việc
         if (filter.startTime != null) {
             sql.append(" AND ").append(dateCol).append(" >= ?");
             params.add(Timestamp.valueOf(filter.startTime));
@@ -37,6 +40,17 @@ public class DAO_ThongKe {
                 sql.append(" AND (DATEPART(HOUR, ").append(dateCol).append(") >= 22 OR DATEPART(HOUR, ").append(dateCol)
                         .append(") < 6)");
         }
+
+        // ----------------------------------------------------
+        // ĐÂY LÀ ĐOẠN MÌNH THÊM LỌC NĂM VÀO NÈ CẬU:
+        // ----------------------------------------------------
+        if (filter.year != null) {
+            sql.append(" AND YEAR(").append(dateCol).append(") = ?");
+            params.add(filter.year);
+        }
+        // ----------------------------------------------------
+
+        // 3. Lọc theo Tháng / Quý / Tùy chỉnh
         if ("THANG".equals(filter.modeLocThoiGian) && filter.month != null) {
             sql.append(" AND MONTH(").append(dateCol).append(") = ?");
             params.add(filter.month);
@@ -553,16 +567,16 @@ public class DAO_ThongKe {
     public List<Object[]> getRawHDDoiTraGio(String dateCondition, BUS.BUS_ThongKe.ThongKeFilter filter) {
         List<Object[]> result = new ArrayList<>();
         StringBuilder sql = new StringBuilder("SELECT hd.loaiHD, hd.ghiChu, DATEPART(HOUR, hd.ngayLapHD) AS h, "
-                + "SUM(CASE WHEN ct.soLuong > 0 "
-                + "         THEN  ABS(ct.thanhTien) "
-                + "         WHEN ct.soLuong < 0 "
-                + "         THEN -ABS(ct.thanhTien) "
+                + "SUM(CASE "
+                + "         WHEN hd.loaiHD = 'TRA_HANG' THEN -ABS(ct.thanhTien) "
+                + "         WHEN hd.loaiHD = 'DOI_HANG' AND ct.soLuong > 0  THEN  ABS(ct.thanhTien) "
+                + "         WHEN hd.loaiHD = 'DOI_HANG' AND ct.soLuong < 0  THEN -ABS(ct.thanhTien) "
                 + "         ELSE 0 END) AS netRefund_coVAT "
                 + "FROM HoaDon hd "
                 + "JOIN ChiTietHoaDon ct ON hd.id = ct.hoaDonId "
                 + "JOIN SanPham sp ON ct.sanPhamId = sp.id "
                 + "WHERE " + dateCondition
-                + " AND hd.loaiHD = 'DOI_HANG' AND hd.ghiChu LIKE N'%Hoàn thành%' ");
+                + " AND hd.loaiHD IN ('TRA_HANG', 'DOI_HANG') ");
         List<Object> params = new ArrayList<>();
         applyFilter(filter, sql, params, "hd.ngayLapHD", "hd.nhanVienId");
         sql.append(" GROUP BY hd.id, hd.loaiHD, hd.ghiChu, DATEPART(HOUR, hd.ngayLapHD)");
@@ -1896,16 +1910,12 @@ public class DAO_ThongKe {
                + "  GROUP BY " + groupExpr + "\n"
                + ")\n"
                + "SELECT\n"
-               + "  ISNULL(r.tg, c.tg)                                              AS thoiGian,\n"
-               + "  ISNULL(r.doanhThuGop,     0)                                    AS doanhThuGop,\n"
-               + "  ISNULL(r.thueVAT,         0)                                    AS thueVAT,\n"
-               + "  ISNULL(r.hangBanBiTraLai, 0)                                    AS hangBanBiTraLai,\n"
-               + "  ISNULL(r.doanhThuGop, 0) - ISNULL(r.hangBanBiTraLai, 0)\n"
-               + "    - ISNULL(r.thueVAT, 0)                                        AS doanhThuThuan,\n"
-               + "  ISNULL(c.giaVonBan, 0) - ISNULL(c.giaVonHoan, 0)              AS giaVonHangBan,\n"
-               + "  (ISNULL(r.doanhThuGop, 0) - ISNULL(r.hangBanBiTraLai, 0)\n"
-               + "    - ISNULL(r.thueVAT, 0))\n"
-               + "  - (ISNULL(c.giaVonBan, 0) - ISNULL(c.giaVonHoan, 0))          AS loiNhuanGop\n"
+               + "  ISNULL(r.tg, c.tg)              AS thoiGian,\n"
+               + "  ISNULL(r.doanhThuGop,     0)    AS doanhThuGop,\n"
+               + "  ISNULL(r.thueVAT,         0)    AS thueVAT,\n"
+               + "  ISNULL(r.hangBanBiTraLai, 0)    AS hangBanBiTraLai,\n"
+               + "  ISNULL(c.giaVonBan,       0)    AS giaVonBan,\n"
+               + "  ISNULL(c.giaVonHoan,      0)    AS giaVonHoan\n"
                + "FROM CTE_Revenue r\n"
                + "FULL OUTER JOIN CTE_COGS c ON c.tg = r.tg\n"
                + "ORDER BY ISNULL(r.tg, c.tg) ASC";
@@ -1917,15 +1927,14 @@ public class DAO_ThongKe {
                  ps.setObject(i + 1, allParams.get(i));
              }
              try (ResultSet rs = ps.executeQuery()) {
-                 while (rs.next()) {
+            	 while (rs.next()) {
                      result.add(new Object[]{
-                         rs.getString("thoiGian"),         // [0] Kỳ báo cáo
-                         rs.getDouble("doanhThuGop"),      // [1] Doanh Thu Gộp
-                         rs.getDouble("thueVAT"),           // [2] Thuế VAT
-                         rs.getDouble("hangBanBiTraLai"),   // [3] Hàng Bán Bị Trả Lại
-                         rs.getDouble("doanhThuThuan"),     // [4] Doanh Thu Thuần
-                         rs.getDouble("giaVonHangBan"),     // [5] Giá Vốn Hàng Bán (COGS)
-                         rs.getDouble("loiNhuanGop")        // [6] Lợi Nhuận Gộp
+                         rs.getString("thoiGian"),
+                         rs.getDouble("doanhThuGop"),
+                         rs.getDouble("thueVAT"),
+                         rs.getDouble("hangBanBiTraLai"),
+                         rs.getDouble("giaVonBan"),
+                         rs.getDouble("giaVonHoan")
                      });
                  }
              }
@@ -1994,8 +2003,8 @@ public class DAO_ThongKe {
          return kq;
      }
      
-     public BUS.KetQuaDoiChieuCa layDoiChieuDoanhThuTheoCa(BUS.BUS_ThongKe.ThongKeFilter filter) {
-    	    BUS.KetQuaDoiChieuCa kq = new BUS.KetQuaDoiChieuCa();
+     public BUS.BUS_KetQuaDoiChieuCa layDoiChieuDoanhThuTheoCa(BUS.BUS_ThongKe.ThongKeFilter filter) {
+    	    BUS.BUS_KetQuaDoiChieuCa kq = new BUS.BUS_KetQuaDoiChieuCa();
     	    StringBuilder sql = new StringBuilder(
     	        "SELECT "
     	        // --- ĐẾM SỐ HÓA ĐƠN ---

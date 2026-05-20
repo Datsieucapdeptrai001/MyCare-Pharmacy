@@ -1,6 +1,6 @@
 package BUS;
 
-public class KetQuaDoiChieuCa {
+public class BUS_KetQuaDoiChieuCa {
     // === NHÓM A: BÁN HÀNG ===
     public double a_giaGocChuaThue = 0;
     public double a_khuyenMai = 0;

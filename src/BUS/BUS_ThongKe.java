@@ -8,16 +8,18 @@ import java.util.List;
 
 public class BUS_ThongKe {
 
-    public static class ThongKeFilter {
-        public String maNV;
-        public Integer ca; // 1 = Sáng, 2 = Chiều, 3 = Tối
-        public LocalDateTime startTime;
-        public String modeLocThoiGian; // "THANG", "QUY", "TUYCHINH"
-        public Integer month;
-        public Integer quarter;
-        public java.sql.Date fromDate;
-        public java.sql.Date toDate;
-    }
+	public static class ThongKeFilter {
+	    public String maNV;
+	    public Integer ca;
+	    public LocalDateTime startTime;
+	    public String modeLocThoiGian; 
+	    public Integer month;
+	    public Integer quarter;
+	    public Integer year; 
+	    
+	    public java.sql.Date fromDate;
+	    public java.sql.Date toDate;
+	}
 
     private final DAO_ThongKe dao;
     private double tGiaVon; 
@@ -812,13 +814,16 @@ public class BUS_ThongKe {
         double chiPhiRong   = Math.max(0, giaVonBan - giaVonHoanLaiKho); // NET COGS
         double loiNhuan     = doanhThuRong - chiPhiRong;
  
+        int traCount = dao.getTongPhieuDoiTra(f);
         return new double[] {
             doanhThuRong,                                            // [0]
-            Math.max(0, soHD - dao.getTongPhieuDoiTra(f)),          // [1]
+            soHD + traCount,                                         // [1] tổng HĐ = bán + trả
             0,                                                        // [2] reserved
-            loiNhuan,                                                // [3] ← đúng bây giờ
+            loiNhuan,                                                // [3]
             Math.max(0, tVAT - (tienHoanCoVAT - tienHoanChuaVAT)), // [4]
-            Math.max(0, tThucThuBanHang - tienHoanCoVAT)           // [5]
+            Math.max(0, tThucThuBanHang - tienHoanCoVAT),           // [5]
+            soHD,                                                    // [6] đơn BAN_HANG
+            traCount                                                 // [7] đơn TRA_HANG
         };
     }
     
@@ -827,11 +832,37 @@ public class BUS_ThongKe {
     }
     
     public List<Object[]> getBaoCaoTaiChinh(ThongKeFilter filter, String groupBy) {
-        return dao.getBaoCaoTaiChinh(filter, groupBy);
+        List<Object[]> rawData = dao.getBaoCaoTaiChinh(filter, groupBy);
+        List<Object[]> processedData = new ArrayList<>();
+
+        for (Object[] raw : rawData) {
+            String thoiGian = (String) raw[0];
+            double doanhThuGop = (double) raw[1];
+            double thueVAT = (double) raw[2];
+            double hangBanBiTraLai = (double) raw[3];
+            double giaVonBan = (double) raw[4];
+            double giaVonHoan = (double) raw[5];
+
+            // BUS TÍNH TOÁN:
+            double doanhThuThuan = doanhThuGop - hangBanBiTraLai - thueVAT;
+            double giaVonThucTe = giaVonBan - giaVonHoan;
+            double loiNhuanGop = doanhThuThuan - giaVonThucTe;
+            processedData.add(new Object[]{
+                thoiGian,         // [0]
+                doanhThuGop,      // [1]
+                thueVAT,          // [2]
+                hangBanBiTraLai,  // [3]
+                doanhThuThuan,    // [4]
+                giaVonThucTe,     // [5]
+                loiNhuanGop       // [6]
+            });
+        }
+        
+        return processedData;
     }
  
     public double[] getKpiTaiChinh(ThongKeFilter filter) {
-        List<Object[]> rows = dao.getBaoCaoTaiChinh(filter, "NGAY"); // NGAY cho granularity cao
+        List<Object[]> rows = this.getBaoCaoTaiChinh(filter, "NGAY"); 
  
         double sumDTG  = 0, sumVAT = 0, sumTra  = 0;
         double sumDTT  = 0, sumCOGS = 0, sumLN  = 0;
@@ -854,11 +885,11 @@ public class BUS_ThongKe {
             sumDTT,   // [3] Doanh Thu Thuần
             sumCOGS,  // [4] Giá Vốn Hàng Bán
             sumLN,    // [5] Lợi Nhuận Gộp
-            tyLe      // [6] Tỷ lệ LN/DTT (%)
+            tyLe      // [6] Tỷ Lợi Nhuận
         };
     }
     
-    public BUS.KetQuaDoiChieuCa layDoiChieuDoanhThuTheoCa(ThongKeFilter filter) {
+    public BUS.BUS_KetQuaDoiChieuCa layDoiChieuDoanhThuTheoCa(ThongKeFilter filter) {
         return dao.layDoiChieuDoanhThuTheoCa(filter);
     }
     

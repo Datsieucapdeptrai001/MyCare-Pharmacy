@@ -1298,7 +1298,7 @@ public class ManHinhChinh extends JPanel {
         root.add(topRow, BorderLayout.NORTH);
 
         // --- 2. LẤY DỮ LIỆU TỪ DB LÊN DTO ---
-        BUS.KetQuaDoiChieuCa kq = busThongKe.layDoiChieuDoanhThuTheoCa(filter);
+        BUS.BUS_KetQuaDoiChieuCa kq = busThongKe.layDoiChieuDoanhThuTheoCa(filter);
         
         // Lấy tiền CK theo đúng filter (Quản lý hay NV đều đúng)
         double[] kpi = busThongKe.getKpiDoiChieu(filter);
