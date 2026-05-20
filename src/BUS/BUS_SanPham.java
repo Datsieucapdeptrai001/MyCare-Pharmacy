@@ -336,60 +336,18 @@ public class BUS_SanPham {
     public String layIdViTriMoi() {
         return daoSanPham.layIdViTriMoi();
     }
-
+ // =========================================================================
+    // COMBO LIỀU (CẮT LIỀU)
     // =========================================================================
-    // MẪU LIỀU DÙNG — gộp vào BUS_SanPham
-    // =========================================================================
-
-    public List<Object[]> layMauLieuTheoSP(String maSP) {
-        if (isBlank(maSP)) return new java.util.ArrayList<>();
-        return daoSanPham.layMauLieuTheoSP(maSP.trim());
+    public List<Object[]> layDanhSachCombo() { return daoSanPham.layDanhSachCombo(); }
+    public boolean themComboMoi(String ten) {
+        String id = "CB" + java.util.UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+        return daoSanPham.themComboMoi(id, ten, "");
     }
-
-    /** Lấy mẫu liều mặc định — dùng tại bán hàng để gợi ý liều ngay */
-    public Object[] layMauLieuMacDinh(String maSP) {
-        if (isBlank(maSP)) return null;
-        return daoSanPham.layMauLieuMacDinh(maSP.trim());
-    }
-
-    public boolean luuMauLieu(String maSP, List<Object[]> dsMau) {
-        if (isBlank(maSP)) return false;
-        // Validate từng mẫu trước khi lưu
-        if (dsMau != null) {
-            for (Object[] m : dsMau) {
-                try {
-                    // Đã đổi thành kiểu String để hỗ trợ nhập "1/2", "1-2"
-                    String lieu = m[2].toString().trim();
-                    int soLan  = Integer.parseInt(m[4].toString());
-                    if (lieu.isEmpty() || soLan <= 0) return false;
-                    if (isBlank(m[1].toString())) return false; // doiTuong không được rỗng
-                } catch (Exception e) { return false; }
-            }
-        }
-        return daoSanPham.luuMauLieu(maSP.trim(), dsMau);
-    }
-
-    /**
-     * Tạo chuỗi hướng dẫn dùng thuốc đầy đủ từ mẫu liều mặc định.
-     * Dùng để in lên túi thuốc / phiếu tư vấn.
-     * VD: "Người lớn: Uống 1 viên × 3 lần/ngày — Sau ăn"
-     */
-    public String taoHuongDanDungThuoc(String maSP) {
-        Object[] m = layMauLieuMacDinh(maSP);
-        if (m == null) return "";
-        // Cấu trúc Object[] (từ DAO): [id, tenMau, doiTuong, lieuLuong, donViLieu, soLanNgay, thoiDiemUong, duongDung, ccd, luuY, laMacDinh]
-        // Nếu là format UI (từ layMauLieuTuDB): [tenMau, doiTuong, lieuLuong, donViLieu, soLanNgay, thoiDiemUong, duongDung, ccd, luuY, laMacDinh]
-        // Method này gọi layMauLieuMacDinh từ DAO nên dùng index của DAO (có cột id ở [0])
-        StringBuilder sb = new StringBuilder();
-        sb.append(m[2]).append(": ");                          // [2] doiTuong
-        sb.append(m[7]).append(" ");                           // [7] duongDung
-        sb.append(m[3]).append(" ").append(m[4]);              // [3] lieuLuong + [4] donViLieu
-        sb.append(" × ").append(m[5]).append(" lần/ngày");    // [5] soLanNgay
-        sb.append(" — ").append(m[6]);                         // [6] thoiDiemUong
-        if (m[8] != null && !m[8].toString().isEmpty())
-            sb.append("\n⚠ ").append(m[8]);                   // [8] chongChiDinh
-        if (m[9] != null && !m[9].toString().isEmpty())
-            sb.append("\nℹ ").append(m[9]);                   // [9] luuY
-        return sb.toString();
+    public boolean capNhatCombo(String id, String hdsd) { return daoSanPham.capNhatCombo(id, hdsd); }
+    public boolean xoaCombo(String id) { return daoSanPham.xoaCombo(id); }
+    public List<Object[]> layChiTietCombo(String comboId) { return daoSanPham.layChiTietCombo(comboId); }
+    public boolean luuChiTietCombo(String comboId, List<Object[]> dsChiTiet) {
+        return daoSanPham.luuChiTietCombo(comboId, dsChiTiet);
     }
 }

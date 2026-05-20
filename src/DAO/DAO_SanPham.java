@@ -1355,40 +1355,61 @@ public class DAO_SanPham {
         } catch (Exception e) { e.printStackTrace(); }
         return "VT-001";
     }
-
+ // =========================================================================
+    // QUẢN LÝ MẪU LIỀU COMBO (CẮT LIỀU)
     // =========================================================================
-    // MẪU LIỀU DÙNG — gộp vào DAO_SanPham
-    // Cấu trúc Object[] trả về:
-    //   [0] id, [1] tenMau, [2] doiTuong, [3] lieuLuong, [4] donViLieu,
-    //   [5] soLanNgay, [6] thoiDiemUong, [7] duongDung,
-    //   [8] chongChiDinh, [9] luuY, [10] laMacDinh(Boolean)
-    // =========================================================================
-
-    /** Lấy tất cả mẫu liều của 1 SP, mặc định lên trước */
-    public List<Object[]> layMauLieuTheoSP(String maSP) {
+    public List<Object[]> layDanhSachCombo() {
         List<Object[]> ds = new ArrayList<>();
-        if (maSP == null || maSP.trim().isEmpty()) return ds;
-        String sql = "SELECT id, ISNULL(tenMau,'') tenMau, doiTuong, lieuLuong, donViLieu, " +
-                     "soLanNgay, thoiDiemUong, duongDung, " +
-                     "ISNULL(chongChiDinh,'') chongChiDinh, ISNULL(luuY,'') luuY, laMacDinh " +
-                     "FROM MauLieuDung WHERE sanPhamId=? ORDER BY laMacDinh DESC, id";
+        String sql = "SELECT id, tenLieu, ISNULL(huongDanSuDung, '') as hdsd FROM MauLieuCombo ORDER BY tenLieu";
+        try (Connection con = ConnectDB.getInstance().getConnection();
+             PreparedStatement pst = con.prepareStatement(sql);
+             ResultSet rs = pst.executeQuery()) {
+            while (rs.next()) {
+                ds.add(new Object[]{ rs.getString("id"), rs.getString("tenLieu"), rs.getString("hdsd") });
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return ds;
+    }
+
+    public boolean themComboMoi(String id, String tenLieu, String hdsd) {
+        String sql = "INSERT INTO MauLieuCombo(id, tenLieu, huongDanSuDung) VALUES(?,?,?)";
         try (Connection con = ConnectDB.getInstance().getConnection();
              PreparedStatement pst = con.prepareStatement(sql)) {
-            pst.setString(1, maSP.trim());
+            pst.setString(1, id); pst.setString(2, tenLieu); pst.setString(3, hdsd);
+            return pst.executeUpdate() > 0;
+        } catch (SQLException e) { e.printStackTrace(); return false; }
+    }
+
+    public boolean capNhatCombo(String id, String hdsd) {
+        String sql = "UPDATE MauLieuCombo SET huongDanSuDung=? WHERE id=?";
+        try (Connection con = ConnectDB.getInstance().getConnection();
+             PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setString(1, hdsd); pst.setString(2, id);
+            return pst.executeUpdate() > 0;
+        } catch (SQLException e) { e.printStackTrace(); return false; }
+    }
+
+    public boolean xoaCombo(String id) {
+        String sql = "DELETE FROM MauLieuCombo WHERE id=?";
+        try (Connection con = ConnectDB.getInstance().getConnection();
+             PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setString(1, id); return pst.executeUpdate() > 0;
+        } catch (SQLException e) { e.printStackTrace(); return false; }
+    }
+
+    public List<Object[]> layChiTietCombo(String comboId) {
+        List<Object[]> ds = new ArrayList<>();
+        String sql = "SELECT ct.sanPhamId, sp.ten, sp.donViDoCoBan, ct.soLuong, sp.giaBan " +
+                     "FROM ChiTietMauLieu ct JOIN SanPham sp ON ct.sanPhamId = sp.id " +
+                     "WHERE ct.comboId = ?";
+        try (Connection con = ConnectDB.getInstance().getConnection();
+             PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setString(1, comboId);
             try (ResultSet rs = pst.executeQuery()) {
                 while (rs.next()) {
-                    ds.add(new Object[]{
-                        rs.getString("id"),
-                        rs.getString("tenMau"),
-                        rs.getString("doiTuong"),
-                        rs.getString("lieuLuong"),
-                        rs.getString("donViLieu"),
-                        rs.getInt("soLanNgay"),
-                        rs.getString("thoiDiemUong"),
-                        rs.getString("duongDung"),
-                        rs.getString("chongChiDinh"),
-                        rs.getString("luuY"),
-                        rs.getBoolean("laMacDinh")
+                    ds.add(new Object[]{ 
+                        rs.getString("sanPhamId"), rs.getString("ten"), 
+                        rs.getString("donViDoCoBan"), rs.getInt("soLuong"), rs.getDouble("giaBan") 
                     });
                 }
             }
@@ -1396,60 +1417,30 @@ public class DAO_SanPham {
         return ds;
     }
 
-    /** Lấy mẫu liều mặc định — dùng tại màn hình bán hàng để gợi ý nhanh */
-    public Object[] layMauLieuMacDinh(String maSP) {
-        List<Object[]> ds = layMauLieuTheoSP(maSP);
-        for (Object[] m : ds) if (Boolean.TRUE.equals(m[10])) return m;
-        return ds.isEmpty() ? null : ds.get(0); // fallback: mẫu đầu tiên
-    }
-
-    /**
-     * Lưu toàn bộ mẫu liều — xóa cũ rồi insert batch mới.
-     * Gọi sau khi lưu sản phẩm thành công.
-     * @param dsMau  mỗi phần tử: [tenMau, doiTuong, lieuLuong, donViLieu, soLanNgay,
-     *                             thoiDiemUong, duongDung, chongChiDinh, luuY, laMacDinh]
-     */
-    public boolean luuMauLieu(String maSP, List<Object[]> dsMau) {
-        if (maSP == null || maSP.trim().isEmpty()) return false;
-        String del = "DELETE FROM MauLieuDung WHERE sanPhamId=?";
-        String ins = "INSERT INTO MauLieuDung " +
-                     "(id, sanPhamId, tenMau, doiTuong, lieuLuong, donViLieu, soLanNgay, " +
-                     "thoiDiemUong, duongDung, chongChiDinh, luuY, laMacDinh) " +
-                     "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)";
+    public boolean luuChiTietCombo(String comboId, List<Object[]> danhSachChiTiet) {
         try (Connection con = ConnectDB.getInstance().getConnection()) {
             con.setAutoCommit(false);
             try {
-                try (PreparedStatement pDel = con.prepareStatement(del)) {
-                    pDel.setString(1, maSP.trim()); pDel.executeUpdate();
+                // Xóa chi tiết cũ
+                try (PreparedStatement del = con.prepareStatement("DELETE FROM ChiTietMauLieu WHERE comboId=?")) {
+                    del.setString(1, comboId); del.executeUpdate();
                 }
-                if (dsMau != null && !dsMau.isEmpty()) {
-                    try (PreparedStatement pIns = con.prepareStatement(ins)) {
-                        for (int i = 0; i < dsMau.size(); i++) {
-                            Object[] m = dsMau.get(i);
-                            pIns.setString(1, "ML-" + maSP.trim() + "-" + String.format("%03d", i + 1));
-                            pIns.setString(2, maSP.trim());
-                            pIns.setString(3, m[0] != null ? m[0].toString() : "");
-                            pIns.setString(4, m[1].toString());
-                            pIns.setString(5, m[2] != null ? m[2].toString().trim() : "");
-                            pIns.setString(6, m[3].toString());
-                            pIns.setInt(7, Integer.parseInt(m[4].toString()));
-                            pIns.setString(8, m[5].toString());
-                            pIns.setString(9, m[6].toString());
-                            pIns.setString(10, m[7] != null ? m[7].toString() : "");
-                            pIns.setString(11, m[8] != null ? m[8].toString() : "");
-                            pIns.setBoolean(12, Boolean.TRUE.equals(m[9]));
-                            pIns.addBatch();
-                        }
-                        pIns.executeBatch();
+                // Thêm chi tiết mới
+                String insSql = "INSERT INTO ChiTietMauLieu(comboId, sanPhamId, soLuong) VALUES(?,?,?)";
+                try (PreparedStatement ins = con.prepareStatement(insSql)) {
+                    for (Object[] ct : danhSachChiTiet) {
+                        ins.setString(1, comboId);
+                        ins.setString(2, ct[0].toString()); // sanPhamId
+                        ins.setInt(3, Integer.parseInt(ct[2].toString())); // soLuong
+                        ins.addBatch();
                     }
+                    ins.executeBatch();
                 }
                 con.commit();
                 return true;
             } catch (SQLException ex) {
                 con.rollback(); ex.printStackTrace();
-            } finally {
-                con.setAutoCommit(true);
-            }
+            } finally { con.setAutoCommit(true); }
         } catch (SQLException e) { e.printStackTrace(); }
         return false;
     }
