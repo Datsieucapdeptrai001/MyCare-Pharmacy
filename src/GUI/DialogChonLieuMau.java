@@ -8,17 +8,19 @@ import java.util.Map;
 import java.util.LinkedHashMap;
 import java.util.ArrayList;
 
+import Entity.SanPham; 
+
 public class DialogChonLieuMau extends JDialog {
 
-    private TaoHoaDon parentForm; // Lưu trữ form cha để gọi hàm đổ dữ liệu ngược về
+    private TaoHoaDon parentForm;
 
-    // Chuyển các biến toàn cục từ form cũ sang đây
     private JPanel pnlDanhSachThuoc;
     private JLabel lblTongTienCombo, lblThongTinCombo, lblThanhPhan;
     private int soNgayUong = 5;
     private JTextArea txtHuongDan;
     private List<RowThuocCombo> danhSachRowThuoc = new ArrayList<>();
-    private BUS.BUS_LieuMau busLieuMau = new BUS.BUS_LieuMau();
+    
+    private BUS.BUS_SanPham busSanPham = new BUS.BUS_SanPham();
 
     public DialogChonLieuMau(TaoHoaDon parent) {
         super((Frame) SwingUtilities.getWindowAncestor(parent), "Thêm Thuốc Cắt Liều / Combo mẫu", true);
@@ -44,11 +46,7 @@ public class DialogChonLieuMau extends JDialog {
         pnlHeaderBar.add(lblDialogTitle, BorderLayout.WEST);
 
         JButton btnClose = new JButton(); 
-
-     // Dùng method 'of' trong MenuIcon để tạo icon CLOSE, kích thước 16px, màu Trắng
         btnClose.setIcon(Utils.MenuIcon.of("CLOSE", 16, Color.WHITE));
-
-     // Các thuộc tính dưới giữ nguyên
         btnClose.setContentAreaFilled(false);
         btnClose.setBorderPainted(false);
         btnClose.setFocusPainted(false);
@@ -126,7 +124,7 @@ public class DialogChonLieuMau extends JDialog {
         btnThemLieuMoi.setPreferredSize(new Dimension(35, 30));
 
         btnThemLieuMoi.addActionListener(e -> {
-            JOptionPane.showMessageDialog(this, "Tính năng tạo liều mới đang phát triển!", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+            Utils.ThongBao.show(this, "Thông báo", "Tính năng tạo liều mới đang phát triển!", "WARNING");
         });
 
         JPanel pnlComboAndBtn = new JPanel(new BorderLayout(5, 0));
@@ -175,12 +173,33 @@ public class DialogChonLieuMau extends JDialog {
         pnlSoNgay.add(pnlCounter, BorderLayout.CENTER);
         pnlSoNgay.add(lblSubDays, BorderLayout.SOUTH);
 
+        JPanel pnlHuongDan = new JPanel(new BorderLayout(0, 8));
+        pnlHuongDan.setOpaque(false);
+        JLabel lblHuongDan = new JLabel("HƯỚNG DẪN SỬ DỤNG");
+        lblHuongDan.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        lblHuongDan.setForeground(Color.decode("#4B5563"));
+        
+        txtHuongDan = new JTextArea();
+        txtHuongDan.setLineWrap(true); txtHuongDan.setWrapStyleWord(true);
+        txtHuongDan.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        JScrollPane scrollHD = new JScrollPane(txtHuongDan);
+        scrollHD.setPreferredSize(new Dimension(0, 150)); 
+        scrollHD.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(Color.decode("#DFE3E8"), 1, true),
+            new EmptyBorder(5, 5, 5, 5)
+        ));
+        
+        pnlHuongDan.add(lblHuongDan, BorderLayout.NORTH);
+        pnlHuongDan.add(scrollHD, BorderLayout.CENTER);
+
         JPanel pnlLeftTop = new JPanel();
         pnlLeftTop.setLayout(new BoxLayout(pnlLeftTop, BoxLayout.Y_AXIS));
         pnlLeftTop.setOpaque(false);
         pnlLeftTop.add(pnlChonLieu);
         pnlLeftTop.add(Box.createRigidArea(new Dimension(0, 20)));
         pnlLeftTop.add(pnlSoNgay);
+        pnlLeftTop.add(Box.createRigidArea(new Dimension(0, 20)));
+        pnlLeftTop.add(pnlHuongDan); 
         pnlLeft.add(pnlLeftTop, BorderLayout.NORTH);
 
         // ===== CỘT GIỮA =====
@@ -217,42 +236,73 @@ public class DialogChonLieuMau extends JDialog {
             txtSearchCenter.setText(""); 
             
             try {
-                BUS.BUS_SanPham busSP = new BUS.BUS_SanPham();
-                List<Object[]> ketQua = busSP.timKiemSanPhamBan(qrCode);
+                List<Object[]> ketQua = busSanPham.timKiemSanPhamBan(qrCode);
                 
                 if (ketQua != null && !ketQua.isEmpty()) {
-                    String maSPTimDuoc = ketQua.get(0)[0].toString();
-                    String soLoTimDuoc = (ketQua.get(0).length > 7 && ketQua.get(0)[7] != null) ? ketQua.get(0)[7].toString() : "";
-                    
                     boolean found = false;
-                    for (RowThuocCombo row : danhSachRowThuoc) {
-                        if (row.sanPhamId.equals(maSPTimDuoc)) {
-                            row.chkChon.setSelected(true); 
-                            if (!soLoTimDuoc.isEmpty()) {
-                                for (int i = 0; i < row.cboLo.getItemCount(); i++) {
-                                    if (row.cboLo.getItemAt(i).startsWith(soLoTimDuoc)) {
-                                        row.cboLo.setSelectedIndex(i); break;
+                    String debugIdDB = "";
+                    String debugTenDB = "";
+                    
+                    for (Object[] kq : ketQua) {
+                        String idDB = kq[0] != null ? kq[0].toString().trim() : "";
+                        String tenDB = (kq.length > 1 && kq[1] != null) ? kq[1].toString().trim() : "";
+                        String soLoDB = (kq.length > 7 && kq[7] != null) ? kq[7].toString().trim() : "";
+                        
+                        debugIdDB = idDB;
+                        debugTenDB = tenDB;
+                        
+                        for (RowThuocCombo row : danhSachRowThuoc) {
+                            if (row.sanPhamId.trim().equalsIgnoreCase(idDB) || 
+                                row.tenSP.trim().equalsIgnoreCase(tenDB)) {
+                                
+                                row.chkChon.setSelected(true); 
+                                
+                                if (!soLoDB.isEmpty() && row.cboLo.getItemCount() > 0) {
+                                    for (int i = 0; i < row.cboLo.getItemCount(); i++) {
+                                        if (row.cboLo.getItemAt(i).startsWith(soLoDB)) {
+                                            row.cboLo.setSelectedIndex(i); break;
+                                        }
                                     }
                                 }
+                                
+                                row.lblStatus.setText("Đã xác thực QR");
+                                row.lblStatus.setForeground(Color.decode("#059669"));
+                                row.lblStatus.setBackground(Color.decode("#D1FAE5"));
+                                row.lblStatus.setBorder(BorderFactory.createCompoundBorder(
+                                    BorderFactory.createLineBorder(Color.decode("#34D399"), 1, true),
+                                    new EmptyBorder(4, 4, 4, 4) 
+                                ));
+                                
+                                found = true;
+                                break;
                             }
-                            row.lblStatus.setText("Đã xác thực QR");
-                            row.lblStatus.setForeground(Color.decode("#059669"));
-                            row.lblStatus.setBackground(Color.decode("#D1FAE5"));
-                            row.lblStatus.setBorder(BorderFactory.createCompoundBorder(
-                                BorderFactory.createLineBorder(Color.decode("#34D399"), 1, true),
-                                new EmptyBorder(4, 4, 4, 4) // Đổi thành số 4 để vừa khít, không bị đẩy chữ
-                            ));
-                            
-                            found = true;
-                            capNhatTongTienCombo();
-                            break;
                         }
+                        if (found) break; 
                     }
-                    if (!found) JOptionPane.showMessageDialog(this, "Sản phẩm vừa quét không nằm trong Liều mẫu này!", "Cảnh báo", JOptionPane.WARNING_MESSAGE);
+                    
+                    if (found) {
+                        capNhatTongTienCombo();
+                        pnlDanhSachThuoc.revalidate(); 
+                        pnlDanhSachThuoc.repaint();
+                    } else {
+                        String mauGiaoDien = danhSachRowThuoc.isEmpty() ? "Trống" : 
+                                            ("[" + danhSachRowThuoc.get(0).sanPhamId + "] " + danhSachRowThuoc.get(0).tenSP);
+                        
+                        Utils.ThongBao.show(this, 
+                            "Cảnh báo lệch dữ liệu", 
+                            "Sản phẩm quét được không khớp với danh sách Liều!\n\n" +
+                            "📌 SP quét ra từ DB: [" + debugIdDB + "] " + debugTenDB + "\n" +
+                            "📌 SP đang có trên UI: " + mauGiaoDien + "\n\n" +
+                            "Gợi ý: Hãy kiểm tra lại xem ID hoặc Tên sản phẩm khi lưu Liều mẫu có bị sai lệch không.", 
+                            "WARNING");
+                    }
                 } else {
-                    JOptionPane.showMessageDialog(this, "Mã QR / Mã vạch không hợp lệ hoặc không có trong kho!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+                    Utils.ThongBao.show(this, "Lỗi tìm kiếm", "Mã QR / Mã vạch không hợp lệ hoặc sản phẩm này đang hết tồn kho!", "ERROR");
                 }
-            } catch (Exception ex) { ex.printStackTrace(); }
+            } catch (Exception ex) { 
+                ex.printStackTrace(); 
+                Utils.ThongBao.show(this, "Lỗi hệ thống", "Đã xảy ra lỗi khi quét mã: " + ex.getMessage(), "ERROR");
+            }
         });
         
         JPanel pnlHeaderTable = new JPanel(new GridBagLayout());
@@ -265,8 +315,8 @@ public class DialogChonLieuMau extends JDialog {
         double[] weights = {3.2, 1.1, 1.0, 2.2, 2.5}; 
         
         for (int i = 0; i < headers.length; i++) {
-        	JLabel lbl = new JLabel(headers[i], i > 1 ? SwingConstants.CENTER : SwingConstants.LEFT);
-        	lbl.setFont(new Font("Segoe UI", Font.BOLD, 12));
+            JLabel lbl = new JLabel(headers[i], i > 1 ? SwingConstants.CENTER : SwingConstants.LEFT);
+            lbl.setFont(new Font("Segoe UI", Font.BOLD, 12));
             lbl.setForeground(Color.decode("#475569"));
             lbl.setMinimumSize(new Dimension(60, 30)); 
             
@@ -302,22 +352,6 @@ public class DialogChonLieuMau extends JDialog {
             BorderFactory.createMatteBorder(0, 1, 0, 0, Color.decode("#DFE3E8")),
             new EmptyBorder(20, 15, 20, 15)
         ));
-
-        JPanel pnlHuongDan = new JPanel(new BorderLayout(0, 8));
-        pnlHuongDan.setOpaque(false);
-        JLabel lblHuongDan = new JLabel("HƯỚNG DẪN SỬ DỤNG (IN LÊN NHÃN)");
-        lblHuongDan.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        lblHuongDan.setForeground(Color.decode("#4B5563"));
-        
-        txtHuongDan = new JTextArea();
-        txtHuongDan.setLineWrap(true); txtHuongDan.setWrapStyleWord(true);
-        txtHuongDan.setFont(new Font("Segoe UI", Font.PLAIN, 15));
-        txtHuongDan.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(Color.decode("#DFE3E8"), 1, true),
-            new EmptyBorder(10, 10, 10, 10)
-        ));
-        pnlHuongDan.add(lblHuongDan, BorderLayout.NORTH);
-        pnlHuongDan.add(txtHuongDan, BorderLayout.CENTER);
 
         JPanel pnlBottomTotal = new JPanel(new BorderLayout());
         pnlBottomTotal.setBackground(Color.decode("#152A4B"));
@@ -364,7 +398,6 @@ public class DialogChonLieuMau extends JDialog {
         pnlRightBottom.add(pnlBottomTotal, BorderLayout.CENTER);
         pnlRightBottom.add(pnlActions, BorderLayout.SOUTH);
 
-        pnlRight.add(pnlHuongDan, BorderLayout.CENTER);
         pnlRight.add(pnlRightBottom, BorderLayout.SOUTH);
 
         pnlContent.add(pnlLeft, BorderLayout.WEST);
@@ -377,22 +410,22 @@ public class DialogChonLieuMau extends JDialog {
         // ===== LOGIC SỰ KIỆN NẠP DỮ LIỆU TỪ DATABASE =====
         soNgayUong = 5; 
         
-        List<Entity.LieuMau> dsLieuMau = busLieuMau.getTatCaLieuMau();
+        List<Object[]> dsLieuMau = busSanPham.layDanhSachComboNangCao();
         cboLieuMau.addItem("--- Chọn liều mẫu ---");
         Map<String, String> mapLieuMau = new java.util.HashMap<>();
         
-        Map<String, List<Entity.LieuMau>> groupMap = new LinkedHashMap<>();
-        for (Entity.LieuMau lm : dsLieuMau) {
-            String nhom = (lm.getNhomBenh() != null && !lm.getNhomBenh().trim().isEmpty()) ? lm.getNhomBenh().trim() : "Nhóm khác";
-            groupMap.computeIfAbsent(nhom, k -> new ArrayList<>()).add(lm);
+        Map<String, List<Object[]>> groupMap = new LinkedHashMap<>();
+        for (Object[] r : dsLieuMau) {
+            String nhom = (r[2] != null && !r[2].toString().trim().isEmpty()) ? r[2].toString().trim() : "Nhóm khác";
+            groupMap.computeIfAbsent(nhom, k -> new ArrayList<>()).add(r);
         }
 
-        for (Map.Entry<String, List<Entity.LieuMau>> entry : groupMap.entrySet()) {
+        for (Map.Entry<String, List<Object[]>> entry : groupMap.entrySet()) {
             cboLieuMau.addItem("[" + entry.getKey().toUpperCase() + "]"); 
-            for (Entity.LieuMau lm : entry.getValue()) {
-                String displayName = "  ➔ " + lm.getTenLieu();
+            for (Object[] r : entry.getValue()) {
+                String displayName = "  ➔ " + r[1].toString(); 
                 cboLieuMau.addItem(displayName);
-                mapLieuMau.put(displayName, lm.getId()); 
+                mapLieuMau.put(displayName, r[0].toString()); 
             }
         }
 
@@ -402,38 +435,29 @@ public class DialogChonLieuMau extends JDialog {
                 pnlDanhSachThuoc.removeAll();
                 pnlDanhSachThuoc.revalidate(); pnlDanhSachThuoc.repaint();
                 capNhatTongTienCombo();
-                txtHuongDan.setText("");
+                txtHuongDan.setText(""); 
                 lblThanhPhan.setText("0 thành phần");
                 return;
             }
             
             String idLieuMau = mapLieuMau.get(selected);
-            taiDanhSachThuocCuaLieu(idLieuMau);
-            
-            for(Entity.LieuMau lm : dsLieuMau) {
-                if(lm.getId().equals(idLieuMau)) {
-                    txtHuongDan.setText(lm.getMoTa());
-                    break;
-                }
-            }
+            taiDanhSachThuocCuaLieu(idLieuMau); 
         });
 
         btnPlus.addActionListener(e -> { soNgayUong++; lblDays.setText(soNgayUong + ""); capNhatTongTienCombo(); });
         btnMinus.addActionListener(e -> { if(soNgayUong>1) { soNgayUong--; lblDays.setText(soNgayUong + ""); capNhatTongTienCombo(); }});
 
-     // ===== SỰ KIỆN GỌI VỀ FORM CHA KHI BẤM "THÊM VÀO ĐƠN HÀNG" =====
         btnThem.addActionListener(e -> {
             boolean hasChecked = false;
             boolean hasError = false;
             String unverifiedName = "";
             
-            // TẠO MAP ĐỂ CHỈ LƯU NHỮNG THUỐC ĐƯỢC TÍCH CHỌN VÀ SỐ LƯỢNG MỚI NHẤT
             java.util.Map<String, Integer> mapThuocChon = new java.util.HashMap<>();
 
             for (RowThuocCombo row : danhSachRowThuoc) {
-                if (row.chkChon.isSelected()) { // Chỉ lấy dòng có dấu tích
+                if (row.chkChon.isSelected()) { 
                     hasChecked = true;
-                    mapThuocChon.put(row.sanPhamId, row.soLuongGoc); // Ghi nhận ID thuốc và số lượng
+                    mapThuocChon.put(row.sanPhamId, row.soLuongGoc); 
                     
                     if (!row.lblStatus.getText().equals("Đã xác thực QR")) {
                         hasError = true; unverifiedName = row.tenSP; break;
@@ -442,11 +466,11 @@ public class DialogChonLieuMau extends JDialog {
             }
 
             if (!hasChecked) {
-                JOptionPane.showMessageDialog(this, "Bạn chưa chọn thuốc nào trong liều!", "Cảnh báo", JOptionPane.WARNING_MESSAGE);
+                Utils.ThongBao.show(this, "Cảnh báo", "Bạn chưa chọn thuốc nào trong liều!", "WARNING");
                 return; 
             }
             if (hasError) {
-                JOptionPane.showMessageDialog(this, "Thuốc [" + unverifiedName + "] chưa được quét mã QR xác thực!", "Cảnh báo", JOptionPane.WARNING_MESSAGE);
+                Utils.ThongBao.show(this, "Cảnh báo xác thực", "Thuốc [" + unverifiedName + "] chưa được quét mã QR xác thực!", "WARNING");
                 return; 
             }
 
@@ -454,30 +478,101 @@ public class DialogChonLieuMau extends JDialog {
                 String selectedItem = cboLieuMau.getSelectedItem().toString();
                 if (selectedItem.contains("➔")) {
                     String tenLieu = selectedItem.replace("➔", "").trim();
-                    
-                    // TRUYỀN THÊM mapThuocChon VÀO HÀM (Sẽ bị báo đỏ tạm thời do chưa sửa form cha)
                     parentForm.thucThiDoThuocTuLieuVaoGio(tenLieu, soNgayUong, mapThuocChon);
-                    
-                    this.dispose(); // Đóng popup lại
+                    this.dispose(); 
                 }
             }
         });
     }
 
-    // ===== LỚP PHỤ TRỢ (INNER CLASS) CỦA DIALOG =====
+    // ===== CÁC HÀM PHỤ TRỢ =====
+    private void taiDanhSachThuocCuaLieu(String idLieuMau) {
+        pnlDanhSachThuoc.removeAll(); danhSachRowThuoc.clear();
+        SanPham.MauLieu mauLieu = busSanPham.layComboByIdNangCao(idLieuMau);
+        
+        if (mauLieu != null && mauLieu.getDsChiTiet() != null) {
+            boolean isOdd = true;
+            for (SanPham.ChiTietLieu ct : mauLieu.getDsChiTiet()) {
+                String idSP = ct.getSanPhamId();
+                String tenSP = ct.getTenSanPham();
+                String cachDung = ct.getCachDung() != null ? ct.getCachDung() : "";
+                
+                int sl1Ngay = (int) (ct.getSang() + ct.getTrua() + ct.getChieu() + ct.getToi());
+                if (sl1Ngay <= 0 && ct.getSoNgay() > 0) sl1Ngay = ct.getTongSoLuong() / ct.getSoNgay(); 
+                if (sl1Ngay <= 0) sl1Ngay = 1;
+
+                RowThuocCombo rowUI = new RowThuocCombo(idSP, tenSP, cachDung, sl1Ngay, ct.getDvt(), ct.getGiaDonVi(), ct.getSang(), ct.getTrua(), ct.getChieu(), ct.getToi(), isOdd);
+                danhSachRowThuoc.add(rowUI); 
+                pnlDanhSachThuoc.add(rowUI.pnlRow);
+                isOdd = !isOdd;
+            }
+        }
+        
+        if (lblThanhPhan != null) lblThanhPhan.setText(danhSachRowThuoc.size() + " thành phần");
+        pnlDanhSachThuoc.revalidate(); pnlDanhSachThuoc.repaint();
+        capNhatTongTienCombo();
+        capNhatHuongDanSuDung(); 
+    }
+
+    private void capNhatTongTienCombo() {
+        long tongTien = 0; int tongVien = 0;
+        for (RowThuocCombo row : danhSachRowThuoc) {
+            if (row.chkChon.isSelected()) {
+                int slTong = row.soLuongGoc * soNgayUong;
+                tongVien += slTong; tongTien += (long)(row.donGia * slTong);
+            }
+        }
+        lblTongTienCombo.setText(String.format("%,d", tongTien).replace(',', '.') + "đ");
+        lblThongTinCombo.setText(soNgayUong + " ngày - " + tongVien + " viên/gói");
+    }
+
+    private void capNhatHuongDanSuDung() {
+        StringBuilder sb = new StringBuilder();
+        for (RowThuocCombo row : danhSachRowThuoc) {
+            if (row.chkChon.isSelected()) { 
+                sb.append("- ").append(row.tenSP).append(": ");
+                
+                List<String> buoi = new ArrayList<>();
+                if (row.sang > 0) buoi.add("Sáng " + formatDose(row.sang));
+                if (row.trua > 0) buoi.add("Trưa " + formatDose(row.trua));
+                if (row.chieu > 0) buoi.add("Chiều " + formatDose(row.chieu));
+                if (row.toi > 0) buoi.add("Tối " + formatDose(row.toi));
+
+                if (!buoi.isEmpty()) {
+                    sb.append(String.join(", ", buoi)).append(" ").append(row.donViTinh).append(". ");
+                } else {
+                    sb.append(row.soLuongGoc).append(" ").append(row.donViTinh).append("/ngày. ");
+                }
+
+                if (row.cachDung != null && !row.cachDung.trim().isEmpty() && !row.cachDung.equals("Thành phần")) {
+                    sb.append("(").append(row.cachDung.trim()).append(")");
+                }
+                sb.append("\n");
+            }
+        }
+        txtHuongDan.setText(sb.toString().trim());
+    }
+
+    private String formatDose(double dose) {
+        if (dose == (long) dose) return String.format("%d", (long)dose); 
+        else return String.format("%s", dose); 
+    }
+
+    // ===== LỚP PHỤ TRỢ (INNER CLASS) =====
     class RowThuocCombo {
         public JPanel pnlRow;
         public JCheckBox chkChon;
-        public String sanPhamId, tenSP, donViTinh;
+        public String sanPhamId, tenSP, donViTinh, cachDung;
         public int soLuongGoc;
-        public double donGia;
+        public double donGia, sang, trua, chieu, toi;
         public JComboBox<String> cboLo;
         public JLabel lblStatus;
         public JSpinner spnSoLuong;
 
-        public RowThuocCombo(String id, String ten, String tacDung, int sl, String dvt, double gia, boolean isOddRow) {
-            this.sanPhamId = id; this.tenSP = ten; this.donViTinh = dvt;
+        public RowThuocCombo(String id, String ten, String cachDung, int sl, String dvt, double gia, double sang, double trua, double chieu, double toi, boolean isOddRow) {
+            this.sanPhamId = id; this.tenSP = ten; this.donViTinh = dvt; this.cachDung = cachDung;
             this.soLuongGoc = sl; this.donGia = gia;
+            this.sang = sang; this.trua = trua; this.chieu = chieu; this.toi = toi;
 
             pnlRow = new JPanel(new GridBagLayout());
             pnlRow.setBackground(isOddRow ? Color.WHITE : Color.decode("#F8FAFC"));
@@ -490,10 +585,13 @@ public class DialogChonLieuMau extends JDialog {
             JPanel pnlTen = new JPanel(new BorderLayout(5, 0));
             pnlTen.setOpaque(false);
             chkChon = new JCheckBox(); chkChon.setSelected(true); chkChon.setOpaque(false);
-            chkChon.addActionListener(e -> capNhatTongTienCombo()); 
+            chkChon.addActionListener(e -> {
+                capNhatTongTienCombo();
+                capNhatHuongDanSuDung(); 
+            });
             
             String htmlTen = "<html><div style='width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;'><span style='font-weight:bold; font-size:13px; color:#111827;'>" + ten + "</span><br>"
-                    + "<span style='font-size:11px; color:#6B7280;'>(" + (tacDung!=null?tacDung:"Thành phần") + ")</span></div></html>";
+                    + "<span style='font-size:11px; color:#6B7280;'>(" + (cachDung!=null?cachDung:"Thành phần") + ")</span></div></html>";
             JLabel lblTen = new JLabel(htmlTen);
             
             pnlTen.add(chkChon, BorderLayout.WEST); pnlTen.add(lblTen, BorderLayout.CENTER);
@@ -516,8 +614,7 @@ public class DialogChonLieuMau extends JDialog {
             cboLo.setBackground(Color.WHITE); cboLo.setFont(new Font("Segoe UI", Font.PLAIN, 10));
             
             try {
-                BUS.BUS_SanPham busSP = new BUS.BUS_SanPham();
-                List<Object[]> ketQua = busSP.timKiemSanPhamBan(id); 
+                List<Object[]> ketQua = busSanPham.timKiemSanPhamBan(id); 
                 if (ketQua != null && !ketQua.isEmpty()) {
                     for (Object[] row : ketQua) {
                         String soLo = (row.length > 7 && row[7] != null) ? row[7].toString() : "";
@@ -535,12 +632,9 @@ public class DialogChonLieuMau extends JDialog {
             lblStatus.setBackground(Color.decode("#F1F5F9")); 
             lblStatus.setOpaque(true);
 
-            // --- THÊM 2 DÒNG DƯỚI ĐÂY ĐỂ CHỐNG NHẢY GIAO DIỆN ---
-            
-            // Ép cứng kích thước
             lblStatus.setBorder(BorderFactory.createCompoundBorder(
             	    BorderFactory.createLineBorder(Color.decode("#F1F5F9"), 1, true),
-            	    new EmptyBorder(4, 4, 4, 4) // Đệm trái/phải nhỏ lại
+            	    new EmptyBorder(4, 4, 4, 4) 
             	));
 
             JPanel pnlStatusWrapper = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
@@ -548,39 +642,5 @@ public class DialogChonLieuMau extends JDialog {
             pnlStatusWrapper.add(lblStatus);
             gbc.gridx = 4; gbc.weightx = 2.5; pnlRow.add(pnlStatusWrapper, gbc);
         }
-    }
-
-    // ===== HÀM PHỤ TRỢ (HELPER) CỦA DIALOG =====
-    private void taiDanhSachThuocCuaLieu(String idLieuMau) {
-        pnlDanhSachThuoc.removeAll(); danhSachRowThuoc.clear();
-        List<Object[]> dsChiTiet = busLieuMau.getChiTietThuocCuaLieu(idLieuMau);
-        
-        boolean isOdd = true;
-        for (Object[] row : dsChiTiet) {
-            String idSP = row[0].toString(); String tenSP = row[1].toString();
-            String nhomBenh = row[2] != null ? row[2].toString() : "Thuốc";
-            int sl = Integer.parseInt(row[3].toString());
-            String dvt = row[4].toString(); double gia = Double.parseDouble(row[5].toString());
-
-            RowThuocCombo rowUI = new RowThuocCombo(idSP, tenSP, nhomBenh, sl, dvt, gia, isOdd);
-            danhSachRowThuoc.add(rowUI); pnlDanhSachThuoc.add(rowUI.pnlRow);
-            isOdd = !isOdd;
-        }
-        
-        if (lblThanhPhan != null) lblThanhPhan.setText(danhSachRowThuoc.size() + " thành phần");
-        pnlDanhSachThuoc.revalidate(); pnlDanhSachThuoc.repaint();
-        capNhatTongTienCombo();
-    }
-
-    private void capNhatTongTienCombo() {
-        long tongTien = 0; int tongVien = 0;
-        for (RowThuocCombo row : danhSachRowThuoc) {
-            if (row.chkChon.isSelected()) {
-                int slTong = row.soLuongGoc * soNgayUong;
-                tongVien += slTong; tongTien += (long)(row.donGia * slTong);
-            }
-        }
-        lblTongTienCombo.setText(String.format("%,d", tongTien).replace(',', '.') + "đ");
-        lblThongTinCombo.setText(soNgayUong + " ngày - " + tongVien + " viên/gói");
     }
 }

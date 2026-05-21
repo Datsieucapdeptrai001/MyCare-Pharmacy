@@ -8,10 +8,11 @@ import java.util.List;
 
 public class DAO_ChiTietLieuMau {
 
-    // Lấy danh sách các dòng chi tiết (chỉ mã thuốc và số lượng) của 1 Liều mẫu
+    // Lấy danh sách các dòng chi tiết của 1 Liều mẫu
     public List<ChiTietLieuMau> getChiTietTheoLieuMau(String lieuMauId) {
         List<ChiTietLieuMau> dsChiTiet = new ArrayList<>();
-        String sql = "SELECT * FROM ChiTietLieuMau WHERE lieuMauId = ?";
+        // SỬA: Tên bảng ChiTietMauLieu, cột comboId
+        String sql = "SELECT * FROM ChiTietMauLieu WHERE comboId = ?";
         
         try (Connection con = ConnectDB.getInstance().getConnection();
              PreparedStatement pst = con.prepareStatement(sql)) {
@@ -20,9 +21,9 @@ public class DAO_ChiTietLieuMau {
             try (ResultSet rs = pst.executeQuery()) {
                 while (rs.next()) {
                     dsChiTiet.add(new ChiTietLieuMau(
-                        rs.getString("lieuMauId"),
+                        rs.getString("comboId"),       // Sửa từ lieuMauId
                         rs.getString("sanPhamId"),
-                        rs.getInt("soLuong")
+                        rs.getInt("tongSoLuong")       // Sửa từ soLuong
                     ));
                 }
             }
@@ -32,15 +33,16 @@ public class DAO_ChiTietLieuMau {
         return dsChiTiet;
     }
 
-    // Thêm mới 1 chi tiết thuốc vào liều mẫu (Dùng khi bạn tạo Liều Mẫu mới)
+    // Thêm mới 1 chi tiết thuốc vào liều mẫu
     public boolean themChiTiet(ChiTietLieuMau ct) {
-        String sql = "INSERT INTO ChiTietLieuMau (lieuMauId, sanPhamId, soLuong) VALUES (?, ?, ?)";
+        // SỬA: Tên bảng và tên cột khớp với SQL
+        String sql = "INSERT INTO ChiTietMauLieu (comboId, sanPhamId, tongSoLuong) VALUES (?, ?, ?)";
         try (Connection con = ConnectDB.getInstance().getConnection();
              PreparedStatement pst = con.prepareStatement(sql)) {
             
             pst.setString(1, ct.getLieuMauId());
             pst.setString(2, ct.getSanPhamId());
-            pst.setInt(3, ct.getSoLuong());
+            pst.setInt(3, ct.getSoLuong()); // Đảm bảo getter này trong Entity trả về int số lượng thuốc
             
             return pst.executeUpdate() > 0;
         } catch (SQLException e) {
@@ -49,9 +51,10 @@ public class DAO_ChiTietLieuMau {
         return false;
     }
 
-    // Xóa toàn bộ chi tiết của 1 liều mẫu (Dùng khi muốn cập nhật/xóa hẳn liều mẫu đó)
+    // Xóa toàn bộ chi tiết của 1 liều mẫu
     public boolean xoaChiTietCuaLieu(String lieuMauId) {
-        String sql = "DELETE FROM ChiTietLieuMau WHERE lieuMauId = ?";
+        // SỬA: Tên bảng và cột
+        String sql = "DELETE FROM ChiTietMauLieu WHERE comboId = ?";
         try (Connection con = ConnectDB.getInstance().getConnection();
              PreparedStatement pst = con.prepareStatement(sql)) {
             
