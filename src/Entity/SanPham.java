@@ -190,6 +190,7 @@ public class SanPham {
         public void setSoNgay(int soNgay) { this.soNgay = soNgay; tinhLaiTongSoLuong(); }
         public int getId() { return id; }
         public void setId(int id) { this.id = id; }
+        public void setGiaDonVi(double gia) { this.giaDonVi = gia; }
     }
 
     public static class MauLieu {

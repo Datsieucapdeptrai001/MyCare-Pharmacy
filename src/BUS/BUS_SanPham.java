@@ -387,4 +387,8 @@ public class BUS_SanPham {
         if (comboId == null || comboId.trim().isEmpty()) return false;
         return daoSanPham.xoaMauNangCao(comboId.trim());
     }
+    public boolean kiemTraTenComboTonTai(String tenCombo) {
+        if (tenCombo == null || tenCombo.trim().isEmpty()) return false;
+        return daoSanPham.kiemTraTenComboTonTai(tenCombo.trim());
+    }
 }

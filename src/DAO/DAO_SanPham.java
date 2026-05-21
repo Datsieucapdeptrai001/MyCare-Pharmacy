@@ -1599,4 +1599,14 @@ public class DAO_SanPham {
         } catch (Exception e) { e.printStackTrace(); }
         return String.format("CB-%s-0001", today);
     }
+    public boolean kiemTraTenComboTonTai(String tenCombo) {
+        String sql = "SELECT COUNT(*) FROM MauLieu WHERE LOWER(TenCombo) = LOWER(?)";
+        try (Connection con = ConnectDB.getInstance().getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, tenCombo.trim());
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) return rs.getInt(1) > 0;
+        } catch (Exception e) { e.printStackTrace(); }
+        return false;
+    }
 }
