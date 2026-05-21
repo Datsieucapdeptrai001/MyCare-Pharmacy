@@ -381,6 +381,24 @@ public class ManHinhSanPham extends JPanel {
 
         g.gridx = 0; g.gridy = 1; g.weightx = 0; pnlInfo.add(new JLabel("Nhóm bệnh:"), g);
         g.gridx = 1; g.weightx = 1; cbNhomBenhLieuNangCao = new JComboBox<>(); cbNhomBenhLieuNangCao.setEditable(true); pnlInfo.add(cbNhomBenhLieuNangCao, g);
+        
+     // NGHIỆP VỤ MỚI: Chọn nhóm bệnh nào thì danh sách mẫu liều bên trái lập tức lọc theo nhóm đó
+        cbNhomBenhLieuNangCao.addActionListener(ev -> {
+            if (dangCapNhatBangLieu) return;
+            Object selected = cbNhomBenhLieuNangCao.getSelectedItem();
+            if (selected == null) return;
+            String nhomLọc = selected.toString().trim();
+            
+            dangCapNhatBangLieu = true;
+            mdlDanhSachLieuNangCao.setRowCount(0);
+            BUS_SanPham busLieu = new BUS_SanPham();
+            for (Object[] r : busLieu.layDanhSachComboNangCao()) {
+                if (nhomLọc.isEmpty() || nhomLọc.startsWith("--") || r[2].toString().equalsIgnoreCase(nhomLọc)) {
+                    mdlDanhSachLieuNangCao.addRow(new Object[]{ r[0], r[1], r[2], String.format("%,.0f đ", (Double)r[3]) });
+                }
+            }
+            dangCapNhatBangLieu = false;
+        });
 
         g.gridx = 0; g.gridy = 2; g.weightx = 0; pnlInfo.add(new JLabel("Giá combo:"), g);
         g.gridx = 1; g.weightx = 1; txtGiaBanComboNangCao = new JFormattedTextField(java.text.NumberFormat.getIntegerInstance()); txtGiaBanComboNangCao.setValue(0L); pnlInfo.add(txtGiaBanComboNangCao, g);
@@ -436,6 +454,39 @@ public class ManHinhSanPham extends JPanel {
         };
         tblChiTietLieu = new JTable(modChiTietLieu); tblChiTietLieu.setRowHeight(26);
         modChiTietLieu.addTableModelListener(this::onTableCellLieuChanged);
+        
+        // Đưa Icon thùng rác vào cột Xóa thay thế chữ thô cứng
+        tblChiTietLieu.getColumnModel().getColumn(COL_L_XOA).setCellRenderer(new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value,
+                    boolean isSelected, boolean hasFocus, int row, int column) {
+                JLabel lbl = new JLabel(new MenuIcon("TRASH"));
+                lbl.setHorizontalAlignment(SwingConstants.CENTER);
+                JPanel wrap = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 4));
+                wrap.setBackground(isSelected ? table.getSelectionBackground() : Color.WHITE);
+                wrap.add(lbl);
+                return wrap;
+            }
+        });
+
+        // Xử lý sự kiện click chuột vào đúng vị trí ô chứa icon thùng rác để xóa thuốc
+        tblChiTietLieu.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                int row = tblChiTietLieu.rowAtPoint(e.getPoint());
+                int col = tblChiTietLieu.columnAtPoint(e.getPoint());
+                if (row >= 0 && col == COL_L_XOA) {
+                    if (row < dsChiTietLieuLuuTru.size()) {
+                        dsChiTietLieuLuuTru.remove(row);
+                        dangCapNhatBangLieu = true;
+                        modChiTietLieu.removeRow(row);
+                        dangCapNhatBangLieu = false;
+                        capNhatTongTienLieuHienTai();
+                    }
+                }
+            }
+        });
+        
         pnlDetailWrap.add(new JScrollPane(tblChiTietLieu), BorderLayout.CENTER);
 
         pnlRight.add(pnlDetailWrap, BorderLayout.CENTER);
@@ -541,12 +592,14 @@ public class ManHinhSanPham extends JPanel {
         String nhomSelect = getSelectedRadioText(bgNhom);
         currentFilteredData.clear();
         for (Object[] row : allDataMock) {
-            // row: [0]=mã, [1]=tên, [2]=loại, [3]=hoạtChất, [4]=dạng, [5]=nsx, [6]=vat, [7]=giaBan, [8]=maVach, [9]=nhomBenhLy
+            // row: [0]=mã, [1]=tên, [2]=loại, [3]=hoạtChất, [4]=dạng, [5]=nsx, [6]=vat, [7]=giaBan, [8]=maVach, [9]=nhomBenhLy, [10]=tenVietTat
             boolean matchKey = keyword.isEmpty()
                 || row[0].toString().toLowerCase().contains(keyword)
                 || row[1].toString().toLowerCase().contains(keyword)
                 || row[3].toString().toLowerCase().contains(keyword)
-                || (row[8] != null && row[8].toString().toLowerCase().contains(keyword));
+                || (row[8] != null && row[8].toString().toLowerCase().contains(keyword))
+                // FIX #5: tìm theo tên viết tắt (tenVietTat ở index [10])
+                || (row.length > 10 && row[10] != null && row[10].toString().toLowerCase().contains(keyword));
             boolean matchLoai = loaiSelect.equals("Tất cả") || row[2].toString().equalsIgnoreCase(loaiSelect);
             boolean matchDang = dangSelect.equals("Tất cả") || (row.length > 4 && row[4].toString().equalsIgnoreCase(dangSelect));
             boolean matchNhom = nhomSelect.equals("Tất cả") || (row.length > 9 && row[9].toString().equalsIgnoreCase(nhomSelect));
@@ -3117,29 +3170,78 @@ public class ManHinhSanPham extends JPanel {
     // TOÀN BỘ LOGIC EVENT TÍCH HỢP TỪ PANELCATLIEU VÀO MANHINHSANPHAM
     // =========================================================================
     private void loadDanhSachComboNangCaoRaGiaoDien() {
+        dangCapNhatBangLieu = true;
         mdlDanhSachLieuNangCao.setRowCount(0);
         BUS_SanPham bus = new BUS_SanPham();
+
+        // FIX #11: ghi nhớ nhóm bệnh đang chọn trước khi xóa và reload ComboBox
+        // Lý do: removeAllItems() reset selection → người dùng mất filter đang chọn sau khi lưu
+        Object nhomDangChon = cbNhomBenhLieuNangCao.getSelectedItem();
         cbNhomBenhLieuNangCao.removeAllItems();
         bus.layDanhSachNhomBenhLieu().forEach(cbNhomBenhLieuNangCao::addItem);
-        for (Object[] r : bus.layDanhSachComboNangCao()) {
-            mdlDanhSachLieuNangCao.addRow(new Object[]{ r[0], r[1], r[2], String.format("%,.0f đ", (Double)r[3]) });
+        // Khôi phục selection nếu item vẫn còn trong list
+        if (nhomDangChon != null) {
+            cbNhomBenhLieuNangCao.setSelectedItem(nhomDangChon);
         }
+
+        // Load danh sách combo — lọc theo nhóm đang chọn (nếu có)
+        String nhomLoc = (cbNhomBenhLieuNangCao.getSelectedItem() != null)
+            ? cbNhomBenhLieuNangCao.getSelectedItem().toString().trim() : "";
+        for (Object[] r : bus.layDanhSachComboNangCao()) {
+            if (nhomLoc.isEmpty() || nhomLoc.startsWith("--") || r[2].toString().equalsIgnoreCase(nhomLoc)) {
+                mdlDanhSachLieuNangCao.addRow(new Object[]{ r[0], r[1], r[2], String.format("%,.0f đ", (Double)r[3]) });
+            }
+        }
+        dangCapNhatBangLieu = false;
     }
 
     private void hookAutocompleteLieuNangCao() {
         autocompleteTimerLieu = new javax.swing.Timer(300, e -> thucHienAutocompleteLieu());
         autocompleteTimerLieu.setRepeats(false);
         txtSearchLieuNangCao.getDocument().addDocumentListener(new DocumentListener() {
-            @Override public void insertUpdate(DocumentEvent e) { scheduleLieuAuto(); }
-            @Override public void removeUpdate(DocumentEvent e) { scheduleLieuAuto(); }
+            @Override public void insertUpdate(DocumentEvent e) { if (!dangCapNhatBangLieu) scheduleLieuAuto(); }
+            @Override public void removeUpdate(DocumentEvent e) { if (!dangCapNhatBangLieu) scheduleLieuAuto(); }
             @Override public void changedUpdate(DocumentEvent e) {}
         });
+        
+        // Nghiệp vụ quét Barcode bằng máy quét dán trực tiếp vào bảng
+        txtSearchLieuNangCao.addActionListener(e -> xuLyQuetBarcodeNhanhLieu());
+
         cbTimKiemLieuNangCao.addItemListener(e -> {
             if (e.getStateChange() == ItemEvent.SELECTED) {
                 Object item = cbTimKiemLieuNangCao.getSelectedItem();
-                if (item != null && !item.toString().startsWith("<")) onChonThuocTuDropdownLieu(item.toString());
+                if (item != null && !item.toString().startsWith("<") && !item.toString().equals(txtSearchLieuNangCao.getText())) {
+                    onChonThuocTuDropdownLieu(item.toString());
+                }
             }
         });
+    }
+
+    private void xuLyQuetBarcodeNhanhLieu() {
+        String code = txtSearchLieuNangCao.getText().trim();
+        if (code.isEmpty()) return;
+        
+        autocompleteTimerLieu.stop();
+        BUS_SanPham bus = new BUS_SanPham();
+        
+        Entity.SanPham sp = bus.getSanPhamByBarcode(code);
+        if (sp != null) {
+            maSPDangChonLieu = sp.getId();
+            tenSPDangChonLieu = sp.getTen();
+            dvtDangChonLieu = sp.getDonViDoCoBan();
+            
+            Object[] uomMin = bus.getDonViNhoNhat(sp.getId());
+            giaDangChonLieu = (uomMin != null) ? (Double)uomMin[1] : sp.getGiaBan();
+            
+            lblDVTLieu.setText(dvtDangChonLieu);
+            lblGiaLieu.setText(String.format("%,.0f đ", giaDangChonLieu));
+            cbTimKiemLieuNangCao.hidePopup();
+            
+            themThuocVaoDocLieu();
+            txtSearchLieuNangCao.setText("");
+        } else {
+            thucHienAutocompleteLieu();
+        }
     }
 
     private void scheduleLieuAuto() {
@@ -3150,7 +3252,9 @@ public class ManHinhSanPham extends JPanel {
     private void thucHienAutocompleteLieu() {
         String kw = txtSearchLieuNangCao.getText(); if (kw == null || kw.trim().length() < 2) return;
         BUS_SanPham bus = new BUS_SanPham();
-        List<Object[]> res = bus.timKiemSanPhamBan(kw.trim()); cacheKetQuaTimKiemLieu = res;
+        // FIX #9: dùng timKiemThuocChoMauLieu (không cần tồn kho) thay vì timKiemSanPhamBan
+        // timKiemSanPhamBan JOIN LoHang → thuốc hết kho hoặc chưa nhập kho sẽ không tìm được
+        List<Object[]> res = bus.timKiemThuocChoMauLieu(kw.trim()); cacheKetQuaTimKiemLieu = res;
         dangCapNhatBangLieu = true; cbTimKiemLieuNangCao.removeAllItems(); cbTimKiemLieuNangCao.addItem(kw);
         if (res.isEmpty()) { cbTimKiemLieuNangCao.addItem("<Không tìm thấy thuốc>"); } 
         else {
@@ -3172,22 +3276,72 @@ public class ManHinhSanPham extends JPanel {
     }
 
     private void themThuocVaoDocLieu() {
-        if (maSPDangChonLieu == null) { JOptionPane.showMessageDialog(this, "Vui lòng chọn thuốc hợp lệ!"); return; }
+        if (maSPDangChonLieu == null) { 
+            JOptionPane.showMessageDialog(this, "Vui lòng chọn một loại thuốc hợp lệ từ danh sách tìm kiếm!", "Lưu ý", JOptionPane.WARNING_MESSAGE); 
+            return; 
+        }
         for (SanPham.ChiTietLieu ct : dsChiTietLieuLuuTru) {
-            if (ct.getSanPhamId().equals(maSPDangChonLieu)) { JOptionPane.showMessageDialog(this, "Thuốc này đã có mặt tại danh sách phối liều!"); return; }
+            if (ct.getSanPhamId().equals(maSPDangChonLieu)) { 
+                JOptionPane.showMessageDialog(this, "Thuốc này đã tồn tại trong danh sách phối liều lượng!", "Trùng lặp", JOptionPane.WARNING_MESSAGE); 
+                return; 
+            }
         }
         try {
-            double s = Double.parseDouble(txtSangLieu.getText()), t = Double.parseDouble(txtTruaLieu.getText()), c = Double.parseDouble(txtChieuLieu.getText()), o = Double.parseDouble(txtToiLieu.getText());
-            int n = Integer.parseInt(txtSoNgayLieu.getText()); String cd = cbCachDungLieuNangCao.getSelectedItem().toString();
+            double s = Double.parseDouble(txtSangLieu.getText().trim());
+            double t = Double.parseDouble(txtTruaLieu.getText().trim());
+            double c = Double.parseDouble(txtChieuLieu.getText().trim());
+            double o = Double.parseDouble(txtToiLieu.getText().trim());
+            int n = Integer.parseInt(txtSoNgayLieu.getText().trim());
+            
+            if (s < 0 || t < 0 || c < 0 || o < 0 || n <= 0) {
+                JOptionPane.showMessageDialog(this, "Số lượng dùng các buổi và số ngày dùng thuốc phải lớn hơn hoặc bằng 0!", "Sai dữ liệu", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            // FIX #8: chặn trường hợp tất cả buổi đều = 0 — tổng liều phải > 0
+            if ((s + t + c + o) <= 0) {
+                JOptionPane.showMessageDialog(this,
+                    "Ít nhất một buổi (Sáng / Trưa / Chiều / Tối) phải có liều lượng > 0!\nKhông thể thêm thuốc với tổng liều = 0.",
+                    "Thiếu liều lượng", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            
+            String cd = cbCachDungLieuNangCao.getSelectedItem() != null ? cbCachDungLieuNangCao.getSelectedItem().toString() : "Sau ăn 30 phút";
             SanPham.ChiTietLieu ct = new SanPham.ChiTietLieu(comboIdDangSua, maSPDangChonLieu, tenSPDangChonLieu, dvtDangChonLieu, s, t, c, o, cd, n, giaDangChonLieu);
-            dsChiTietLieuLuuTru.add(ct); HienThiDongChiTietMoiLenBang(ct); capNhatTongTienLieuHienTai();
-        } catch (Exception ex) { JOptionPane.showMessageDialog(this, "Vui lòng nhập đúng định dạng số lượng liều lượng!"); }
+            
+            BUS_SanPham bus = new BUS_SanPham();
+            int tonKhoConLai = bus.getSoLuongTon(maSPDangChonLieu);
+            if (ct.getTongSoLuong() > tonKhoConLai) {
+                int option = JOptionPane.showConfirmDialog(this, 
+                    "<html>Sản phẩm <b>" + tenSPDangChonLieu + "</b> hiện tại chỉ còn tồn kho thực tế là: <b>" + tonKhoConLai + "</b> " + dvtDangChonLieu + ".<br>" +
+                    "Toa cắt liều này yêu cầu tổng cộng: <b>" + ct.getTongSoLuong() + "</b> " + dvtDangChonLieu + ".<br>" +
+                    "Bạn có chắc chắn muốn tiếp tục cưỡng bức phối loại thuốc này vào danh sách không?</html>", 
+                    "Cảnh báo vượt tồn kho", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+                if (option != JOptionPane.YES_OPTION) return;
+            }
+            
+            dsChiTietLieuLuuTru.add(ct); 
+            HienThiDongChiTietMoiLenBang(ct); 
+            capNhatTongTienLieuHienTai();
+            
+            txtSearchLieuNangCao.setText("");
+            maSPDangChonLieu = null;
+            lblDVTLieu.setText("---");
+            lblGiaLieu.setText("---");
+            txtSearchLieuNangCao.requestFocus();
+            
+        } catch (Exception ex) { 
+            JOptionPane.showMessageDialog(this, "Vui lòng kiểm tra và nhập đúng định dạng số lượng liều lượng các buổi!", "Sai định dạng số", JOptionPane.ERROR_MESSAGE); 
+        }
     }
 
     private void HienThiDongChiTietMoiLenBang(SanPham.ChiTietLieu ct) {
+        // FIX #6: nhớ trạng thái của caller — không cứng false cuối hàm
+        // Lý do: onChonMauLieuTuDanhSach() giữ flag=true trong vòng lặp, nhưng hàm con
+        // cứng đặt false sau mỗi lần → các addRow tiếp theo không còn được bảo vệ
+        boolean wasLocked = dangCapNhatBangLieu;
         dangCapNhatBangLieu = true;
         modChiTietLieu.addRow(new Object[]{ ct.getSanPhamId(), ct.getTenSanPham(), ct.getDvt(), ct.getSang(), ct.getTrua(), ct.getChieu(), ct.getToi(), ct.getCachDung(), ct.getSoNgay(), ct.getTongSoLuong(), String.format("%,.0f", ct.tinhThanhTien()), "Xóa" });
-        dangCapNhatBangLieu = false;
+        dangCapNhatBangLieu = wasLocked; // khôi phục đúng trạng thái của caller
     }
 
     private void onTableCellLieuChanged(javax.swing.event.TableModelEvent e) {
@@ -3196,16 +3350,46 @@ public class ManHinhSanPham extends JPanel {
         SanPham.ChiTietLieu ct = dsChiTietLieuLuuTru.get(row);
         try {
             dangCapNhatBangLieu = true;
+            // FIX #7: validate giá trị âm — chặn ngay tại đây, không để tính toán sai
             switch(col) {
-                case COL_L_SANG: ct.setSang(Double.parseDouble(modChiTietLieu.getValueAt(row, col).toString())); break;
-                case COL_L_TRUA: ct.setTrua(Double.parseDouble(modChiTietLieu.getValueAt(row, col).toString())); break;
-                case COL_L_CHIEU: ct.setChieu(Double.parseDouble(modChiTietLieu.getValueAt(row, col).toString())); break;
-                case COL_L_TOI: ct.setToi(Double.parseDouble(modChiTietLieu.getValueAt(row, col).toString())); break;
-                case COL_L_NGAY: ct.setSoNgay(Integer.parseInt(modChiTietLieu.getValueAt(row, col).toString())); break;
+                case COL_L_SANG: {
+                    double v = Double.parseDouble(modChiTietLieu.getValueAt(row, col).toString());
+                    if (v < 0) throw new NumberFormatException("Liều Sáng < 0");
+                    ct.setSang(v); break;
+                }
+                case COL_L_TRUA: {
+                    double v = Double.parseDouble(modChiTietLieu.getValueAt(row, col).toString());
+                    if (v < 0) throw new NumberFormatException("Liều Trưa < 0");
+                    ct.setTrua(v); break;
+                }
+                case COL_L_CHIEU: {
+                    double v = Double.parseDouble(modChiTietLieu.getValueAt(row, col).toString());
+                    if (v < 0) throw new NumberFormatException("Liều Chiều < 0");
+                    ct.setChieu(v); break;
+                }
+                case COL_L_TOI: {
+                    double v = Double.parseDouble(modChiTietLieu.getValueAt(row, col).toString());
+                    if (v < 0) throw new NumberFormatException("Liều Tối < 0");
+                    ct.setToi(v); break;
+                }
+                case COL_L_NGAY: {
+                    int n = Integer.parseInt(modChiTietLieu.getValueAt(row, col).toString());
+                    if (n <= 0) throw new NumberFormatException("Số ngày phải >= 1");
+                    ct.setSoNgay(n); break;
+                }
             }
             modChiTietLieu.setValueAt(ct.getTongSoLuong(), row, COL_L_TONG_SL);
             modChiTietLieu.setValueAt(String.format("%,.0f", ct.tinhThanhTien()), row, COL_L_THANH_TIEN);
-        } catch(Exception ignored) {} finally { dangCapNhatBangLieu = false; }
+        } catch(Exception ignored) {
+            // FIX #7: rollback — khôi phục giá trị hợp lệ trước đó lên ô vừa nhập sai
+            switch(col) {
+                case COL_L_SANG:  modChiTietLieu.setValueAt(ct.getSang(),   row, col); break;
+                case COL_L_TRUA:  modChiTietLieu.setValueAt(ct.getTrua(),   row, col); break;
+                case COL_L_CHIEU: modChiTietLieu.setValueAt(ct.getChieu(),  row, col); break;
+                case COL_L_TOI:   modChiTietLieu.setValueAt(ct.getToi(),    row, col); break;
+                case COL_L_NGAY:  modChiTietLieu.setValueAt(ct.getSoNgay(), row, col); break;
+            }
+        } finally { dangCapNhatBangLieu = false; }
         capNhatTongTienLieuHienTai();
     }
 
@@ -3225,27 +3409,68 @@ public class ManHinhSanPham extends JPanel {
         String id = mdlDanhSachLieuNangCao.getValueAt(r, 0).toString();
         BUS_SanPham bus = new BUS_SanPham(); SanPham.MauLieu m = bus.layComboByIdNangCao(id);
         if (m == null) return;
+        
+        dangCapNhatBangLieu = true; // Khóa giữ trạng thái, không cho phép gãy dòng dữ liệu
         comboIdDangSua = m.getComboId(); txtTenComboNangCao.setText(m.getTenCombo());
-        cbNhomBenhLieuNangCao.setSelectedItem(m.getNhomBenh()); txtGiaBanComboNangCao.setValue((long)m.getGiaBanCombo());
+        cbNhomBenhLieuNangCao.setSelectedItem(m.getNhomBenh()); 
+        txtGiaBanComboNangCao.setValue((long)m.getGiaBanCombo());
         txtGhiChuLieuNangCao.setText(m.getGhiChu()); lblComboIdNangCao.setText(m.getComboId());
         dsChiTietLieuLuuTru.clear(); modChiTietLieu.setRowCount(0);
         for (SanPham.ChiTietLieu ct : m.getDsChiTiet()) {
             dsChiTietLieuLuuTru.add(ct); HienThiDongChiTietMoiLenBang(ct);
         }
         capNhatTongTienLieuHienTai();
+        dangCapNhatBangLieu = false; // Mở khóa
     }
 
     private void luuMauLieuChuyenSau() {
-        String ten = txtTenComboNangCao.getText().trim(); String nb = cbNhomBenhLieuNangCao.getSelectedItem() != null ? cbNhomBenhLieuNangCao.getSelectedItem().toString() : "";
-        double gia = ((Number)txtGiaBanComboNangCao.getValue()).doubleValue(); String gc = txtGhiChuLieuNangCao.getText().trim();
-        if (ten.isEmpty() || dsChiTietLieuLuuTru.isEmpty()) { JOptionPane.showMessageDialog(this, "Vui lòng nhập tên mẫu và chọn ít nhất 1 loại thuốc!"); return; }
-        BUS_SanPham bus = new BUS_SanPham(); boolean ok;
+        String ten = txtTenComboNangCao.getText().trim(); 
+        String nb = cbNhomBenhLieuNangCao.getSelectedItem() != null ? cbNhomBenhLieuNangCao.getSelectedItem().toString() : "";
+        String gc = txtGhiChuLieuNangCao.getText().trim();
+        
+        if (ten.isEmpty()) { 
+            JOptionPane.showMessageDialog(this, "Vui lòng nhập tên cho mẫu thuốc phối liều (Combo) này!", "Thiếu dữ liệu", JOptionPane.WARNING_MESSAGE); 
+            txtTenComboNangCao.requestFocus();
+            return; 
+        }
+        if (dsChiTietLieuLuuTru.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Toa thuốc đang trống! Vui lòng tìm và phối ít nhất 1 loại thuốc vào toa trước khi lưu.", "Thiếu dữ liệu", JOptionPane.WARNING_MESSAGE);
+            txtSearchLieuNangCao.requestFocus();
+            return;
+        }
+        
+        double gia = 0;
+        Object giaTriOText = txtGiaBanComboNangCao.getValue();
+        if (giaTriOText instanceof Number) {
+            gia = ((Number) giaTriOText).doubleValue();
+        } else if (giaTriOText != null) {
+            try {
+                gia = Double.parseDouble(giaTriOText.toString().replace(",", "").replace(".", "").trim());
+            } catch (Exception ignored) {}
+        }
+        
+        if (gia < 0) {
+            JOptionPane.showMessageDialog(this, "Giá bán của mẫu combo thuốc cắt liều không được nhỏ hơn 0 đ!", "Dữ liệu lỗi", JOptionPane.ERROR_MESSAGE);
+            txtGiaBanComboNangCao.requestFocus();
+            return;
+        }
+
+        BUS_SanPham bus = new BUS_SanPham(); 
+        boolean ok;
         if (comboIdDangSua == null) {
-            String newId = bus.themMauMoiNangCao(ten, nb, gia, gc, dsChiTietLieuLuuTru); ok = (newId != null); if (ok) comboIdDangSua = newId;
+            String newId = bus.themMauMoiNangCao(ten, nb, gia, gc, dsChiTietLieuLuuTru); 
+            ok = (newId != null); 
+            if (ok) comboIdDangSua = newId;
         } else {
             ok = bus.capNhatMauNangCao(comboIdDangSua, ten, nb, gia, gc, dsChiTietLieuLuuTru);
         }
-        if (ok) { JOptionPane.showMessageDialog(this, "Đã bảo lưu cấu trúc phối mẫu liều thành công!"); loadDanhSachComboNangCaoRaGiaoDien(); }
+        
+        if (ok) { 
+            JOptionPane.showMessageDialog(this, "Hệ thống đã bảo lưu cấu trúc phối mẫu liều thuốc thành công!", "Thành công", JOptionPane.INFORMATION_MESSAGE); 
+            loadDanhSachComboNangCaoRaGiaoDien(); 
+        } else {
+            JOptionPane.showMessageDialog(this, "Lưu thất bại! Vui lòng kiểm tra lại đường truyền kết nối SQL Server.", "Lỗi kết nối", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     private void xoaMauLieuHienTai() {

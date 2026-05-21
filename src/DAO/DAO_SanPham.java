@@ -23,11 +23,13 @@ public class DAO_SanPham {
     public List<Object[]> layDanhSachSanPhamChoBang() {
         List<Object[]> ds = new ArrayList<>();
 
+        // FIX #5: thêm tenVietTat để doSearch() lọc được theo tên viết tắt (index [10])
         String sql = "SELECT id, ten, danhMuc, ISNULL(hoatChat,'') AS hoatChat, dang, " +
                 "ISNULL(nhaSanXuat,'Khác') AS nhaSanXuat, ISNULL(thueVAT,0) AS thueVAT, " +
                 "ISNULL(giaBan,0) AS giaBan, " +
                 "ISNULL(maVach,'') AS maVach, " +
-                "ISNULL(nhomBenhLy,'') AS nhomBenhLy " +
+                "ISNULL(nhomBenhLy,'') AS nhomBenhLy, " +
+                "ISNULL(tenVietTat,'') AS tenVietTat " +
                 "FROM SanPham " +
                 "WHERE ISNULL(trangThai,'HOAT_DONG') != 'AN'";
 
@@ -51,7 +53,8 @@ public class DAO_SanPham {
                         vat,
                         giaBan,
                         rs.getString("maVach"),
-                        rs.getString("nhomBenhLy")
+                        rs.getString("nhomBenhLy"),
+                        rs.getString("tenVietTat")  // [10] — dùng cho doSearch() lọc tên viết tắt
                 });
             }
 
@@ -1233,6 +1236,48 @@ public class DAO_SanPham {
         return false;
     }
 
+    // FIX #1/#9: method tìm kiếm riêng cho mẫu liều — KHÔNG lọc theo tồn kho
+    // Lý do: timKiemSanPhamBan dùng JOIN LoHang → thuốc chưa có lô hoặc hết kho
+    // sẽ không bao giờ xuất hiện trong ô tìm thuốc cắt liều.
+    // Mẫu liều là template, không cần tồn kho thực tế.
+    public List<Object[]> timKiemThuocChoMauLieu(String text) {
+        List<Object[]> ds = new ArrayList<>();
+        if (text == null || text.trim().isEmpty()) return ds;
+        String sql =
+            "SELECT DISTINCT sp.id, sp.ten, " +
+            "  ISNULL(sp.donViDoCoBan, 'Viên') AS donViHienThi, " +
+            "  ISNULL(sp.giaBan, 0)             AS giaHienThi, " +
+            "  ISNULL(sp.thueVAT, 0)            AS thueVAT, " +
+            "  ISNULL(sp.danhMuc, '')            AS danhMuc " +
+            "FROM SanPham sp " +
+            "WHERE ISNULL(sp.trangThai,'HOAT_DONG') != 'AN' " +
+            "  AND (sp.ten LIKE ? OR sp.tenVietTat LIKE ? OR sp.hoatChat LIKE ? " +
+            "       OR sp.id LIKE ? " +
+            "       OR ',' + ISNULL(sp.maVach,'') + ',' LIKE ?) " +
+            "ORDER BY sp.ten ASC";
+        try (Connection con = ConnectDB.getInstance().getConnection();
+             PreparedStatement pst = con.prepareStatement(sql)) {
+            String p    = "%" + text.trim() + "%";
+            String pMv  = "%," + text.trim() + ",%";
+            pst.setString(1, p); pst.setString(2, p); pst.setString(3, p);
+            pst.setString(4, p); pst.setString(5, pMv);
+            try (ResultSet rs = pst.executeQuery()) {
+                while (rs.next()) {
+                    ds.add(new Object[]{
+                        rs.getString("id"),
+                        rs.getString("ten"),
+                        rs.getString("donViHienThi"),
+                        rs.getDouble("giaHienThi"),
+                        0,   // tồn kho — không cần cho mẫu liều
+                        mapDanhMucToLabel(rs.getString("danhMuc")),
+                        rs.getDouble("thueVAT")
+                    });
+                }
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return ds;
+    }
+
     // =========================================================================
     // VỊ TRÍ THUỐC — gộp vào DAO_SanPham, dùng SanPham.ViTriThuoc (inner class)
     // =========================================================================
@@ -1387,7 +1432,8 @@ public class DAO_SanPham {
         if (maVach == null || maVach.trim().isEmpty()) return null;
         String sql = "SELECT DISTINCT sp.id, sp.ten, sp.donViDoCoBan, ISNULL(sp.giaBan,0) AS giaBan, ISNULL(sp.thueVAT,0) AS thueVAT, ISNULL(sp.nhomBenhLy,'') AS nhomBenhLy FROM SanPham sp LEFT JOIN DonViDoLuong dv ON sp.id = dv.sanPhamId WHERE ISNULL(sp.trangThai,'HOAT_DONG') != 'AN' AND (dv.maVach = ? OR sp.id = ? OR ',' + ISNULL(sp.maVach,'') + ',' LIKE ?)";
         try (Connection con = ConnectDB.getInstance().getConnection(); PreparedStatement pst = con.prepareStatement(sql)) {
-            pst.setString(1, maVach.trim()); pst.setString(2, maVach.trim()); pst.setString(3, "%," + maVach.trim() + "%");
+            // FIX #4: phải có dấu phẩy cả 2 đầu — tránh "123" khớp nhầm "123456"
+            pst.setString(1, maVach.trim()); pst.setString(2, maVach.trim()); pst.setString(3, "%," + maVach.trim() + ",%");
             try (ResultSet rs = pst.executeQuery()) {
                 if (rs.next()) {
                     SanPham sp = new SanPham(); sp.setId(rs.getString("id")); sp.setTen(rs.getString("ten")); sp.setDonViDoCoBan(rs.getString("donViDoCoBan")); sp.setGiaBan(rs.getDouble("giaBan")); sp.setThueVAT(rs.getDouble("thueVAT")); sp.setNhomBenhLy(rs.getString("nhomBenhLy")); return sp;
@@ -1420,17 +1466,32 @@ public class DAO_SanPham {
     }
 
     public SanPham.MauLieu layComboByIdNangCao(String comboId) {
-        String sql = "SELECT comboId, tenCombo, ISNULL(nhomBenh,'') AS nhomBenh, ISNULL(giaBanCombo,0) AS giaBanCombo, ISNULL(m.ghiChu,'') AS ghiChu FROM MauLieu WHERE comboId = ?";
-        try (Connection con = ConnectDB.getInstance().getConnection(); PreparedStatement pst = con.prepareStatement(sql)) {
+        // FIX #2: tách thành 2 bước riêng — đóng RS trước, rồi mới mở statement thứ hai
+        // Lý do: SQL Server JDBC tắt MARS theo mặc định → 2 ResultSet mở đồng thời trên
+        // cùng 1 connection → SQLServerException "The result set is closed"
+        String sql = "SELECT comboId, tenCombo, ISNULL(nhomBenh,'') AS nhomBenh, ISNULL(giaBanCombo,0) AS giaBanCombo, ISNULL(m.ghiChu,'') AS ghiChu FROM MauLieu m WHERE comboId = ?";
+        SanPham.MauLieu result = null;
+        try (Connection con = ConnectDB.getInstance().getConnection();
+             PreparedStatement pst = con.prepareStatement(sql)) {
             pst.setString(1, comboId);
+            // Bước 1: lấy header — đóng RS bằng try-with-resources
             try (ResultSet rs = pst.executeQuery()) {
                 if (rs.next()) {
-                    SanPham.MauLieu m = new SanPham.MauLieu(rs.getString("comboId"), rs.getString("tenCombo"), rs.getString("nhomBenh"), rs.getDouble("giaBanCombo"), rs.getString("ghiChu"));
-                    m.setDsChiTiet(layChiTietTheoComboNangCao(comboId, con)); return m;
+                    result = new SanPham.MauLieu(
+                        rs.getString("comboId"),
+                        rs.getString("tenCombo"),
+                        rs.getString("nhomBenh"),
+                        rs.getDouble("giaBanCombo"),
+                        rs.getString("ghiChu")
+                    );
                 }
+            } // RS đóng hoàn toàn tại đây
+            // Bước 2: bây giờ mới an toàn mở statement thứ hai trên cùng connection
+            if (result != null) {
+                result.setDsChiTiet(layChiTietTheoComboNangCao(comboId, con));
             }
         } catch (SQLException e) { e.printStackTrace(); }
-        return null;
+        return result;
     }
 
     private List<SanPham.ChiTietLieu> layChiTietTheoComboNangCao(String comboId, Connection con) throws SQLException {
@@ -1490,17 +1551,50 @@ public class DAO_SanPham {
     }
 
     public boolean xoaMauNangCao(String comboId) {
-        try (Connection con = ConnectDB.getInstance().getConnection(); PreparedStatement pst = con.prepareStatement("DELETE FROM MauLieu WHERE comboId=?")) {
-            pst.setString(1, comboId); return pst.executeUpdate() > 0;
-        } catch (SQLException e) { e.printStackTrace(); return false; }
+        // FIX #3: dùng transaction + xóa ChiTietMauLieu trước, sau đó mới xóa MauLieu
+        // Lý do: nếu có FK constraint (hoặc không bật CASCADE DELETE) thì DELETE MauLieu
+        // sẽ ném lỗi FK violation — dữ liệu con bị để lại thành orphan records.
+        try (Connection con = ConnectDB.getInstance().getConnection()) {
+            con.setAutoCommit(false);
+            try {
+                // Bước 1: xóa chi tiết trước
+                try (PreparedStatement del1 = con.prepareStatement(
+                        "DELETE FROM ChiTietMauLieu WHERE comboId = ?")) {
+                    del1.setString(1, comboId);
+                    del1.executeUpdate();
+                }
+                // Bước 2: xóa header
+                int rows;
+                try (PreparedStatement del2 = con.prepareStatement(
+                        "DELETE FROM MauLieu WHERE comboId = ?")) {
+                    del2.setString(1, comboId);
+                    rows = del2.executeUpdate();
+                }
+                con.commit();
+                return rows > 0;
+            } catch (SQLException ex) {
+                con.rollback();
+                ex.printStackTrace();
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return false;
     }
 
     public String sinhComboIdMoi() {
         String today = new java.text.SimpleDateFormat("yyyyMMdd").format(new java.util.Date());
-        String sql = "SELECT MAX(comboId) FROM MauLieu WHERE comboId LIKE 'CB-" + today + "-%'";
-        try (Connection con = ConnectDB.getInstance().getConnection(); PreparedStatement pst = con.prepareStatement(sql); ResultSet rs = pst.executeQuery()) {
-            if (rs.next() && rs.getString(1) != null) {
-                int seq = Integer.parseInt(rs.getString(1).split("-")[2]) + 1; return String.format("CB-%s-%04d", today, seq);
+        // FIX #10: dùng PreparedStatement thay vì string concat trực tiếp vào SQL
+        String sql = "SELECT MAX(comboId) FROM MauLieu WHERE comboId LIKE ?";
+        try (Connection con = ConnectDB.getInstance().getConnection();
+             PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setString(1, "CB-" + today + "-%");
+            try (ResultSet rs = pst.executeQuery()) {
+                if (rs.next() && rs.getString(1) != null) {
+                    String[] parts = rs.getString(1).split("-");
+                    if (parts.length >= 3) {
+                        int seq = Integer.parseInt(parts[2]) + 1;
+                        return String.format("CB-%s-%04d", today, seq);
+                    }
+                }
             }
         } catch (Exception e) { e.printStackTrace(); }
         return String.format("CB-%s-0001", today);

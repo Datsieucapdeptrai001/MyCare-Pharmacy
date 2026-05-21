@@ -987,6 +987,142 @@ public class TaoHoaDon extends JDialog {
             ex.printStackTrace();
         }
     }
+    public void thucThiDoThuocTuLieuVaoGio_TuComboId(String comboId) {
+        if (comboId == null || comboId.trim().isEmpty()) return;
+ 
+        try {
+            BUS.BUS_SanPham busSP = new BUS.BUS_SanPham();
+ 
+            // ── Bước 1: lấy đầy đủ combo từ DB ──────────────────────────────
+            Entity.SanPham.MauLieu mau = busSP.layComboByIdNangCao(comboId.trim());
+            if (mau == null) {
+                showCustomNotification("CẢNH BÁO",
+                    "Không tìm thấy combo này trong hệ thống.", "WARNING");
+                return;
+            }
+            if (mau.getDsChiTiet() == null || mau.getDsChiTiet().isEmpty()) {
+                showCustomNotification("CẢNH BÁO",
+                    "Combo «" + mau.getTenCombo() + "» chưa có thuốc nào.", "WARNING");
+                return;
+            }
+ 
+            // ── Bước 2: kiểm tra combo đã ở trong hóa đơn chưa ──────────────
+            String headerName = "[LIỀU] " + mau.getTenCombo().toUpperCase();
+            for (int i = 0; i < productModel.getRowCount(); i++) {
+                if (productModel.getValueAt(i, 0).toString().equals(headerName)) {
+                    showCustomNotification("THÔNG BÁO",
+                        "Combo «" + mau.getTenCombo() + "» đã có trong hóa đơn rồi!", "WARNING");
+                    return;
+                }
+            }
+ 
+            // ── Bước 3: tính số ngày lớn nhất trong combo để hiện ở dòng header ─
+            int soNgayMax = mau.getDsChiTiet().stream()
+                .mapToInt(Entity.SanPham.ChiTietLieu::getSoNgay)
+                .max().orElse(0);
+ 
+            // ── Bước 4: thêm dòng tiêu đề [LIỀU] vào bảng ───────────────────
+            productModel.addRow(new Object[]{
+                headerName,                 // [0] Tên tiêu đề — được nhận dạng bởi recalculate
+                "Liều",                     // [1] ĐVT
+                "",                         // [2] Lô/HSD
+                String.valueOf(soNgayMax),  // [3] Số lượng hiển thị = số ngày dùng
+                "0đ",                       // [4] Đơn giá (sẽ cập nhật thành tổng ở cột 6)
+                "0%",                       // [5] KM%
+                "0đ",                       // [6] Thành tiền (sẽ cập nhật cuối)
+                "",                         // [7] nút xóa
+                "0%",                       // [8] VAT ẩn
+                "1"                         // [9] Base qty ẩn
+            });
+            int headerRowIndex = productModel.getRowCount() - 1;
+ 
+            // ── Bước 5: duyệt từng thuốc con trong combo ─────────────────────
+            long tongTienCombo = 0;
+ 
+            for (Entity.SanPham.ChiTietLieu ct : mau.getDsChiTiet()) {
+                String tenSP   = ct.getTenSanPham();
+                String dvt     = ct.getDvt();
+                int    tongSL  = ct.getTongSoLuong();   // = (S+T+Ch+To) × soNgay
+ 
+                // Giá ban đầu từ combo (lúc tạo mẫu)
+                long   giaBan  = (long) ct.getGiaDonVi();
+                String vatStr  = "0%";
+                String loHsd   = "Chưa có lô";
+ 
+                // Cập nhật giá thực tế + lô FEFO từ DB (ưu tiên hơn giá lưu trong mẫu)
+                try {
+                    java.util.List<Object[]> ketQua = busSP.timKiemSanPhamBan(tenSP);
+                    // timKiemSanPhamBan trả về:
+                    // [0]=maSP [1]=ten [2]=donViDoCoBan [3]=soLuongTon
+                    // [4]=dvt  [5]=thueVAT [6]=giaBan [7]=soLoHang [8]=hsd
+                    if (ketQua != null && !ketQua.isEmpty()) {
+                        Object[] first = ketQua.get(0);
+ 
+                        // Giá thực từ DB
+                        if (first.length > 6 && first[6] != null) {
+                            try { giaBan = (long) Double.parseDouble(first[6].toString()); }
+                            catch (Exception ignored) {}
+                        }
+ 
+                        // VAT
+                        if (first.length > 5 && first[5] != null) {
+                            try {
+                                double vatVal = Double.parseDouble(first[5].toString());
+                                if (vatVal > 0) {
+                                    if (vatVal < 1) vatVal *= 100; // 0.05 → 5
+                                    vatStr = (int) vatVal + "%";
+                                }
+                            } catch (Exception ignored) {}
+                        }
+ 
+                        // Lô / HSD (FEFO — cận hạn lên đầu đã được sort trong query)
+                        String lo  = (first.length > 7 && first[7] != null) ? first[7].toString() : "";
+                        String hsd = (first.length > 8 && first[8] != null) ? first[8].toString() : "";
+                        if (!lo.isEmpty()) loHsd = lo + (!hsd.isEmpty() ? " — " + hsd : "");
+                    }
+                } catch (Exception ignored) {}
+ 
+                long thanhTien = giaBan * tongSL;
+                tongTienCombo += thanhTien;
+ 
+                // Thêm dòng thuốc con (prefix CHILD_ITEM để recalculate nhận dạng)
+                productModel.addRow(new Object[]{
+                    "CHILD_ITEM " + tenSP,
+                    dvt,
+                    loHsd,
+                    String.valueOf(tongSL),
+                    String.format("%,d", giaBan).replace(',', '.') + "đ",
+                    "0%",
+                    String.format("%,d", thanhTien).replace(',', '.') + "đ",
+                    "",
+                    vatStr,
+                    // Base qty = liều/lần (S+T+Ch+To), dùng để tính lại khi đổi số ngày
+                    String.valueOf((int)(ct.getSang() + ct.getTrua() + ct.getChieu() + ct.getToi()))
+                });
+            }
+ 
+            // ── Bước 6: cập nhật tổng tiền vào dòng tiêu đề ─────────────────
+            productModel.setValueAt(
+                String.format("%,d", tongTienCombo).replace(',', '.') + "đ",
+                headerRowIndex, 6
+            );
+ 
+            isTableUpdating = false;
+            recalculateTotals();
+ 
+            showCustomNotification(
+                "ĐÃ THÊM COMBO",
+                "Đã thêm «" + mau.getTenCombo() + "» ("
+                    + mau.getDsChiTiet().size() + " loại thuốc) vào hóa đơn!",
+                "SUCCESS"
+            );
+ 
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            showCustomNotification("LỖI",
+                "Không thể load combo: " + ex.getMessage(), "ERROR");
+        }
+    }
 
     private void themMotThuocTuLieuVaoBang(String name, String unit, int slThem, long giaBan, String vat, String chosenLoHsd) {
         boolean daTonTai = false;

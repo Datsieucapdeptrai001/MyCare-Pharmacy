@@ -17,6 +17,12 @@ public class BUS_SanPham {
         return daoSanPham.timKiemSanPhamDoiTra(tuKhoa);
     }
 
+    // FIX #9: method riêng cho tìm thuốc phối vào mẫu liều (không cần tồn kho)
+    public List<Object[]> timKiemThuocChoMauLieu(String text) {
+        if (isBlank(text)) return new ArrayList<>();
+        return daoSanPham.timKiemThuocChoMauLieu(text.trim());
+    }
+
     public List<Object[]> timKiemSanPhamBan(String text) {
         if (isBlank(text))
             return new ArrayList<>();
