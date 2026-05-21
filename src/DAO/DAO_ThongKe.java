@@ -20,7 +20,8 @@ public class DAO_ThongKe {
             String dateCol, String nvCol) {
         if (filter == null)
             return;
-            
+        sql.append(" AND (hd.ghiChu IS NULL OR (hd.ghiChu NOT LIKE N'%Lưu nháp%' AND hd.ghiChu NOT LIKE N'%Đã hủy%'))");
+
         // 1. Lọc theo nhân viên
         if (filter.maNV != null && !filter.maNV.isEmpty()) {
             sql.append(" AND ").append(nvCol).append(" = ?");
@@ -76,7 +77,8 @@ public class DAO_ThongKe {
 
     public int demSoLuongHoaDon(LocalDateTime tuNgay, LocalDateTime denNgay) {
         int soLuong = 0;
-        String sql = "SELECT COUNT(*) as TongSo FROM HoaDon WHERE ngayLapHD BETWEEN ? AND ? AND loaiHD = 'BAN_HANG'";
+        String sql = "SELECT COUNT(*) as TongSo FROM HoaDon WHERE ngayLapHD BETWEEN ? AND ? AND loaiHD = 'BAN_HANG'" +
+                     " AND (ghiChu IS NULL OR (ghiChu NOT LIKE N'%Lưu nháp%' AND ghiChu NOT LIKE N'%Đã hủy%'))";
         try (PreparedStatement pst = getConn().prepareStatement(sql)) {
             pst.setTimestamp(1, Timestamp.valueOf(tuNgay));
             pst.setTimestamp(2, Timestamp.valueOf(denNgay));
@@ -108,6 +110,7 @@ public class DAO_ThongKe {
                 + "JOIN SanPham sp ON ct.sanPhamId = sp.id "
                 + "WHERE hd.ngayLapHD BETWEEN ? AND ? "
                 + "  AND hd.loaiHD IN ('BAN_HANG', 'TRA_HANG', 'DOI_HANG') "
+                + "  AND (hd.ghiChu IS NULL OR (hd.ghiChu NOT LIKE N'%Lưu nháp%' AND hd.ghiChu NOT LIKE N'%Đã hủy%')) "
                 + "GROUP BY hd.id, hd.ghiChu, hd.loaiHD";
         try (PreparedStatement pst = getConn().prepareStatement(sql)) {
             pst.setTimestamp(1, Timestamp.valueOf(tuNgay));
@@ -173,7 +176,8 @@ public class DAO_ThongKe {
             "          AND pbl_cost.sanPhamId = ct.sanPhamId " +
             "          AND pbl_cost.donViDoLuongId = ct.donViDoLuongId " +
             "WHERE hd.ngayLapHD BETWEEN ? AND ? " +
-            "  AND hd.loaiHD IN ('BAN_HANG', 'TRA_HANG', 'DOI_HANG')";
+            "  AND hd.loaiHD IN ('BAN_HANG', 'TRA_HANG', 'DOI_HANG')" +
+            "  AND (hd.ghiChu IS NULL OR (hd.ghiChu NOT LIKE N'%Lưu nháp%' AND hd.ghiChu NOT LIKE N'%Đã hủy%'))";
         try (PreparedStatement pst = getConn().prepareStatement(sql)) {
             pst.setTimestamp(1, Timestamp.valueOf(tuNgay));
             pst.setTimestamp(2, Timestamp.valueOf(denNgay));
@@ -299,6 +303,7 @@ public class DAO_ThongKe {
                 + "JOIN DonViDoLuong dvl ON ct.donViDoLuongId=dvl.id AND ct.sanPhamId=dvl.sanPhamId "
                 + "JOIN SanPham sp ON ct.sanPhamId = sp.id "
                 + "WHERE hd.ngayLapHD BETWEEN ? AND ? AND hd.loaiHD = 'BAN_HANG' "
+                + "AND (hd.ghiChu IS NULL OR (hd.ghiChu NOT LIKE N'%Lưu nháp%' AND hd.ghiChu NOT LIKE N'%Đã hủy%')) "
                 + "GROUP BY hd.id, hd.ghiChu";
         try (PreparedStatement ps = getConn().prepareStatement(sql)) {
             ps.setTimestamp(1, Timestamp.valueOf(tuNgay));
@@ -321,6 +326,7 @@ public class DAO_ThongKe {
                 + "JOIN DonViDoLuong dvl ON ct.donViDoLuongId=dvl.id AND ct.sanPhamId=dvl.sanPhamId "
                 + "JOIN SanPham sp ON ct.sanPhamId = sp.id "
                 + "WHERE hd.nhanVienId=? AND hd.ngayLapHD>=? AND hd.loaiHD='BAN_HANG'" + ptttCond
+                + " AND (hd.ghiChu IS NULL OR (hd.ghiChu NOT LIKE N'%Lưu nháp%' AND hd.ghiChu NOT LIKE N'%Đã hủy%'))"
                 + " GROUP BY hd.id, hd.ghiChu";
         try (PreparedStatement ps = getConn().prepareStatement(sql)) {
             ps.setString(1, maNV);
@@ -2100,7 +2106,8 @@ public class DAO_ThongKe {
                  + "FROM ChiTietHoaDon ct "
                  + "JOIN HoaDon hd ON ct.hoaDonId = hd.id "
                  + "JOIN SanPham sp ON ct.sanPhamId = sp.id "
-                 + "WHERE sp.ten = ? AND hd.loaiHD = 'BAN_HANG'";
+                 + "WHERE sp.ten = ? AND hd.loaiHD = 'BAN_HANG'" +
+                 " AND (hd.ghiChu IS NULL OR (hd.ghiChu NOT LIKE N'%Lưu nháp%' AND hd.ghiChu NOT LIKE N'%Đã hủy%'))";
          try (PreparedStatement ps = getConn().prepareStatement(sql)) {
              ps.setInt(1, currentQ);
              ps.setInt(2, year);
@@ -2125,7 +2132,8 @@ public class DAO_ThongKe {
                  + "WHERE sp.ten = ? "
                  + "  AND MONTH(hd.ngayLapHD) = ? "
                  + "  AND YEAR(hd.ngayLapHD)  = ? "
-                 + "  AND hd.loaiHD = 'BAN_HANG'";
+                 + "  AND hd.loaiHD = 'BAN_HANG'"
+                 + "  AND (hd.ghiChu IS NULL OR (hd.ghiChu NOT LIKE N'%Lưu nháp%' AND hd.ghiChu NOT LIKE N'%Đã hủy%'))";
          try (PreparedStatement ps = getConn().prepareStatement(sql)) {
              ps.setString(1, tenSP);
              ps.setInt(2, thang);
@@ -2159,6 +2167,7 @@ public class DAO_ThongKe {
     	        + "LEFT JOIN SanPham sp ON ct.sanPhamId = sp.id "
     	        + "LEFT JOIN DonViDoLuong dvl ON ct.donViDoLuongId = dvl.id AND ct.sanPhamId = dvl.sanPhamId "
     	        + "WHERE 1=1 "
+    	        + "AND (hd.ghiChu IS NULL OR (hd.ghiChu NOT LIKE N'%Lưu nháp%' AND hd.ghiChu NOT LIKE N'%Đã hủy%')) "
     	    );
 
     	    // Xây dựng câu lệnh WHERE dựa vào Filter

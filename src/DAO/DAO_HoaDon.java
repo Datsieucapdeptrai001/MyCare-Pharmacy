@@ -152,7 +152,11 @@ public class DAO_HoaDon {
                      "JOIN DonViDoLuong dv ON ct.donViDoLuongId = dv.id " +
                      "WHERE hd.nhanVienId = ? " +
                      "AND (hd.phuongThucThanhToan = 'TIEN_MAT' OR hd.phuongThucThanhToan = '0') " + 
-                     "AND hd.ngayLapHD >= ?";
+                     "AND hd.ngayLapHD >= ? " +
+                     // [FIX] Loại trừ hóa đơn nháp và đã hủy khỏi phép tính doanh thu
+                     "AND (hd.ghiChu IS NULL OR (" +
+                     "    hd.ghiChu NOT LIKE N'%Lưu nháp%' AND " +
+                     "    hd.ghiChu NOT LIKE N'%Đã hủy%'))";
         
         try (java.sql.Connection con = ConnectDB.getInstance().getConnection();
              java.sql.PreparedStatement pst = con.prepareStatement(sql)) {
@@ -1193,7 +1197,11 @@ try { if (con != null) con.setAutoCommit(true); } catch (SQLException e) { e.pri
                      "JOIN DonViDoLuong dv ON ct.donViDoLuongId = dv.id " +
                      "WHERE hd.nhanVienId = ? " +
                      "AND hd.phuongThucThanhToan = 0 " +
-                     "AND hd.ngayLapHD >= ?";
+                     "AND hd.ngayLapHD >= ? " +
+                     // [FIX] Loại trừ hóa đơn nháp và đã hủy khỏi phép tính tiền két
+                     "AND (hd.ghiChu IS NULL OR (" +
+                     "    hd.ghiChu NOT LIKE N'%Lưu nháp%' AND " +
+                     "    hd.ghiChu NOT LIKE N'%Đã hủy%'))";
         try (Connection con = ConnectDB.getInstance().getConnection();
              PreparedStatement pst = con.prepareStatement(sql)) {
             pst.setString(1, maNhanVien);
