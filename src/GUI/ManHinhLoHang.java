@@ -17,10 +17,7 @@ import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
 import java.awt.*;
-import java.awt.event.ItemEvent;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseMotionAdapter;
+import java.awt.event.*;
 import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -70,6 +67,11 @@ public class ManHinhLoHang extends JPanel {
     private JLabel lblExpired, lblNear, lblWarning, lblGood;
     private JLabel lblWarningBadge, lblTotal;
     private JButton btnTatCa, btnDuocBan, btnHetHan, btnTamNgung;
+    private JButton btnLamMoi;
+    private JButton btnLichSu;
+    private JButton btnKiemKeKho;
+    private JButton btnXuatKho;
+    private JButton btnThemLo;
     private JTable table;
     private DefaultTableModel tableModel;
     private JPanel pnlChiTietLo;
@@ -82,12 +84,14 @@ public class ManHinhLoHang extends JPanel {
         setBorder(new EmptyBorder(8, 8, 8, 8));
 
         add(createMainCard(), BorderLayout.CENTER);
+
+        setupPhimTatManHinhLoHang();
+
         TelexFix.applyDeep(this);
         loadDataFromDatabase();
         TelexFix.applyLater(this);
         TelexFix.hardFixTablesLater(this);
     }
-
     private JPanel createMainCard() {
         JPanel unifiedCard = new JPanel(new BorderLayout(0, 12));
         unifiedCard.setBackground(BG_CARD);
@@ -117,7 +121,94 @@ public class ManHinhLoHang extends JPanel {
 
         return unifiedCard;
     }
+    private void setupPhimTatManHinhLoHang() {
+        ganShortcutChoNut(btnLamMoi, "Làm mới", "Alt+R");
+        ganShortcutChoNut(btnLichSu, "Nhật ký", "Alt+J");
+        ganShortcutChoNut(btnKiemKeKho, "Kiểm kê", "Alt+K");
+        ganShortcutChoNut(btnXuatKho, "Xuất/Hủy", "Alt+X");
+        ganShortcutChoNut(btnThemLo, "Nhập lô", "Alt+N");
 
+        dangKyPhimTat("FOCUS_SEARCH", KeyEvent.VK_F, InputEvent.ALT_DOWN_MASK, () -> {
+            if (txtSearch != null) {
+                txtSearch.requestFocusInWindow();
+                txtSearch.selectAll();
+            }
+        });
+
+        dangKyPhimTat("REFRESH_LO_HANG", KeyEvent.VK_R, InputEvent.ALT_DOWN_MASK, () -> {
+            if (btnLamMoi != null) {
+                btnLamMoi.doClick();
+            }
+        });
+
+        dangKyPhimTat("OPEN_NHAT_KY", KeyEvent.VK_J, InputEvent.ALT_DOWN_MASK, () -> {
+            if (btnLichSu != null) {
+                btnLichSu.doClick();
+            }
+        });
+
+        dangKyPhimTat("OPEN_KIEM_KE", KeyEvent.VK_K, InputEvent.ALT_DOWN_MASK, () -> {
+            if (btnKiemKeKho != null) {
+                btnKiemKeKho.doClick();
+            }
+        });
+
+        dangKyPhimTat("OPEN_XUAT_KHO", KeyEvent.VK_X, InputEvent.ALT_DOWN_MASK, () -> {
+            if (btnXuatKho != null) {
+                btnXuatKho.doClick();
+            }
+        });
+
+        dangKyPhimTat("OPEN_NHAP_LO", KeyEvent.VK_N, InputEvent.ALT_DOWN_MASK, () -> {
+            if (btnThemLo != null) {
+                btnThemLo.doClick();
+            }
+        });
+
+        dangKyPhimTat("ESC_LO_HANG", KeyEvent.VK_ESCAPE, 0, () -> {
+            if (pnlChiTietLo != null && pnlChiTietLo.isVisible()) {
+                selectedDetailItem = null;
+                pnlChiTietLo.setVisible(false);
+                pnlChiTietLo.revalidate();
+                pnlChiTietLo.repaint();
+                return;
+            }
+
+            if (txtSearch != null && !txtSearch.getText().trim().isEmpty()) {
+                txtSearch.setText("");
+            }
+        });
+    }
+    private void dangKyPhimTat(String actionKey, int keyCode, int modifiers, Runnable action) {
+        InputMap inputMap = getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
+        ActionMap actionMap = getActionMap();
+
+        inputMap.put(KeyStroke.getKeyStroke(keyCode, modifiers), actionKey);
+
+        actionMap.put(actionKey, new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (action != null) {
+                    action.run();
+                }
+            }
+        });
+    }
+
+    private void ganShortcutChoNut(JButton button, String text, String shortcut) {
+        if (button == null) {
+            return;
+        }
+
+        String shortText = shortcut
+                .replace("Alt+", "")
+                .replace("Ctrl+", "")
+                .replace("Shift+", "");
+
+        button.setText(text + " [" + shortText + "]");
+        button.setToolTipText("Phím tắt: " + shortcut);
+        button.setIconTextGap(8);
+    }
     private JPanel createHeaderRow() {
         JPanel wrapper = new JPanel();
         wrapper.setLayout(new BoxLayout(wrapper, BoxLayout.X_AXIS));
@@ -170,12 +261,13 @@ public class ManHinhLoHang extends JPanel {
         searchField.setMaximumSize(new Dimension(220, 38));
         searchField.setMinimumSize(new Dimension(80, 38));
 
-        JButton btnLamMoi = createHoverButton("Làm mới", new Color(248, 250, 252), new Color(226, 232, 240),
+        btnLamMoi = createHoverButton("Làm mới", new Color(248, 250, 252), new Color(226, 232, 240),
                 TEXT_PRIMARY);
         btnLamMoi.setIcon(new MenuIcon("REFRESH"));
+        btnLamMoi.setIconTextGap(8);
         btnLamMoi.setBorder(new RoundedLineBorder(BORDER_COLOR, 1, 8));
-        btnLamMoi.setPreferredSize(new Dimension(106, 38));
-        btnLamMoi.setMaximumSize(new Dimension(106, 38));
+        btnLamMoi.setPreferredSize(new Dimension(135, 38));
+        btnLamMoi.setMaximumSize(new Dimension(135, 38));
         btnLamMoi.setMinimumSize(new Dimension(40, 38));
         btnLamMoi.addActionListener(e -> {
             txtSearch.setText("");
@@ -190,22 +282,23 @@ public class ManHinhLoHang extends JPanel {
             wrapper.requestFocus();
         });
 
-        JButton btnLichSu = createHoverButton("Nhật ký", new Color(248, 250, 252), new Color(226, 232, 240),
+        btnLichSu = createHoverButton("Nhật ký", new Color(248, 250, 252), new Color(226, 232, 240),
                 TEXT_PRIMARY);
         btnLichSu.setIcon(new MenuIcon("LIST"));
+        btnLichSu.setIconTextGap(8);
         btnLichSu.setBorder(new RoundedLineBorder(BORDER_COLOR, 1, 8));
-        btnLichSu.setPreferredSize(new Dimension(110, 38));
-        btnLichSu.setMaximumSize(new Dimension(110, 38));
+        btnLichSu.setPreferredSize(new Dimension(135, 38));
+        btnLichSu.setMaximumSize(new Dimension(135, 38));
         btnLichSu.setMinimumSize(new Dimension(40, 38));
         btnLichSu.addActionListener(e -> moManHinhNhatKyKho());
         
-        JButton btnKiemKeKho = new JButton("Kiểm kê kho");
+        btnKiemKeKho = createHoverButton("Kiểm kê", PRIMARY_BLUE, PRIMARY_BLUE_HOVER, Color.WHITE);
+        btnKiemKeKho.setIcon(new MenuIcon("KIEM_KE_KHO"));
+        btnKiemKeKho.setIconTextGap(8);
+        btnKiemKeKho.setPreferredSize(new Dimension(125, 38));
+        btnKiemKeKho.setMaximumSize(new Dimension(125, 38));
+        btnKiemKeKho.setMinimumSize(new Dimension(40, 38));
         btnKiemKeKho.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        btnKiemKeKho.setForeground(Color.WHITE);
-        btnKiemKeKho.setBackground(new Color(14, 116, 144));
-        btnKiemKeKho.setFocusPainted(false);
-        btnKiemKeKho.setBorder(new EmptyBorder(10, 18, 10, 18));
-        btnKiemKeKho.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
         btnKiemKeKho.addActionListener(e -> {
             Window owner = SwingUtilities.getWindowAncestor(this);
@@ -218,18 +311,20 @@ public class ManHinhLoHang extends JPanel {
             dialog.setVisible(true);
         });
         
-        JButton btnXuatKho = createHoverButton("Xuất / Hủy Kho", WARNING, new Color(234, 88, 12), Color.WHITE);
-        btnXuatKho.setIcon(new MenuIcon("MINUS"));
-        btnXuatKho.setPreferredSize(new Dimension(160, 38));
-        btnXuatKho.setMaximumSize(new Dimension(160, 38));
+        btnXuatKho = createHoverButton("Xuất/Hủy", WARNING, new Color(234, 88, 12), Color.WHITE);
+        btnXuatKho.setIcon(new MenuIcon("XUAT_KHO"));
+        btnXuatKho.setIconTextGap(8);
+        btnXuatKho.setPreferredSize(new Dimension(130, 38));
+        btnXuatKho.setMaximumSize(new Dimension(130, 38));
         btnXuatKho.setMinimumSize(new Dimension(40, 38));
         btnXuatKho.setFont(new Font("Segoe UI", Font.BOLD, 14));
         btnXuatKho.addActionListener(e -> moManHinhXuatKho());
 
-        JButton btnThemLo = createHoverButton("Nhập lô hàng", SUCCESS, SUCCESS_HOVER, Color.WHITE);
-        btnThemLo.setIcon(new MenuIcon("ADD"));
-        btnThemLo.setPreferredSize(new Dimension(150, 38));
-        btnThemLo.setMaximumSize(new Dimension(150, 38));
+        btnThemLo = createHoverButton("Nhập lô", SUCCESS, SUCCESS_HOVER, Color.WHITE);
+        btnThemLo.setIcon(new MenuIcon("NHAP_KHO"));
+        btnThemLo.setIconTextGap(8);
+        btnThemLo.setPreferredSize(new Dimension(125, 38));
+        btnThemLo.setMaximumSize(new Dimension(125, 38));
         btnThemLo.setMinimumSize(new Dimension(40, 38));
         btnThemLo.setFont(new Font("Segoe UI", Font.BOLD, 14));
         btnThemLo.addActionListener(e -> moManHinhNhapLoMoi());

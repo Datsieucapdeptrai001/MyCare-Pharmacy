@@ -129,11 +129,18 @@ public class BUS_PhieuNhapHang {
                 loHang,
                 nhanVienId.trim(),
                 safeNullable(nhaCungCapId),
-                safe(ghiChu));
+                safe(ghiChu)
+        );
     }
 
     public List<PhieuNhapHang> layDanhSachPhieuNhap() {
-        return daoPhieuNhapHang.layDanhSachPhieuNhap();
+        List<PhieuNhapHang> ds = daoPhieuNhapHang.layDanhSachPhieuNhap();
+
+        if (ds == null) {
+            return new ArrayList<>();
+        }
+
+        return ds;
     }
 
     public List<ChiTietPhieuNhapHang> layChiTietTheoPhieuNhap(String maPN) {
@@ -141,11 +148,146 @@ public class BUS_PhieuNhapHang {
             return new ArrayList<>();
         }
 
-        return daoPhieuNhapHang.layChiTietTheoPhieuNhap(maPN.trim());
+        List<ChiTietPhieuNhapHang> ds = daoPhieuNhapHang.layChiTietTheoPhieuNhap(maPN.trim());
+
+        if (ds == null) {
+            return new ArrayList<>();
+        }
+
+        return ds;
     }
 
+    /*
+     * Dùng cho màn hình lịch sử lô hàng.
+     *
+     * Chuẩn dữ liệu trả về cho GUI:
+     * row[0] = thời gian nhập
+     * row[1] = mã phiếu nhập
+     * row[2] = hành động
+     * row[3] = mã lô
+     * row[4] = tên sản phẩm
+     * row[5] = số lượng nhập
+     * row[6] = đơn giá nhập / đơn vị cơ bản
+     * row[7] = thành tiền
+     * row[8] = người thực hiện
+     * row[9] = đơn vị cơ bản: Viên / Hộp / Chai / Gói / Tuýp...
+     */
     public List<Object[]> layNhatKyLoHang() {
-        return daoPhieuNhapHang.layNhatKyLoHang();
+        List<Object[]> rawData = daoPhieuNhapHang.layNhatKyLoHang();
+        List<Object[]> result = new ArrayList<>();
+
+        if (rawData == null) {
+            return result;
+        }
+
+        for (Object[] row : rawData) {
+            if (row == null) {
+                continue;
+            }
+
+            Object thoiGian = getValue(row, 0);
+            Object maPhieuNhap = getValue(row, 1);
+            Object hanhDong = getValue(row, 2);
+            Object maLo = getValue(row, 3);
+            Object tenSanPham = getValue(row, 4);
+            Object soLuongNhap = getValue(row, 5);
+            Object donGiaNhap = getValue(row, 6);
+            Object thanhTien = getValue(row, 7);
+            Object nguoiThucHien = getValue(row, 8);
+
+            String donViCoBan = "";
+
+            /*
+             * Nếu DAO đã trả thêm đơn vị cơ bản ở row[9] thì dùng luôn.
+             */
+            if (row.length > 9) {
+                donViCoBan = safeObject(row[9]);
+            }
+
+            /*
+             * Nếu DAO chưa trả đơn vị thì đoán tạm từ tên sản phẩm.
+             * Nên sửa DAO để SELECT sp.donViDoCoBan cho chuẩn 100%.
+             */
+            if (isBlank(donViCoBan)) {
+                donViCoBan = layDonViCoBanTuTenSanPham(safeObject(tenSanPham));
+            }
+
+            result.add(new Object[]{
+                    thoiGian,
+                    maPhieuNhap,
+                    isBlank(safeObject(hanhDong)) ? "Nhập kho" : hanhDong,
+                    maLo,
+                    tenSanPham,
+                    soLuongNhap,
+                    donGiaNhap,
+                    thanhTien,
+                    nguoiThucHien,
+                    donViCoBan
+            });
+        }
+
+        return result;
+    }
+
+    /*
+     * Dùng nếu màn hình chi tiết phiếu nhập cần lấy đơn vị cơ bản rõ ràng hơn.
+     */
+    public String layDonViCoBanTuTenSanPham(String tenSanPham) {
+        if (tenSanPham == null) {
+            return "đơn vị";
+        }
+
+        String ten = tenSanPham.trim().toLowerCase();
+
+        if (ten.isEmpty()) {
+            return "đơn vị";
+        }
+
+        if (ten.contains("siro")
+                || ten.contains("xịt")
+                || ten.contains("rohto")
+                || ten.contains("osla")
+                || ten.contains("listerine")
+                || ten.contains("betadine")
+                || ten.contains("cerave")
+                || ten.contains("bioderma")
+                || ten.contains("toner")
+                || ten.contains("nước")
+                || ten.contains("chai")) {
+            return "Chai";
+        }
+
+        if (ten.contains("la roche")
+                || ten.contains("tuýp")
+                || ten.contains("tuyp")
+                || ten.contains("kem chống nắng")) {
+            return "Tuýp";
+        }
+
+        if (ten.contains("oresol")
+                || ten.contains("smecta")
+                || ten.contains("hapacol")
+                || ten.contains("phosphalugel")
+                || ten.contains("collagen")
+                || ten.contains("gói")) {
+            return "Gói";
+        }
+
+        if (ten.contains("kem")
+                || ten.contains("eucerin")
+                || ten.contains("hộp")) {
+            return "Hộp";
+        }
+
+        return "Viên";
+    }
+
+    private Object getValue(Object[] row, int index) {
+        if (row == null || index < 0 || index >= row.length) {
+            return null;
+        }
+
+        return row[index];
     }
 
     private boolean isBlank(String s) {
@@ -158,5 +300,9 @@ public class BUS_PhieuNhapHang {
 
     private String safeNullable(String s) {
         return s == null || s.trim().isEmpty() ? null : s.trim();
+    }
+
+    private String safeObject(Object obj) {
+        return obj == null ? "" : obj.toString().trim();
     }
 }
