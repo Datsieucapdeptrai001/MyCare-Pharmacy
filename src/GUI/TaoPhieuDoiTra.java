@@ -2022,9 +2022,9 @@ public class TaoPhieuDoiTra extends JDialog {
             @Override
             protected ImageIcon doInBackground() throws Exception {
                 // =============== ĐIỀN MÃ CỦA BẠN VÀO ĐÂY ===============
-                String clientId = "1afb5cca-f110-470d-a073-9f10bbfcd24b";
-                String apiKey = "85b2b6fa-b442-4ea8-9800-9947e218417d";
-                String checksumKey = "7a28013866c8bed8e8fd10557599cebf5ef61232a2e1f7b50637c24b7fd934de";
+                String clientId = "";
+                String apiKey = "";
+                String checksumKey = "";
                 // =========================================================
 
                 String cancelUrl = "https://localhost";
@@ -2167,8 +2167,8 @@ public class TaoPhieuDoiTra extends JDialog {
     private boolean kiemTraLichSuGiaoDichTuAPI(String maGiaoDich, long soTien) {
         try {
             // =============== ĐIỀN LẠI MÃ CỦA BẠN VÀO ĐÂY ===============
-            String clientId = "1afb5cca-f110-470d-a073-9f10bbfcd24b";
-            String apiKey = "85b2b6fa-b442-4ea8-9800-9947e218417d";
+            String clientId = "";
+            String apiKey = "";
             // =========================================================
 
             String apiUrl = "https://api-merchant.payos.vn/v2/payment-requests/" + maGiaoDich;
