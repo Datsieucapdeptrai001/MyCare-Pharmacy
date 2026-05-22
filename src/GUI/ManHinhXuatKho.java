@@ -19,10 +19,7 @@ import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
 import java.awt.*;
-import java.awt.event.KeyAdapter;
-import java.awt.event.KeyEvent;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
+import java.awt.event.*;
 import java.awt.geom.RoundRectangle2D;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -91,6 +88,9 @@ public class ManHinhXuatKho extends JPanel {
 
         add(createHeader(), BorderLayout.NORTH);
         add(createMainContent(), BorderLayout.CENTER);
+
+        setupPhimTatChucNang();
+
         TelexFix.applyDeep(this);
         addAncestorListener(new AncestorListener() {
             @Override
@@ -107,7 +107,52 @@ public class ManHinhXuatKho extends JPanel {
             }
         });
     }
+    private void setupPhimTatChucNang() {
+        dangKyPhimTat("XK_SCAN_QR_F2", KeyEvent.VK_F2, 0, this::showQRScannerDialog);
 
+        dangKyPhimTat("XK_KIEM_TRA_F3", KeyEvent.VK_F3, 0, this::kiemTraMaLo);
+
+        dangKyPhimTat("XK_MAX_F4", KeyEvent.VK_F4, 0, this::chucNangXuatMax);
+
+        dangKyPhimTat("XK_THEM_VAO_PHIEU_F5", KeyEvent.VK_F5, 0, this::themVaoDanhSach);
+
+        dangKyPhimTat("XK_LAM_MOI_F6", KeyEvent.VK_F6, 0, this::resetFormToanBo);
+
+        dangKyPhimTat("XK_XAC_NHAN_F10", KeyEvent.VK_F10, 0, this::hoanTatXuatKho);
+
+        dangKyPhimTat("XK_ESC", KeyEvent.VK_ESCAPE, 0, this::dongManHinhXuatKho);
+    }
+    private void dangKyPhimTat(String actionKey, int keyCode, int modifiers, Runnable action) {
+        InputMap inputMap = getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
+        ActionMap actionMap = getActionMap();
+
+        inputMap.put(KeyStroke.getKeyStroke(keyCode, modifiers), actionKey);
+
+        actionMap.put(actionKey, new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (action != null) {
+                    action.run();
+                }
+            }
+        });
+    }
+
+    private void dongManHinhXuatKho() {
+        if (popupSuggest != null && popupSuggest.isVisible()) {
+            popupSuggest.setVisible(false);
+            return;
+        }
+
+        Window owner = SwingUtilities.getWindowAncestor(this);
+
+        if (owner instanceof JDialog) {
+            owner.dispose();
+        } else {
+            resetFormToanBo();
+        }
+    }
+    
     private JPanel createHeader() {
         JPanel pnlHeader = new JPanel(new FlowLayout(FlowLayout.LEFT, 14, 10));
         pnlHeader.setBackground(PRIMARY_DARK);
@@ -160,12 +205,14 @@ public class ManHinhXuatKho extends JPanel {
 
         setupAutoSuggest();
 
-        JButton btnKiemTra = createOutlineButton("Kiểm tra", "CHECK_CIRCLE", TEXT_PRIMARY);
-        btnKiemTra.setPreferredSize(new Dimension(98, 36));
+        JButton btnKiemTra = createOutlineButton("Kiểm tra [F3]", "CHECK_CIRCLE", TEXT_PRIMARY);
+        btnKiemTra.setPreferredSize(new Dimension(120, 36));
+        btnKiemTra.setToolTipText("Phím tắt: F3");
         btnKiemTra.addActionListener(e -> kiemTraMaLo());
 
-        JButton btnScanQR = createHoverButton("Quét QR", "SEARCH", PRIMARY_BLUE, PRIMARY_HOVER, Color.WHITE);
-        btnScanQR.setPreferredSize(new Dimension(105, 36));
+        JButton btnScanQR = createHoverButton("Quét QR [F2]", "SEARCH", PRIMARY_BLUE, PRIMARY_HOVER, Color.WHITE);
+        btnScanQR.setPreferredSize(new Dimension(125, 36));
+        btnScanQR.setToolTipText("Phím tắt: F2");
         btnScanQR.addActionListener(e -> showQRScannerDialog());
 
         JPanel pnlMaLoBtns = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
@@ -195,8 +242,9 @@ public class ManHinhXuatKho extends JPanel {
             }
         });
 
-        JButton btnMax = createOutlineButton("MAX", null, PRIMARY_BLUE);
-        btnMax.setPreferredSize(new Dimension(58, 36));
+        JButton btnMax = createOutlineButton("MAX [F4]", null, PRIMARY_BLUE);
+        btnMax.setPreferredSize(new Dimension(90, 36));
+        btnMax.setToolTipText("Phím tắt: F4");
         btnMax.addActionListener(e -> chucNangXuatMax());
 
         JPanel pnlSLInput = new JPanel(new BorderLayout(5, 0));
@@ -237,8 +285,9 @@ public class ManHinhXuatKho extends JPanel {
         gbc.gridy = 4;
         pnlInput.add(createFormGroup("Ghi chú", "EDIT", txtGhiChu), gbc);
 
-        JButton btnAdd = createHoverButton("Thêm vào phiếu", "ADD", PRIMARY_BLUE, PRIMARY_HOVER, Color.WHITE);
+        JButton btnAdd = createHoverButton("Thêm vào phiếu [F5]", "ADD", PRIMARY_BLUE, PRIMARY_HOVER, Color.WHITE);
         btnAdd.setPreferredSize(new Dimension(0, 38));
+        btnAdd.setToolTipText("Phím tắt: F5");
         btnAdd.addActionListener(e -> themVaoDanhSach());
 
         gbc.gridy = 5;
@@ -732,14 +781,14 @@ public class ManHinhXuatKho extends JPanel {
         JPanel pnlBottom = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 0));
         pnlBottom.setOpaque(false);
 
-        JButton btnLamMoi = createOutlineButton("Hủy / Làm mới", "REFRESH", TEXT_SECONDARY);
-        btnLamMoi.setPreferredSize(new Dimension(150, 40));
+        JButton btnLamMoi = createOutlineButton("Hủy / Làm mới [F6]", "REFRESH", TEXT_SECONDARY);
+        btnLamMoi.setPreferredSize(new Dimension(190, 40));
+        btnLamMoi.setToolTipText("Phím tắt: F6");
         btnLamMoi.addActionListener(e -> resetFormToanBo());
 
-        JButton btnXacNhan = new JButton("Xác nhận xuất kho");
-        btnXacNhan.setIcon(new MenuIcon("EXPORT", 17, Color.WHITE));
-        btnXacNhan.setIconTextGap(8);
-        btnXacNhan.setPreferredSize(new Dimension(200, 40));
+        JButton btnXacNhan = new JButton("Xác nhận xuất kho [F10]");
+        btnXacNhan.setToolTipText("Phím tắt: F10");
+        btnXacNhan.setPreferredSize(new Dimension(235, 40));
         btnXacNhan.setFont(new Font("Segoe UI", Font.BOLD, 13));
         btnXacNhan.setForeground(Color.WHITE);
         btnXacNhan.setBackground(new Color(203, 213, 225));

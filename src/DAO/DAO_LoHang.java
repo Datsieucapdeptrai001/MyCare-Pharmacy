@@ -7,6 +7,7 @@ import Entity.SanPham;
 import Enumeration.TrangThaiLoHang;
 
 import java.sql.Connection;
+import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -822,10 +823,22 @@ public class DAO_LoHang {
     public List<Object[]> layLichSuXuatKho() {
         List<Object[]> list = new ArrayList<>();
 
-        String sql = "SELECT px.NgayXuat, px.SoLoHang, sp.ten AS TenSanPham, " +
-                "px.SoLuongXuat, px.LyDoXuat, px.NguoiThucHien " +
+        String sql =
+                "SELECT " +
+                "    px.NgayXuat, " +
+                "    px.SoLoHang, " +
+                "    ISNULL(sp.ten, N'Sản phẩm không xác định') AS TenSanPham, " +
+                "    px.SoLuongXuat, " +
+                "    px.LyDoXuat, " +
+                "    px.NguoiThucHien, " +
+                "    lh.sanPhamId AS SanPhamId " +
                 "FROM PhieuXuatKho px " +
-                "LEFT JOIN LoHang lh ON UPPER(LTRIM(RTRIM(px.SoLoHang))) = UPPER(LTRIM(RTRIM(lh.soLoHang))) " +
+                "OUTER APPLY ( " +
+                "    SELECT TOP 1 lh2.sanPhamId " +
+                "    FROM LoHang lh2 " +
+                "    WHERE UPPER(LTRIM(RTRIM(px.SoLoHang))) = UPPER(LTRIM(RTRIM(lh2.soLoHang))) " +
+                "    ORDER BY lh2.ngayNhap DESC " +
+                ") lh " +
                 "LEFT JOIN SanPham sp ON lh.sanPhamId = sp.id " +
                 "ORDER BY px.NgayXuat DESC";
 
@@ -839,13 +852,21 @@ public class DAO_LoHang {
              ResultSet rs = pst.executeQuery()) {
 
             while (rs.next()) {
+                String rawNguoiThucHien = rs.getString("NguoiThucHien");
+                String tenNguoiThucHien = layTenNguoiThucHien(con, rawNguoiThucHien);
+
+                String sanPhamId = rs.getString("SanPhamId");
+                String tenSanPham = rs.getString("TenSanPham");
+                String donViCoBan = layDonViCoBan(con, sanPhamId, tenSanPham);
+
                 list.add(new Object[]{
                         rs.getTimestamp("NgayXuat"),
                         rs.getString("SoLoHang"),
-                        rs.getString("TenSanPham") != null ? rs.getString("TenSanPham") : "Sản phẩm không xác định",
+                        tenSanPham != null ? tenSanPham : "Sản phẩm không xác định",
                         rs.getInt("SoLuongXuat"),
                         rs.getString("LyDoXuat"),
-                        rs.getString("NguoiThucHien") != null ? rs.getString("NguoiThucHien") : "Hệ thống"
+                        tenNguoiThucHien,
+                        donViCoBan
                 });
             }
 
@@ -854,6 +875,353 @@ public class DAO_LoHang {
         }
 
         return list;
+    }
+
+    private String layTenNguoiThucHien(Connection con, String rawNguoiThucHien) {
+        String raw = safe(rawNguoiThucHien);
+
+        if (raw.isEmpty()
+                || raw.equalsIgnoreCase("NV-DEFAULT")
+                || raw.equalsIgnoreCase("Người dùng hiện tại")) {
+            return "Không xác định";
+        }
+
+        String tenTuNhanVien = timTenNhanVienTheoId(con, raw);
+
+        if (!tenTuNhanVien.isEmpty()) {
+            return tenTuNhanVien;
+        }
+
+        String nhanVienIdTuTaiKhoan = timNhanVienIdTuTaiKhoan(con, raw);
+
+        if (!nhanVienIdTuTaiKhoan.isEmpty()) {
+            tenTuNhanVien = timTenNhanVienTheoId(con, nhanVienIdTuTaiKhoan);
+
+            if (!tenTuNhanVien.isEmpty()) {
+                return tenTuNhanVien;
+            }
+        }
+
+        return raw;
+    }
+
+    private String timTenNhanVienTheoId(Connection con, String nhanVienId) {
+        if (con == null || nhanVienId == null || nhanVienId.trim().isEmpty()) {
+            return "";
+        }
+
+        try {
+            if (!tableExists(con, "NhanVien")) {
+                return "";
+            }
+
+            String idCol = firstExistingColumn(con, "NhanVien",
+                    "id", "maNhanVien", "nhanVienId", "maNV");
+
+            String nameCol = firstExistingColumn(con, "NhanVien",
+                    "hoTen", "hoVaTen", "tenNhanVien", "tenNV", "ten", "name");
+
+            if (idCol.isEmpty() || nameCol.isEmpty()) {
+                return "";
+            }
+
+            String sql = "SELECT TOP 1 " + quoteName(nameCol) + " AS TenNhanVien " +
+                    "FROM NhanVien " +
+                    "WHERE UPPER(LTRIM(RTRIM(" + quoteName(idCol) + "))) = UPPER(LTRIM(RTRIM(?)))";
+
+            try (PreparedStatement pst = con.prepareStatement(sql)) {
+                pst.setString(1, nhanVienId.trim());
+
+                try (ResultSet rs = pst.executeQuery()) {
+                    if (rs.next()) {
+                        return safe(rs.getString("TenNhanVien"));
+                    }
+                }
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return "";
+    }
+
+    private String timNhanVienIdTuTaiKhoan(Connection con, String tenDangNhapOrId) {
+        if (con == null || tenDangNhapOrId == null || tenDangNhapOrId.trim().isEmpty()) {
+            return "";
+        }
+
+        try {
+            if (!tableExists(con, "TaiKhoan")) {
+                return "";
+            }
+
+            String nhanVienIdCol = firstExistingColumn(con, "TaiKhoan",
+                    "nhanVienId", "maNhanVien", "maNV", "nhanVien");
+
+            if (nhanVienIdCol.isEmpty()) {
+                return "";
+            }
+
+            List<String> cotCoTheTim = new ArrayList<>();
+
+            addColumnIfExists(con, "TaiKhoan", cotCoTheTim, "tenDangNhap");
+            addColumnIfExists(con, "TaiKhoan", cotCoTheTim, "username");
+            addColumnIfExists(con, "TaiKhoan", cotCoTheTim, "taiKhoan");
+            addColumnIfExists(con, "TaiKhoan", cotCoTheTim, "id");
+
+            if (cotCoTheTim.isEmpty()) {
+                return "";
+            }
+
+            List<String> dieuKien = new ArrayList<>();
+
+            for (String col : cotCoTheTim) {
+                dieuKien.add("UPPER(LTRIM(RTRIM(" + quoteName(col) + "))) = UPPER(LTRIM(RTRIM(?)))");
+            }
+
+            String sql = "SELECT TOP 1 " + quoteName(nhanVienIdCol) + " AS NhanVienId " +
+                    "FROM TaiKhoan " +
+                    "WHERE " + String.join(" OR ", dieuKien);
+
+            try (PreparedStatement pst = con.prepareStatement(sql)) {
+                String key = tenDangNhapOrId.trim();
+
+                for (int i = 1; i <= cotCoTheTim.size(); i++) {
+                    pst.setString(i, key);
+                }
+
+                try (ResultSet rs = pst.executeQuery()) {
+                    if (rs.next()) {
+                        return safe(rs.getString("NhanVienId"));
+                    }
+                }
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return "";
+    }
+
+    private String layDonViCoBan(Connection con, String sanPhamId, String tenSanPham) {
+        String fromSanPham = layDonViTuBangSanPham(con, sanPhamId);
+
+        if (!fromSanPham.isEmpty()) {
+            return fromSanPham;
+        }
+
+        String fromDonVi = layDonViTuBangDonViDoLuong(con, sanPhamId);
+
+        if (!fromDonVi.isEmpty()) {
+            return fromDonVi;
+        }
+
+        return doanDonViTheoTenSanPham(tenSanPham);
+    }
+
+    private String layDonViTuBangSanPham(Connection con, String sanPhamId) {
+        if (con == null || sanPhamId == null || sanPhamId.trim().isEmpty()) {
+            return "";
+        }
+
+        try {
+            if (!tableExists(con, "SanPham")) {
+                return "";
+            }
+
+            String idCol = firstExistingColumn(con, "SanPham", "id", "sanPhamId", "maSanPham", "maSP");
+            String unitCol = firstExistingColumn(con, "SanPham",
+                    "donViDoCoBan", "donViCoBan", "donViTinh", "donVi", "dvt");
+
+            if (idCol.isEmpty() || unitCol.isEmpty()) {
+                return "";
+            }
+
+            String sql = "SELECT TOP 1 " + quoteName(unitCol) + " AS DonViCoBan " +
+                    "FROM SanPham " +
+                    "WHERE UPPER(LTRIM(RTRIM(" + quoteName(idCol) + "))) = UPPER(LTRIM(RTRIM(?)))";
+
+            try (PreparedStatement pst = con.prepareStatement(sql)) {
+                pst.setString(1, sanPhamId.trim());
+
+                try (ResultSet rs = pst.executeQuery()) {
+                    if (rs.next()) {
+                        return safe(rs.getString("DonViCoBan"));
+                    }
+                }
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return "";
+    }
+
+    private String layDonViTuBangDonViDoLuong(Connection con, String sanPhamId) {
+        if (con == null || sanPhamId == null || sanPhamId.trim().isEmpty()) {
+            return "";
+        }
+
+        try {
+            if (!tableExists(con, "DonViDoLuong")) {
+                return "";
+            }
+
+            String spCol = firstExistingColumn(con, "DonViDoLuong", "sanPhamId", "maSanPham", "maSP");
+            String unitCol = firstExistingColumn(con, "DonViDoLuong",
+                    "tenDonVi", "donVi", "donViTinh", "dvt", "ten");
+
+            if (spCol.isEmpty() || unitCol.isEmpty()) {
+                return "";
+            }
+
+            boolean hasDvcb = columnExists(con, "DonViDoLuong", "chuyenDoiDonViCoBan");
+
+            String sql;
+
+            if (hasDvcb) {
+                sql = "SELECT TOP 1 " + quoteName(unitCol) + " AS DonViCoBan " +
+                        "FROM DonViDoLuong " +
+                        "WHERE UPPER(LTRIM(RTRIM(" + quoteName(spCol) + "))) = UPPER(LTRIM(RTRIM(?))) " +
+                        "ORDER BY CASE WHEN chuyenDoiDonViCoBan = 1 THEN 0 ELSE 1 END";
+            } else {
+                sql = "SELECT TOP 1 " + quoteName(unitCol) + " AS DonViCoBan " +
+                        "FROM DonViDoLuong " +
+                        "WHERE UPPER(LTRIM(RTRIM(" + quoteName(spCol) + "))) = UPPER(LTRIM(RTRIM(?)))";
+            }
+
+            try (PreparedStatement pst = con.prepareStatement(sql)) {
+                pst.setString(1, sanPhamId.trim());
+
+                try (ResultSet rs = pst.executeQuery()) {
+                    if (rs.next()) {
+                        return safe(rs.getString("DonViCoBan"));
+                    }
+                }
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return "";
+    }
+
+    private String doanDonViTheoTenSanPham(String tenSanPham) {
+        if (tenSanPham == null || tenSanPham.trim().isEmpty()) {
+            return "đơn vị";
+        }
+
+        String ten = tenSanPham.trim().toLowerCase();
+
+        if (ten.contains("siro")
+                || ten.contains("xịt")
+                || ten.contains("chai")
+                || ten.contains("rohto")
+                || ten.contains("osla")
+                || ten.contains("listerine")
+                || ten.contains("betadine")
+                || ten.contains("cerave")
+                || ten.contains("bioderma")
+                || ten.contains("toner")
+                || ten.contains("nước")) {
+            return "Chai";
+        }
+
+        if (ten.contains("tuýp")
+                || ten.contains("tuyp")
+                || ten.contains("la roche")
+                || ten.contains("kem chống nắng")) {
+            return "Tuýp";
+        }
+
+        if (ten.contains("gói")
+                || ten.contains("goi")
+                || ten.contains("oresol")
+                || ten.contains("smecta")
+                || ten.contains("hapacol")
+                || ten.contains("phosphalugel")
+                || ten.contains("collagen")) {
+            return "Gói";
+        }
+
+        if (ten.contains("hộp")
+                || ten.contains("hop")
+                || ten.contains("kem")
+                || ten.contains("eucerin")) {
+            return "Hộp";
+        }
+
+        return "Viên";
+    }
+
+    private boolean tableExists(Connection con, String tableName) {
+        try {
+            DatabaseMetaData meta = con.getMetaData();
+
+            try (ResultSet rs = meta.getTables(null, null, tableName, new String[]{"TABLE"})) {
+                if (rs.next()) {
+                    return true;
+                }
+            }
+
+            try (ResultSet rs = meta.getTables(null, "dbo", tableName, new String[]{"TABLE"})) {
+                return rs.next();
+            }
+
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private boolean columnExists(Connection con, String tableName, String columnName) {
+        try {
+            DatabaseMetaData meta = con.getMetaData();
+
+            try (ResultSet rs = meta.getColumns(null, null, tableName, columnName)) {
+                if (rs.next()) {
+                    return true;
+                }
+            }
+
+            try (ResultSet rs = meta.getColumns(null, "dbo", tableName, columnName)) {
+                return rs.next();
+            }
+
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private String firstExistingColumn(Connection con, String tableName, String... columns) {
+        for (String col : columns) {
+            if (columnExists(con, tableName, col)) {
+                return col;
+            }
+        }
+
+        return "";
+    }
+
+    private void addColumnIfExists(Connection con, String tableName, List<String> list, String columnName) {
+        if (columnExists(con, tableName, columnName)) {
+            list.add(columnName);
+        }
+    }
+
+    private String quoteName(String name) {
+        if (name == null) {
+            return "";
+        }
+
+        return "[" + name.replace("]", "]]") + "]";
+    }
+
+    private String safe(String value) {
+        return value == null ? "" : value.trim();
     }
 
     public List<Object[]> layDuLieuLoHangCanDateTho() {
