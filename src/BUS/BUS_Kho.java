@@ -99,6 +99,14 @@ public class BUS_Kho {
         return daoLoHang.layDanhSachKhoHang();
     }
 
+    public List<LoHang> timLoHangChoXuatKho(String keyword) {
+        if (isBlank(keyword)) {
+            return new ArrayList<>();
+        }
+
+        return daoLoHang.timLoHangChoXuatKho(keyword.trim());
+    }
+
     public boolean themLoHang(LoHang loHang) {
         if (loHang == null) {
             return false;
@@ -109,6 +117,10 @@ public class BUS_Kho {
         }
 
         if (loHang.getSanPhamId() == null || isBlank(loHang.getSanPhamId().getId())) {
+            return false;
+        }
+
+        if (loHang.getKhoHangId() == null || isBlank(loHang.getKhoHangId().getId())) {
             return false;
         }
 
@@ -138,21 +150,9 @@ public class BUS_Kho {
             return false;
         }
 
-        LoHang loCu = daoLoHang.getLoHangTheoSoLo(loHang.getSoLoHang().trim());
-
-        if (loCu == null) {
-            loHang.setTrangThai(suyRaTrangThai(loHang.getSoLuongLoHang(), loHang.getNgayHetHan()));
-            return daoLoHang.themLoHang(loHang);
-        }
-
-        if (loCu.getTrangThai() != TrangThaiLoHang.AN) {
-            return false;
-        }
-
-        loHang.setId(loCu.getId());
         loHang.setTrangThai(suyRaTrangThai(loHang.getSoLuongLoHang(), loHang.getNgayHetHan()));
 
-        return daoLoHang.khoiPhucVaCapNhatLoHang(loHang);
+        return daoLoHang.themLoHang(loHang);
     }
 
     public boolean anLoHang(String maLoHang) {
@@ -269,6 +269,59 @@ public class BUS_Kho {
         return daoLoHang.tonTaiMaVachNoiBo(maVachNoiBo.trim());
     }
 
+    public boolean xuatHuyKho(List<Object[]> danhSachXuat, String nguoiThucHien) {
+        if (danhSachXuat == null || danhSachXuat.isEmpty()
+                || nguoiThucHien == null || nguoiThucHien.trim().isEmpty()) {
+            return false;
+        }
+
+        for (Object[] item : danhSachXuat) {
+            if (item == null || item.length < 3) {
+                return false;
+            }
+
+            String loHangId = item[0] == null ? "" : item[0].toString().trim();
+            String soLuongText = item[1] == null ? "" : item[1].toString().trim();
+            String lyDo = item[2] == null ? "" : item[2].toString().trim();
+
+            if (isBlank(loHangId) || isBlank(soLuongText) || isBlank(lyDo)) {
+                return false;
+            }
+
+            int soLuong;
+
+            try {
+                soLuong = Integer.parseInt(soLuongText);
+            } catch (Exception e) {
+                return false;
+            }
+
+            if (soLuong <= 0) {
+                return false;
+            }
+
+            LoHang lo = daoLoHang.getLoHangTheoId(loHangId);
+
+            if (lo == null) {
+                return false;
+            }
+
+            if (lo.getTrangThai() == TrangThaiLoHang.AN) {
+                return false;
+            }
+
+            if (lo.getSoLuongLoHang() < soLuong) {
+                return false;
+            }
+        }
+
+        return daoLoHang.thucThiXuatHuyKhoBangTransaction(danhSachXuat, nguoiThucHien.trim());
+    }
+
+    public List<Object[]> layLichSuXuatKho() {
+        return daoLoHang.layLichSuXuatKho();
+    }
+
     private TrangThaiLoHang suyRaTrangThai(int soLuong, LocalDateTime ngayHetHan) {
         LocalDateTime now = LocalDateTime.now();
 
@@ -285,18 +338,5 @@ public class BUS_Kho {
 
     private boolean isBlank(String s) {
         return s == null || s.trim().isEmpty();
-    }
-
-    public boolean xuatHuyKho(List<Object[]> danhSachXuat, String nguoiThucHien) {
-        if (danhSachXuat == null || danhSachXuat.isEmpty()
-                || nguoiThucHien == null || nguoiThucHien.isEmpty()) {
-            return false;
-        }
-
-        return daoLoHang.thucThiXuatHuyKhoBangTransaction(danhSachXuat, nguoiThucHien);
-    }
-
-    public List<Object[]> layLichSuXuatKho() {
-        return daoLoHang.layLichSuXuatKho();
     }
 }

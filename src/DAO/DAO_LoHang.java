@@ -44,8 +44,12 @@ public class DAO_LoHang {
 
         Connection con = ConnectDB.getInstance().getConnection();
 
+        if (con == null) {
+            return dsLoHang;
+        }
+
         try (Statement stmt = con.createStatement();
-                ResultSet rs = stmt.executeQuery(sql)) {
+             ResultSet rs = stmt.executeQuery(sql)) {
 
             while (rs.next()) {
                 dsLoHang.add(mapLoHang(rs));
@@ -69,8 +73,12 @@ public class DAO_LoHang {
 
         Connection con = ConnectDB.getInstance().getConnection();
 
+        if (con == null) {
+            return dsLoHang;
+        }
+
         try (PreparedStatement pst = con.prepareStatement(sql);
-                ResultSet rs = pst.executeQuery()) {
+             ResultSet rs = pst.executeQuery()) {
 
             while (rs.next()) {
                 dsLoHang.add(mapLoHang(rs));
@@ -90,8 +98,12 @@ public class DAO_LoHang {
 
         Connection con = ConnectDB.getInstance().getConnection();
 
+        if (con == null) {
+            return dsKho;
+        }
+
         try (PreparedStatement pst = con.prepareStatement(sql);
-                ResultSet rs = pst.executeQuery()) {
+             ResultSet rs = pst.executeQuery()) {
 
             while (rs.next()) {
                 KhoHang kho = new KhoHang();
@@ -110,6 +122,10 @@ public class DAO_LoHang {
         String sql = "SELECT COUNT(*) FROM KhoHang WHERE id = ?";
 
         Connection con = ConnectDB.getInstance().getConnection();
+
+        if (con == null) {
+            return false;
+        }
 
         try (PreparedStatement pst = con.prepareStatement(sql)) {
             pst.setString(1, maKho);
@@ -131,6 +147,10 @@ public class DAO_LoHang {
         String sql = "SELECT COUNT(*) FROM LoHang WHERE maVachNoiBo = ?";
 
         Connection con = ConnectDB.getInstance().getConnection();
+
+        if (con == null) {
+            return false;
+        }
 
         try (PreparedStatement pst = con.prepareStatement(sql)) {
             pst.setString(1, maVachNoiBo);
@@ -156,6 +176,10 @@ public class DAO_LoHang {
 
         Connection con = ConnectDB.getInstance().getConnection();
 
+        if (con == null) {
+            return null;
+        }
+
         try (PreparedStatement pst = con.prepareStatement(sql)) {
             pst.setString(1, id);
 
@@ -172,6 +196,83 @@ public class DAO_LoHang {
         return null;
     }
 
+    public LoHang getLoHangTheoMaVachNoiBo(String maVachNoiBo) {
+        String sql = "SELECT lh.*, sp.ten AS tenSanPham " +
+                "FROM LoHang lh " +
+                "LEFT JOIN SanPham sp ON lh.sanPhamId = sp.id " +
+                "WHERE UPPER(LTRIM(RTRIM(lh.maVachNoiBo))) = UPPER(LTRIM(RTRIM(?))) " +
+                "AND ISNULL(lh.trangThai, 'CON_HANG') <> 'AN' " +
+                "AND lh.soLuongLoHang > 0";
+
+        Connection con = ConnectDB.getInstance().getConnection();
+
+        if (con == null) {
+            return null;
+        }
+
+        try (PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setString(1, maVachNoiBo);
+
+            try (ResultSet rs = pst.executeQuery()) {
+                if (rs.next()) {
+                    return mapLoHang(rs);
+                }
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return null;
+    }
+
+    public List<LoHang> timLoHangChoXuatKho(String keyword) {
+        List<LoHang> ds = new ArrayList<>();
+
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return ds;
+        }
+
+        String sql = "SELECT lh.*, sp.ten AS tenSanPham " +
+                "FROM LoHang lh " +
+                "LEFT JOIN SanPham sp ON lh.sanPhamId = sp.id " +
+                "WHERE ISNULL(lh.trangThai, 'CON_HANG') <> 'AN' " +
+                "AND lh.soLuongLoHang > 0 " +
+                "AND ( " +
+                "    UPPER(LTRIM(RTRIM(lh.id))) = UPPER(LTRIM(RTRIM(?))) " +
+                " OR UPPER(LTRIM(RTRIM(lh.soLoHang))) = UPPER(LTRIM(RTRIM(?))) " +
+                " OR UPPER(LTRIM(RTRIM(lh.maVachNoiBo))) = UPPER(LTRIM(RTRIM(?))) " +
+                " OR UPPER(LTRIM(RTRIM(lh.sanPhamId))) = UPPER(LTRIM(RTRIM(?))) " +
+                ") " +
+                "ORDER BY lh.ngayHetHan ASC, lh.ngayNhap ASC";
+
+        Connection con = ConnectDB.getInstance().getConnection();
+
+        if (con == null) {
+            return ds;
+        }
+
+        try (PreparedStatement pst = con.prepareStatement(sql)) {
+            String key = keyword.trim();
+
+            pst.setString(1, key);
+            pst.setString(2, key);
+            pst.setString(3, key);
+            pst.setString(4, key);
+
+            try (ResultSet rs = pst.executeQuery()) {
+                while (rs.next()) {
+                    ds.add(mapLoHang(rs));
+                }
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return ds;
+    }
+
     public LoHang getLoHangTheoSoLo(String soLoHang) {
         String sql = "SELECT lh.*, sp.ten AS tenSanPham " +
                 "FROM LoHang lh " +
@@ -179,6 +280,10 @@ public class DAO_LoHang {
                 "WHERE UPPER(LTRIM(RTRIM(lh.soLoHang))) = UPPER(LTRIM(RTRIM(?)))";
 
         Connection con = ConnectDB.getInstance().getConnection();
+
+        if (con == null) {
+            return null;
+        }
 
         try (PreparedStatement pst = con.prepareStatement(sql)) {
             pst.setString(1, soLoHang);
@@ -234,11 +339,14 @@ public class DAO_LoHang {
     }
 
     public boolean themLoHang(LoHang lo) {
-        String sql = "INSERT INTO LoHang(id, soLoHang, soLuongLoHang, gia, ngayNhap, ngayHetHan, trangThai, sanPhamId, khoHangId, maVachNoiBo) "
-                +
+        String sql = "INSERT INTO LoHang(id, soLoHang, soLuongLoHang, gia, ngayNhap, ngayHetHan, trangThai, sanPhamId, khoHangId, maVachNoiBo) " +
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         Connection con = ConnectDB.getInstance().getConnection();
+
+        if (con == null) {
+            return false;
+        }
 
         try (PreparedStatement pst = con.prepareStatement(sql)) {
             pst.setString(1, lo.getId());
@@ -274,6 +382,10 @@ public class DAO_LoHang {
 
         Connection con = ConnectDB.getInstance().getConnection();
 
+        if (con == null) {
+            return false;
+        }
+
         try (PreparedStatement pst = con.prepareStatement(sql)) {
             pst.setString(1, lo.getSanPhamId() == null ? null : lo.getSanPhamId().getId());
             pst.setInt(2, lo.getSoLuongLoHang());
@@ -300,6 +412,10 @@ public class DAO_LoHang {
 
         Connection con = ConnectDB.getInstance().getConnection();
 
+        if (con == null) {
+            return false;
+        }
+
         try (PreparedStatement pst = con.prepareStatement(sql)) {
             pst.setString(1, maLoHang);
             return pst.executeUpdate() > 0;
@@ -318,6 +434,10 @@ public class DAO_LoHang {
                 "WHERE id = ? AND trangThai = 'AN'";
 
         Connection con = ConnectDB.getInstance().getConnection();
+
+        if (con == null) {
+            return false;
+        }
 
         try (PreparedStatement pst = con.prepareStatement(sql)) {
             pst.setString(1, maLoHang);
@@ -417,6 +537,10 @@ public class DAO_LoHang {
     public boolean dongBoTrangThaiLoHang() {
         Connection con = ConnectDB.getInstance().getConnection();
 
+        if (con == null) {
+            return false;
+        }
+
         try {
             con.setAutoCommit(false);
 
@@ -468,8 +592,16 @@ public class DAO_LoHang {
         } catch (Exception ignored) {
         }
 
-        if (rs.getString("trangThai") != null) {
-            lh.setTrangThai(TrangThaiLoHang.valueOf(rs.getString("trangThai")));
+        String trangThai = rs.getString("trangThai");
+
+        if (trangThai != null && !trangThai.trim().isEmpty()) {
+            try {
+                lh.setTrangThai(TrangThaiLoHang.valueOf(trangThai));
+            } catch (Exception ignored) {
+                lh.setTrangThai(TrangThaiLoHang.CON_HANG);
+            }
+        } else {
+            lh.setTrangThai(TrangThaiLoHang.CON_HANG);
         }
 
         if (rs.getTimestamp("ngayHetHan") != null) {
@@ -574,16 +706,28 @@ public class DAO_LoHang {
             con.setAutoCommit(false);
 
             for (Object[] item : danhSachXuat) {
-                String maLo = item[0].toString();
+                String loHangId = item[0].toString();
                 int slXuat = Integer.parseInt(item[1].toString());
                 String lyDo = item[2].toString();
 
-                if (!truTonKhoInternal(maLo, slXuat, con)) {
+                LoHang loHienTai = getLoHangTheoIdTrongTransaction(con, loHangId);
+
+                if (loHienTai == null) {
                     con.rollback();
                     return false;
                 }
 
-                if (!ghiNhanLichSuXuatHuyInternal(maLo, slXuat, lyDo, nguoiThucHien, con)) {
+                if (loHienTai.getSoLuongLoHang() < slXuat) {
+                    con.rollback();
+                    return false;
+                }
+
+                if (!truTonKhoInternal(loHangId, slXuat, con)) {
+                    con.rollback();
+                    return false;
+                }
+
+                if (!ghiNhanLichSuXuatHuyInternal(loHienTai, slXuat, lyDo, nguoiThucHien, con)) {
                     con.rollback();
                     return false;
                 }
@@ -612,34 +756,67 @@ public class DAO_LoHang {
         }
     }
 
-    private boolean truTonKhoInternal(String soLo, int soLuongXuat, Connection con) throws SQLException {
-        String sql = "UPDATE LoHang SET soLuongLoHang = soLuongLoHang - ? " +
-                "WHERE UPPER(LTRIM(RTRIM(soLoHang))) = UPPER(LTRIM(RTRIM(?))) " +
+    private boolean truTonKhoInternal(String loHangId, int soLuongXuat, Connection con) throws SQLException {
+        String sql = "UPDATE LoHang SET " +
+                "soLuongLoHang = soLuongLoHang - ?, " +
+                "trangThai = CASE " +
+                "    WHEN ngayHetHan < GETDATE() THEN 'HET_HAN' " +
+                "    WHEN soLuongLoHang - ? <= 0 THEN 'HET_HANG' " +
+                "    ELSE 'CON_HANG' " +
+                "END " +
+                "WHERE id = ? " +
+                "AND ISNULL(trangThai, 'CON_HANG') <> 'AN' " +
                 "AND soLuongLoHang >= ?";
 
         try (PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setInt(1, soLuongXuat);
-            stmt.setString(2, soLo);
-            stmt.setInt(3, soLuongXuat);
+            stmt.setInt(2, soLuongXuat);
+            stmt.setString(3, loHangId);
+            stmt.setInt(4, soLuongXuat);
 
             return stmt.executeUpdate() > 0;
         }
     }
 
-    private boolean ghiNhanLichSuXuatHuyInternal(String soLo, int soLuongXuat, String lyDo,
-            String nguoiThucHien, Connection con) throws SQLException {
+    private boolean ghiNhanLichSuXuatHuyInternal(
+            LoHang loHang,
+            int soLuongXuat,
+            String lyDo,
+            String nguoiThucHien,
+            Connection con
+    ) throws SQLException {
         String sql = "INSERT INTO PhieuXuatKho " +
                 "(SoLoHang, SoLuongXuat, LyDoXuat, NguoiThucHien, NgayXuat) " +
                 "VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)";
 
         try (PreparedStatement stmt = con.prepareStatement(sql)) {
-            stmt.setString(1, soLo.trim());
+            stmt.setString(1, loHang.getSoLoHang());
             stmt.setInt(2, soLuongXuat);
             stmt.setString(3, lyDo);
             stmt.setString(4, nguoiThucHien);
 
             return stmt.executeUpdate() > 0;
         }
+    }
+
+    private LoHang getLoHangTheoIdTrongTransaction(Connection con, String id) throws SQLException {
+        String sql = "SELECT lh.*, sp.ten AS tenSanPham " +
+                "FROM LoHang lh " +
+                "LEFT JOIN SanPham sp ON lh.sanPhamId = sp.id " +
+                "WHERE lh.id = ? " +
+                "AND ISNULL(lh.trangThai, 'CON_HANG') <> 'AN'";
+
+        try (PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setString(1, id);
+
+            try (ResultSet rs = pst.executeQuery()) {
+                if (rs.next()) {
+                    return mapLoHang(rs);
+                }
+            }
+        }
+
+        return null;
     }
 
     public List<Object[]> layLichSuXuatKho() {
@@ -659,10 +836,10 @@ public class DAO_LoHang {
         }
 
         try (PreparedStatement pst = con.prepareStatement(sql);
-                ResultSet rs = pst.executeQuery()) {
+             ResultSet rs = pst.executeQuery()) {
 
             while (rs.next()) {
-                list.add(new Object[] {
+                list.add(new Object[]{
                         rs.getTimestamp("NgayXuat"),
                         rs.getString("SoLoHang"),
                         rs.getString("TenSanPham") != null ? rs.getString("TenSanPham") : "Sản phẩm không xác định",
@@ -698,10 +875,10 @@ public class DAO_LoHang {
         }
 
         try (Statement stmt = con.createStatement();
-                ResultSet rs = stmt.executeQuery(sql)) {
+             ResultSet rs = stmt.executeQuery(sql)) {
 
             while (rs.next()) {
-                listData.add(new Object[] {
+                listData.add(new Object[]{
                         rs.getString("soLoHang"),
                         rs.getString("tenSP"),
                         rs.getDouble("giaBan"),
