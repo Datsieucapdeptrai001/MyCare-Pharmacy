@@ -268,67 +268,29 @@ public class ManHinhDoiTra extends JPanel {
                     Object objStatus = model.getValueAt(modelRow, 7);
                     String status = objStatus != null ? objStatus.toString() : ""; 
                     
-                    // NẾU CLICK VÀO CỘT NÚT XỬ LÝ (CỘT 9)
-                    if (col == 9 && status.equals("Chờ xử lý")) {
+                    // 1. NẾU CLICK VÀO CỘT XỬ LÝ (CỘT 9) VÀ ĐANG Ở TRẠNG THÁI LƯU NHÁP/CHỜ XỬ LÝ -> MỞ CHỈNH SỬA
+                 // NẾU CLICK VÀO CỘT NÚT XỬ LÝ (CỘT 9)
+                    if (col == 9 && (status.equals("Lưu nháp") || status.equals("Chờ xử lý"))) {
                         Object objMa = model.getValueAt(modelRow, 0);
-                        Object objLoai = model.getValueAt(modelRow, 3);
-                        String maPhieu = objMa != null ? objMa.toString() : "---";
-                        String loai = objLoai != null ? objLoai.toString() : "---";
-
-                        Rectangle cellRect = table.getCellRect(row, col, false);
-                        int clickX = e.getX() - cellRect.x;
+                        Object objHDGoc = model.getValueAt(modelRow, 1);
+                        Object objLoai = model.getValueAt(modelRow, 3); // Bổ sung lấy loại Đổi / Trả
                         
-                        if (clickX < cellRect.width / 2) {
-                            if (showCustomConfirmDialog("TIẾP NHẬN", "Xác nhận TIẾP NHẬN phiếu " + loai + "?")) {
-                                BUS_TraHang busTra = new BUS_TraHang();
-                                if (busTra.xacNhanGiaoDichDoiTra(maPhieu, "Hoàn thành")) {
-                                    
-                                    // 1. Đóng panel chi tiết nếu nó đang mở ở ĐÚNG dòng này
-                                    if (maPhieu.equals(expandedMaPhieu)) {
-                                        expandedMaPhieu = "";
-                                        pnlDetail.setVisible(false);
-                                    }
-                                    
-                                    // 2. Cập nhật Model trước tiên
-                                    model.setValueAt("Hoàn thành", modelRow, 7);
-                                    
-                                    // 3. Đưa việc vẽ lại giao diện vào cuối hàng đợi (Sau khi Sorter và JTable đã xử lý xong)
-                                    SwingUtilities.invokeLater(() -> {
-                                        updateRowHeights();
-                                        table.revalidate();
-                                        table.repaint();
-                                    });
-                                    
-                                    showCustomNotification("THÀNH CÔNG", "Xử lý thành công!", "SUCCESS");
-                                }
-                            }
-                        } else {
-                            if (showCustomConfirmDialog("TỪ CHỐI", "Xác nhận TỪ CHỐI phiếu này?")) {
-                                BUS_TraHang busTra = new BUS_TraHang();
-                                if (busTra.xacNhanGiaoDichDoiTra(maPhieu, "Từ chối")) {
-                                    
-                                    // 1. Đóng panel chi tiết nếu nó đang mở
-                                    if (maPhieu.equals(expandedMaPhieu)) {
-                                        expandedMaPhieu = "";
-                                        pnlDetail.setVisible(false);
-                                    }
-                                    
-                                    // 2. Cập nhật Model
-                                    model.setValueAt("Từ chối", modelRow, 7);
-                                    
-                                    // 3. Cập nhật lại giao diện an toàn
-                                    SwingUtilities.invokeLater(() -> {
-                                        updateRowHeights();
-                                        table.revalidate();
-                                        table.repaint();
-                                    });
-                                    
-                                    showCustomNotification("ĐÃ TỪ CHỐI", "Phiếu đã bị hủy.", "WARNING");
-                                }
-                            }
+                        String maPhieu = objMa != null ? objMa.toString() : "---";
+                        String maHDGoc = objHDGoc != null ? objHDGoc.toString() : "---";
+                        String loaiPhieu = objLoai != null ? objLoai.toString() : "Trả hàng";
+
+                        // TRUYỀN THÊM LOẠI PHIẾU VÀO CONSTRUCTOR (Lỗi 3)
+                        Window p = SwingUtilities.getWindowAncestor(ManHinhDoiTra.this);
+                        TaoPhieuDoiTra dialogTaoPhieu = new TaoPhieuDoiTra((Frame) p, model, maPhieu, maHDGoc, loaiPhieu);
+                        dialogTaoPhieu.setVisible(true);
+
+                        if (TaoPhieuDoiTra.isTaoThanhCong) {
+                            loadDataToTable();
+                            showCustomNotification("THÀNH CÔNG", "Đã cập nhật phiếu thành công!", "SUCCESS");
+                            TaoPhieuDoiTra.isTaoThanhCong = false;
                         }
-                    } 
-                    // NẾU CLICK VÀO CÁC CỘT CÒN LẠI -> SỔ DÒNG ACCORDION
+                    }
+                    // 2. NẾU CLICK VÀO CÁC CỘT CÒN LẠI -> SỔ DÒNG ACCORDION XEM CHI TIẾT
                     else {
                         Object objMa = model.getValueAt(modelRow, 0);
                         String maPhieu = objMa != null ? objMa.toString() : "---";
@@ -525,36 +487,29 @@ public class ManHinhDoiTra extends JPanel {
     class DoiTraTableRenderer extends DefaultTableCellRenderer {
         JPanel pnlWrapper = new JPanel(new BorderLayout());
         JPanel pnlAction = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 12));
-        JButton btnTiepNhan = new JButton("Tiếp nhận");
-        JButton btnTuChoi = new JButton("Từ chối");
+        
+        // --- CHỈ DÙNG 1 NÚT CHỈNH SỬA ---
+        JButton btnChinhSua = new JButton("Chỉnh sửa");
         
         public DoiTraTableRenderer() {
             pnlAction.setOpaque(false);
-            btnTiepNhan.setBackground(Color.decode("#3B82F6"));
-            btnTiepNhan.setForeground(Color.WHITE);
-            btnTiepNhan.setFont(new Font("Segoe UI", Font.BOLD, 12));
-            btnTiepNhan.setBorderPainted(false); btnTiepNhan.setFocusPainted(false);
-            btnTiepNhan.setPreferredSize(new Dimension(85, 30));
-            
-            btnTuChoi.setBackground(Color.decode("#EF4444"));
-            btnTuChoi.setForeground(Color.WHITE);
-            btnTuChoi.setFont(new Font("Segoe UI", Font.BOLD, 12));
-            btnTuChoi.setBorderPainted(false); btnTuChoi.setFocusPainted(false);
-            btnTuChoi.setPreferredSize(new Dimension(75, 30));
-            
-            pnlAction.add(btnTiepNhan);
-            pnlAction.add(btnTuChoi);
+            btnChinhSua.setBackground(Color.decode("#F59E0B")); // Màu cam
+            btnChinhSua.setForeground(Color.WHITE);
+            btnChinhSua.setFont(new Font("Segoe UI", Font.BOLD, 12));
+            btnChinhSua.setBorderPainted(false); btnChinhSua.setFocusPainted(false);
+            btnChinhSua.setPreferredSize(new Dimension(100, 30));
+            pnlAction.add(btnChinhSua);
         }
 
         public Component getTableCellRendererComponent(JTable t, Object v, boolean isSel, boolean hasF, int r, int c) {
             if (c == 9) {
                 Object objStatus = t.getValueAt(r, 7);
                 String status = objStatus != null ? objStatus.toString() : ""; 
-                
                 pnlWrapper.removeAll();
                 pnlWrapper.setBackground(isSel ? Color.decode("#F4F6F8") : Color.WHITE);
                 
-                if (status.equals("Chờ xử lý")) {
+                // HIỆN NÚT CHỈNH SỬA KHI Ở TRẠNG THÁI LƯU NHÁP
+                if (status.equals("Lưu nháp") || status.equals("Chờ xử lý")) {
                     pnlWrapper.add(pnlAction, BorderLayout.NORTH); 
                     pnlWrapper.setBorder(new EmptyBorder(0, 0, 0, 0)); 
                     return pnlWrapper; 
@@ -599,14 +554,11 @@ public class ManHinhDoiTra extends JPanel {
                     lbl.setBackground(Color.decode("#DCFCE7")); 
                     lbl.setForeground(Color.decode("#10B981")); 
                 }
-                else if (statusStr.equals("Chờ xử lý")) { 
+                else if (statusStr.equals("Chờ xử lý") || statusStr.equals("Lưu nháp")) { 
                     lbl.setBackground(Color.decode("#FEF3C7")); 
                     lbl.setForeground(Color.decode("#D97706")); 
-                } 
-                else if (statusStr.equals("Từ chối")) { 
-                    lbl.setBackground(Color.decode("#FEE2E2")); 
-                    lbl.setForeground(Color.decode("#EF4444")); 
-                } 
+                }
+              
                 else { 
                     lbl.setBackground(Color.decode("#F3F4F6")); 
                     lbl.setForeground(Color.decode("#6B7280")); 

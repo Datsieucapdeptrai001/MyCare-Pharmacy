@@ -1230,9 +1230,13 @@ try { if (con != null) con.setAutoCommit(true); } catch (SQLException e) { e.pri
     }
 
     public String[] layPhieuDoiTraTheoHDGoc(String maHDGoc) {
-        String sql = "SELECT id, loaiHD FROM HoaDon WHERE hoaDonGocId = ?";
+        // [FIX] Bỏ qua các phiếu đổi/trả đã bị Từ chối hoặc Đã hủy để cho phép nhân viên tạo lại phiếu mới
+        String sql = "SELECT id, loaiHD FROM HoaDon WHERE hoaDonGocId = ? " +
+                     "AND (ghiChu IS NULL OR (ghiChu NOT LIKE N'%Từ chối%' AND ghiChu NOT LIKE N'%Đã hủy%'))";
+        
         try (Connection con = ConnectDB.getInstance().getConnection();
              PreparedStatement pst = con.prepareStatement(sql)) {
+             
             pst.setString(1, maHDGoc);
             try (ResultSet rs = pst.executeQuery()) {
                 if (rs.next()) {

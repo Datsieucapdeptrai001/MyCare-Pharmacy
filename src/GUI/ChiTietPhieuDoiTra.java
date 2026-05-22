@@ -10,7 +10,10 @@ import Utils.MenuIcon;
 import BUS.BUS_TraHang;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
-
+import com.google.zxing.oned.Code128Writer;
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.common.BitMatrix;
+import java.awt.image.BufferedImage;
 public class ChiTietPhieuDoiTra extends JDialog {
     
     private Color primaryBlue = Color.decode("#1967D2"); 
@@ -157,7 +160,7 @@ public class ChiTietPhieuDoiTra extends JDialog {
         pnlBody.add(createDashedLine());
         pnlBody.add(createProductListPanel());
         pnlBody.add(createDashedLine());
-        pnlBody.add(createSignaturePanel());
+        pnlBody.add(createFooterTextPanel(maPhieu));
 
         add(pnlBody, BorderLayout.CENTER);
         pack(); 
@@ -407,19 +410,24 @@ public class ChiTietPhieuDoiTra extends JDialog {
                     } catch(Exception ex){}
                 }
 
+                long giaGomVAT = gia;
+
                 // NHÂN PHẦN TRĂM HOÀN VÀO THÀNH TIỀN ĐỂ ÉP VỀ 0 HOẶC TRỪ %
-                long thanhTien = (long) (gia * sl * phanTramHoan);
+                long thanhTien = (long) (giaGomVAT * sl * phanTramHoan);
                 tongTienTra += thanhTien;
                 
                 model.addRow(new Object[]{
                     "[TRẢ] " + ten, dvt, sl, 
-                    String.format("%,dđ", gia).replace(',', '.'), 
+                    String.format("%,dđ", giaGomVAT).replace(',', '.'), // <-- Hiển thị giá đã có VAT
                     String.format("%,dđ", thanhTien).replace(',', '.')
                 });
             }
         }
 
         // ==========================================
+        // 2. ĐỔ DỮ LIỆU SẢN PHẨM KHÁCH ĐỔI LẤY MỚI
+        // ==========================================
+     // ==========================================
         // 2. ĐỔ DỮ LIỆU SẢN PHẨM KHÁCH ĐỔI LẤY MỚI
         // ==========================================
         if (dsDoi != null) {
@@ -431,42 +439,34 @@ public class ChiTietPhieuDoiTra extends JDialog {
                     if (sp[1] != null) sl = Integer.parseInt(sp[1].toString().replaceAll("[^0-9]", "")); 
                 } catch(Exception e){}
                 
-                // [2]=dvt, [3]=donGia (sau khi BUS_TraHang đã fix thứ tự đúng)
                 String dvt = sp[2] != null ? sp[2].toString() : "Hộp";
                 long gia = 0;
                 
                 try { 
                     if (sp[3] != null) {
-                        String giaStr = sp[3].toString().replaceAll(",00$|\\.00$|,0$|\\.0$", "");
-                        giaStr = giaStr.replaceAll("[^0-9]", "");
+                        String giaStr = sp[3].toString().replaceAll("[^0-9]", "");
                         if (!giaStr.isEmpty()) gia = Long.parseLong(giaStr);
                     }
                 } catch(Exception e){}
-                
-                if (gia <= 1) {
-                    try {
-                        Object[] info = daoHD.layThongTinGiaTuHDGoc(maPhieu, ten);
-                        if (info != null) {
-                            if (info[0] != null) dvt = info[0].toString();
-                            if (info[1] != null) {
-                                String infoGia = info[1].toString().replaceAll(",00$|\\.00$|,0$|\\.0$", "").replaceAll("[^0-9]", "");
-                                if (!infoGia.isEmpty()) gia = Long.parseLong(infoGia);
-                            }
-                        }
-                    } catch(Exception ex){}
-                }
 
-                long thanhTien = gia * sl;
+                // --- SỬA Ở ĐÂY: LẤY VAT CỦA SẢN PHẨM ĐỔI MỚI ---
+                double thueVat = new DAO.DAO_SanPham().layThueVATTheoTenSP(ten);
+                if (thueVat > 0 && thueVat < 1) thueVat = thueVat * 100;
+                
+                // Cộng VAT vào đơn giá
+                long giaGomVAT = Math.round(gia * (1.0 + thueVat / 100.0));
+                
+                // Tính thành tiền = Đơn giá đã có VAT * Số lượng
+                long thanhTien = giaGomVAT * sl;
                 tongTienDoi += thanhTien;
                 
                 model.addRow(new Object[]{
                     "[ĐỔI LẤY] " + ten, dvt, sl, 
-                    String.format("%,dđ", gia).replace(',', '.'), 
+                    String.format("%,dđ", giaGomVAT).replace(',', '.'), 
                     String.format("%,dđ", thanhTien).replace(',', '.')
                 });
             }
         }
-
         JTable table = new JTable(model);
         table.setRowHeight(30);
         table.setShowGrid(false);
@@ -499,24 +499,34 @@ public class ChiTietPhieuDoiTra extends JDialog {
         JPanel pnlSummary = new JPanel(new GridLayout(2, 1, 0, 5));
         pnlSummary.setBackground(Color.WHITE);
         
-        if (loaiPhieu.equalsIgnoreCase("Trả hàng")) {
-            pnlSummary.add(createTotalRow("Tổng tiền SP trả:", String.format("%,dđ", tongTienTra).replace(',', '.'), Color.GRAY, 12));
-            
-            String soTienHoan = (tienHoanThucTe != null && !tienHoanThucTe.trim().isEmpty()) ? tienHoanThucTe : "0đ";
-            pnlSummary.add(createTotalRow("Số tiền hoàn lại:", soTienHoan, primaryRed, 16));
-        } else {
+        if (trangThai.equalsIgnoreCase("Từ chối")) {
+            // NẾU TỪ CHỐI -> ÉP HIỂN THỊ TRẠNG THÁI HỦY BỎ GIAO DỊCH
             pnlSummary.add(createTotalRow("Giá trị SP Mới / Trả:", 
                 String.format("%,dđ", tongTienDoi).replace(',', '.') + " / " + String.format("%,dđ", tongTienTra).replace(',', '.'), 
                 Color.GRAY, 12));
-                
-            long chenhLech = tongTienDoi - tongTienTra;
-            boolean isKhachBu = (chenhLech > 0); 
+            pnlSummary.add(createTotalRow("Trạng thái giao dịch:", "ĐÃ TỪ CHỐI", primaryRed, 18));
             
-            String textChenhLech = isKhachBu ? "Khách bù thêm:" : "Thối lại khách:";
-            String valueChenhLech = String.format("%,dđ", Math.abs(chenhLech)).replace(',', '.'); 
-            Color colorChenhLech = isKhachBu ? Color.decode("#D97706") : primaryRed;
+        } else {
+            // GIAO DỊCH HỢP LỆ (CHỜ XỬ LÝ / HOÀN THÀNH)
+            if (loaiPhieu.equalsIgnoreCase("Trả hàng")) {
+                pnlSummary.add(createTotalRow("Tổng tiền SP trả:", String.format("%,dđ", tongTienTra).replace(',', '.'), Color.GRAY, 12));
+                
+                String soTienHoan = (tienHoanThucTe != null && !tienHoanThucTe.trim().isEmpty()) ? tienHoanThucTe : "0đ";
+                pnlSummary.add(createTotalRow("Số tiền hoàn lại:", soTienHoan, primaryRed, 16));
+            } else {
+                pnlSummary.add(createTotalRow("Giá trị SP Mới / Trả:", 
+                    String.format("%,dđ", tongTienDoi).replace(',', '.') + " / " + String.format("%,dđ", tongTienTra).replace(',', '.'), 
+                    Color.GRAY, 12));
+                    
+                long chenhLech = tongTienDoi - tongTienTra;
+                boolean isKhachBu = (chenhLech > 0); 
+                
+                String textChenhLech = isKhachBu ? "Khách bù thêm:" : "Hoàn lại khách:";
+                String valueChenhLech = String.format("%,dđ", Math.abs(chenhLech)).replace(',', '.'); 
+                Color colorChenhLech = isKhachBu ? Color.decode("#D97706") : Color.decode("#059669"); 
 
-            pnlSummary.add(createTotalRow(textChenhLech, valueChenhLech, colorChenhLech, 16)); 
+                pnlSummary.add(createTotalRow(textChenhLech, valueChenhLech, colorChenhLech, 18)); 
+            }
         }
 
         pnl.add(spTable, BorderLayout.CENTER);
@@ -535,13 +545,21 @@ public class ChiTietPhieuDoiTra extends JDialog {
         } catch (Exception e) {}
         return phuongThuc;
     }
+ // THAY THẾ HÀM createTotalRow() CŨ BẰNG HÀM NÀY:
     private JPanel createTotalRow(String label, String value, Color color, int fontSize) {
         JPanel p = new JPanel(new BorderLayout());
         p.setBackground(Color.WHITE);
-        JLabel lbl = new JLabel(label); lbl.setForeground(color);
-        JLabel val = new JLabel(value); val.setForeground(color);
+        
+        JLabel lbl = new JLabel(label); 
+        lbl.setForeground(textDark); // FIX: Luôn để chữ màu đậm chuẩn, không bị đỏ chói
+        lbl.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        
+        JLabel val = new JLabel(value); 
+        val.setForeground(color); // Màu đỏ/xanh/vàng chỉ áp dụng cho Số tiền
         val.setFont(new Font("Segoe UI", Font.BOLD, fontSize));
-        p.add(lbl, BorderLayout.WEST); p.add(val, BorderLayout.EAST);
+        
+        p.add(lbl, BorderLayout.WEST); 
+        p.add(val, BorderLayout.EAST);
         return p;
     }
 
@@ -583,5 +601,72 @@ public class ChiTietPhieuDoiTra extends JDialog {
         linePanel.setBackground(Color.WHITE);
         linePanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 15));
         return linePanel;
+    }
+    private ImageIcon generateBarcode1D(String data, int width, int height) {
+        try {
+            Code128Writer barcodeWriter = new Code128Writer();
+            BitMatrix bitMatrix = barcodeWriter.encode(data, BarcodeFormat.CODE_128, width, height);
+            BufferedImage img = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+            img.createGraphics();
+            Graphics2D g = (Graphics2D) img.getGraphics();
+            
+            g.setColor(Color.WHITE);
+            g.fillRect(0, 0, width, height);
+            g.setColor(Color.BLACK);
+            for (int i = 0; i < width; i++) {
+                for (int j = 0; j < height; j++) {
+                    if (bitMatrix.get(i, j)) {
+                        g.fillRect(i, j, 1, 1);
+                    }
+                }
+            }
+            return new ImageIcon(img);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    private JPanel createFooterTextPanel(String maPhieu) {
+        JPanel pnl = new JPanel(); 
+        pnl.setLayout(new BoxLayout(pnl, BoxLayout.Y_AXIS)); 
+        pnl.setBackground(Color.WHITE);
+        pnl.setBorder(new EmptyBorder(15, 0, 20, 0));
+
+        // 1. MÃ VẠCH (Canh giữa)
+        ImageIcon barcodeIcon = generateBarcode1D(maPhieu, 220, 50); 
+        if (barcodeIcon != null) {
+            JLabel lblBarcode = new JLabel(barcodeIcon);
+            lblBarcode.setAlignmentX(Component.CENTER_ALIGNMENT); 
+            pnl.add(lblBarcode);
+            
+            JLabel lblBarcodeText = new JLabel("Mã Phiếu: " + maPhieu);
+            lblBarcodeText.setFont(new Font("Segoe UI", Font.BOLD, 12));
+            lblBarcodeText.setForeground(textDark);
+            lblBarcodeText.setAlignmentX(Component.CENTER_ALIGNMENT); 
+            pnl.add(lblBarcodeText);
+        }
+        
+        pnl.add(Box.createRigidArea(new Dimension(0, 15))); 
+
+        // 2. LỜI CẢM ƠN & GHI CHÚ ĐÃ ĐỔI TRẢ
+        JLabel l1 = new JLabel("Cảm ơn quý khách đã tin dùng!"); 
+        l1.setFont(new Font("Segoe UI", Font.PLAIN, 11)); 
+        l1.setForeground(textGray);
+        l1.setAlignmentX(Component.CENTER_ALIGNMENT); 
+        
+        // KIỂM TRA TRẠNG THÁI ĐỂ HIỂN THỊ CÂU CHỮ CHO ĐÚNG
+        boolean isTuChoi = trangThai.equalsIgnoreCase("Từ chối");
+        String footerText = isTuChoi ? "Yêu cầu đổi trả đã bị từ chối." : "Hóa đơn này đã được đổi trả.";
+        
+        JLabel l2 = new JLabel(footerText); 
+        l2.setFont(new Font("Segoe UI", Font.ITALIC, 12)); 
+        l2.setForeground(isTuChoi ? primaryRed : textDark); 
+        l2.setAlignmentX(Component.CENTER_ALIGNMENT);
+        
+        pnl.add(l1); 
+        pnl.add(l2);
+
+        return pnl;
     }
 }
