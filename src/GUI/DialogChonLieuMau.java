@@ -478,7 +478,13 @@ public class DialogChonLieuMau extends JDialog {
                 String selectedItem = cboLieuMau.getSelectedItem().toString();
                 if (selectedItem.contains("➔")) {
                     String tenLieu = selectedItem.replace("➔", "").trim();
-                    parentForm.thucThiDoThuocTuLieuVaoGio(tenLieu, soNgayUong, mapThuocChon);
+                    
+                    // --- ĐOẠN CODE THÊM MỚI LẤY HƯỚNG DẪN TỪ TEXTAREA ---
+                    String huongDan = txtHuongDan.getText().trim();
+                    
+                    // GỌI HÀM VỚI 4 THAM SỐ THAY VÌ 3
+                    parentForm.thucThiDoThuocTuLieuVaoGio(tenLieu, soNgayUong, mapThuocChon, huongDan);
+                    
                     this.dispose(); 
                 }
             }

@@ -313,23 +313,22 @@ public class ManHinhXuatKho extends JPanel {
             return false;
         }
 
-        String trangThai = "";
-
-        try {
-            Object value = loHang.getTrangThai();
-
-            if (value != null) {
-                trangThai = value.toString().trim().toUpperCase();
-            }
-        } catch (Exception ignored) {
+        if (loHang.getTrangThai() == null) {
+            return true;
         }
 
-        if (trangThai.contains("AN")
-                || trangThai.contains("ẨN")
-                || trangThai.contains("HET_HANG")
-                || trangThai.contains("HẾT_HÀNG")
-                || trangThai.contains("HET HANG")
-                || trangThai.contains("HẾT HÀNG")) {
+        String trangThai = loHang.getTrangThai().toString().trim().toUpperCase();
+
+        /*
+         * Tuyệt đối không dùng contains("AN")
+         * vì CON_HANG cũng chứa chữ "AN".
+         */
+        if ("AN".equals(trangThai)
+                || "ẨN".equals(trangThai)
+                || "HET_HANG".equals(trangThai)
+                || "HẾT_HÀNG".equals(trangThai)
+                || "HET HANG".equals(trangThai)
+                || "HẾT HÀNG".equals(trangThai)) {
             return false;
         }
 
@@ -508,10 +507,11 @@ public class ManHinhXuatKho extends JPanel {
         }
 
         int tongDaCoTrongGio = 0;
-        String maLoHienTai = txtMaLo.getText().trim();
 
         for (int i = 0; i < tableModel.getRowCount(); i++) {
-            if (tableModel.getValueAt(i, 0).toString().equalsIgnoreCase(maLoHienTai)) {
+            String loHangIdTrongGio = tableModel.getValueAt(i, 9).toString();
+
+            if (loHangIdTrongGio.equalsIgnoreCase(currentLoHangId)) {
                 tongDaCoTrongGio += Integer.parseInt(tableModel.getValueAt(i, 8).toString());
             }
         }
@@ -926,20 +926,125 @@ public class ManHinhXuatKho extends JPanel {
     
     private void kiemTraMaLo() {
         isProgrammaticUpdate = true;
-        popupSuggest.setVisible(false);
+
+        if (popupSuggest != null) {
+            popupSuggest.setVisible(false);
+        }
+
         isProgrammaticUpdate = false;
 
-        String maQuet = txtMaLo.getText().trim();
+        String maQuet = txtMaLo.getText() == null ? "" : txtMaLo.getText().trim();
 
         if (maQuet.isEmpty()) {
             return;
         }
 
+        List<LoHang> dsLoKhop = timLoHangTheoMaNhap(maQuet);
+
+        if (dsLoKhop == null || dsLoKhop.isEmpty()) {
+            showCustomNotification(
+                    "Không tìm thấy",
+                    "Mã '" + maQuet + "' không tồn tại trong kho, hoặc lô đã hết hàng / đã bị ẩn.",
+                    "ERROR"
+            );
+            resetThongTinSP();
+            return;
+        }
+
+        if (dsLoKhop.size() > 1) {
+            modelSuggest.clear();
+            dsSuggestLo.clear();
+
+            for (LoHang lh : dsLoKhop) {
+                if (lh == null) {
+                    continue;
+                }
+
+                String tenSanPham = "Không rõ sản phẩm";
+
+                if (lh.getSanPhamId() != null && lh.getSanPhamId().getTen() != null) {
+                    tenSanPham = lh.getSanPhamId().getTen();
+                }
+
+                modelSuggest.addElement(
+                        (lh.getSoLoHang() == null ? "" : lh.getSoLoHang())
+                                + " - "
+                                + tenSanPham
+                                + " - "
+                                + layKhoTuLoHang(lh)
+                );
+                dsSuggestLo.add(lh);
+            }
+
+            int displayCount = Math.min(dsSuggestLo.size(), 5);
+            listSuggest.setVisibleRowCount(displayCount);
+            scrollSuggest.setPreferredSize(new Dimension(390, displayCount * 28));
+
+            popupSuggest.pack();
+            popupSuggest.show(txtMaLo, 0, txtMaLo.getHeight());
+
+            if (listSuggest.getModel().getSize() > 0) {
+                listSuggest.setSelectedIndex(0);
+            }
+
+            txtMaLo.requestFocus();
+
+            showCustomNotification(
+                    "Trùng mã lô",
+                    "Mã này đang khớp nhiều lô / nhiều kho.\nVui lòng chọn đúng dòng kho cần xuất trong danh sách gợi ý.",
+                    "WARNING"
+            );
+            return;
+        }
+
+        hienThiThongTinLoHang(dsLoKhop.get(0), null);
+    }
+    private List<LoHang> timLoHangTheoMaNhap(String maNhap) {
         List<LoHang> dsLoKhop = new ArrayList<>();
+
+        if (maNhap == null || maNhap.trim().isEmpty()) {
+            return dsLoKhop;
+        }
+
+        String key = maNhap.trim();
+
+        /*
+         * ƯU TIÊN 1:
+         * Query trực tiếp DB qua BUS.
+         * Cách này bắt được mã vạch nội bộ MVLH0001 chắc hơn cache.
+         */
+        try {
+            List<LoHang> dsTuDB = busKho.timLoHangChoXuatKho(key);
+
+            if (dsTuDB != null) {
+                for (LoHang lh : dsTuDB) {
+                    if (laLoCoTheXuat(lh)) {
+                        dsLoKhop.add(lh);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        if (!dsLoKhop.isEmpty()) {
+            return dsLoKhop;
+        }
+
+        /*
+         * ƯU TIÊN 2:
+         * Nếu DB direct chưa ra thì reload cache đồng bộ rồi tìm lại.
+         */
+        try {
+            reloadCacheLoHangCoTheXuatSync();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
         DonViDoLuong dvQuetDuoc = null;
 
         try {
-            dvQuetDuoc = busDonVi.layDonViTheoMaVach(maQuet);
+            dvQuetDuoc = busDonVi.layDonViTheoMaVach(key);
         } catch (Exception ignored) {
         }
 
@@ -952,23 +1057,27 @@ public class ManHinhXuatKho extends JPanel {
 
             if (dvQuetDuoc != null) {
                 if (lh.getSanPhamId() != null
-                        && lh.getSanPhamId().getId().equals(dvQuetDuoc.getSanPhamId().getId())) {
+                        && dvQuetDuoc.getSanPhamId() != null
+                        && lh.getSanPhamId().getId() != null
+                        && dvQuetDuoc.getSanPhamId().getId() != null
+                        && lh.getSanPhamId().getId().equalsIgnoreCase(dvQuetDuoc.getSanPhamId().getId())) {
                     match = true;
                 }
             } else {
-                boolean khopMaVachNoiBo = lh.getMaVachNoiBo() != null
-                        && lh.getMaVachNoiBo().equalsIgnoreCase(maQuet);
+                boolean khopIdLo = lh.getId() != null
+                        && lh.getId().trim().equalsIgnoreCase(key);
 
                 boolean khopSoLo = lh.getSoLoHang() != null
-                        && lh.getSoLoHang().equalsIgnoreCase(maQuet);
+                        && lh.getSoLoHang().trim().equalsIgnoreCase(key);
+
+                boolean khopMaVachNoiBo = lh.getMaVachNoiBo() != null
+                        && lh.getMaVachNoiBo().trim().equalsIgnoreCase(key);
 
                 boolean khopMaSP = lh.getSanPhamId() != null
-                        && lh.getSanPhamId().getId().equalsIgnoreCase(maQuet);
+                        && lh.getSanPhamId().getId() != null
+                        && lh.getSanPhamId().getId().trim().equalsIgnoreCase(key);
 
-                boolean khopIdLo = lh.getId() != null
-                        && lh.getId().equalsIgnoreCase(maQuet);
-
-                if (khopMaVachNoiBo || khopSoLo || khopMaSP || khopIdLo) {
+                if (khopIdLo || khopSoLo || khopMaVachNoiBo || khopMaSP) {
                     match = true;
                 }
             }
@@ -978,57 +1087,8 @@ public class ManHinhXuatKho extends JPanel {
             }
         }
 
-        if (dsLoKhop.isEmpty()) {
-            showCustomNotification("Không tìm thấy", "Mã '" + maQuet + "' không tồn tại trong kho.", "ERROR");
-            resetThongTinSP();
-            return;
-        }
-
-        /*
-         * Nếu quét mã vạch nội bộ hoặc ID lô thì chỉ nên ra đúng 1 lô.
-         * Nếu nhập tay mã lô bị trùng ở nhiều kho thì hiện popup để chọn đúng kho,
-         * không tự lấy dòng đầu tiên nữa.
-         */
-        if (dsLoKhop.size() > 1) {
-            modelSuggest.clear();
-            dsSuggestLo.clear();
-
-            for (LoHang lh : dsLoKhop) {
-                String tenSanPham = lh.getSanPhamId() != null && lh.getSanPhamId().getTen() != null
-                        ? lh.getSanPhamId().getTen()
-                        : "Không rõ sản phẩm";
-
-                modelSuggest.addElement(
-                        lh.getSoLoHang()
-                                + " - "
-                                + tenSanPham
-                                + " - "
-                                + layKhoTuLoHang(lh)
-                );
-
-                dsSuggestLo.add(lh);
-            }
-
-            int displayCount = Math.min(dsLoKhop.size(), 5);
-            listSuggest.setVisibleRowCount(displayCount);
-            scrollSuggest.setPreferredSize(new Dimension(390, displayCount * 28));
-
-            popupSuggest.pack();
-            popupSuggest.show(txtMaLo, 0, txtMaLo.getHeight());
-            listSuggest.setSelectedIndex(0);
-            txtMaLo.requestFocus();
-
-            showCustomNotification(
-                    "Trùng mã lô",
-                    "Mã lô này đang tồn tại ở nhiều kho.\nVui lòng chọn đúng dòng kho cần xuất trong danh sách gợi ý.",
-                    "WARNING"
-            );
-            return;
-        }
-
-        hienThiThongTinLoHang(dsLoKhop.get(0), dvQuetDuoc);
+        return dsLoKhop;
     }
-
     private String layKhoTuLoHang(LoHang loHang) {
         if (loHang == null) {
             return "Không xác định";
@@ -1283,7 +1343,22 @@ public class ManHinhXuatKho extends JPanel {
             }
         }
     }
+    private void reloadCacheLoHangCoTheXuatSync() {
+        List<LoHang> tempData = busKho.layDSLoHang(false);
 
+        List<LoHang> dsCoTheXuat = new ArrayList<>();
+
+        if (tempData != null) {
+            for (LoHang lh : tempData) {
+                if (laLoCoTheXuat(lh)) {
+                    dsCoTheXuat.add(lh);
+                }
+            }
+        }
+
+        cacheDanhSachLo = dsCoTheXuat;
+    }
+    
     private void reloadCacheLoHangCoTheXuat() {
         new Thread(() -> {
             List<LoHang> tempData = busKho.layDSLoHang(false);

@@ -95,7 +95,8 @@ public class TaoHoaDon extends JDialog {
     private javax.swing.Timer boDemNguoc;
     private JLabel lblDongHoDemNguoc;
     private JPopupMenu suggestionInvoiceMenu;
-    
+    private JTextField txtNote; // Biến này để lưu ô Ghi chú, đưa ra toàn cục để dễ lấy dữ liệu
+    private JCheckBox chkInHoaDon;
     private java.util.List<int[]> listCounters = new java.util.ArrayList<>();
     private java.util.List<JLabel> listCountLabels = new java.util.ArrayList<>();
  // Thêm dòng này ngay cạnh pendingPhoneToLink của bạn
@@ -458,8 +459,13 @@ public class TaoHoaDon extends JDialog {
         String lieuMauPart = strLieuMau.length() > 0 ? " | LIEU_MAU:" + strLieuMau.toString() : "";
         // ==================================
 
-        // CẬP NHẬT DÒNG SET GHI CHÚ CỦA BẠN (Đảm bảo lieuMauPart được cộng vào cuối)
-        hd.setGhiChu((phuongThuc.equals("Tiền mặt") ? "CASH:" + tongTienMat : "BANK") + strKM + strDiem + strGifts.toString() + lieuMauPart + " | VAT_AMT:" + this.vat);
+        // --- ĐOẠN CODE THÊM MỚI: LẤY GHI CHÚ TỪ UI ---
+        String userNote = txtNote.getText().trim();
+        if (userNote.equals("Ghi chú thêm...")) userNote = "";
+        String prefixUserNote = userNote.isEmpty() ? "" : (userNote + " | ");
+        
+        // SỬA DÒNG SET GHI CHÚ (Thêm prefixUserNote vào đầu)
+        hd.setGhiChu(prefixUserNote + (phuongThuc.equals("Tiền mặt") ? "CASH:" + tongTienMat : "BANK") + strKM + strDiem + strGifts.toString() + lieuMauPart + " | VAT_AMT:" + this.vat);
 
         Entity.NhanVien nv = new Entity.NhanVien();
         String maNV = Utils.UserSession.getInstance().getMaNhanVien();
@@ -484,15 +490,21 @@ public class TaoHoaDon extends JDialog {
 
         if (success) {
             if (boDemNguoc != null) boDemNguoc.stop();
-            // Xuất kho FEFO đã được xử lý bên trong busHD.thanhToan() -> luuGiaoDichThanhToan()
-            // KHÔNG gọi lại ở đây để tránh trừ kho 2 lần
 
             if (isCustomerLinked && !sdt.isEmpty()) {
                 int diemDung = isDungDiem ? (int)(tienGiamTuDiem / 100) : 0;
                 int diemMoi = (int) (tongHoaDon / 10000);
                 new BUS.BUS_KhachHang().capNhatDiemTichLuy(sdt, diemMoi - diemDung);
+            }
+
+            // --- THÊM LOGIC KIỂM TRA IN HÓA ĐƠN Ở ĐÂY ---
+            if (chkInHoaDon.isSelected()) {
+                showCustomNotification("HOÀN TẤT", "Thanh toán thành công!\nHệ thống đang xuất lệnh in hóa đơn...", "SUCCESS");
+                // GỌI HÀM IN CỦA BẠN VÀO ĐÂY (Ví dụ: Utils.InHoaDon.in(maHDMoi); )
+            } else {
                 showCustomNotification("HOÀN TẤT", "Thanh toán thành công!", "SUCCESS");
             }
+            // ----------------------------------------------
 
             dispose();
         } else {
@@ -762,7 +774,13 @@ public class TaoHoaDon extends JDialog {
             if (boDemNguoc != null) boDemNguoc.stop(); // Dừng đồng hồ
             luuNhapHoaDon(false);
         });
-
+        chkInHoaDon = new JCheckBox("In hóa đơn khi hoàn tất");
+        chkInHoaDon.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        chkInHoaDon.setForeground(Color.decode("#152A4B"));
+        chkInHoaDon.setSelected(true); // Mặc định luôn tích sẵn
+        chkInHoaDon.setFocusPainted(false);
+        chkInHoaDon.setBackground(Color.WHITE);
+        chkInHoaDon.setCursor(new Cursor(Cursor.HAND_CURSOR));
         pnlRightFooter.add(lblDongHoDemNguoc); // Gắn đồng hồ vào màn hình
         pnlRightFooter.add(btnLuuNhap);
         pnlRightFooter.add(btnThanhToan);
@@ -869,13 +887,10 @@ public class TaoHoaDon extends JDialog {
     // 1. HÀM NẠP CHỒNG (OVERLOAD) - Sửa triệt để lỗi gọi 2 tham số từ Card mẫu
     // =================================================================
     public void thucThiDoThuocTuLieuVaoGio(String tenLieu, int soNgay) {
-        thucThiDoThuocTuLieuVaoGio(tenLieu, soNgay, null);
+        thucThiDoThuocTuLieuVaoGio(tenLieu, soNgay, null, ""); 
     }
 
-    // =================================================================
-    // 2. HÀM CHÍNH 3 THAM SỐ - Xử lý đồng bộ bộ lọc chọn thuốc từ Dialog Popup
-    // =================================================================
-    public void thucThiDoThuocTuLieuVaoGio(String tenLieu, int soNgay, java.util.Map<String, Integer> mapThuocChon) {
+    public void thucThiDoThuocTuLieuVaoGio(String tenLieu, int soNgay, java.util.Map<String, Integer> mapThuocChon, String huongDanSuDung) {
         try {
             String idLieuMau = null;
             java.util.List<Entity.LieuMau> dsLieuMau = busLieuMau.getTatCaLieuMau();
@@ -900,6 +915,15 @@ public class TaoHoaDon extends JDialog {
             if (existingHeaderRow != -1) {
                 int currentDays = Integer.parseInt(productModel.getValueAt(existingHeaderRow, 3).toString());
                 productModel.setValueAt(String.valueOf(currentDays + soNgay), existingHeaderRow, 3);
+                
+                // [FIX] - TỰ ĐỘNG ĐIỀN GHI CHÚ NẾU LIỀU ĐÃ TỒN TẠI VÀ BỊ CỘNG DỒN
+                if (huongDanSuDung != null && !huongDanSuDung.trim().isEmpty()) {
+                    String currentNote = txtNote.getText().trim();
+                    if (!currentNote.contains(huongDanSuDung)) { // Chống điền lặp chữ nếu thao tác 2 lần
+                        txtNote.setText(currentNote.equals("Ghi chú thêm...") ? huongDanSuDung : currentNote + ". " + huongDanSuDung);
+                        txtNote.setForeground(Color.BLACK);
+                    }
+                }
                 return; 
             }
 
@@ -982,6 +1006,19 @@ public class TaoHoaDon extends JDialog {
 
             isTableUpdating = false; 
             recalculateTotals();
+
+            // --- [FIX] - TỰ ĐỘNG ĐIỀN GHI CHÚ CHO TRƯỜNG HỢP THÊM MỚI ---
+            if (huongDanSuDung != null && !huongDanSuDung.trim().isEmpty()) {
+                String currentNote = txtNote.getText().trim();
+                if (!currentNote.contains(huongDanSuDung)) { // Chống lặp chữ
+                    if (currentNote.equals("Ghi chú thêm...") || currentNote.isEmpty()) {
+                        txtNote.setText(huongDanSuDung);
+                        txtNote.setForeground(Color.BLACK);
+                    } else {
+                        txtNote.setText(currentNote + ". " + huongDanSuDung);
+                    }
+                }
+            }
 
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -1275,6 +1312,8 @@ public class TaoHoaDon extends JDialog {
                 // 3. GỌI API TẠO PAYMENT LINK
                 java.net.URL url = new java.net.URL("https://api-merchant.payos.vn/v2/payment-requests");
                 java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
+                conn.setConnectTimeout(5000); // Thêm timeout để không treo app khi mất mạng
+                conn.setReadTimeout(5000);
                 conn.setRequestMethod("POST");
                 conn.setRequestProperty("x-client-id", clientId);
                 conn.setRequestProperty("x-api-key", apiKey);
@@ -1299,7 +1338,6 @@ public class TaoHoaDon extends JDialog {
                     java.util.Scanner s = new java.util.Scanner(conn.getInputStream(), "UTF-8").useDelimiter("\\A");
                     String response = s.hasNext() ? s.next() : "";
 
-                    // Lấy chuỗi dữ liệu qrCode từ JSON trả về
                     String qrData = "";
                     if (response.contains("\"qrCode\":\"")) {
                         int start = response.indexOf("\"qrCode\":\"") + 10;
@@ -1308,24 +1346,17 @@ public class TaoHoaDon extends JDialog {
                     }
 
                     if (!qrData.isEmpty()) {
-                        // 4. CHUYỂN CHUỖI QR THÀNH HÌNH ẢNH ĐỂ HIỂN THỊ
                     	String qrImageUrl = "https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=" + java.net.URLEncoder.encode(qrData, "UTF-8");
                     	java.net.URL imgUrl = new java.net.URL(qrImageUrl);
                     	java.net.HttpURLConnection imgConn = (java.net.HttpURLConnection) imgUrl.openConnection();
                     	imgConn.setRequestProperty("User-Agent", "Mozilla/5.0");
                     	java.awt.image.BufferedImage image = javax.imageio.ImageIO.read(imgConn.getInputStream());
-
-                    	// 2. Thu nhỏ lại vừa đúng khung Label 200x200 (Giữ nguyên tỉ lệ để không vỡ)
                     	return new ImageIcon(image.getScaledInstance(200, 200, java.awt.Image.SCALE_SMOOTH));
                     }
-                } else {
-                    java.io.InputStream err = conn.getErrorStream();
-                    if(err != null) {
-                        java.util.Scanner s = new java.util.Scanner(err, "UTF-8").useDelimiter("\\A");
-                        System.err.println("Lỗi PayOS: " + (s.hasNext() ? s.next() : ""));
-                    }
                 }
-                return null;
+                
+                // --- BỔ SUNG: NẾU GỌI API LỖI HOẶC KHÔNG CÓ MẠNG, CHUYỂN SANG QR OFFLINE ---
+                return sinhQRCodeOffline(finalTotalAmount, maHDDangSua);
             }
 
             @Override
@@ -1336,10 +1367,9 @@ public class TaoHoaDon extends JDialog {
                         lblQRCode.setText("");
                         lblQRCode.setIcon(icon);
                         
-                        // Kích hoạt đồng hồ quét ngân hàng ACB liên tục
+                        // Nếu là mã online thì mới cần quét, mã offline chỉ hiện để khách quét tay
                         batDauQuetGiaoDichNganHang(maGiaoDichHienTai, finalTotalAmount);
 
-                        // Giữ lại mẹo Double-click chuột để phòng hờ lúc báo cáo đồ án mạng yếu
                         for (java.awt.event.MouseListener ml : lblQRCode.getMouseListeners()) {
                             lblQRCode.removeMouseListener(ml);
                         }
@@ -1353,17 +1383,22 @@ public class TaoHoaDon extends JDialog {
                                 }
                             }
                         });
-
                     } else {
-                        lblQRCode.setText("Lỗi tạo QR. Xem log console!");
+                        lblQRCode.setText("Lỗi tạo QR!");
                     }
                 } catch (Exception ex) {
-                    lblQRCode.setText("Lỗi kết nối PayOS!");
+                    lblQRCode.setText("Lỗi kết nối!");
                     ex.printStackTrace();
                 }
             }
         };
         worker.execute();
+    }
+
+    // Hàm dự phòng Offline
+    private ImageIcon sinhQRCodeOffline(long soTien, String maHD) {
+        String data = "Ngan hang: MBBank | STK: 123456789 | So tien: " + soTien + " | ND: HD " + maHD;
+        return generateQR(data, 200); // Dùng hàm generateQR offline bạn đã có
     }
     private void khoiDongDongHoHuyDon(int thoiGianGiay) {
         if (boDemNguoc != null && boDemNguoc.isRunning()) {
@@ -2677,40 +2712,41 @@ public class TaoHoaDon extends JDialog {
                 
                 if (text.startsWith("CHILD_ITEM ")) {
                     lbl.setIcon(new MenuIcon("ARROW_SUB", 16, Color.GRAY)); // Dùng icon mũi tên đã vẽ
-                    
-                    // Tách lấy tên thuốc thật
                     String tenThuoc = text.replace("CHILD_ITEM ", ""); 
-                    
-                   
                     String htmlText = "<html><div style='padding-top: 2px;'>"
                                     + "<span style='font-family: Segoe UI; font-size: 12px; color: #111827;'>" + tenThuoc + "</span><br>"
                                     + "<span style='font-family: Segoe UI; font-size: 10px; font-style: italic; color: #6B7280;'>(Thuốc liều mẫu)</span>"
                                     + "</div></html>";
-
-                   
-
-                    // TÌM DÒNG: lbl.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-                    lbl.setFont(new Font("Segoe UI", Font.BOLD, 12)); // Sửa lại thành 12
-                                    
+                    lbl.setFont(new Font("Segoe UI", Font.BOLD, 12));
                     lbl.setText(htmlText);
                     lbl.setBorder(BorderFactory.createEmptyBorder(0, 15, 0, 0)); // Thụt lề vào trong
                     
                 } else if (text.startsWith("[LIỀU]")) {
                     lbl.setIcon(null); 
-                    
-                    // XÓA THẺ HTML, CHỈ GÁN TEXT THƯỜNG ĐỂ KHÔNG BỊ PHÓNG TO
                     lbl.setText(text); 
-                    
-                    // Set font size nhỏ lại (13 là vừa đẹp)
                     lbl.setFont(new Font("Segoe UI", Font.BOLD, 13)); 
-                    
-                    // Ép màu Xanh dương trực tiếp
                     lbl.setForeground(Color.decode("#3B82F6")); 
+                    lbl.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
+                    
+                } else if (text.startsWith("[QUÀ TẶNG]")) {
+                    lbl.setIcon(null);
+                    String tenQua = text.replace("[QUÀ TẶNG]", "").trim();
+                    
+                    // [FIX] Bọc thêm thẻ <nobr> ở hai đầu để ép chữ luôn nằm trên 1 dòng duy nhất
+                    String htmlText = "<html><div style='padding-top: 2px;'><nobr>"
+                                    + "<span style='font-family: Segoe UI; font-size: 11px; font-weight: bold; color: #E11D48;'>[QUÀ TẶNG] </span>"
+                                    + "<span style='font-family: Segoe UI; font-size: 12px; color: #4B5563;'>" + tenQua + "</span>"
+                                    + "</nobr></div></html>";
+                    lbl.setText(htmlText);
+                    lbl.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+                    lbl.setBorder(BorderFactory.createEmptyBorder(0, 10, 0, 0)); // Thụt lề nhẹ vào 10px cho dễ nhìn
+
                 } else {
                     lbl.setIcon(null);
                     lbl.setText("<html><span style='font-family: Segoe UI; font-size: 14px; color: #000000;'>" + text + "</span></html>");
                     lbl.setFont(new Font("Segoe UI", Font.PLAIN, 12));
                     lbl.setForeground(Color.BLACK);
+                    lbl.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
                 }
                 return lbl;
             }
@@ -2891,22 +2927,28 @@ public class TaoHoaDon extends JDialog {
                     tableHeight = tbl.getRowHeight();
                 }
                 
-                // Chiều cao = Tổng dòng + Header + 5px (trừ hao viền)
-                d.height = tableHeight + headerHeight + 5; 
+                // [FIX] Tăng từ 5 lên 15px để bù trừ độ dày của các đường kẻ lưới và viền JScrollPane
+                d.height = tableHeight + headerHeight + 15; 
                 return d;
             }
 
             @Override
             public Dimension getMaximumSize() {
-                // Khóa MaximumSize để BoxLayout bên ngoài bắt buộc phải giãn Panel ra hết cỡ
-                return new Dimension(super.getMaximumSize().width, getPreferredSize().height);
+                // [FIX] Cho phép JScrollPane giãn ngang tối đa (Integer.MAX_VALUE), khóa cứng chiều cao
+                return new Dimension(Integer.MAX_VALUE, getPreferredSize().height);
+            }
+            
+            @Override
+            public Dimension getMinimumSize() {
+                // [FIX] Chặn BoxLayout bên ngoài bóp méo (thu nhỏ) chiều cao của bảng
+                return getPreferredSize();
             }
         };
         
         sp.getViewport().setBackground(Color.WHITE); 
         sp.setBorder(BorderFactory.createLineBorder(Color.decode("#DFE3E8"))); 
         
-        // TẮT HOÀN TOÀN THANH CUỘN DỌC VÀ NGANG CỦA BẢNG
+        // TẮT HOÀN TOÀN THANH CUỘN DỌC VÀ NGANG CỦA BẢNG ĐỂ DÙNG THANH CUỘN TỔNG
         sp.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         sp.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_NEVER); 
 
@@ -3475,15 +3517,38 @@ public class TaoHoaDon extends JDialog {
 
         pnlChuyenKhoanWrapper.add(lblQRTriGia, BorderLayout.NORTH);
         pnlChuyenKhoanWrapper.add(lblQRCode, BorderLayout.CENTER);
-        pnlChuyenKhoanWrapper.add(lblQRAmount, BorderLayout.SOUTH);
-        pnlChuyenKhoanWrapper.setVisible(false); 
+        JButton btnInQR = new JButton("🖨");
+        btnInQR.setPreferredSize(new Dimension(40, 32));
+        btnInQR.setBackground(Color.WHITE);
+        btnInQR.setBorder(BorderFactory.createLineBorder(borderColor));
+        btnInQR.setFocusPainted(false);
+        btnInQR.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnInQR.setToolTipText("In mã QR thanh toán");
+
+        btnInQR.addActionListener(ev -> {
+            if (lblQRCode.getIcon() != null) {
+                thucHienInMaQRThanhToan();
+            } else {
+                showCustomNotification("Thông báo", "Mã QR chưa sẵn sàng để in!", "WARNING");
+            }
+        });
+
+        // Bọc số tiền và nút in chung 1 dòng ở SOUTH
+        JPanel pnlQRSouth = new JPanel(new BorderLayout(5, 0));
+        pnlQRSouth.setBackground(Color.WHITE);
+        pnlQRSouth.add(lblQRAmount, BorderLayout.CENTER);
+        pnlQRSouth.add(btnInQR, BorderLayout.EAST);
+
+        pnlChuyenKhoanWrapper.add(pnlQRSouth, BorderLayout.SOUTH);
+        pnlChuyenKhoanWrapper.setVisible(false);
+         
         
         JPanel pnlNote = new JPanel(new BorderLayout(0, 5));
         pnlNote.setBackground(Color.WHITE);
         JLabel lblNote = new JLabel("Ghi chú");
         lblNote.setFont(new Font("Segoe UI", Font.BOLD, 14));
         pnlNote.setMaximumSize(new Dimension(Integer.MAX_VALUE, 70));
-        JTextField txtNote = new JTextField("Ghi chú thêm...");
+        txtNote = new JTextField("Ghi chú thêm..."); // <--- Đã sửa: Xóa chữ JTextField
         txtNote.setForeground(Color.GRAY);
         txtNote.setPreferredSize(new Dimension(0, 40));
         txtNote.setBorder(BorderFactory.createCompoundBorder(
@@ -5338,5 +5403,206 @@ public class TaoHoaDon extends JDialog {
         dialog.add(new JScrollPane(tblLo), BorderLayout.CENTER);
         dialog.setVisible(true);
     }
+    private ImageIcon generateQR(String data, int size) {
+        try {
+            com.google.zxing.qrcode.QRCodeWriter barcodeWriter = new com.google.zxing.qrcode.QRCodeWriter();
+            com.google.zxing.common.BitMatrix bitMatrix = barcodeWriter.encode(data, com.google.zxing.BarcodeFormat.QR_CODE, size, size);
+            java.awt.image.BufferedImage img = new java.awt.image.BufferedImage(size, size, java.awt.image.BufferedImage.TYPE_INT_RGB);
+            img.createGraphics();
+            java.awt.Graphics2D g = (java.awt.Graphics2D) img.getGraphics();
+            g.setColor(java.awt.Color.WHITE);
+            g.fillRect(0, 0, size, size);
+            g.setColor(java.awt.Color.BLACK);
+            for (int i = 0; i < size; i++) {
+                for (int j = 0; j < size; j++) {
+                    if (bitMatrix.get(i, j)) {
+                        g.fillRect(i, j, 1, 1);
+                    }
+                }
+            }
+            return new ImageIcon(img);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+    private void thucHienInMaQRThanhToan() {
+        Icon icon = lblQRCode.getIcon();
+        if (icon == null || !(icon instanceof ImageIcon)) {
+            showCustomNotification("LỖI", "Không tìm thấy ảnh mã QR để in!", "ERROR");
+            return;
+        }
 
+        // Trích xuất ảnh thật từ Icon
+        java.awt.Image img = ((ImageIcon) icon).getImage();
+        java.awt.image.BufferedImage finalImg = new java.awt.image.BufferedImage(
+                img.getWidth(null), img.getHeight(null), java.awt.image.BufferedImage.TYPE_INT_RGB);
+        Graphics2D bGr = finalImg.createGraphics();
+        bGr.drawImage(img, 0, 0, null);
+        bGr.dispose();
+
+        String soTien = lblTotalPriceValue.getText();
+        String maGD = this.maGiaoDichHienTai != null && !this.maGiaoDichHienTai.isEmpty() ? this.maGiaoDichHienTai : "OFFLINE";
+        String tenCuaHang = "NHÀ THUỐC"; 
+
+        JDialog dlg = new JDialog((java.awt.Frame) SwingUtilities.getWindowAncestor(this), "In / Xuất mã QR Thanh toán", true);
+        dlg.setUndecorated(false);
+
+        JPanel main = new JPanel(new BorderLayout(0, 12));
+        main.setBackground(Color.WHITE);
+        main.setBorder(new EmptyBorder(24, 32, 20, 32));
+
+        JLabel lblTitle = new JLabel("MÃ THANH TOÁN QR", SwingConstants.CENTER);
+        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        lblTitle.setForeground(Color.decode("#1E293B"));
+
+        // Panel vẽ mã QR sắc nét
+        JPanel pnlImg = new JPanel() {
+            @Override protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                Graphics2D g2 = (Graphics2D) g;
+                g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
+                int margin = 8;
+                int size = Math.min(getWidth(), getHeight()) - margin * 2;
+                int x = (getWidth() - size) / 2;
+                int y = (getHeight() - size) / 2;
+                g2.drawImage(finalImg, x, y, size, size, null);
+            }
+        };
+        pnlImg.setPreferredSize(new Dimension(250, 250));
+        pnlImg.setBackground(Color.WHITE);
+        pnlImg.setBorder(BorderFactory.createLineBorder(Color.decode("#E2E8F0"), 1));
+
+        JLabel lblSo = new JLabel("Mã GD: " + maGD, SwingConstants.CENTER);
+        lblSo.setFont(new Font("Courier New", Font.BOLD, 14));
+        lblSo.setForeground(Color.decode("#334155"));
+
+        JLabel lblGia = new JLabel("Thanh toán: " + soTien, SwingConstants.CENTER);
+        lblGia.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        lblGia.setForeground(Color.decode("#E11D48"));
+
+        // --- NÚT XUẤT ẢNH ---
+        JButton btnXuatAnh = new JButton("Xuất ảnh");
+        btnXuatAnh.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnXuatAnh.setBackground(Color.decode("#22C55E"));
+        btnXuatAnh.setForeground(Color.WHITE);
+        btnXuatAnh.setBorderPainted(false);
+        btnXuatAnh.setFocusPainted(false);
+        btnXuatAnh.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+        btnXuatAnh.addActionListener(ev -> {
+            java.awt.Frame parentFrame = (java.awt.Frame) SwingUtilities.getWindowAncestor(this);
+            java.awt.FileDialog fd = new java.awt.FileDialog(parentFrame, "Chọn nơi lưu ảnh QR", java.awt.FileDialog.SAVE);
+            fd.setFile("QR_" + maGD + ".png");
+            fd.setVisible(true);
+            String dir = fd.getDirectory();
+            String file = fd.getFile();
+            if (dir != null && file != null) {
+                String filePath = dir + file;
+                if (!filePath.toLowerCase().endsWith(".png")) filePath += ".png";
+                try {
+                    java.awt.image.BufferedImage labelImg = new java.awt.image.BufferedImage(300, 380, java.awt.image.BufferedImage.TYPE_INT_RGB);
+                    Graphics2D g2d = labelImg.createGraphics();
+                    g2d.setColor(Color.WHITE);
+                    g2d.fillRect(0, 0, 300, 380);
+                    g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+                    g2d.setColor(Color.BLACK);
+                    g2d.setFont(new Font("Segoe UI", Font.BOLD, 16));
+                    FontMetrics fm = g2d.getFontMetrics();
+                    g2d.drawString(tenCuaHang, (300 - fm.stringWidth(tenCuaHang)) / 2, 30);
+
+                    g2d.drawImage(finalImg, 25, 45, 250, 250, null);
+
+                    g2d.setFont(new Font("Courier New", Font.BOLD, 14));
+                    fm = g2d.getFontMetrics();
+                    g2d.drawString("Mã GD: " + maGD, (300 - fm.stringWidth("Mã GD: " + maGD)) / 2, 320);
+
+                    g2d.setColor(Color.decode("#E11D48"));
+                    g2d.setFont(new Font("Segoe UI", Font.BOLD, 18));
+                    fm = g2d.getFontMetrics();
+                    g2d.drawString("Thanh toán: " + soTien, (300 - fm.stringWidth("Thanh toán: " + soTien)) / 2, 350);
+
+                    g2d.dispose();
+                    javax.imageio.ImageIO.write(labelImg, "png", new java.io.File(filePath));
+                    showCustomNotification("XUẤT ẢNH THÀNH CÔNG", "Đã lưu ảnh mã QR tại:\n" + filePath, "SUCCESS");
+                } catch (Exception ex) {
+                    showCustomNotification("LỖI", "Không lưu được file ảnh: " + ex.getMessage(), "ERROR");
+                }
+            }
+        });
+
+        // --- NÚT IN MÁY IN ---
+        JButton btnInTrucTiep = new JButton("In máy in");
+        btnInTrucTiep.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnInTrucTiep.setBackground(Color.decode("#0EA5E9"));
+        btnInTrucTiep.setForeground(Color.WHITE);
+        btnInTrucTiep.setBorderPainted(false);
+        btnInTrucTiep.setFocusPainted(false);
+        btnInTrucTiep.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+        btnInTrucTiep.addActionListener(ev -> {
+            java.awt.print.PrinterJob job = java.awt.print.PrinterJob.getPrinterJob();
+            job.setPrintable((graphics, pageFormat, pageIndex) -> {
+                if (pageIndex > 0) return java.awt.print.Printable.NO_SUCH_PAGE;
+                Graphics2D g2d = (Graphics2D) graphics;
+                g2d.translate(pageFormat.getImageableX(), pageFormat.getImageableY());
+
+                double width = 150;
+                double height = width; 
+
+                g2d.setFont(new Font("Segoe UI", Font.BOLD, 10));
+                g2d.drawString(tenCuaHang, 10, 15);
+                g2d.drawImage(finalImg, 10, 20, (int)width, (int)height, null);
+                g2d.setFont(new Font("Courier New", Font.PLAIN, 10));
+                g2d.drawString("GD: " + maGD, 10, (int)height + 35);
+                g2d.drawString("Tien: " + soTien, 10, (int)height + 50);
+                return java.awt.print.Printable.PAGE_EXISTS;
+            });
+
+            if (job.printDialog()) {
+                try {
+                    job.print();
+                    showCustomNotification("IN THÀNH CÔNG", "Đã gửi lệnh in đến máy in.", "SUCCESS");
+                } catch (java.awt.print.PrinterException ex) {
+                    showCustomNotification("LỖI IN", "Không thể in: " + ex.getMessage(), "ERROR");
+                }
+            }
+        });
+
+        JButton btnDong = new JButton("Đóng");
+        btnDong.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnDong.setBackground(Color.decode("#1E3A8A")); // darkBlue
+        btnDong.setForeground(Color.WHITE);
+        btnDong.setBorderPainted(false);
+        btnDong.setFocusPainted(false);
+        btnDong.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnDong.addActionListener(ev -> dlg.dispose());
+
+        JPanel pnlBtn = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.CENTER, 10, 0));
+        pnlBtn.setBackground(Color.WHITE);
+        pnlBtn.add(btnXuatAnh);
+        pnlBtn.add(btnInTrucTiep);
+        pnlBtn.add(btnDong);
+
+        JPanel center = new JPanel();
+        center.setLayout(new BoxLayout(center, BoxLayout.Y_AXIS));
+        center.setBackground(Color.WHITE);
+
+        for (JComponent comp : new JComponent[]{lblTitle, pnlImg, lblSo, lblGia}) {
+            comp.setAlignmentX(0.5f);
+            center.add(comp);
+            center.add(Box.createVerticalStrut(8));
+        }
+
+        main.add(center, BorderLayout.CENTER);
+        main.add(pnlBtn, BorderLayout.SOUTH);
+
+        dlg.setContentPane(main);
+        dlg.pack();
+        dlg.setMinimumSize(new Dimension(360, 440));
+        dlg.setResizable(false);
+        dlg.setLocationRelativeTo(this);
+        dlg.setVisible(true);
+    }
 }
