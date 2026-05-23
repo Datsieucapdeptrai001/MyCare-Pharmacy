@@ -191,7 +191,7 @@ public class ManHinhKhuyenMai extends JPanel {
 
             RoundedButton btnFilter = new RoundedButton(filterName, bgColor, fgColor);
             btnFilter.setBorderColor(bgColor);
-            btnFilter.setPreferredSize(new Dimension(125, 34)); 
+            btnFilter.setPreferredSize(new Dimension(140, 34)); 
             
             filterButtons.add(btnFilter);
             pnlFilters.add(btnFilter);
@@ -315,7 +315,7 @@ public class ManHinhKhuyenMai extends JPanel {
         pnlWrapper.setMaximumSize(new Dimension(Integer.MAX_VALUE, 115));
         pnlWrapper.setPreferredSize(new Dimension(0, 115));
 
-        KPICard cardActive = new KPICard("Đang hoạt động", "0", COLOR_SUCCESS, Color.decode("#F2FCF5"), "CHECK_CIRCLE");
+        KPICard cardActive = new KPICard("Đang hoạt động", "0", COLOR_SUCCESS, Color.decode("#F2FCF5"), "CHECK_OK");
         lblKpiActive = cardActive.getLblValue();
 
         KPICard cardUpcoming = new KPICard("Sắp diễn ra", "0", COLOR_WARNING, Color.decode("#FFFDF2"), "CLOCK");
@@ -409,7 +409,7 @@ public class ManHinhKhuyenMai extends JPanel {
                 txtDiemThuong, "Điểm", "Hóa đơn đạt mốc sẽ cộng điểm."));
         pnlBody.add(createPointConfigCard("Quy đổi", "REFRESH", COLOR_INFO, lblDiem1, null, txtTienDoi, "VNĐ",
                 "Số tiền trừ cho mỗi điểm."));
-        pnlBody.add(createPointConfigCard("Điều kiện", "CHECK_CIRCLE", COLOR_WARNING, lblToiThieu, null,
+        pnlBody.add(createPointConfigCard("Điều kiện", "CHECK_OK", COLOR_WARNING, lblToiThieu, null,
                 txtDiemToiThieu, "Điểm", "Mức điểm tối thiểu để dùng."));
 
         JPanel pnlFooter = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 8));
@@ -570,7 +570,8 @@ public class ManHinhKhuyenMai extends JPanel {
 
         tblKhuyenMai.getColumnModel().getColumn(0).setMaxWidth(70); 
         tblKhuyenMai.getColumnModel().getColumn(4).setPreferredWidth(100); 
-        tblKhuyenMai.getColumnModel().getColumn(7).setMaxWidth(110); 
+        // ĐÃ FIX: Mở rộng bề ngang cột Trạng thái để chữ Đang hoạt động không bị chấm chấm
+        tblKhuyenMai.getColumnModel().getColumn(7).setMaxWidth(130); 
         tblKhuyenMai.getColumnModel().getColumn(8).setMaxWidth(55); 
         tblKhuyenMai.getColumnModel().getColumn(9).setMaxWidth(60); 
 
@@ -1868,7 +1869,6 @@ public class ManHinhKhuyenMai extends JPanel {
                     return;
                 }
 
-                // 1. NGHIỆP VỤ: KIỂM TRA ĐIỀU KIỆN SẢN PHẨM TRƯỚC KHI LƯU
                 if (isBlockedByLaw) {
                     showNotification("Cấm thao tác", "Sản phẩm vi phạm quy định nhập liệu (Luật Dược/Hết hạn/Hết hàng). Vui lòng đổi sản phẩm khác!", "error");
                     return;
@@ -1888,16 +1888,26 @@ public class ManHinhKhuyenMai extends JPanel {
                     mucGiamCheck = parseCurrencySafe(fldTienGiam.getTextField().getText());
                 } else {
                     spKiemTra = fldMaSPMua.getTextField().getText().trim();
-                    mucGiamCheck = 0; // Combo không so sánh giảm tiền
+                    mucGiamCheck = 0; 
+                    
+                    // ĐÃ FIX: BỔ SUNG KIỂM TRA CHO SẢN PHẨM TẶNG KÈM
+                    String spTangCheck = fldMaSPTang.getTextField().getText().trim();
+                    if (!spTangCheck.isEmpty() && !spTangCheck.startsWith("VD:")) {
+                        Map<String, Object> valTang = busKhuyenMai.kiemTraHopLeKhiThemThuCong(spTangCheck);
+                        String statusTang = valTang.get("status").toString();
+                        if ("BLOCK".equals(statusTang)) {
+                            showNotification("Vi phạm quy định", "Sản phẩm TẶNG KÈM [" + spTangCheck + "] vi phạm: " + valTang.get("message"), "error");
+                            return; // Chặn đứng
+                        }
+                    }
                 }
 
                 if (spKiemTra.isEmpty() || spKiemTra.startsWith("VD:")) {
                     if (typeIndex != 0 || cbTarget.getSelectedIndex() == 1) {
-                        showNotification("Cảnh báo", "Vui lòng chọn sản phẩm!", "warning");
+                        showNotification("Cảnh báo", "Vui lòng chọn sản phẩm chính!", "warning");
                         return;
                     }
                 } else {
-                    // 2. NGHIỆP VỤ: KIỂM TRA TRÙNG KHUYẾN MÃI (CHỐNG VÔ DỤNG LẪN NHAU)
                     String currentId = isEditMode ? getSafeString(this.existingData, "0") : null;
                     boolean isTrung = busKhuyenMai.kiemTraTrungKhuyenMai(spKiemTra, typeIndex, mucGiamCheck, currentId);
                     if (isTrung) {
@@ -2025,7 +2035,6 @@ public class ManHinhKhuyenMai extends JPanel {
                 }
             }
 
-            // HIỂN THỊ THÔNG TIN REALTIME CỦA SẢN PHẨM TRÊN GUI
             isBlockedByLaw = false;
             if (!spToCheck.isEmpty() && !spToCheck.startsWith("VD:")) {
                 pnlInfoBar.setVisible(true);
@@ -2204,10 +2213,11 @@ public class ManHinhKhuyenMai extends JPanel {
         pnlWrap.setMaximumSize(new Dimension(Integer.MAX_VALUE, 160));
         pnlWrap.setPreferredSize(new Dimension(0, 160));
 
+        // ĐÃ FIX ICON: Đổi LIGHTBULB sang STAR_FILL (có sẵn trong thư viện)
         JLabel lblTitle = new JLabel(" GỢI Ý KHUYẾN MÃI THEO LỊCH & TỒN KHO");
         lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 14));
         lblTitle.setForeground(COLOR_TEXT_MAIN);
-        lblTitle.setIcon(new MenuIcon("LIGHTBULB"));
+        lblTitle.setIcon(new MenuIcon("STAR_FILL"));
 
         pnlSuggestionCards = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 0));
         pnlSuggestionCards.setOpaque(false);
@@ -2759,7 +2769,8 @@ public class ManHinhKhuyenMai extends JPanel {
                         fg = COLOR_TEXT_MUTED;
                     }
 
-                    int w = 100, h = 24, x = (getWidth() - w) / 2, y = (getHeight() - h) / 2;
+                    // ĐÃ FIX: Nới rộng thẻ hiển thị Status để chứa chữ "Đang hoạt động" không bị lẹm
+                    int w = 115, h = 24, x = (getWidth() - w) / 2, y = (getHeight() - h) / 2;
                     g2.setColor(bg);
                     g2.fillRoundRect(x, y, w, h, h, h);
                     g2.setColor(fg);
@@ -2929,7 +2940,7 @@ public class ManHinhKhuyenMai extends JPanel {
                 headerBg = COLOR_SUCCESS;
                 iconBg = Color.decode("#E8F5E9");
                 borderColor = COLOR_SUCCESS;
-                iconType = "CORRECT";
+                iconType = "CHECK_OK";
             } else if (type.equals("error")) {
                 headerBg = COLOR_DANGER;
                 iconBg = Color.decode("#FFEBEE");
@@ -3006,7 +3017,7 @@ public class ManHinhKhuyenMai extends JPanel {
             pnlFooter.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, COLOR_BORDER));
 
             RoundedButton btnOk = new RoundedButton("OK", headerBg, Color.WHITE);
-            btnOk.setIcon(new MenuIcon("CHECK_CIRCLE"));
+            btnOk.setIcon(new MenuIcon("CHECK_OK"));
             btnOk.setPreferredSize(new Dimension(100, 38));
             btnOk.addActionListener(e -> dialog.dispose());
 
@@ -3103,7 +3114,7 @@ public class ManHinhKhuyenMai extends JPanel {
             btnCancel.addActionListener(e -> dialog.dispose());
 
             RoundedButton btnYes = new RoundedButton("Có", COLOR_WARNING, Color.WHITE);
-            btnYes.setIcon(new MenuIcon("CHECK_CIRCLE"));
+            btnYes.setIcon(new MenuIcon("CHECK_OK"));
             btnYes.setPreferredSize(new Dimension(100, 38));
             btnYes.addActionListener(e -> {
                 dialog.dispose();
