@@ -402,13 +402,14 @@ public class DAO_KhuyenMai {
                 }
             }
 
+            // ĐÃ FIX: Loại bỏ tính thuế VAT ra khỏi Doanh thu thuần để khớp với ManHinhThongKe
+            // ĐÃ FIX: Bổ sung điều kiện chỉ tính hóa đơn BAN_HANG (không tính đơn đổi trả)
             String sqlHD = "SELECT hd.id, " +
-                           "(SELECT ISNULL(SUM(ct.soLuong * dv.gia * (1 + (ISNULL(sp.thueVAT, 0) / 100.0))), 0) " +
+                           "(SELECT ISNULL(SUM(ct.soLuong * dv.gia), 0) " +
                            " FROM ChiTietHoaDon ct " +
                            " JOIN DonViDoLuong dv ON ct.donViDoLuongId = dv.id AND ct.sanPhamId = dv.sanPhamId " +
-                           " JOIN SanPham sp ON ct.sanPhamId = sp.id " +
                            " WHERE ct.hoaDonId = hd.id) as tongTienGoc " +
-                           "FROM HoaDon hd WHERE hd.khuyenMaiId = ?";
+                           "FROM HoaDon hd WHERE hd.khuyenMaiId = ? AND ISNULL(hd.loaiHoaDon, 'BAN_HANG') = 'BAN_HANG'";
 
             try (PreparedStatement pst = con.prepareStatement(sqlHD)) {
                 pst.setString(1, maKM);
