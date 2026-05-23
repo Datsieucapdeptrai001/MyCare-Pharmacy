@@ -496,7 +496,7 @@ public class ManHinhLoHang extends JPanel {
 
                     FontMetrics fm = g2.getFontMetrics();
                     int y = (getHeight() - fm.getHeight()) / 2 + fm.getAscent();
-                    g2.drawString("Tìm mã lô, tên SP...", 2, y);
+                    g2.drawString("Tìm mã lô, kho, tên SP...", 2, y);
                     g2.dispose();
                 }
             }
@@ -871,6 +871,7 @@ public class ManHinhLoHang extends JPanel {
             boolean matchKw = keyword.isEmpty()
                     || safe(item.soLo).toLowerCase().contains(keyword)
                     || safe(item.id).toLowerCase().contains(keyword)
+                    || safe(item.maVachNoiBo).toLowerCase().contains(keyword)
                     || safe(item.maKho).toLowerCase().contains(keyword)
                     || safe(item.khoHienThi).toLowerCase().contains(keyword)
                     || safe(item.maSanPham).toLowerCase().contains(keyword)

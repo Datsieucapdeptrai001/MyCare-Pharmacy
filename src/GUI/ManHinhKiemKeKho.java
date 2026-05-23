@@ -583,7 +583,7 @@ public class ManHinhKiemKeKho extends JDialog {
 
         JFileChooser chooser = new JFileChooser();
         chooser.setDialogTitle("Xuất mẫu kiểm kê");
-        chooser.setSelectedFile(new File("Mau_KiemKeKho.csv"));
+        chooser.setSelectedFile(new File("Mau_KiemKeKho.xls"));
 
         int result = chooser.showSaveDialog(this);
 
@@ -593,35 +593,83 @@ public class ManHinhKiemKeKho extends JDialog {
 
         File file = chooser.getSelectedFile();
 
-        if (!file.getName().toLowerCase().endsWith(".csv")) {
-            file = new File(file.getParentFile(), file.getName() + ".csv");
+        if (!file.getName().toLowerCase().endsWith(".xls")) {
+            file = new File(file.getParentFile(), file.getName() + ".xls");
         }
 
         try (OutputStreamWriter writer = new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8)) {
             writer.write('\uFEFF');
 
-            writer.write("MaLoHoacMaVach,KHO,SanPham,TonHeThong,TonThucTe,TinhTrang,LyDo\n");
+            writer.write("<html>");
+            writer.write("<head>");
+            writer.write("<meta charset='UTF-8'>");
+            writer.write("<style>");
+            writer.write("body{font-family:'Segoe UI',Arial,sans-serif;font-size:11pt;}");
+            writer.write("table{border-collapse:collapse;}");
+            writer.write("th{background:#DBEAFE;color:#0F172A;font-weight:bold;text-align:center;border:1px solid #94A3B8;padding:6px;}");
+            writer.write("td{border:1px solid #CBD5E1;padding:6px;vertical-align:middle;}");
+            writer.write(".text{mso-number-format:'\\@';}");
+            writer.write(".num{mso-number-format:'0';text-align:right;}");
+            writer.write(".note{mso-number-format:'\\@';}");
+            writer.write("</style>");
+            writer.write("</head>");
+            writer.write("<body>");
+
+            writer.write("<h2>PHIẾU MẪU KIỂM KÊ KHO</h2>");
+            writer.write("<p><b>Hướng dẫn:</b> Chỉ sửa cột <b>Tồn thực tế</b>, <b>Tình trạng</b>, <b>Lý do</b>. Không sửa Mã lô, Kho, Sản phẩm.</p>");
+
+            writer.write("<table>");
+            writer.write("<tr>");
+            writer.write("<th style='width:150px;'>Mã lô / Mã vạch</th>");
+            writer.write("<th style='width:100px;'>Kho</th>");
+            writer.write("<th style='width:280px;'>Sản phẩm</th>");
+            writer.write("<th style='width:110px;'>Tồn hệ thống</th>");
+            writer.write("<th style='width:110px;'>Tồn thực tế</th>");
+            writer.write("<th style='width:140px;'>Tình trạng</th>");
+            writer.write("<th style='width:260px;'>Lý do</th>");
+            writer.write("</tr>");
 
             for (KiemKeItem item : dsGoc) {
-                writer.write(csv(item.getSoLoHang()));
-                writer.write(",");
-                writer.write(csv(item.getKhoHangId()));
-                writer.write(",");
-                writer.write(csv(safe(item.getSanPhamId()) + " - " + safe(item.getTenSanPham())));
-                writer.write(",");
-                writer.write(csv(String.valueOf(item.getTonHeThong())));
-                writer.write(",");
-                writer.write(csv(String.valueOf(item.getTonThucTe())));
-                writer.write(",");
-                writer.write(csv(tachTinhTrang(item.getLyDo(), item.getChenhLech())));
-                writer.write(",");
-                writer.write(csv(tachLyDoGoc(item.getLyDo())));
-                writer.write("\n");
+                writer.write("<tr>");
+
+                writer.write("<td class='text'>");
+                writer.write(escapeHtml(safe(item.getSoLoHang())));
+                writer.write("</td>");
+
+                writer.write("<td class='text'>");
+                writer.write(escapeHtml(safe(item.getKhoHangId())));
+                writer.write("</td>");
+
+                writer.write("<td class='text'>");
+                writer.write(escapeHtml(safe(item.getSanPhamId()) + " - " + safe(item.getTenSanPham())));
+                writer.write("</td>");
+
+                writer.write("<td class='num'>");
+                writer.write(escapeHtml(String.valueOf(item.getTonHeThong())));
+                writer.write("</td>");
+
+                writer.write("<td class='num'>");
+                writer.write(escapeHtml(String.valueOf(item.getTonThucTe())));
+                writer.write("</td>");
+
+                writer.write("<td class='text'>");
+                writer.write(escapeHtml(tachTinhTrang(item.getLyDo(), item.getChenhLech())));
+                writer.write("</td>");
+
+                writer.write("<td class='note'>");
+                writer.write(escapeHtml(tachLyDoGoc(item.getLyDo())));
+                writer.write("</td>");
+
+                writer.write("</tr>");
             }
+
+            writer.write("</table>");
+            writer.write("</body>");
+            writer.write("</html>");
 
             showModernAlert(
                     "Thành công",
-                    "Đã xuất mẫu kiểm kê.\nMở file bằng Excel, nhập Tồn thực tế + Tình trạng + Lý do rồi import lại.",
+                    "Đã xuất mẫu kiểm kê dạng Excel.\nMở file Mau_KiemKeKho.xls bằng WPS/Excel sẽ tách cột sẵn.",
                     SUCCESS
             );
 
@@ -629,14 +677,6 @@ public class ManHinhKiemKeKho extends JDialog {
             e.printStackTrace();
             showModernAlert("Lỗi", "Xuất mẫu kiểm kê thất bại: " + e.getMessage(), DANGER);
         }
-    }
-
-    private String csv(Object value) {
-        String text = value == null ? "" : value.toString();
-
-        text = text.replace("\"", "\"\"");
-
-        return "\"" + text + "\"";
     }
     private void nhapExcelKiemKe() {
         stopEditingIfNeeded();
