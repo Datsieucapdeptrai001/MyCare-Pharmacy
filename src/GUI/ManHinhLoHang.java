@@ -56,7 +56,8 @@ public class ManHinhLoHang extends JPanel {
     private static final Color HIDDEN_SOFT = new Color(243, 244, 246);
 
     private static final Color ROW_HOVER = new Color(241, 245, 249);
-
+    private static final int SAP_HET_HAN_DAYS = 30;
+    private static final int CAN_HAN_DAYS = 180;
     private JTextField txtSearch;
     private JCheckBox chkNear90;
     private JCheckBox chkShowHidden;
@@ -364,9 +365,9 @@ public class ManHinhLoHang extends JPanel {
         lblGood = statValueLabel();
 
         row.add(createStatCard("Đã hết hạn", new MenuIcon("CANCEL"), lblExpired, DANGER_SOFT, DANGER));
-        row.add(createStatCard("Gần hết (≤30 ngày)", new MenuIcon("WARNING"), lblNear, WARNING_SOFT, WARNING));
-        row.add(createStatCard("Cảnh báo (31-90 ngày)", new MenuIcon("TIME"), lblWarning, GOLD_SOFT, GOLD));
-        row.add(createStatCard("Còn hạn (>90 ngày)", new MenuIcon("CHECK_CIRCLE"), lblGood, SUCCESS_SOFT, SUCCESS));
+        row.add(createStatCard("Sắp hết hạn (≤30 ngày)", new MenuIcon("WARNING"), lblNear, WARNING_SOFT, WARNING));
+        row.add(createStatCard("Cận hạn (31-180 ngày)", new MenuIcon("TIME"), lblWarning, GOLD_SOFT, GOLD));
+        row.add(createStatCard("Còn hạn tốt (>180 ngày)", new MenuIcon("CHECK_CIRCLE"), lblGood, SUCCESS_SOFT, SUCCESS));
 
         return row;
     }
@@ -421,7 +422,7 @@ public class ManHinhLoHang extends JPanel {
         right.setOpaque(false);
         right.setAlignmentY(Component.CENTER_ALIGNMENT);
 
-        chkNear90 = new JCheckBox("Chỉ sắp hết hạn");
+        chkNear90 = new JCheckBox("Chỉ lô cận hạn");
         setupCheckBox(chkNear90);
         chkNear90.addItemListener(e -> {
             if (e.getStateChange() == ItemEvent.SELECTED) {
@@ -815,31 +816,48 @@ public class ManHinhLoHang extends JPanel {
     }
 
     private void updateStats() {
-        int expired = 0, near = 0, warning = 0, good = 0;
+        int expired = 0;
+        int near = 0;
+        int warning = 0;
+        int good = 0;
+
         for (BatchItem item : dsTatCa) {
-            if ("Đã ẩn".equals(item.trangThai))
+            if (item == null) {
                 continue;
-            String conLai = item.getConLai();
-            if ("Hết hạn".equals(item.trangThai) || conLai.startsWith("Quá")) {
+            }
+
+            // Lô ẩn không tính cảnh báo hạn dùng
+            if ("Đã ẩn".equals(item.trangThai)) {
+                continue;
+            }
+
+            // Hết hàng không tính cảnh báo hạn dùng
+            if (item.tonKho <= 0 || "Hết hàng".equals(item.trangThai)) {
+                continue;
+            }
+
+            long days = getDaysRemaining(item);
+
+            if (days < 0 || "Hết hạn".equals(item.trangThai)) {
                 expired++;
+            } else if (days <= SAP_HET_HAN_DAYS) {
+                near++;
+            } else if (days <= CAN_HAN_DAYS) {
+                warning++;
             } else {
-                int days = parseDays(conLai);
-                if (days <= 30)
-                    near++;
-                else if (days <= 90)
-                    warning++;
-                else
-                    good++;
+                good++;
             }
         }
+
         lblExpired.setText(String.valueOf(expired));
         lblNear.setText(String.valueOf(near));
         lblWarning.setText(String.valueOf(warning));
         lblGood.setText(String.valueOf(good));
 
-        int countDanger = near + expired;
+        int countDanger = expired + near;
+
         if (countDanger > 0) {
-            lblWarningBadge.setText(countDanger + " lô cần chú ý!");
+            lblWarningBadge.setText(countDanger + " lô cần xử lý gấp!");
             lblWarningBadge.setVisible(true);
         } else {
             lblWarningBadge.setVisible(false);
@@ -895,7 +913,11 @@ public class ManHinhLoHang extends JPanel {
                             matchFilter = "Hết hàng".equals(item.trangThai);
                             break;
                         case GAN_HET_HAN_90:
-                            matchFilter = !conLai.startsWith("Quá") && parseDays(conLai) <= 90;
+                            matchFilter = item.tonKho > 0
+                                    && !"Hết hàng".equals(item.trangThai)
+                                    && !"Đã ẩn".equals(item.trangThai)
+                                    && !conLai.startsWith("Quá")
+                                    && getDaysRemaining(item) <= CAN_HAN_DAYS;
                             break;
                         default:
                             matchFilter = true;
@@ -949,16 +971,32 @@ public class ManHinhLoHang extends JPanel {
     }
 
     private int getPriority(BatchItem item) {
-        if ("Đã ẩn".equals(item.trangThai))
+        if (item == null) {
+            return 99;
+        }
+
+        if ("Đã ẩn".equals(item.trangThai)) {
+            return 6;
+        }
+
+        if (item.tonKho <= 0 || "Hết hàng".equals(item.trangThai)) {
             return 5;
-        String conLai = item.getConLai();
-        if ("Hết hạn".equals(item.trangThai) || conLai.startsWith("Quá"))
+        }
+
+        long days = getDaysRemaining(item);
+
+        if ("Hết hạn".equals(item.trangThai) || days < 0) {
             return 1;
-        int days = parseDays(conLai);
-        if (days <= 30)
+        }
+
+        if (days <= SAP_HET_HAN_DAYS) {
             return 2;
-        if (days <= 90)
+        }
+
+        if (days <= CAN_HAN_DAYS) {
             return 3;
+        }
+
         return 4;
     }
 
@@ -1745,11 +1783,11 @@ public class ManHinhLoHang extends JPanel {
 
         int days = parseDays(conLai);
 
-        if (days <= 30) {
+        if (days <= SAP_HET_HAN_DAYS) {
             return WARNING;
         }
 
-        if (days <= 90) {
+        if (days <= CAN_HAN_DAYS) {
             return GOLD;
         }
 
@@ -1765,11 +1803,11 @@ public class ManHinhLoHang extends JPanel {
 
         int days = parseDays(conLai);
 
-        if (days <= 30) {
+        if (days <= SAP_HET_HAN_DAYS) {
             return WARNING_SOFT;
         }
 
-        if (days <= 90) {
+        if (days <= CAN_HAN_DAYS) {
             return GOLD_SOFT;
         }
 
@@ -1942,11 +1980,11 @@ public class ManHinhLoHang extends JPanel {
                     pill.setForeground(DANGER);
                 } else {
                     int days = parseDays(text);
-                    if (days <= 30) {
+                    if (days <= SAP_HET_HAN_DAYS) {
                         pill.setIcon(new MenuIcon("WARNING"));
                         pill.setBackground(WARNING_SOFT);
                         pill.setForeground(WARNING);
-                    } else if (days <= 90) {
+                    } else if (days <= CAN_HAN_DAYS) {
                         pill.setIcon(new MenuIcon("TIME"));
                         pill.setBackground(GOLD_SOFT);
                         pill.setForeground(GOLD);

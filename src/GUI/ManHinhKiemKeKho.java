@@ -18,7 +18,8 @@ import javax.swing.text.AbstractDocument;
 import javax.swing.text.AttributeSet;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.DocumentFilter;
-
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.geom.RoundRectangle2D;
@@ -699,18 +700,23 @@ public class ManHinhKiemKeKho extends JDialog {
 
         String fileName = file.getName().toLowerCase();
 
-        if (fileName.endsWith(".xlsx") || fileName.endsWith(".xls")) {
+        if (fileName.endsWith(".xlsx")) {
             showModernAlert(
                     "Sai định dạng file",
-                    "Chức năng này đang nhận file CSV, không đọc trực tiếp file Excel .xlsx/.xls.\n\n"
+                    "Chức năng này không đọc trực tiếp file .xlsx.\n\n"
                             + "Cách làm đúng:\n"
                             + "1. Bấm Xuất mẫu [F4]\n"
-                            + "2. Mở file CSV bằng Excel\n"
+                            + "2. Mở file Mau_KiemKeKho.xls bằng WPS/Excel\n"
                             + "3. Nhập Tồn thực tế, Tình trạng, Lý do\n"
-                            + "4. Lưu lại dạng CSV UTF-8\n"
-                            + "5. Import lại file CSV đó",
+                            + "4. Lưu lại\n"
+                            + "5. Import lại chính file .xls đó",
                     WARNING
             );
+            return;
+        }
+
+        if (fileName.endsWith(".xls")) {
+            nhapFileHtmlXlsKiemKe(file);
             return;
         }
 
@@ -843,6 +849,145 @@ public class ManHinhKiemKeKho extends JDialog {
             e.printStackTrace();
             showModernAlert("Lỗi", "Nhập file kiểm kê thất bại: " + e.getMessage(), DANGER);
         }
+    }
+    private void nhapFileHtmlXlsKiemKe(File file) {
+        stopEditingIfNeeded();
+
+        int soDongThanhCong = 0;
+        int soDongLoi = 0;
+        List<String> loi = new ArrayList<>();
+
+        try {
+            String html = docFileCsvDungTiengViet(file);
+
+            Pattern rowPattern = Pattern.compile(
+                    "<tr[^>]*>(.*?)</tr>",
+                    Pattern.CASE_INSENSITIVE | Pattern.DOTALL
+            );
+
+            Pattern cellPattern = Pattern.compile(
+                    "<td[^>]*>(.*?)</td>",
+                    Pattern.CASE_INSENSITIVE | Pattern.DOTALL
+            );
+
+            Matcher rowMatcher = rowPattern.matcher(html);
+            int rowIndex = 0;
+
+            while (rowMatcher.find()) {
+                rowIndex++;
+
+                String rowHtml = rowMatcher.group(1);
+
+                // Bỏ dòng tiêu đề <th>
+                if (rowHtml.toLowerCase().contains("<th")) {
+                    continue;
+                }
+
+                Matcher cellMatcher = cellPattern.matcher(rowHtml);
+                List<String> cols = new ArrayList<>();
+
+                while (cellMatcher.find()) {
+                    cols.add(cleanHtmlCell(cellMatcher.group(1)));
+                }
+
+                if (cols.isEmpty()) {
+                    continue;
+                }
+
+                if (cols.size() < 7) {
+                    soDongLoi++;
+                    loi.add("Dòng " + rowIndex + ": thiếu cột dữ liệu");
+                    continue;
+                }
+
+                String maLoHoacMaVach = getCol(cols, 0);
+                String kho = getCol(cols, 1);
+                String tonText = getCol(cols, 4);
+                String tinhTrang = getCol(cols, 5);
+                String lyDo = getCol(cols, 6);
+
+                if (isBlank(maLoHoacMaVach)) {
+                    soDongLoi++;
+                    loi.add("Dòng " + rowIndex + ": mã lô/mã vạch rỗng");
+                    continue;
+                }
+
+                int tonThucTe;
+
+                try {
+                    String cleaned = tonText
+                            .replace(".", "")
+                            .replace(",", "")
+                            .replaceAll("[^0-9]", "");
+
+                    if (cleaned.isEmpty()) {
+                        throw new NumberFormatException("Tồn thực tế rỗng");
+                    }
+
+                    tonThucTe = Integer.parseInt(cleaned);
+                } catch (Exception e) {
+                    soDongLoi++;
+                    loi.add("Dòng " + rowIndex + ": tồn thực tế không hợp lệ");
+                    continue;
+                }
+
+                KiemKeItem item = timItemTheoMaVaKho(maLoHoacMaVach, kho);
+
+                if (item == null) {
+                    soDongLoi++;
+                    loi.add("Dòng " + rowIndex + ": không tìm thấy lô " + maLoHoacMaVach + " tại kho " + kho);
+                    continue;
+                }
+
+                item.setTonThucTe(Math.max(0, tonThucTe));
+                item.setLyDo(ghepTinhTrangVaLyDo(tinhTrang, lyDo));
+                soDongThanhCong++;
+            }
+
+            dsDangHienThi = new ArrayList<>(dsGoc);
+            renderTable();
+
+            StringBuilder msg = new StringBuilder();
+            msg.append("Đã nhập kiểm kê từ file Excel mẫu.\n");
+            msg.append("Thành công: ").append(soDongThanhCong).append(" dòng.\n");
+            msg.append("Lỗi: ").append(soDongLoi).append(" dòng.");
+
+            if (!loi.isEmpty()) {
+                msg.append("\n\nMột số lỗi:\n");
+
+                for (int i = 0; i < Math.min(6, loi.size()); i++) {
+                    msg.append("- ").append(loi.get(i)).append("\n");
+                }
+            }
+
+            showModernAlert(
+                    "Kết quả nhập file",
+                    msg.toString(),
+                    soDongLoi == 0 ? SUCCESS : WARNING
+            );
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            showModernAlert("Lỗi", "Nhập file Excel mẫu thất bại: " + e.getMessage(), DANGER);
+        }
+    }
+    private String cleanHtmlCell(String html) {
+        if (html == null) {
+            return "";
+        }
+
+        String text = html;
+
+        text = text.replaceAll("(?i)<br\\s*/?>", "\n");
+        text = text.replaceAll("(?i)<[^>]+>", "");
+
+        text = text.replace("&nbsp;", " ");
+        text = text.replace("&amp;", "&");
+        text = text.replace("&lt;", "<");
+        text = text.replace("&gt;", ">");
+        text = text.replace("&quot;", "\"");
+
+        return text.trim();
     }
     private String getCol(List<String> cols, int index) {
         if (cols == null || index < 0 || index >= cols.size()) {
