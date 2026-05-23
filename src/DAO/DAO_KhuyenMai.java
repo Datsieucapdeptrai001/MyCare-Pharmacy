@@ -19,7 +19,7 @@ public class DAO_KhuyenMai {
         try { 
             ConnectDB.getInstance().connect(); 
         } catch (Exception e) { 
-            System.err.println("Lỗi khởi tạo kết nối DB tại DAO_KhuyenMai: " + e.getMessage()); 
+            // silent fail
         }
     }
 
@@ -37,7 +37,7 @@ public class DAO_KhuyenMai {
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            // silent fail
         }
         return dsMa;
     }
@@ -56,7 +56,7 @@ public class DAO_KhuyenMai {
             pst.setTimestamp(6, Timestamp.valueOf(km.getNgayKetThuc()));
             n = pst.executeUpdate();
         } catch (SQLException e) { 
-            e.printStackTrace(); 
+            // silent fail
         }
         return n > 0;
     }
@@ -73,7 +73,7 @@ public class DAO_KhuyenMai {
             pst.setString(5, km.getId());
             n = pst.executeUpdate();
         } catch (SQLException e) { 
-            e.printStackTrace(); 
+            // silent fail
         }
         return n > 0;
     }
@@ -86,7 +86,7 @@ public class DAO_KhuyenMai {
             pst.setString(1, maKM); 
             n = pst.executeUpdate();
         } catch (SQLException e) { 
-            e.printStackTrace(); 
+            // silent fail
         }
         return n > 0;
     }
@@ -107,7 +107,7 @@ public class DAO_KhuyenMai {
                 dsKhuyenMai.add(km);
             }
         } catch (SQLException e) { 
-            e.printStackTrace(); 
+            // silent fail
         }
         return dsKhuyenMai;
     }
@@ -130,10 +130,11 @@ public class DAO_KhuyenMai {
                 }
             }
         } catch (SQLException e) { 
-            e.printStackTrace(); 
+            // silent fail
         }
         return km;
     }
+
     public java.util.List<Object[]> layDanhSachKhuyenMaiFull() {
         java.util.List<Object[]> result = new java.util.ArrayList<>();
         String sql = "SELECT k.id, k.tenKhuyenMai, h.moTa, ISNULL(spYeuCau.ten, '') AS tenSanPhamYeuCau " +
@@ -160,21 +161,26 @@ public class DAO_KhuyenMai {
                 result.add(row);
             }
         } catch(Exception e) {
-            e.printStackTrace();
+            // silent fail
         }
         return result;
     }
+
     public List<Object[]> layDanhSachKhuyenMaiChoTable() {
         List<Object[]> listData = new ArrayList<>();
         Connection con = ConnectDB.getInstance().getConnection();
         if (con == null) return listData;
         
         String sql = "SELECT k.id, k.tenKhuyenMai, k.ngayBatDau, k.ngayKetThuc, k.trangThai, " +
-                     "h.loaiHinhThuc, h.giaTri as mucGiam, h.giamToiDa, h.spTang, h.slTang, h.dvdlTang, h.spYeuCau, h.slYeuCau, h.dvdlYeuCau, " + 
+                     "h.loaiHinhThuc, h.giaTri as mucGiam, h.giamToiDa, " +
+                     "ISNULL(sp2.ten, h.spTang) as spTang, h.slTang, h.dvdlTang, " +
+                     "ISNULL(sp1.ten, h.spYeuCau) as spYeuCau, h.slYeuCau, h.dvdlYeuCau, " + 
                      "d.giaTri as donToiThieu, h.doiTuongApDung " +
                      "FROM KhuyenMai k " +
                      "LEFT JOIN HinhThucKhuyenMai h ON k.id = h.khuyenMaiId " +
-                     "LEFT JOIN DieuKienKhuyenMai d ON k.id = d.khuyenMaiId";
+                     "LEFT JOIN DieuKienKhuyenMai d ON k.id = d.khuyenMaiId " +
+                     "LEFT JOIN SanPham sp1 ON h.spYeuCau = sp1.id " +
+                     "LEFT JOIN SanPham sp2 ON h.spTang = sp2.id";
         
         try (PreparedStatement stmt = con.prepareStatement(sql); ResultSet rs = stmt.executeQuery()) {
             java.util.Date currentDate = new java.util.Date();
@@ -249,7 +255,7 @@ public class DAO_KhuyenMai {
                 });
             }
         } catch (Exception ex) { 
-            ex.printStackTrace(); 
+            // silent fail
         }
         return listData;
     }
@@ -283,7 +289,7 @@ public class DAO_KhuyenMai {
         try (Statement stmt = con.createStatement(); ResultSet rs = stmt.executeQuery("SELECT * FROM CauHinhTichDiem")) {
             if (rs.next()) return new int[] { rs.getInt("tienMua"), rs.getInt("diemThuong"), rs.getInt("tienDoiMotDiem"), rs.getInt("diemToiThieu") };
         } catch (SQLException e) { 
-            e.printStackTrace(); 
+            // silent fail
         }
         return null;
     }
@@ -306,10 +312,11 @@ public class DAO_KhuyenMai {
             pst.setInt(8, diemToiThieu);
             return pst.executeUpdate() > 0;
         } catch (SQLException e) { 
-            e.printStackTrace(); 
+            // silent fail
         }
         return false;
     }
+
     public List<Object[]> layDanhSachKhuyenMaiHienThiTag() {
         List<Object[]> result = new ArrayList<>();
         String sqlLoad = "SELECT k.id, k.tenKhuyenMai, h.moTa, " +
@@ -337,10 +344,11 @@ public class DAO_KhuyenMai {
                 });
             }
         } catch(Exception e) {
-            e.printStackTrace();
+            // silent fail
         }
         return result;
     }
+
     public List<Object[]> layDanhSachKhuyenMaiHopLe() {
         List<Object[]> ds = new ArrayList<>();
         String sql = "SELECT k.id, h.loaiHinhThuc, h.giaTri AS mucGiam, ISNULL(d.giaTri, 0) AS dkGiaTri, d.loaiDieuKien, " +
@@ -360,7 +368,6 @@ public class DAO_KhuyenMai {
              ResultSet rs = pst.executeQuery()) {
              
             while (rs.next()) {
-                // Đóng gói dữ liệu vào mảng Object để trả về BUS
                 ds.add(new Object[]{
                     rs.getString("id"), rs.getString("loaiHinhThuc"), rs.getDouble("mucGiam"),
                     rs.getDouble("dkGiaTri"), rs.getString("loaiDieuKien"), rs.getInt("h_slYeuCau"),
@@ -369,10 +376,11 @@ public class DAO_KhuyenMai {
                 });
             }
         } catch (Exception e) {
-            System.err.println("Lỗi quét khuyến mãi DB: " + e.getMessage());
+            // silent fail
         }
         return ds;
     }
+
     public double[] layThongKeHieuSuatKM(String maKM) {
         double[] stats = new double[]{0, 0, 0}; 
         Connection con = ConnectDB.getInstance().getConnection();
@@ -429,8 +437,41 @@ public class DAO_KhuyenMai {
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            // silent fail
         }
         return stats;
+    }
+
+    // ==============================================================
+    // HÀM MỚI: KIỂM TRA KHUYẾN MÃI TRÙNG LẶP CHO SẢN PHẨM
+    // ==============================================================
+    public boolean kiemTraTrungKhuyenMai(String tenSP, int loaiHinhThucStr, double mucGiam, String currentKMId) {
+        String hinhThuc = "";
+        if (loaiHinhThucStr == 0) hinhThuc = "GIAM_THEO_PHAN_TRAM";
+        else if (loaiHinhThucStr == 1) hinhThuc = "GIAM_TIEN_MAT";
+        else hinhThuc = "SAN_PHAM_KEM_THEO";
+
+        String sql = "SELECT k.id FROM KhuyenMai k " +
+                     "JOIN HinhThucKhuyenMai h ON k.id = h.khuyenMaiId " +
+                     "JOIN SanPham sp ON h.spYeuCau = sp.id OR sp.ten = h.spYeuCau " +
+                     "WHERE k.trangThai = 'HOAT_DONG' " +
+                     "AND k.ngayBatDau <= GETDATE() AND (k.ngayKetThuc IS NULL OR k.ngayKetThuc >= GETDATE()) " +
+                     "AND (sp.ten = ? OR sp.id = ?) " +
+                     "AND h.loaiHinhThuc = ? " +
+                     "AND h.giaTri >= ? " +
+                     "AND k.id != ?";
+        try (Connection con = ConnectDB.getInstance().getConnection();
+             PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setString(1, tenSP);
+            pst.setString(2, tenSP);
+            pst.setString(3, hinhThuc);
+            pst.setDouble(4, mucGiam);
+            pst.setString(5, currentKMId == null ? "" : currentKMId);
+            try (ResultSet rs = pst.executeQuery()) {
+                return rs.next(); // True nếu tìm thấy 1 chương trình khác xịn hơn hoặc bằng
+            }
+        } catch (Exception e) {
+            return false;
+        }
     }
 }
