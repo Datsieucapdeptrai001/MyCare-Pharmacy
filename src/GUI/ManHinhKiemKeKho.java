@@ -3,6 +3,7 @@ package GUI;
 import BUS.BUS_KiemKeKho;
 import BUS.BUS_KiemKeKho.KetQuaKiemKe;
 import BUS.BUS_KiemKeKho.KiemKeItem;
+import Utils.MenuIcon;
 import Utils.SessionDangNhap;
 
 import javax.swing.*;
@@ -17,6 +18,7 @@ import javax.swing.text.AbstractDocument;
 import javax.swing.text.AttributeSet;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.DocumentFilter;
+
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.geom.RoundRectangle2D;
@@ -25,11 +27,15 @@ import java.awt.print.Paper;
 import java.awt.print.Printable;
 import java.awt.print.PrinterException;
 import java.awt.print.PrinterJob;
+
+import java.io.*;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-
 public class ManHinhKiemKeKho extends JDialog {
 
     public interface ReloadListener {
@@ -58,7 +64,12 @@ public class ManHinhKiemKeKho extends JDialog {
     private DefaultTableModel model;
     private JLabel lblTongDong;
     private JLabel lblTongChenhLech;
-
+    private JButton btnTimLo;
+    private JButton btnNhapExcel;
+    private JButton btnXuatMau;
+    private JButton btnLamMoi;
+    private JButton btnDong;
+    private JButton btnLuu;
     private List<KiemKeItem> dsGoc = new ArrayList<>();
     private List<KiemKeItem> dsDangHienThi = new ArrayList<>();
 
@@ -72,12 +83,13 @@ public class ManHinhKiemKeKho extends JDialog {
         setBackground(BG_TRANSPARENT);
         setContentPane(createMainUI());
 
-        setSize(1180, 720);
+        setSize(1180, 760);
         setLocationRelativeTo(owner);
         setShape(new RoundRectangle2D.Double(0, 0, getWidth(), getHeight(), 16, 16));
 
         loadDanhSachKho();
         loadDataTheoKho();
+        setupPhimTatNghiepVuKiemKe();
     }
 
     private JPanel createMainUI() {
@@ -148,31 +160,36 @@ public class ManHinhKiemKeKho extends JDialog {
     }
 
     private JPanel createToolbar() {
-        JPanel panel = new JPanel(new BorderLayout(12, 0));
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
         panel.setOpaque(false);
 
-        JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
-        left.setOpaque(false);
+        JPanel row1 = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        row1.setOpaque(false);
+        row1.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         JLabel lblKho = new JLabel("Kho kiểm kê:");
         lblKho.setFont(new Font("Segoe UI", Font.BOLD, 14));
         lblKho.setForeground(TEXT_PRIMARY);
 
         cbKhoHang = new JComboBox<>();
-        cbKhoHang.setPreferredSize(new Dimension(160, 38));
+        cbKhoHang.setPreferredSize(new Dimension(155, 38));
+        cbKhoHang.setMaximumSize(new Dimension(155, 38));
         cbKhoHang.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         cbKhoHang.setEditable(false);
         cbKhoHang.enableInputMethods(false);
         cbKhoHang.setFocusable(false);
         cbKhoHang.addActionListener(e -> loadDataTheoKho());
 
-        JLabel lblSearch = new JLabel("Tìm kiếm:");
+        JLabel lblSearch = new JLabel("Mã lô / mã vạch:");
         lblSearch.setFont(new Font("Segoe UI", Font.BOLD, 14));
         lblSearch.setForeground(TEXT_PRIMARY);
 
         txtSearch = new JTextField();
-        txtSearch.setPreferredSize(new Dimension(340, 38));
+        txtSearch.setPreferredSize(new Dimension(300, 38));
+        txtSearch.setMaximumSize(new Dimension(300, 38));
         txtSearch.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        txtSearch.setToolTipText("F2: tìm lô đã quét bằng điện thoại");
         txtSearch.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(BORDER),
                 new EmptyBorder(0, 12, 0, 12)
@@ -180,16 +197,57 @@ public class ManHinhKiemKeKho extends JDialog {
         txtSearch.enableInputMethods(true);
         txtSearch.getDocument().addDocumentListener(new SimpleDocumentListener(this::filterData));
 
-        JButton btnRefresh = createModernButton("Làm mới", new Color(71, 85, 105));
-        btnRefresh.addActionListener(e -> loadDataTheoKho());
+        btnTimLo = createModernButton("Tìm lô [F2]", PRIMARY);
+        btnTimLo.setIcon(new MenuIcon("SEARCH", 18, Color.WHITE));
+        btnTimLo.setIconTextGap(8);
+        btnTimLo.setPreferredSize(new Dimension(145, 38));
+        btnTimLo.setMaximumSize(new Dimension(145, 38));
+        btnTimLo.addActionListener(e -> focusTimLo());
 
-        left.add(lblKho);
-        left.add(cbKhoHang);
-        left.add(lblSearch);
-        left.add(txtSearch);
-        left.add(btnRefresh);
+        btnLamMoi = createModernButton("Làm mới [F6]", new Color(71, 85, 105));
+        btnLamMoi.setIcon(new MenuIcon("REFRESH", 18, Color.WHITE));
+        btnLamMoi.setIconTextGap(8);
+        btnLamMoi.setPreferredSize(new Dimension(145, 38));
+        btnLamMoi.setMaximumSize(new Dimension(145, 38));
+        btnLamMoi.addActionListener(e -> loadDataTheoKho());
 
-        panel.add(left, BorderLayout.WEST);
+        row1.add(lblKho);
+        row1.add(cbKhoHang);
+        row1.add(Box.createHorizontalStrut(4));
+        row1.add(lblSearch);
+        row1.add(txtSearch);
+        row1.add(btnTimLo);
+        row1.add(btnLamMoi);
+
+        JPanel row2 = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        row2.setOpaque(false);
+        row2.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JLabel lblExcel = new JLabel("File kiểm kê:");
+        lblExcel.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        lblExcel.setForeground(TEXT_PRIMARY);
+
+        btnNhapExcel = createModernButton("Nhập Excel [F3]", new Color(37, 99, 235));
+        btnNhapExcel.setIcon(new MenuIcon("IMPORT", 18, Color.WHITE));
+        btnNhapExcel.setIconTextGap(8);
+        btnNhapExcel.setPreferredSize(new Dimension(165, 38));
+        btnNhapExcel.setMaximumSize(new Dimension(165, 38));
+        btnNhapExcel.addActionListener(e -> nhapExcelKiemKe());
+
+        btnXuatMau = createModernButton("Xuất mẫu [F4]", new Color(14, 116, 144));
+        btnXuatMau.setIcon(new MenuIcon("EXPORT", 18, Color.WHITE));
+        btnXuatMau.setIconTextGap(8);
+        btnXuatMau.setPreferredSize(new Dimension(155, 38));
+        btnXuatMau.setMaximumSize(new Dimension(155, 38));
+        btnXuatMau.addActionListener(e -> xuatMauExcelKiemKe());
+
+        row2.add(lblExcel);
+        row2.add(btnNhapExcel);
+        row2.add(btnXuatMau);
+
+        panel.add(row1);
+        panel.add(Box.createVerticalStrut(10));
+        panel.add(row2);
 
         return panel;
     }
@@ -207,14 +265,15 @@ public class ManHinhKiemKeKho extends JDialog {
                 "Tồn hệ thống",
                 "Tồn thực tế",
                 "Chênh lệch",
-                "Lý do",
+                "Tình trạng",
+                "Lý do / Ghi chú",
                 "ID_ẨN"
         };
 
         model = new DefaultTableModel(columns, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
-                return column == 5 || column == 7;
+            	return column == 5 || column == 7 || column == 8;
             }
 
             @Override
@@ -233,7 +292,8 @@ public class ManHinhKiemKeKho extends JDialog {
         table.setDefaultRenderer(Integer.class, new KiemKeCellRenderer());
 
         table.getColumnModel().getColumn(5).setCellEditor(new NumberCellEditor());
-        table.getColumnModel().getColumn(7).setCellEditor(new TextCellEditor());
+        table.getColumnModel().getColumn(7).setCellEditor(createTinhTrangCellEditor());
+        table.getColumnModel().getColumn(8).setCellEditor(new TextCellEditor());
 
         model.addTableModelListener(e -> {
             if (dangCapNhatBang) {
@@ -247,7 +307,7 @@ public class ManHinhKiemKeKho extends JDialog {
                 return;
             }
 
-            if (col == 5 || col == 7) {
+            if (col == 5 || col == 7 || col == 8) {
                 capNhatDongSauKhiNhapTon(row);
             }
         });
@@ -261,16 +321,17 @@ public class ManHinhKiemKeKho extends JDialog {
     }
 
     private void setupTableColumns() {
-        table.getColumnModel().getColumn(0).setPreferredWidth(50);
-        table.getColumnModel().getColumn(1).setPreferredWidth(150);
-        table.getColumnModel().getColumn(2).setPreferredWidth(350);
-        table.getColumnModel().getColumn(3).setPreferredWidth(100);
-        table.getColumnModel().getColumn(4).setPreferredWidth(120);
-        table.getColumnModel().getColumn(5).setPreferredWidth(120);
-        table.getColumnModel().getColumn(6).setPreferredWidth(120);
-        table.getColumnModel().getColumn(7).setPreferredWidth(300);
+        table.getColumnModel().getColumn(0).setPreferredWidth(45);
+        table.getColumnModel().getColumn(1).setPreferredWidth(135);
+        table.getColumnModel().getColumn(2).setPreferredWidth(300);
+        table.getColumnModel().getColumn(3).setPreferredWidth(90);
+        table.getColumnModel().getColumn(4).setPreferredWidth(110);
+        table.getColumnModel().getColumn(5).setPreferredWidth(110);
+        table.getColumnModel().getColumn(6).setPreferredWidth(100);
+        table.getColumnModel().getColumn(7).setPreferredWidth(135);
+        table.getColumnModel().getColumn(8).setPreferredWidth(260);
 
-        int hiddenCol = table.getColumnModel().getColumnCount() - 1;
+        int hiddenCol = 9;
         table.getColumnModel().getColumn(hiddenCol).setMinWidth(0);
         table.getColumnModel().getColumn(hiddenCol).setMaxWidth(0);
         table.getColumnModel().getColumn(hiddenCol).setWidth(0);
@@ -326,14 +387,19 @@ public class ManHinhKiemKeKho extends JDialog {
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 0));
         actions.setOpaque(false);
 
-        JButton btnCancel = createModernButton("Đóng", new Color(100, 116, 139));
-        JButton btnSave = createModernButton("Lưu phiếu kiểm kê", SUCCESS);
+        btnDong = createModernButton("Đóng [Esc]", new Color(100, 116, 139));
+        btnDong.setIcon(new MenuIcon("CLOSE", 18, Color.WHITE));
+        btnDong.setIconTextGap(8);
 
-        btnCancel.addActionListener(e -> closeDialog());
-        btnSave.addActionListener(e -> handleSave());
+        btnLuu = createModernButton("Lưu phiếu kiểm kê [F10]", SUCCESS);
+        btnLuu.setIcon(new MenuIcon("SAVE", 18, Color.WHITE));
+        btnLuu.setIconTextGap(8);
 
-        actions.add(btnCancel);
-        actions.add(btnSave);
+        btnDong.addActionListener(e -> closeDialog());
+        btnLuu.addActionListener(e -> handleSave());
+
+        actions.add(btnDong);
+        actions.add(btnLuu);
 
         footer.add(actions, BorderLayout.EAST);
         return footer;
@@ -351,7 +417,594 @@ public class ManHinhKiemKeKho extends JDialog {
         label.setBackground(Color.WHITE);
         return label;
     }
+    private void setupPhimTatNghiepVuKiemKe() {
+        dangKyPhimTat("KK_TIM_LO_F2", KeyEvent.VK_F2, 0, this::focusTimLo);
+        dangKyPhimTat("KK_NHAP_EXCEL_F3", KeyEvent.VK_F3, 0, this::nhapExcelKiemKe);
+        dangKyPhimTat("KK_XUAT_MAU_F4", KeyEvent.VK_F4, 0, this::xuatMauExcelKiemKe);
+        dangKyPhimTat("KK_LAM_MOI_F6", KeyEvent.VK_F6, 0, this::loadDataTheoKho);
+        dangKyPhimTat("KK_LUU_F10", KeyEvent.VK_F10, 0, this::handleSave);
+        dangKyPhimTat("KK_DONG_ESC", KeyEvent.VK_ESCAPE, 0, this::closeDialog);
+    }
 
+    private void dangKyPhimTat(String actionKey, int keyCode, int modifiers, Runnable action) {
+        JRootPane rootPane = getRootPane();
+
+        InputMap inputMap = rootPane.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
+        ActionMap actionMap = rootPane.getActionMap();
+
+        inputMap.put(KeyStroke.getKeyStroke(keyCode, modifiers), actionKey);
+
+        actionMap.put(actionKey, new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (action != null) {
+                    action.run();
+                }
+            }
+        });
+    }
+
+    private void focusTimLo() {
+        if (txtSearch == null) {
+            return;
+        }
+
+        txtSearch.requestFocusInWindow();
+        txtSearch.selectAll();
+    }
+
+    private DefaultCellEditor createTinhTrangCellEditor() {
+        JComboBox<String> combo = new JComboBox<>(new String[]{
+                "Đủ hàng",
+                "Thiếu hàng",
+                "Dư hàng",
+                "Hỏng / vỡ",
+                "Không tìm thấy",
+                "Sai vị trí",
+                "Khác"
+        });
+
+        combo.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        combo.setBackground(Color.WHITE);
+        combo.enableInputMethods(false);
+
+        return new DefaultCellEditor(combo);
+    }
+    private String chuanHoaTinhTrang(String tinhTrang) {
+        String tt = tinhTrang == null ? "" : tinhTrang.trim();
+
+        if (tt.isEmpty()) {
+            return "Đủ hàng";
+        }
+
+        String lower = tt.toLowerCase();
+
+        if (lower.contains("du") || lower.contains("đủ")) {
+            return "Đủ hàng";
+        }
+
+        if (lower.contains("thieu") || lower.contains("thiếu")) {
+            return "Thiếu hàng";
+        }
+
+        if (lower.contains("du hang") || lower.contains("dư")) {
+            return "Dư hàng";
+        }
+
+        if (lower.contains("hong") || lower.contains("hỏng") || lower.contains("vo") || lower.contains("vỡ")) {
+            return "Hỏng / vỡ";
+        }
+
+        if (lower.contains("khong tim") || lower.contains("không tìm")) {
+            return "Không tìm thấy";
+        }
+
+        if (lower.contains("sai vi tri") || lower.contains("sai vị trí")) {
+            return "Sai vị trí";
+        }
+
+        return tt;
+    }
+    private String ghepTinhTrangVaLyDo(String tinhTrang, String lyDo) {
+        String tt = chuanHoaTinhTrang(tinhTrang);
+        String note = lyDo == null ? "" : lyDo.trim();
+
+        if (note.isEmpty()) {
+            return "[" + tt + "]";
+        }
+
+        return "[" + tt + "] " + note;
+    }
+
+    private String tachTinhTrang(String value, int chenhLech) {
+        String text = safe(value).trim();
+
+        if (text.startsWith("[") && text.contains("]")) {
+            int end = text.indexOf("]");
+            String tt = text.substring(1, end).trim();
+
+            if (!tt.isEmpty()) {
+                return tt;
+            }
+        }
+
+        if (chenhLech < 0) {
+            return "Thiếu hàng";
+        }
+
+        if (chenhLech > 0) {
+            return "Dư hàng";
+        }
+
+        return "Đủ hàng";
+    }
+
+    private String tachLyDoGoc(String value) {
+        String text = safe(value).trim();
+
+        if (text.startsWith("[") && text.contains("]")) {
+            int end = text.indexOf("]");
+
+            if (end + 1 < text.length()) {
+                return text.substring(end + 1).trim();
+            }
+
+            return "";
+        }
+
+        return text;
+    }
+
+    private String layMaVachNoiBo(KiemKeItem item) {
+        if (item == null) {
+            return "";
+        }
+
+        try {
+            Object value = item.getClass().getMethod("getMaVachNoiBo").invoke(item);
+
+            if (value == null) {
+                return "";
+            }
+
+            return value.toString().trim();
+        } catch (Exception ignored) {
+            return "";
+        }
+    }
+    private void xuatMauExcelKiemKe() {
+        stopEditingIfNeeded();
+        dongBoTatCaDongDangHienThi();
+
+        if (dsGoc == null || dsGoc.isEmpty()) {
+            showModernAlert("Thông báo", "Không có dữ liệu để xuất mẫu kiểm kê.", WARNING);
+            return;
+        }
+
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Xuất mẫu kiểm kê");
+        chooser.setSelectedFile(new File("Mau_KiemKeKho.csv"));
+
+        int result = chooser.showSaveDialog(this);
+
+        if (result != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+
+        File file = chooser.getSelectedFile();
+
+        if (!file.getName().toLowerCase().endsWith(".csv")) {
+            file = new File(file.getParentFile(), file.getName() + ".csv");
+        }
+
+        try (OutputStreamWriter writer = new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8)) {
+            writer.write('\uFEFF');
+
+            writer.write("MaLoHoacMaVach,KHO,SanPham,TonHeThong,TonThucTe,TinhTrang,LyDo\n");
+
+            for (KiemKeItem item : dsGoc) {
+                writer.write(csv(item.getSoLoHang()));
+                writer.write(",");
+                writer.write(csv(item.getKhoHangId()));
+                writer.write(",");
+                writer.write(csv(safe(item.getSanPhamId()) + " - " + safe(item.getTenSanPham())));
+                writer.write(",");
+                writer.write(csv(String.valueOf(item.getTonHeThong())));
+                writer.write(",");
+                writer.write(csv(String.valueOf(item.getTonThucTe())));
+                writer.write(",");
+                writer.write(csv(tachTinhTrang(item.getLyDo(), item.getChenhLech())));
+                writer.write(",");
+                writer.write(csv(tachLyDoGoc(item.getLyDo())));
+                writer.write("\n");
+            }
+
+            showModernAlert(
+                    "Thành công",
+                    "Đã xuất mẫu kiểm kê.\nMở file bằng Excel, nhập Tồn thực tế + Tình trạng + Lý do rồi import lại.",
+                    SUCCESS
+            );
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            showModernAlert("Lỗi", "Xuất mẫu kiểm kê thất bại: " + e.getMessage(), DANGER);
+        }
+    }
+
+    private String csv(Object value) {
+        String text = value == null ? "" : value.toString();
+
+        text = text.replace("\"", "\"\"");
+
+        return "\"" + text + "\"";
+    }
+    private void nhapExcelKiemKe() {
+        stopEditingIfNeeded();
+
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Nhập file kiểm kê CSV");
+
+        int result = chooser.showOpenDialog(this);
+
+        if (result != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+
+        File file = chooser.getSelectedFile();
+
+        if (file == null || !file.exists()) {
+            showModernAlert("Lỗi", "File không tồn tại.", DANGER);
+            return;
+        }
+
+        String fileName = file.getName().toLowerCase();
+
+        if (fileName.endsWith(".xlsx") || fileName.endsWith(".xls")) {
+            showModernAlert(
+                    "Sai định dạng file",
+                    "Chức năng này đang nhận file CSV, không đọc trực tiếp file Excel .xlsx/.xls.\n\n"
+                            + "Cách làm đúng:\n"
+                            + "1. Bấm Xuất mẫu [F4]\n"
+                            + "2. Mở file CSV bằng Excel\n"
+                            + "3. Nhập Tồn thực tế, Tình trạng, Lý do\n"
+                            + "4. Lưu lại dạng CSV UTF-8\n"
+                            + "5. Import lại file CSV đó",
+                    WARNING
+            );
+            return;
+        }
+
+        int soDongThanhCong = 0;
+        int soDongLoi = 0;
+        List<String> loi = new ArrayList<>();
+
+        try (BufferedReader reader = new BufferedReader(new StringReader(docFileCsvDungTiengViet(file)))) {
+
+            String line;
+            int lineNo = 0;
+
+            while ((line = reader.readLine()) != null) {
+                lineNo++;
+
+                line = removeBom(line);
+
+                if (line.trim().isEmpty()) {
+                    continue;
+                }
+
+                List<String> cols = parseCsvLineAuto(line);
+
+                if (cols.isEmpty()) {
+                    continue;
+                }
+
+                if (laDongTieuDe(cols)) {
+                    continue;
+                }
+
+                if (cols.size() < 5) {
+                    soDongLoi++;
+                    loi.add("Dòng " + lineNo + ": thiếu cột dữ liệu. File phải có: Mã lô/mã vạch, Kho, Tồn thực tế, Tình trạng, Lý do.");
+                    continue;
+                }
+
+                String maLoHoacMaVach;
+                String kho;
+                String tonText;
+                String tinhTrang;
+                String lyDo;
+
+                /*
+                 * Dạng mẫu chuẩn:
+                 * 0 MaLoHoacMaVach
+                 * 1 KHO
+                 * 2 SanPham
+                 * 3 TonHeThong
+                 * 4 TonThucTe
+                 * 5 TinhTrang
+                 * 6 LyDo
+                 */
+                if (cols.size() >= 7) {
+                    maLoHoacMaVach = getCol(cols, 0);
+                    kho = getCol(cols, 1);
+                    tonText = getCol(cols, 4);
+                    tinhTrang = getCol(cols, 5);
+                    lyDo = getCol(cols, 6);
+                } else {
+                    /*
+                     * Dạng rút gọn:
+                     * 0 MaLoHoacMaVach
+                     * 1 KHO
+                     * 2 TonThucTe
+                     * 3 TinhTrang
+                     * 4 LyDo
+                     */
+                    maLoHoacMaVach = getCol(cols, 0);
+                    kho = getCol(cols, 1);
+                    tonText = getCol(cols, 2);
+                    tinhTrang = getCol(cols, 3);
+                    lyDo = getCol(cols, 4);
+                }
+
+                if (isBlank(maLoHoacMaVach)) {
+                    soDongLoi++;
+                    loi.add("Dòng " + lineNo + ": mã lô/mã vạch rỗng");
+                    continue;
+                }
+
+                int tonThucTe;
+
+                try {
+                    String cleaned = tonText.replace(".", "").replace(",", "").replaceAll("[^0-9]", "");
+
+                    if (cleaned.isEmpty()) {
+                        throw new NumberFormatException("Tồn thực tế rỗng");
+                    }
+
+                    tonThucTe = Integer.parseInt(cleaned);
+                } catch (Exception e) {
+                    soDongLoi++;
+                    loi.add("Dòng " + lineNo + ": tồn thực tế không hợp lệ");
+                    continue;
+                }
+
+                KiemKeItem item = timItemTheoMaVaKho(maLoHoacMaVach, kho);
+
+                if (item == null) {
+                    soDongLoi++;
+                    loi.add("Dòng " + lineNo + ": không tìm thấy lô " + maLoHoacMaVach);
+                    continue;
+                }
+
+                item.setTonThucTe(Math.max(0, tonThucTe));
+                item.setLyDo(ghepTinhTrangVaLyDo(tinhTrang, lyDo));
+                soDongThanhCong++;
+            }
+
+            dsDangHienThi = new ArrayList<>(dsGoc);
+            renderTable();
+
+            StringBuilder msg = new StringBuilder();
+            msg.append("Đã nhập kiểm kê từ file.\n");
+            msg.append("Thành công: ").append(soDongThanhCong).append(" dòng.\n");
+            msg.append("Lỗi: ").append(soDongLoi).append(" dòng.");
+
+            if (!loi.isEmpty()) {
+                msg.append("\n\nMột số lỗi:\n");
+
+                for (int i = 0; i < Math.min(6, loi.size()); i++) {
+                    msg.append("- ").append(loi.get(i)).append("\n");
+                }
+            }
+
+            showModernAlert("Kết quả nhập file", msg.toString(), soDongLoi == 0 ? SUCCESS : WARNING);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            showModernAlert("Lỗi", "Nhập file kiểm kê thất bại: " + e.getMessage(), DANGER);
+        }
+    }
+    private String getCol(List<String> cols, int index) {
+        if (cols == null || index < 0 || index >= cols.size()) {
+            return "";
+        }
+
+        return cols.get(index) == null ? "" : cols.get(index).trim();
+    }
+
+    private String removeBom(String line) {
+        if (line == null) {
+            return "";
+        }
+
+        return line.replace("\uFEFF", "");
+    }
+
+    private boolean laDongTieuDe(List<String> cols) {
+        if (cols == null || cols.isEmpty()) {
+            return false;
+        }
+
+        String first = getCol(cols, 0).toLowerCase();
+
+        return first.contains("malo")
+                || first.contains("mã lô")
+                || first.contains("ma lo")
+                || first.contains("mavach")
+                || first.contains("mã vạch")
+                || first.contains("ma vach");
+    }
+
+    private List<String> parseCsvLineAuto(String line) {
+        List<String> best = parseCsvLineByDelimiter(line, ',');
+
+        List<String> semi = parseCsvLineByDelimiter(line, ';');
+        if (semi.size() > best.size()) {
+            best = semi;
+        }
+
+        List<String> tab = parseCsvLineByDelimiter(line, '\t');
+        if (tab.size() > best.size()) {
+            best = tab;
+        }
+
+        return best;
+    }
+
+    private List<String> parseCsvLineByDelimiter(String line, char delimiter) {
+        List<String> result = new ArrayList<>();
+
+        if (line == null) {
+            return result;
+        }
+
+        StringBuilder current = new StringBuilder();
+        boolean inQuotes = false;
+
+        for (int i = 0; i < line.length(); i++) {
+            char ch = line.charAt(i);
+
+            if (ch == '"') {
+                if (inQuotes && i + 1 < line.length() && line.charAt(i + 1) == '"') {
+                    current.append('"');
+                    i++;
+                } else {
+                    inQuotes = !inQuotes;
+                }
+            } else if (ch == delimiter && !inQuotes) {
+                result.add(removeBom(current.toString()).trim());
+                current.setLength(0);
+            } else {
+                current.append(ch);
+            }
+        }
+
+        result.add(removeBom(current.toString()).trim());
+
+        return result;
+    }
+    private String docFileCsvDungTiengViet(File file) throws IOException {
+        byte[] bytes = Files.readAllBytes(file.toPath());
+
+        String utf8 = new String(bytes, StandardCharsets.UTF_8);
+
+        if (!biLoiEncodingTiengViet(utf8)) {
+            return xoaBomNoiDung(utf8);
+        }
+
+        String win1258 = new String(bytes, Charset.forName("windows-1258"));
+
+        if (!biLoiEncodingTiengViet(win1258)) {
+            return xoaBomNoiDung(win1258);
+        }
+
+        String win1252 = new String(bytes, Charset.forName("windows-1252"));
+
+        if (!biLoiEncodingTiengViet(win1252)) {
+            return xoaBomNoiDung(win1252);
+        }
+
+        return xoaBomNoiDung(utf8);
+    }
+
+    private boolean biLoiEncodingTiengViet(String text) {
+        if (text == null || text.isEmpty()) {
+            return false;
+        }
+
+        if (text.contains("�")) {
+            return true;
+        }
+
+        String lower = text.toLowerCase();
+
+        return lower.contains("ä‘")
+                || lower.contains("á»")
+                || lower.contains("áº")
+                || lower.contains("ã")
+                || lower.contains("ð");
+    }
+
+    private String xoaBomNoiDung(String text) {
+        if (text == null) {
+            return "";
+        }
+
+        return text.replace("\uFEFF", "");
+    }
+    
+    private KiemKeItem timItemTheoMaVaKho(String maLoHoacMaVach, String kho) {
+        String key = safe(maLoHoacMaVach).trim();
+
+        if (key.isEmpty()) {
+            return null;
+        }
+
+        KiemKeItem found = null;
+        int count = 0;
+
+        for (KiemKeItem item : dsGoc) {
+            if (item == null) {
+                continue;
+            }
+
+            boolean khopMa = key.equalsIgnoreCase(safe(item.getSoLoHang()))
+                    || key.equalsIgnoreCase(safe(item.getLoHangId()))
+                    || key.equalsIgnoreCase(safe(layMaVachNoiBo(item)))
+                    || key.equalsIgnoreCase(safe(item.getSanPhamId()));
+
+            boolean khopKho = isBlank(kho)
+                    || kho.equalsIgnoreCase(safe(item.getKhoHangId()));
+
+            if (khopMa && khopKho) {
+                found = item;
+                count++;
+            }
+        }
+
+        if (count == 1) {
+            return found;
+        }
+
+        return null;
+    }
+
+    private List<String> parseCsvLine(String line) {
+        List<String> result = new ArrayList<>();
+
+        if (line == null) {
+            return result;
+        }
+
+        StringBuilder current = new StringBuilder();
+        boolean inQuotes = false;
+
+        for (int i = 0; i < line.length(); i++) {
+            char ch = line.charAt(i);
+
+            if (ch == '"') {
+                if (inQuotes && i + 1 < line.length() && line.charAt(i + 1) == '"') {
+                    current.append('"');
+                    i++;
+                } else {
+                    inQuotes = !inQuotes;
+                }
+            } else if (ch == ',' && !inQuotes) {
+                result.add(current.toString());
+                current.setLength(0);
+            } else {
+                current.append(ch);
+            }
+        }
+
+        result.add(current.toString());
+
+        if (!result.isEmpty() && result.get(0).startsWith("\uFEFF")) {
+            result.set(0, result.get(0).replace("\uFEFF", ""));
+        }
+
+        return result;
+    }
     private void loadDanhSachKho() {
         if (cbKhoHang == null) {
             return;
@@ -409,12 +1062,13 @@ public class ManHinhKiemKeKho extends JDialog {
         dsDangHienThi.clear();
 
         for (KiemKeItem item : dsGoc) {
-            boolean match = keyword.isEmpty()
-                    || safe(item.getSoLoHang()).toLowerCase().contains(keyword)
-                    || safe(item.getLoHangId()).toLowerCase().contains(keyword)
-                    || safe(item.getSanPhamId()).toLowerCase().contains(keyword)
-                    || safe(item.getTenSanPham()).toLowerCase().contains(keyword)
-                    || safe(item.getKhoHangId()).toLowerCase().contains(keyword);
+        	boolean match = keyword.isEmpty()
+        	        || safe(item.getSoLoHang()).toLowerCase().contains(keyword)
+        	        || safe(item.getLoHangId()).toLowerCase().contains(keyword)
+        	        || safe(layMaVachNoiBo(item)).toLowerCase().contains(keyword)
+        	        || safe(item.getSanPhamId()).toLowerCase().contains(keyword)
+        	        || safe(item.getTenSanPham()).toLowerCase().contains(keyword)
+        	        || safe(item.getKhoHangId()).toLowerCase().contains(keyword);
 
             if (match) {
                 dsDangHienThi.add(item);
@@ -437,17 +1091,18 @@ public class ManHinhKiemKeKho extends JDialog {
             int stt = 1;
 
             for (KiemKeItem item : dsDangHienThi) {
-                model.addRow(new Object[]{
-                        stt++,
-                        safe(item.getSoLoHang()),
-                        safe(item.getSanPhamId()) + " - " + safe(item.getTenSanPham()),
-                        safe(item.getKhoHangId()),
-                        item.getTonHeThong(),
-                        item.getTonThucTe(),
-                        item.getChenhLech(),
-                        safe(item.getLyDo()),
-                        safe(item.getLoHangId())
-                });
+            	model.addRow(new Object[]{
+            	        stt++,
+            	        safe(item.getSoLoHang()),
+            	        safe(item.getSanPhamId()) + " - " + safe(item.getTenSanPham()),
+            	        safe(item.getKhoHangId()),
+            	        item.getTonHeThong(),
+            	        item.getTonThucTe(),
+            	        item.getChenhLech(),
+            	        tachTinhTrang(item.getLyDo(), item.getChenhLech()),
+            	        tachLyDoGoc(item.getLyDo()),
+            	        safe(item.getLoHangId())
+            	});
             }
         } finally {
             dangCapNhatBang = false;
@@ -465,29 +1120,33 @@ public class ManHinhKiemKeKho extends JDialog {
             return;
         }
 
-        String loHangId = safe(model.getValueAt(modelRow, 8));
+        String loHangId = safe(model.getValueAt(modelRow, 9));
         KiemKeItem item = timItemTheoId(loHangId);
 
         if (item == null) {
             return;
         }
 
-        int tonHeThong = parseInt(model.getValueAt(modelRow, 4), item.getTonHeThong());
         int tonThucTe = parseInt(model.getValueAt(modelRow, 5), item.getTonHeThong());
 
         if (tonThucTe < 0) {
             tonThucTe = 0;
         }
 
-        String lyDo = safe(model.getValueAt(modelRow, 7));
+        String tinhTrang = safe(model.getValueAt(modelRow, 7));
+        String lyDo = safe(model.getValueAt(modelRow, 8));
 
         item.setTonThucTe(tonThucTe);
-        item.setLyDo(lyDo);
+        item.setLyDo(ghepTinhTrangVaLyDo(tinhTrang, lyDo));
 
         dangCapNhatBang = true;
 
         try {
             model.setValueAt(item.getChenhLech(), modelRow, 6);
+
+            if (isBlank(tinhTrang)) {
+                model.setValueAt(tachTinhTrang(item.getLyDo(), item.getChenhLech()), modelRow, 7);
+            }
         } finally {
             dangCapNhatBang = false;
         }
@@ -610,7 +1269,7 @@ public class ManHinhKiemKeKho extends JDialog {
         }
 
         for (int row = 0; row < model.getRowCount(); row++) {
-            String loHangId = safe(model.getValueAt(row, 8));
+        	String loHangId = safe(model.getValueAt(row, 9));
             KiemKeItem item = timItemTheoId(loHangId);
 
             if (item == null) {
@@ -618,10 +1277,11 @@ public class ManHinhKiemKeKho extends JDialog {
             }
 
             int tonThucTe = parseInt(model.getValueAt(row, 5), item.getTonHeThong());
-            String lyDo = safe(model.getValueAt(row, 7));
+            String tinhTrang = safe(model.getValueAt(row, 7));
+            String lyDo = safe(model.getValueAt(row, 8));
 
             item.setTonThucTe(Math.max(0, tonThucTe));
-            item.setLyDo(lyDo);
+            item.setLyDo(ghepTinhTrangVaLyDo(tinhTrang, lyDo));
         }
 
         updateSummary();
