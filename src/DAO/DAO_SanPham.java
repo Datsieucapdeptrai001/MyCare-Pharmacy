@@ -836,9 +836,17 @@ public class DAO_SanPham {
             }
 
             for (String idCu : tenCu) {
+                try (PreparedStatement chk = con.prepareStatement(
+                        "SELECT COUNT(*) FROM ChiTietHoaDon WHERE donViDoLuongId = ?")) {
+                    chk.setString(1, idCu);
+                    try (ResultSet rs = chk.executeQuery()) {
+                        if (rs.next() && rs.getInt(1) > 0) {
+                            continue;
+                        }
+                    }
+                }
                 try (PreparedStatement pst = con.prepareStatement(
                         "DELETE FROM DonViDoLuong WHERE id = ?")) {
-
                     pst.setString(1, idCu);
                     pst.executeUpdate();
                 }
@@ -1089,18 +1097,13 @@ public class DAO_SanPham {
     }
 
     private String mapDanhMucToLabel(String db) {
-        if (db == null)
-            return "Khác";
-
+        if (db == null) return "Khác";
         switch (db) {
-            case "THUOC_KE_DON":
-                return "Thuốc kê đơn";
-            case "THUOC_KHONG_KE_DON":
-                return "Thuốc không kê đơn";
-            case "MY_PHAM":
-                return "Mỹ phẩm";
-            default:
-                return "Sản phẩm chức năng";
+            case "THUOC_KE_DON":        return "Thuốc kê đơn";
+            case "THUOC_KHONG_KE_DON":  return "Thuốc không kê đơn";
+            case "MY_PHAM":             return "Mỹ phẩm";
+            case "THUC_PHAM_CHUC_NANG": return "Sản phẩm chức năng"; // ← thêm dòng này
+            default:                    return "Khác";
         }
     }
 

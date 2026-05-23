@@ -264,7 +264,7 @@ public class ManHinhSanPham extends JPanel {
             "Dạ dày – Tiêu hóa – Đại tràng",
             "Dị ứng – Mẩn ngứa – Mề đay",
             "Mắt – Tai – Mũi",
-            "Thuốc bổ – Vitamin",
+            "Thuốc bổ – Vitamin – Khoáng chất",
             "Dược mỹ phẩm – Da liễu",
             "Xương khớp – Gút",
             "Tim mạch – Huyết áp",
@@ -1069,14 +1069,18 @@ public class ManHinhSanPham extends JPanel {
         return p;
     }
 
-    /**
-     * Lấy danh sách nhóm bệnh lý = chuẩn cố định + "Tất cả" đầu tiên
-     */
     private String[] buildNhomOptions() {
-        String[] opts = new String[DANH_SACH_NHOM_BENH_LY.length + 1];
-        opts[0] = "Tất cả";
-        System.arraycopy(DANH_SACH_NHOM_BENH_LY, 0, opts, 1, DANH_SACH_NHOM_BENH_LY.length);
-        return opts;
+        // Lấy từ DB để luôn đồng bộ với dữ liệu thực tế
+        List<String> fromDB = new BUS_SanPham().layDanhSachNhomBenhLy();
+        List<String> opts = new ArrayList<>();
+        opts.add("Tất cả");
+        for (String nb : fromDB) {
+            if (!opts.contains(nb)) opts.add(nb);
+        }
+        if (opts.size() == 1) {
+            for (String nb : DANH_SACH_NHOM_BENH_LY) opts.add(nb);
+        }
+        return opts.toArray(new String[0]);
     }
 
     // =========================================================================
