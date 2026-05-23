@@ -312,7 +312,6 @@ public class ManHinhKhuyenMai extends JPanel {
     private JPanel createTopKPISecton() {
         JPanel pnlWrapper = new JPanel(new GridLayout(1, 3, 15, 0)); 
         pnlWrapper.setOpaque(false);
-        // ĐÃ KHẮC PHỤC LẸM CHỮ: Tăng chiều cao cấp phép cho phần tử con bộc lộ hết văn bản
         pnlWrapper.setMaximumSize(new Dimension(Integer.MAX_VALUE, 115));
         pnlWrapper.setPreferredSize(new Dimension(0, 115));
 
@@ -916,7 +915,6 @@ public class ManHinhKhuyenMai extends JPanel {
         String time = tableModel.getValueAt(modelRow, 6) != null ? tableModel.getValueAt(modelRow, 6).toString() : "---";
         String status = tableModel.getValueAt(modelRow, 7) != null ? tableModel.getValueAt(modelRow, 7).toString() : "---";
 
-        // ĐÃ SỬA: Hiển thị đầy đủ tên sản phẩm trong bảng Chi tiết
         String spYeuCau = tableModel.getValueAt(modelRow, 12) != null ? tableModel.getValueAt(modelRow, 12).toString() : "";
         String slYeuCau = tableModel.getValueAt(modelRow, 13) != null ? tableModel.getValueAt(modelRow, 13).toString() : "0";
         String dvYeuCau = tableModel.getValueAt(modelRow, 14) != null ? tableModel.getValueAt(modelRow, 14).toString() : "SP";
@@ -1029,6 +1027,11 @@ public class ManHinhKhuyenMai extends JPanel {
         private final JPanel pnlDuToanLoiNhuan;
         private final FloatingField fldGiaNhapMoPhong, fldGiaBanMoPhong, fldGiaNhapTangMoPhong;
         private final JLabel lblDuToanResult, lblDuToanStatus;
+        
+        // HÀNG RÀO REAL-TIME INFO
+        private final JPanel pnlInfoBar;
+        private final JLabel lblBadgeDanhMuc, lblBadgeTonKho, lblBadgeHSD;
+        private boolean isBlockedByLaw = false;
         
         private final boolean isEditMode;
         private final Map<String, Object> existingData;
@@ -1368,6 +1371,42 @@ public class ManHinhKhuyenMai extends JPanel {
             gbc.gridy = 3;
             gbc.gridwidth = 2;
             pnlBody.add(pnlDieuKienWrapper, gbc);
+            
+            // ==============================================================
+            // BỔ SUNG BAR THÔNG TIN REAL-TIME (TỒN KHO, HSD, LOẠI THUỐC)
+            // ==============================================================
+            pnlInfoBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
+            pnlInfoBar.setOpaque(false);
+            pnlInfoBar.setBorder(new EmptyBorder(0, 0, 5, 0));
+            
+            lblBadgeDanhMuc = new JLabel("CHƯA CHỌN SP");
+            lblBadgeDanhMuc.setOpaque(true);
+            lblBadgeDanhMuc.setBackground(Color.decode("#E2E8F0"));
+            lblBadgeDanhMuc.setForeground(COLOR_TEXT_MAIN);
+            lblBadgeDanhMuc.setFont(new Font("Segoe UI", Font.BOLD, 12));
+            lblBadgeDanhMuc.setBorder(new EmptyBorder(4, 8, 4, 8));
+            
+            lblBadgeTonKho = new JLabel("Tồn: 0");
+            lblBadgeTonKho.setFont(new Font("Segoe UI", Font.BOLD, 12));
+            lblBadgeTonKho.setForeground(COLOR_TEXT_MAIN);
+            
+            lblBadgeHSD = new JLabel("HSD: N/A");
+            lblBadgeHSD.setFont(new Font("Segoe UI", Font.BOLD, 12));
+            lblBadgeHSD.setForeground(COLOR_TEXT_MUTED);
+            
+            pnlInfoBar.add(lblBadgeDanhMuc);
+            pnlInfoBar.add(new JLabel(" | "));
+            pnlInfoBar.add(lblBadgeTonKho);
+            pnlInfoBar.add(new JLabel(" | "));
+            pnlInfoBar.add(lblBadgeHSD);
+            pnlInfoBar.setVisible(false); // Ẩn khi chưa chọn thuốc
+            
+            gbc.gridx = 0;
+            gbc.gridy = 4;
+            gbc.gridwidth = 2;
+            pnlBody.add(pnlInfoBar, gbc);
+
+            // ==============================================================
 
             pnlDuToanLoiNhuan = new JPanel(new BorderLayout(15, 0));
             pnlDuToanLoiNhuan.setOpaque(false);
@@ -1407,7 +1446,7 @@ public class ManHinhKhuyenMai extends JPanel {
             pnlDuToanLoiNhuan.add(pnlDuToanOutput, BorderLayout.EAST);
 
             gbc.gridx = 0;
-            gbc.gridy = 4;
+            gbc.gridy = 5;
             gbc.gridwidth = 2;
             pnlBody.add(pnlDuToanLoiNhuan, gbc);
             
@@ -1493,7 +1532,7 @@ public class ManHinhKhuyenMai extends JPanel {
             pnlDates.add(fldSoNgay);
 
             gbc.gridx = 0;
-            gbc.gridy = 5;
+            gbc.gridy = 6;
             gbc.gridwidth = 2;
             pnlBody.add(pnlDates, gbc);
 
@@ -1712,25 +1751,13 @@ public class ManHinhKhuyenMai extends JPanel {
             btnCancel.setPreferredSize(new Dimension(120, 38));
             btnCancel.addActionListener(e -> dialog.dispose());
 
-            RoundedButton btnSave = new RoundedButton(isEditMode ? "Cập nhật" : "Lưu chương trình", COLOR_INFO,
-                    Color.WHITE);
+            RoundedButton btnSave = new RoundedButton(isEditMode ? "Cập nhật" : "Lưu chương trình", COLOR_INFO, Color.WHITE);
             btnSave.setIcon(new MenuIcon("SAVE"));
             btnSave.setPreferredSize(new Dimension(150, 38));
 
-            btnSave.addActionListener(e -> {
-                String finalId;
-                if (isEditMode) {
-                    finalId = getSafeString(this.existingData, "0");
-                } else {
-                    finalId = "KM" + (System.currentTimeMillis() % 10000000);
-                }
-
+            Runnable quyTrinhLuuHeThong = () -> {
+                String finalId = isEditMode ? getSafeString(this.existingData, "0") : "KM" + (System.currentTimeMillis() % 10000000);
                 String ten = fldName.getTextField().getText().trim();
-                if (ten.isEmpty() || ten.startsWith("VD:")) {
-                    showNotification("Cảnh báo", "Vui lòng nhập Tên chương trình!", "warning");
-                    return;
-                }
-
                 String donToiThieuStr = fldMinOrder.getTextField().getText().replaceAll("[^0-9]", "");
                 if (donToiThieuStr.isEmpty()) donToiThieuStr = "0";
 
@@ -1785,10 +1812,6 @@ public class ManHinhKhuyenMai extends JPanel {
 
                     } else if (typeIndex == 1) {
                         String spMua = fldMaSPGiamTien.getTextField().getText().trim();
-                        if (spMua.isEmpty() || spMua.startsWith("VD:")) {
-                            showNotification("Cảnh báo", "Vui lòng chọn sản phẩm cần mua!", "warning");
-                            return;
-                        }
                         String slM = fldSlGiamTien.getTextField().getText().replaceAll("[^0-9]", "");
                         String dvM = cbDvdlGiamTien.getSelectedItem() != null ? cbDvdlGiamTien.getSelectedItem().toString() : "";
                         double giaTri = parseCurrencySafe(fldTienGiam.getTextField().getText());
@@ -1804,11 +1827,6 @@ public class ManHinhKhuyenMai extends JPanel {
                     } else {
                         String spMua = fldMaSPMua.getTextField().getText().trim();
                         String spTang = fldMaSPTang.getTextField().getText().trim();
-
-                        if (spMua.isEmpty() || spMua.startsWith("VD:") || spTang.isEmpty() || spTang.startsWith("VD:")) {
-                            showNotification("Cảnh báo", "Vui lòng nhập đủ mã sản phẩm Mua và Tặng!", "warning");
-                            return;
-                        }
 
                         int slMua = 1, slTang = 1;
                         try { slMua = Integer.parseInt(fldSoLuongMua.getTextField().getText().replaceAll("[^0-9]", "")); } catch (Exception ignored) {}
@@ -1829,40 +1847,82 @@ public class ManHinhKhuyenMai extends JPanel {
                         dk = null;
                     }
 
-                    boolean success = false;
-                    if (!isEditMode) {
-                        success = busKhuyenMai.themKhuyenMaiToanDien(km, ht, dk);
-                        if (success) showNotification("Thành công", "Tạo chương trình khuyến mại thành công!", "success");
-                    } else {
-                        success = busKhuyenMai.capNhatKhuyenMaiToanDien(km, ht, dk);
-                        if (success) showNotification("Thành công", "Cập nhật chương trình thành công!", "success");
-                    }
-
+                    boolean success = isEditMode ? busKhuyenMai.capNhatKhuyenMaiToanDien(km, ht, dk) : busKhuyenMai.themKhuyenMaiToanDien(km, ht, dk);
                     if (success) {
+                        showNotification("Thành công", isEditMode ? "Cập nhật chương trình thành công!" : "Tạo chương trình khuyến mại thành công!", "success");
                         dialog.dispose();
                         loadDataFromDatabase();
-
                         updateSuggestions();
-
-                        if (isEditMode && pnlDetail.isVisible() && lblDetId.getText().equals(finalId)) {
-                            SwingUtilities.invokeLater(() -> {
-                                for (int i = 0; i < tableModel.getRowCount(); i++) {
-                                    Object idObj = tableModel.getValueAt(i, 0);
-                                    if (idObj != null && idObj.toString().equals(finalId)) {
-                                        updateDetailSidebar(i);
-                                        break;
-                                    }
-                                }
-                            });
-                        }
                     } else {
                         showNotification("Lỗi", "Lưu thất bại! Vui lòng kiểm tra lại CSDL.", "error");
                     }
-
                 } catch (Exception ex) {
-                    ex.printStackTrace();
                     showNotification("Lỗi", "Lỗi dữ liệu: " + ex.getMessage(), "error");
                 }
+            };
+
+            btnSave.addActionListener(e -> {
+                String ten = fldName.getTextField().getText().trim();
+                if (ten.isEmpty() || ten.startsWith("VD:")) {
+                    showNotification("Cảnh báo", "Vui lòng nhập Tên chương trình!", "warning");
+                    return;
+                }
+
+                // 1. NGHIỆP VỤ: KIỂM TRA ĐIỀU KIỆN SẢN PHẨM TRƯỚC KHI LƯU
+                if (isBlockedByLaw) {
+                    showNotification("Cấm thao tác", "Sản phẩm vi phạm quy định nhập liệu (Luật Dược/Hết hạn/Hết hàng). Vui lòng đổi sản phẩm khác!", "error");
+                    return;
+                }
+
+                String spKiemTra = "";
+                double mucGiamCheck = 0;
+                int typeIndex = cbType.getSelectedIndex();
+
+                if (typeIndex == 0) {
+                    if (cbTarget.getSelectedIndex() == 1) {
+                        spKiemTra = fldMaSPApDung.getTextField().getText().trim();
+                    }
+                    mucGiamCheck = parsePercentSafe(fldMucGiam.getTextField().getText());
+                } else if (typeIndex == 1) {
+                    spKiemTra = fldMaSPGiamTien.getTextField().getText().trim();
+                    mucGiamCheck = parseCurrencySafe(fldTienGiam.getTextField().getText());
+                } else {
+                    spKiemTra = fldMaSPMua.getTextField().getText().trim();
+                    mucGiamCheck = 0; // Combo không so sánh giảm tiền
+                }
+
+                if (spKiemTra.isEmpty() || spKiemTra.startsWith("VD:")) {
+                    if (typeIndex != 0 || cbTarget.getSelectedIndex() == 1) {
+                        showNotification("Cảnh báo", "Vui lòng chọn sản phẩm!", "warning");
+                        return;
+                    }
+                } else {
+                    // 2. NGHIỆP VỤ: KIỂM TRA TRÙNG KHUYẾN MÃI (CHỐNG VÔ DỤNG LẪN NHAU)
+                    String currentId = isEditMode ? getSafeString(this.existingData, "0") : null;
+                    boolean isTrung = busKhuyenMai.kiemTraTrungKhuyenMai(spKiemTra, typeIndex, mucGiamCheck, currentId);
+                    if (isTrung) {
+                        showNotification("Trùng Khuyến Mãi", "Sản phẩm [" + spKiemTra + "] ĐANG CÓ một chương trình khuyến mãi khác với mức giảm tương đương hoặc tốt hơn đang chạy!\nChương trình bạn sắp lưu sẽ bị VÔ DỤNG. Hãy tắt khuyến mãi cũ hoặc đổi mức giảm.", "error");
+                        return;
+                    }
+                }
+
+                String spCheckHSD = spKiemTra;
+                if (!spCheckHSD.isEmpty() && !spCheckHSD.startsWith("VD:")) {
+                    Map<String, Object> validation = busKhuyenMai.kiemTraHopLeKhiThemThuCong(spCheckHSD);
+                    String status = validation.get("status").toString();
+                    String msg = validation.get("message").toString();
+
+                    if ("WARNING".equals(status)) {
+                        String plainMsg = msg.replaceAll("<br>", "\n").replaceAll("<[^>]*>", "");
+                        showConfirmation("Xác nhận thông tin hàng hóa", 
+                            plainMsg + "\n\nSản phẩm này có cảnh báo an toàn lưu trữ. Bạn chắc chắn muốn tiến hành lưu khuyến mãi?", 
+                            () -> quyTrinhLuuHeThong.run()
+                        );
+                        return;
+                    }
+                }
+                
+                quyTrinhLuuHeThong.run();
             });
 
             pnlFooter.add(btnCancel);
@@ -1892,6 +1952,7 @@ public class ManHinhKhuyenMai extends JPanel {
                 boolean isChonSP = cbTarget.getSelectedIndex() == 1;
                 
                 fldMaSPApDung.setVisible(initialIdx == 0 && isChonSP);
+                pnlInfoBar.setVisible(initialIdx != 0 || isChonSP);
                 
                 if (initialIdx == 0) {
                     pnlDuToanLoiNhuan.setVisible(isChonSP && !fldMaSPApDung.getTextField().getText().trim().isEmpty());
@@ -1908,12 +1969,13 @@ public class ManHinhKhuyenMai extends JPanel {
         
         private void updateMoPhongPrices() {
             int type = cbType.getSelectedIndex();
+            String spToCheck = "";
             
             if (type == 0) {
                 if (cbTarget.getSelectedIndex() == 1) { 
-                    String sp = fldMaSPApDung.getTextField().getText().trim();
-                    if (!sp.isEmpty() && !sp.startsWith("VD:")) {
-                        double[] prices = busKhuyenMai.layGiaTheoDonVi(sp, ""); 
+                    spToCheck = fldMaSPApDung.getTextField().getText().trim();
+                    if (!spToCheck.isEmpty() && !spToCheck.startsWith("VD:")) {
+                        double[] prices = busKhuyenMai.layGiaTheoDonVi(spToCheck, ""); 
                         if (prices != null && prices.length >= 2) {
                             fldGiaNhapMoPhong.getTextField().setText(String.format("%.0f", prices[0]));
                             fldGiaBanMoPhong.getTextField().setText(String.format("%.0f", prices[1]));
@@ -1928,16 +1990,13 @@ public class ManHinhKhuyenMai extends JPanel {
                 } else {
                     pnlDuToanLoiNhuan.setVisible(false);
                 }
-                return; 
-            }
-            
-            if (type == 1) {
+            } else if (type == 1) {
                 fldGiaNhapMoPhong.getTextField().setEditable(false);
                 fldGiaBanMoPhong.getTextField().setEditable(false);
                 
-                String sp = fldMaSPGiamTien.getTextField().getText();
+                spToCheck = fldMaSPGiamTien.getTextField().getText().trim();
                 String dv = cbDvdlGiamTien.getSelectedItem() != null ? cbDvdlGiamTien.getSelectedItem().toString() : "";
-                double[] prices = busKhuyenMai.layGiaTheoDonVi(sp, dv);
+                double[] prices = busKhuyenMai.layGiaTheoDonVi(spToCheck, dv);
                 
                 if (prices != null && prices.length >= 2) {
                     fldGiaNhapMoPhong.getTextField().setText(String.format("%.0f", prices[0]));
@@ -1948,9 +2007,9 @@ public class ManHinhKhuyenMai extends JPanel {
                 fldGiaBanMoPhong.getTextField().setEditable(false);
                 fldGiaNhapTangMoPhong.getTextField().setEditable(false);
                 
-                String spMua = fldMaSPMua.getTextField().getText();
+                spToCheck = fldMaSPMua.getTextField().getText().trim();
                 String dvMua = cbDonViMua.getSelectedItem() != null ? cbDonViMua.getSelectedItem().toString() : "";
-                double[] pricesMua = busKhuyenMai.layGiaTheoDonVi(spMua, dvMua);
+                double[] pricesMua = busKhuyenMai.layGiaTheoDonVi(spToCheck, dvMua);
                 
                 if (pricesMua != null && pricesMua.length >= 2) {
                     fldGiaNhapMoPhong.getTextField().setText(String.format("%.0f", pricesMua[0]));
@@ -1965,6 +2024,57 @@ public class ManHinhKhuyenMai extends JPanel {
                     fldGiaNhapTangMoPhong.getTextField().setText(String.format("%.0f", pricesTang[0]));
                 }
             }
+
+            // HIỂN THỊ THÔNG TIN REALTIME CỦA SẢN PHẨM TRÊN GUI
+            isBlockedByLaw = false;
+            if (!spToCheck.isEmpty() && !spToCheck.startsWith("VD:")) {
+                pnlInfoBar.setVisible(true);
+                Map<String, Object> validation = busKhuyenMai.kiemTraHopLeKhiThemThuCong(spToCheck);
+                String status = validation.get("status").toString();
+                String dm = validation.get("danhMuc").toString();
+                String ton = validation.get("tonKho").toString();
+                String hsd = validation.get("hsd").toString();
+                String soNgay = validation.get("soNgay").toString();
+
+                if ("THUOC_KE_DON".equalsIgnoreCase(dm)) {
+                    lblBadgeDanhMuc.setText("RX - KÊ ĐƠN");
+                    lblBadgeDanhMuc.setBackground(Color.decode("#FFEBEE"));
+                    lblBadgeDanhMuc.setForeground(COLOR_DANGER);
+                } else if ("THUC_PHAM_CHUC_NANG".equalsIgnoreCase(dm)) {
+                    lblBadgeDanhMuc.setText("TPCN");
+                    lblBadgeDanhMuc.setBackground(Color.decode("#FFF8E1"));
+                    lblBadgeDanhMuc.setForeground(COLOR_WARNING);
+                } else if ("THUOC_KHONG_KE_DON".equalsIgnoreCase(dm)) {
+                    lblBadgeDanhMuc.setText("OTC - KHÔNG KÊ ĐƠN");
+                    lblBadgeDanhMuc.setBackground(Color.decode("#E8F5E9"));
+                    lblBadgeDanhMuc.setForeground(COLOR_SUCCESS);
+                } else {
+                    lblBadgeDanhMuc.setText(dm);
+                    lblBadgeDanhMuc.setBackground(Color.decode("#E2E8F0"));
+                    lblBadgeDanhMuc.setForeground(COLOR_TEXT_MAIN);
+                }
+
+                lblBadgeTonKho.setText("Tồn kho: " + ton);
+                
+                if (!hsd.isEmpty()) {
+                    lblBadgeHSD.setText("Cận date: " + hsd + " (Còn " + soNgay + " ngày)");
+                } else {
+                    lblBadgeHSD.setText("HSD: N/A");
+                }
+
+                if ("BLOCK".equals(status)) {
+                    isBlockedByLaw = true;
+                    lblBadgeHSD.setForeground(COLOR_DANGER);
+                    lblBadgeHSD.setText(lblBadgeHSD.getText() + " ❌ LỖI");
+                } else if ("WARNING".equals(status)) {
+                    lblBadgeHSD.setForeground(COLOR_WARNING);
+                } else {
+                    lblBadgeHSD.setForeground(COLOR_TEXT_MUTED);
+                }
+            } else {
+                pnlInfoBar.setVisible(false);
+            }
+            
             capNhatDuToanLoiNhuan();
         }
 
@@ -1972,7 +2082,6 @@ public class ManHinhKhuyenMai extends JPanel {
             SwingUtilities.invokeLater(() -> {
                 try {
                     int loaiHinhThuc = cbType.getSelectedIndex();
-                    
                     double giaNhapMua = parseCurrencySafe(fldGiaNhapMoPhong.getTextField().getText());
                     double giaBanMua = parseCurrencySafe(fldGiaBanMoPhong.getTextField().getText());
                     
@@ -2019,6 +2128,15 @@ public class ManHinhKhuyenMai extends JPanel {
         private void hienThiKetQuaDuToan(double loiNhuan) {
             DecimalFormat df = new DecimalFormat("#,###");
             String ketQuaFormatted = df.format(Math.abs(loiNhuan)) + " VNĐ";
+
+            if (isBlockedByLaw) {
+                lblDuToanStatus.setIcon(new MenuIcon("CANCEL"));
+                lblDuToanStatus.setText("VI PHẠM QUY ĐỊNH BÁN HÀNG!");
+                lblDuToanStatus.setForeground(COLOR_DANGER);
+                lblDuToanResult.setText("CẤM LƯU");
+                lblDuToanResult.setForeground(COLOR_DANGER);
+                return;
+            }
 
             if (loiNhuan >= 0) {
                 lblDuToanStatus.setIcon(new MenuIcon("CHECK_OK"));
@@ -2082,9 +2200,9 @@ public class ManHinhKhuyenMai extends JPanel {
     private JPanel createSuggestionSection() {
         JPanel pnlWrap = new JPanel(new BorderLayout(0, 10));
         pnlWrap.setOpaque(false);
-        // ĐÃ KHẮC PHỤC: Cấp đủ chiều cao để vẽ Scrollbar ngang của các thẻ gợi ý (từ 130 lên 190)
-        pnlWrap.setMaximumSize(new Dimension(Integer.MAX_VALUE, 190));
-        pnlWrap.setPreferredSize(new Dimension(0, 190));
+        
+        pnlWrap.setMaximumSize(new Dimension(Integer.MAX_VALUE, 160));
+        pnlWrap.setPreferredSize(new Dimension(0, 160));
 
         JLabel lblTitle = new JLabel(" GỢI Ý KHUYẾN MÃI THEO LỊCH & TỒN KHO");
         lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 14));
@@ -2093,8 +2211,7 @@ public class ManHinhKhuyenMai extends JPanel {
 
         pnlSuggestionCards = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 0));
         pnlSuggestionCards.setOpaque(false);
-        // Đệm lề dưới (bottom margin) để nhường chỗ cho thanh cuộn ngang không đè lên thẻ
-        pnlSuggestionCards.setBorder(new EmptyBorder(0, 0, 20, 0));
+        pnlSuggestionCards.setBorder(new EmptyBorder(0, 0, 0, 0));
         
         updateSuggestions(); 
 
@@ -2102,14 +2219,14 @@ public class ManHinhKhuyenMai extends JPanel {
         scroll.setBorder(null);
         scroll.setOpaque(false);
         scroll.getViewport().setOpaque(false);
-        scroll.getHorizontalScrollBar().setUI(new ModernScrollBarUI());
-        // Khôi phục thanh cuộn ngang để lướt thẻ Gợi ý
+        
         scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         scroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_NEVER);
+        scroll.getHorizontalScrollBar().setPreferredSize(new Dimension(0, 0)); 
 
         scroll.addMouseWheelListener(e -> {
             if (e.getWheelRotation() != 0) {
-                int scrollAmount = e.getUnitsToScroll() * scroll.getHorizontalScrollBar().getUnitIncrement() * 3;
+                int scrollAmount = e.getWheelRotation() * 40; 
                 int newVal = scroll.getHorizontalScrollBar().getValue() + scrollAmount;
                 scroll.getHorizontalScrollBar().setValue(newVal);
             }
@@ -2143,7 +2260,7 @@ public class ManHinhKhuyenMai extends JPanel {
         };
         card.setOpaque(false);
         card.setBackground(Color.WHITE);
-        card.setPreferredSize(new Dimension(300, 90)); 
+        card.setPreferredSize(new Dimension(340, 115)); 
         card.setBorder(new EmptyBorder(10, 10, 10, 10));
         card.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
@@ -2159,7 +2276,8 @@ public class ManHinhKhuyenMai extends JPanel {
         lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 14));
         lblTitle.setForeground(color);
 
-        JLabel lblDesc = new JLabel("<html>" + desc + "</html>");
+        String htmlDesc = "<html><p style='width: 250px; margin: 0; padding: 0; line-height: 1.3;'>" + desc + "</p></html>";
+        JLabel lblDesc = new JLabel(htmlDesc);
         lblDesc.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         lblDesc.setForeground(COLOR_TEXT_MUTED);
 
@@ -2176,7 +2294,22 @@ public class ManHinhKhuyenMai extends JPanel {
                     showNotification("Từ chối quyền truy cập", "Tài khoản của bạn không có quyền thao tác tạo mới Khuyến mại!", "error");
                     return;
                 }
-                new PromoDialog(autoData).showDialog();
+                
+                if (autoData == null) {
+                     showNotification("Cảnh báo Luật Dược", "Thuốc kê đơn (Rx) CẤM mọi hình thức khuyến mãi!\nHoặc lô hàng đã quá sát hạn. Vui lòng gom hàng làm thủ tục trả NPP hoặc tiêu hủy.", "error");
+                     return;
+                }
+                
+                if (desc.contains("Còn")) {
+                    String plainMsg = desc.replaceAll("<br>", "\n").replaceAll("<[^>]*>", "");
+                    showConfirmation("Xác nhận Tình trạng Sản phẩm", 
+                        plainMsg + "\n\nBạn có chắc chắn muốn thiết lập chương trình cho sản phẩm này?", 
+                        () -> {
+                            new PromoDialog(autoData).showDialog();
+                        });
+                } else {
+                    new PromoDialog(autoData).showDialog();
+                }
             }
 
             @Override
@@ -2492,7 +2625,7 @@ public class ManHinhKhuyenMai extends JPanel {
             this.bgColor = bg;
             setLayout(new BorderLayout());
             setOpaque(false);
-            // ĐÃ SỬA: Ép margin/padding nhỏ lại để chống chèn chữ
+            
             setBorder(new EmptyBorder(10, 10, 10, 10)); 
 
             JPanel pnlTop = new JPanel(new FlowLayout(FlowLayout.CENTER, 8, 0));
@@ -2711,7 +2844,7 @@ public class ManHinhKhuyenMai extends JPanel {
                 }
             }
         } catch (Exception ex) {
-            ex.printStackTrace();
+            // silent fail
         }
 
         tableModel.fireTableDataChanged();
