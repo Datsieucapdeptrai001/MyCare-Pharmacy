@@ -943,11 +943,16 @@ public class ManHinhXuatKho extends JPanel {
 
         if (dsLoKhop == null || dsLoKhop.isEmpty()) {
             showCustomNotification(
-                    "Không tìm thấy",
-                    "Mã '" + maQuet + "' không tồn tại trong kho, hoặc lô đã hết hàng / đã bị ẩn.",
+                    "Từ chối thao tác",
+                    "Mã vạch lạ! Thuốc chưa được nhập kho hoặc không tồn tại mã: " + maQuet,
                     "ERROR"
             );
             resetThongTinSP();
+            isProgrammaticUpdate = true;
+            txtMaLo.setText("");
+            isProgrammaticUpdate = false;
+            txtMaLo.requestFocus();
+            
             return;
         }
 

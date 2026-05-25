@@ -66,6 +66,7 @@ public class TaoHoaDon extends JDialog {
     private Color borderColor = Color.decode("#DFE3E8");
     private long tongTienMat = 0;
     private BUS.BUS_LieuMau busLieuMau = new BUS.BUS_LieuMau();
+    private final BUS.BUS_Kho busKho = new BUS.BUS_Kho();
     private JLabel lblTotalValue;
     private int editingRow = -1;
     private SwingWorker<java.util.List<Object[]>, Void> currentSearchWorker; // FIX: Quản lý luồng tìm kiếm
@@ -3359,6 +3360,7 @@ public class TaoHoaDon extends JDialog {
                                 } else {
                                     showCustomNotification("KHÔNG TÌM THẤY", "Không tìm thấy sản phẩm với mã: " + searchText, "WARNING");
                                     txtSearchProduct.setText("");
+                                    txtSearchProduct.requestFocus();
                                 }
                             } catch (Exception ex) {}
                         }
@@ -3386,6 +3388,27 @@ public class TaoHoaDon extends JDialog {
         String unit = firstItem[2] != null ? firstItem[2].toString() : "";
         long giaBan = Math.round(Double.parseDouble(firstItem[3].toString()));
         String price = String.valueOf(giaBan);
+        
+        int tonKhoThucTe = 0;
+        try {
+            if (firstItem.length > 4 && firstItem[4] != null) {
+                tonKhoThucTe = Integer.parseInt(firstItem[4].toString().trim());
+            }
+        } catch (NumberFormatException ignored) {}
+
+        if (tonKhoThucTe <= 0) {
+            JOptionPane.showMessageDialog(
+                txtSearchProduct,
+                "Mã vạch lạ! Thuốc chưa được nhập vào hệ thống\n"
+                    + "hoặc lô hàng hiện tại đã hết tồn kho.\n\n"
+                    + "Sản phẩm: " + name,
+                "Không thể thêm vào hóa đơn",
+                JOptionPane.ERROR_MESSAGE
+            );
+            txtSearchProduct.setText(""); 
+            txtSearchProduct.requestFocus();
+            return; 
+        }
         
         String thueVat = "5%";
         if (firstItem.length > 6 && firstItem[6] != null) {

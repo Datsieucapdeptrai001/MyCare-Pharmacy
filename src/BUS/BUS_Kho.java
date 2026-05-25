@@ -339,4 +339,10 @@ public class BUS_Kho {
     private boolean isBlank(String s) {
         return s == null || s.trim().isEmpty();
     }
+    public LoHang getLoHangTheoMaVachNoiBo(String maVachNoiBo) {
+        if (maVachNoiBo == null || maVachNoiBo.trim().isEmpty()) {
+            return null;
+        }
+        return daoLoHang.getLoHangTheoMaVachNoiBo(maVachNoiBo.trim());
+    }
 }

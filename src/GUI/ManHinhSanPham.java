@@ -269,7 +269,6 @@ public class ManHinhSanPham extends JPanel {
             "Xương khớp – Gút",
             "Tim mạch – Huyết áp",
             "Đái tháo đường",
-            "Khác"
         };
  // --- Các biến trạng thái tích hợp từ PanelCatLieu ---
     private static final int COL_L_MA_SP      = 0;
@@ -345,6 +344,7 @@ public class ManHinhSanPham extends JPanel {
 
         loadDataFromDatabase();
         capNhatDuLieuComboBoxTuDB();
+        loadDanhSachComboNangCaoRaGiaoDien(true);
         setDetailVisible(false);
     }
  // =========================================================================
@@ -1340,23 +1340,19 @@ public class ManHinhSanPham extends JPanel {
         cbNhomBenhLy.addActionListener(e -> {
             Object sel = cbNhomBenhLy.getSelectedItem();
             if (sel != null && sel.toString().startsWith("+ Thêm nhóm")) {
-                String newNhom = JOptionPane.showInputDialog(
-                    SwingUtilities.getWindowAncestor(ManHinhSanPham.this),
-                    "Nhập tên nhóm bệnh lý mới:",
-                    "Thêm nhóm bệnh lý",
-                    JOptionPane.PLAIN_MESSAGE);
-                if (newNhom != null && !newNhom.trim().isEmpty()) {
-                    String trimmed = newNhom.trim();
-                    // Kiểm tra trùng
-                    boolean exists = false;
-                    for (int i = 0; i < cbNhomBenhLy.getItemCount(); i++) {
-                        if (cbNhomBenhLy.getItemAt(i).equalsIgnoreCase(trimmed)) { exists = true; break; }
+                String tenMoi = showNhomBenhLyInputDialog(cbNhomBenhLy);
+                if (tenMoi != null) {
+                    // Chèn trước item "+ Thêm..."
+                    cbNhomBenhLy.insertItemAt(tenMoi, cbNhomBenhLy.getItemCount() - 1);
+                    cbNhomBenhLy.setSelectedItem(tenMoi);
+                    // Đồng bộ sang combo bên tab mẫu liều
+                    boolean existsLieu = false;
+                    for (int i = 0; i < cbNhomBenhLieuNangCao.getItemCount(); i++) {
+                        if (cbNhomBenhLieuNangCao.getItemAt(i).equalsIgnoreCase(tenMoi)) {
+                            existsLieu = true; break;
+                        }
                     }
-                    if (!exists) {
-                        // Chen them vao truoc item "+ Them..."
-                        cbNhomBenhLy.insertItemAt(trimmed, cbNhomBenhLy.getItemCount() - 1);
-                    }
-                    cbNhomBenhLy.setSelectedItem(trimmed);
+                    if (!existsLieu) cbNhomBenhLieuNangCao.addItem(tenMoi);
                 } else {
                     cbNhomBenhLy.setSelectedIndex(0);
                 }
@@ -3862,6 +3858,236 @@ public class ManHinhSanPham extends JPanel {
         dlg.pack();
         dlg.setLocationRelativeTo(this);
         dlg.setVisible(true);
+        return result[0];
+    }
+    private String showNhomBenhLyInputDialog(JComboBox<String> existingCombo) {
+        final String[] result = {null};
+ 
+        JDialog dialog = new JDialog(
+            (java.awt.Frame) SwingUtilities.getWindowAncestor(this), true);
+        dialog.setUndecorated(true);
+ 
+        // ── Wrapper chính ──────────────────────────────────────────────────────
+        JPanel pnlMain = new JPanel(new BorderLayout());
+        pnlMain.setBorder(BorderFactory.createLineBorder(Color.decode("#1E3A8A"), 2));
+        pnlMain.setBackground(Color.WHITE);
+ 
+        // ── Header ─────────────────────────────────────────────────────────────
+        JPanel pnlHeader = new JPanel(new BorderLayout());
+        pnlHeader.setBackground(Color.decode("#1E3A8A"));
+        pnlHeader.setPreferredSize(new Dimension(0, 48));
+        pnlHeader.setBorder(BorderFactory.createEmptyBorder(0, 16, 0, 16));
+ 
+        // Icon dấu + bên trái header
+        JLabel lblIconH = new JLabel() {
+            @Override protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(Color.decode("#93C5FD")); // xanh nhạt
+                g2.setStroke(new BasicStroke(2.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                int cx = getWidth() / 2, cy = getHeight() / 2;
+                g2.drawLine(cx, cy - 8, cx, cy + 8); // dọc
+                g2.drawLine(cx - 8, cy, cx + 8, cy); // ngang
+                g2.dispose();
+            }
+        };
+        lblIconH.setPreferredSize(new Dimension(28, 48));
+ 
+        JLabel lblTitle = new JLabel("THÊM NHÓM BỆNH LÝ MỚI", SwingConstants.CENTER);
+        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        lblTitle.setForeground(Color.WHITE);
+ 
+        pnlHeader.add(lblIconH, BorderLayout.WEST);
+        pnlHeader.add(lblTitle, BorderLayout.CENTER);
+ 
+        // ── Body ───────────────────────────────────────────────────────────────
+        JPanel pnlBody = new JPanel(new BorderLayout(0, 12));
+        pnlBody.setBackground(Color.WHITE);
+        pnlBody.setBorder(BorderFactory.createEmptyBorder(20, 24, 12, 24));
+ 
+        // Mô tả nhỏ
+        JLabel lblDesc = new JLabel(
+            "<html><span style='color:#64748B;font-size:12px'>"
+            + "Nhóm mới sẽ được thêm vào danh sách và chọn ngay lập tức.</span></html>");
+        lblDesc.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        pnlBody.add(lblDesc, BorderLayout.NORTH);
+ 
+        // Panel nhập liệu
+        JPanel pnlInput = new JPanel(new BorderLayout(8, 0));
+        pnlInput.setBackground(Color.WHITE);
+        pnlInput.setBorder(BorderFactory.createEmptyBorder(4, 0, 4, 0));
+ 
+        JLabel lblFieldIcon = new JLabel() {
+            @Override protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                // Vẽ icon "tag" đơn giản
+                g2.setColor(Color.decode("#3B82F6"));
+                int[] xp = {2, 14, 14, 8, 2};
+                int[] yp = {4, 4, 14, 19, 14};
+                g2.fillPolygon(xp, yp, 5);
+                g2.setColor(Color.WHITE);
+                g2.fillOval(9, 7, 4, 4);
+                g2.dispose();
+            }
+        };
+        lblFieldIcon.setPreferredSize(new Dimension(24, 36));
+        lblFieldIcon.setOpaque(false);
+ 
+        JTextField txtNhomMoi = new JTextField();
+        txtNhomMoi.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        txtNhomMoi.setPreferredSize(new Dimension(0, 36));
+        txtNhomMoi.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(Color.decode("#CBD5E1"), 1, true),
+            BorderFactory.createEmptyBorder(4, 10, 4, 10)));
+        txtNhomMoi.putClientProperty("JTextField.placeholderText", "Ví dụ: Xương khớp – Gút");
+ 
+        // Label cảnh báo trùng (ẩn mặc định)
+        JLabel lblWarning = new JLabel(" ");
+        lblWarning.setFont(new Font("Segoe UI", Font.ITALIC, 12));
+        lblWarning.setForeground(Color.decode("#EF4444"));
+        lblWarning.setBorder(BorderFactory.createEmptyBorder(2, 2, 0, 0));
+ 
+        pnlInput.add(lblFieldIcon, BorderLayout.WEST);
+        pnlInput.add(txtNhomMoi, BorderLayout.CENTER);
+ 
+        JPanel pnlCenter = new JPanel(new BorderLayout(0, 4));
+        pnlCenter.setBackground(Color.WHITE);
+ 
+        // Label nhãn field
+        JLabel lblFieldLabel = new JLabel("Tên nhóm bệnh lý");
+        lblFieldLabel.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        lblFieldLabel.setForeground(Color.decode("#1E3A8A"));
+ 
+        pnlCenter.add(lblFieldLabel, BorderLayout.NORTH);
+        pnlCenter.add(pnlInput, BorderLayout.CENTER);
+        pnlCenter.add(lblWarning, BorderLayout.SOUTH);
+ 
+        pnlBody.add(pnlCenter, BorderLayout.CENTER);
+ 
+        // ── Gợi ý danh sách hiện có (nhỏ gọn) ─────────────────────────────────
+        JPanel pnlHint = new JPanel(new BorderLayout());
+        pnlHint.setBackground(Color.decode("#F8FAFC"));
+        pnlHint.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(Color.decode("#E2E8F0"), 1, true),
+            BorderFactory.createEmptyBorder(8, 12, 8, 12)));
+ 
+        JLabel lblHintTitle = new JLabel("Nhóm hiện có:");
+        lblHintTitle.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        lblHintTitle.setForeground(Color.decode("#64748B"));
+        pnlHint.add(lblHintTitle, BorderLayout.NORTH);
+ 
+        // Gom tên các nhóm đã có (bỏ qua "--Chọn--" và "+ Thêm")
+        StringBuilder sb = new StringBuilder("<html><span style='color:#94A3B8;font-size:11px'>");
+        int count = 0;
+        for (int i = 0; i < existingCombo.getItemCount(); i++) {
+            String it = existingCombo.getItemAt(i);
+            if (it.startsWith("--") || it.startsWith("+")) continue;
+            if (count > 0) sb.append("  ·  ");
+            sb.append(it);
+            count++;
+        }
+        sb.append("</span></html>");
+        JLabel lblHintList = new JLabel(sb.toString());
+        lblHintList.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        pnlHint.add(lblHintList, BorderLayout.CENTER);
+ 
+        pnlBody.add(pnlHint, BorderLayout.SOUTH);
+ 
+        // ── Footer buttons ──────────────────────────────────────────────────────
+        JPanel pnlFooter = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 10));
+        pnlFooter.setBackground(Color.WHITE);
+        pnlFooter.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, Color.decode("#E2E8F0")));
+ 
+        JButton btnHuy = new JButton("Hủy");
+        btnHuy.setPreferredSize(new Dimension(90, 36));
+        btnHuy.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnHuy.setBackground(Color.decode("#64748B"));
+        btnHuy.setForeground(Color.WHITE);
+        btnHuy.setFocusPainted(false);
+        btnHuy.setBorderPainted(false);
+        btnHuy.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnHuy.addMouseListener(new MouseAdapter() {
+            @Override public void mouseEntered(MouseEvent e) { btnHuy.setBackground(Color.decode("#475569")); }
+            @Override public void mouseExited(MouseEvent e)  { btnHuy.setBackground(Color.decode("#64748B")); }
+        });
+        btnHuy.addActionListener(e -> dialog.dispose());
+ 
+        JButton btnThem = new JButton("✚  Thêm nhóm");
+        btnThem.setPreferredSize(new Dimension(130, 36));
+        btnThem.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnThem.setBackground(Color.decode("#1E3A8A"));
+        btnThem.setForeground(Color.WHITE);
+        btnThem.setFocusPainted(false);
+        btnThem.setBorderPainted(false);
+        btnThem.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnThem.addMouseListener(new MouseAdapter() {
+            @Override public void mouseEntered(MouseEvent e) { btnThem.setBackground(Color.decode("#1e40af")); }
+            @Override public void mouseExited(MouseEvent e)  { btnThem.setBackground(Color.decode("#1E3A8A")); }
+        });
+ 
+        // Đổi màu border khi focus txtNhomMoi
+        txtNhomMoi.addFocusListener(new java.awt.event.FocusAdapter() {
+            @Override public void focusGained(java.awt.event.FocusEvent e) {
+                txtNhomMoi.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(Color.decode("#3B82F6"), 2, true),
+                    BorderFactory.createEmptyBorder(3, 9, 3, 9)));
+            }
+            @Override public void focusLost(java.awt.event.FocusEvent e) {
+                txtNhomMoi.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(Color.decode("#CBD5E1"), 1, true),
+                    BorderFactory.createEmptyBorder(4, 10, 4, 10)));
+            }
+        });
+ 
+        // Logic xác nhận thêm
+        Runnable doAdd = () -> {
+            String ten = txtNhomMoi.getText().trim();
+            if (ten.isEmpty()) {
+                lblWarning.setText("⚠  Vui lòng nhập tên nhóm bệnh lý!");
+                txtNhomMoi.requestFocus();
+                return;
+            }
+            // Kiểm tra trùng
+            for (int i = 0; i < existingCombo.getItemCount(); i++) {
+                if (existingCombo.getItemAt(i).equalsIgnoreCase(ten)) {
+                    lblWarning.setText("⚠  Nhóm \"" + ten + "\" đã tồn tại trong danh sách!");
+                    txtNhomMoi.selectAll();
+                    txtNhomMoi.requestFocus();
+                    return;
+                }
+            }
+            result[0] = ten;
+            dialog.dispose();
+        };
+ 
+        btnThem.addActionListener(e -> doAdd.run());
+        // Nhấn Enter trong ô text cũng xác nhận
+        txtNhomMoi.addActionListener(e -> doAdd.run());
+        // Xóa cảnh báo khi gõ lại
+        txtNhomMoi.getDocument().addDocumentListener(new DocumentListener() {
+            @Override public void insertUpdate(DocumentEvent e)  { lblWarning.setText(" "); }
+            @Override public void removeUpdate(DocumentEvent e)  { lblWarning.setText(" "); }
+            @Override public void changedUpdate(DocumentEvent e) { lblWarning.setText(" "); }
+        });
+ 
+        pnlFooter.add(btnHuy);
+        pnlFooter.add(btnThem);
+ 
+        // ── Lắp ráp ────────────────────────────────────────────────────────────
+        pnlMain.add(pnlHeader, BorderLayout.NORTH);
+        pnlMain.add(pnlBody,   BorderLayout.CENTER);
+        pnlMain.add(pnlFooter, BorderLayout.SOUTH);
+ 
+        dialog.add(pnlMain);
+        dialog.setPreferredSize(new Dimension(480, 320));
+        dialog.pack();
+        dialog.setLocationRelativeTo(this);
+ 
+        // Focus vào ô nhập khi dialog mở
+        SwingUtilities.invokeLater(txtNhomMoi::requestFocusInWindow);
+        dialog.setVisible(true);
+ 
         return result[0];
     }
 }
