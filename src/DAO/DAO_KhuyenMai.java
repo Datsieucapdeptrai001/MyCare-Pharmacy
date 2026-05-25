@@ -12,6 +12,8 @@ import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 
 public class DAO_KhuyenMai {
 
@@ -91,6 +93,31 @@ public class DAO_KhuyenMai {
         return n > 0;
     }
 
+    public boolean anKhuyenMai(String maKM) {
+        String sql = "UPDATE KhuyenMai SET trangThai = 'AN' WHERE id = ?";
+        Connection con = ConnectDB.getInstance().getConnection();
+        
+        if (con == null) {
+            System.out.println("Lỗi: Không lấy được kết nối DB!");
+            return false;
+        }
+        
+        try (PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setString(1, maKM.trim()); 
+            int rowsAffected = pst.executeUpdate();
+            
+            if (rowsAffected == 0) {
+                System.out.println("Lỗi: Không tìm thấy ID '" + maKM + "' để update.");
+            }
+            return rowsAffected > 0;
+            
+        } catch (SQLException e) {
+            System.err.println("=== BẮT ĐƯỢC LỖI TỪ SQL SERVER ===");
+            e.printStackTrace();
+            return false;
+        }
+    }
+
     public List<KhuyenMai> layDsKhuyenMai() {
         List<KhuyenMai> dsKhuyenMai = new ArrayList<>();
         String sql = "SELECT * FROM KhuyenMai"; 
@@ -145,9 +172,9 @@ public class DAO_KhuyenMai {
                      "AND CAST(k.ngayBatDau AS DATE) <= CAST(GETDATE() AS DATE) " +
                      "AND (k.ngayKetThuc IS NULL OR CAST(k.ngayKetThuc AS DATE) >= CAST(GETDATE() AS DATE))";
 
-        try (java.sql.Connection con = ConnectDB.getInstance().getConnection();
-             java.sql.Statement st = con.createStatement();
-             java.sql.ResultSet rs = st.executeQuery(sql)) {
+        try (Connection con = ConnectDB.getInstance().getConnection();
+             Statement st = con.createStatement();
+             ResultSet rs = st.executeQuery(sql)) {
              
             while(rs.next()) {
                 Object[] row = new Object[6]; 
@@ -166,10 +193,12 @@ public class DAO_KhuyenMai {
         return result;
     }
 
-    public List<Object[]> layDanhSachKhuyenMaiChoTable() {
+    public List<Object[]> layDanhSachKhuyenMaiChoTable(boolean hienDaAn) {
         List<Object[]> listData = new ArrayList<>();
         Connection con = ConnectDB.getInstance().getConnection();
         if (con == null) return listData;
+        
+        String whereCondition = hienDaAn ? "='AN'" : "!='AN'";
         
         String sql = "SELECT k.id, k.tenKhuyenMai, k.ngayBatDau, k.ngayKetThuc, k.trangThai, " +
                      "h.loaiHinhThuc, h.giaTri as mucGiam, h.giamToiDa, " +
@@ -180,79 +209,85 @@ public class DAO_KhuyenMai {
                      "LEFT JOIN HinhThucKhuyenMai h ON k.id = h.khuyenMaiId " +
                      "LEFT JOIN DieuKienKhuyenMai d ON k.id = d.khuyenMaiId " +
                      "LEFT JOIN SanPham sp1 ON h.spYeuCau = sp1.id " +
-                     "LEFT JOIN SanPham sp2 ON h.spTang = sp2.id";
+                     "LEFT JOIN SanPham sp2 ON h.spTang = sp2.id " +
+                     "WHERE ISNULL(k.trangThai, 'HOAT_DONG') " + whereCondition;
         
-        try (PreparedStatement stmt = con.prepareStatement(sql); ResultSet rs = stmt.executeQuery()) {
-            java.util.Date currentDate = new java.util.Date();
+        try (PreparedStatement stmt = con.prepareStatement(sql)) {
+            try (ResultSet rs = stmt.executeQuery()) {
+                java.util.Date currentDate = new java.util.Date();
 
-            while (rs.next()) {
-                String id = rs.getString("id"); 
-                String ten = rs.getString("tenKhuyenMai");
-                Timestamp startDB = rs.getTimestamp("ngayBatDau"); 
-                Timestamp endDB = rs.getTimestamp("ngayKetThuc");
-                String hinhThucDB = rs.getString("loaiHinhThuc");
-                
-                String trangThaiStr = rs.getString("trangThai");
-                boolean trangThaiDB = "HOAT_DONG".equals(trangThaiStr);
-
-                double mucGiamDB = rs.getDouble("mucGiam");
-                double giamToiDaDB = rs.getDouble("giamToiDa"); 
-                double donToiThieuDB = rs.getObject("donToiThieu") != null ? rs.getDouble("donToiThieu") : 0;
-
-                String hinhThucUI = "Giảm phần trăm (%)";
-                String mucGiamUI = "";
-                String donToiThieuUI = "";
-                String doiTuongUI = "";
-                
-                if ("SAN_PHAM_KEM_THEO".equals(hinhThucDB)) {
-                    hinhThucUI = "Sản phẩm kèm theo";
-                    String spTang = rs.getString("spTang"); 
-                    int slTang = rs.getInt("slTang");
-                    String dvdlTang = rs.getString("dvdlTang");
-                    String unitStr = (dvdlTang != null && !dvdlTang.isEmpty()) ? dvdlTang : "SP";
-                    mucGiamUI = "Tặng " + slTang + " " + unitStr + " " + (spTang != null ? spTang : "");
+                while (rs.next()) {
+                    String id = rs.getString("id"); 
+                    String ten = rs.getString("tenKhuyenMai");
+                    Timestamp startDB = rs.getTimestamp("ngayBatDau"); 
+                    Timestamp endDB = rs.getTimestamp("ngayKetThuc");
+                    String hinhThucDB = rs.getString("loaiHinhThuc");
                     
-                    String dvM = rs.getString("dvdlYeuCau");
-                    donToiThieuUI = "Mua " + rs.getInt("slYeuCau") + " " + (dvM != null && !dvM.isEmpty() ? dvM : "SP");
-                    doiTuongUI = "Tất cả";
-                } else if ("GIAM_TIEN_MAT".equals(hinhThucDB)) {
-                    hinhThucUI = "Giảm tiền mặt";
-                    mucGiamUI = String.format("-%,.0f đ", mucGiamDB);
+                    String trangThaiStr = rs.getString("trangThai");
+                    boolean trangThaiDB = "HOAT_DONG".equals(trangThaiStr);
+
+                    double mucGiamDB = rs.getDouble("mucGiam");
+                    double giamToiDaDB = rs.getDouble("giamToiDa"); 
+                    double donToiThieuDB = rs.getObject("donToiThieu") != null ? rs.getDouble("donToiThieu") : 0;
+
+                    String hinhThucUI = "Giảm phần trăm (%)";
+                    String mucGiamUI = "";
+                    String donToiThieuUI = "";
+                    String doiTuongUI = "";
                     
-                    String dvM = rs.getString("dvdlYeuCau");
-                    donToiThieuUI = "Mua " + rs.getInt("slYeuCau") + " " + (dvM != null && !dvM.isEmpty() ? dvM : "SP");
-                    doiTuongUI = "Sản phẩm";
-                } else {
-                    mucGiamUI = mucGiamDB + "%";
-                    if (giamToiDaDB > 0) {
-                        mucGiamUI += " (Tối đa " + String.format("%,.0f đ", giamToiDaDB) + ")";
+                    if ("SAN_PHAM_KEM_THEO".equals(hinhThucDB)) {
+                        hinhThucUI = "Sản phẩm kèm theo";
+                        String spTang = rs.getString("spTang"); 
+                        int slTang = rs.getInt("slTang");
+                        String dvdlTang = rs.getString("dvdlTang");
+                        String unitStr = (dvdlTang != null && !dvdlTang.isEmpty()) ? dvdlTang : "SP";
+                        mucGiamUI = "Tặng " + slTang + " " + unitStr + " " + (spTang != null ? spTang : "");
+                        
+                        String dvM = rs.getString("dvdlYeuCau");
+                        donToiThieuUI = "Mua " + rs.getInt("slYeuCau") + " " + (dvM != null && !dvM.isEmpty() ? dvM : "SP");
+                        doiTuongUI = "Tất cả";
+                    } else if ("GIAM_TIEN_MAT".equals(hinhThucDB)) {
+                        hinhThucUI = "Giảm tiền mặt";
+                        mucGiamUI = String.format("-%,.0f đ", mucGiamDB);
+                        
+                        String dvM = rs.getString("dvdlYeuCau");
+                        donToiThieuUI = "Mua " + rs.getInt("slYeuCau") + " " + (dvM != null && !dvM.isEmpty() ? dvM : "SP");
+                        doiTuongUI = "Sản phẩm";
+                    } else {
+                        mucGiamUI = mucGiamDB + "%";
+                        if (giamToiDaDB > 0) {
+                            mucGiamUI += " (Tối đa " + String.format("%,.0f đ", giamToiDaDB) + ")";
+                        }
+                        donToiThieuUI = donToiThieuDB > 0 ? String.format("%,.0f đ", donToiThieuDB) : "Không yêu cầu";
+                        doiTuongUI = rs.getString("doiTuongApDung") != null && rs.getString("doiTuongApDung").equals("HOA_DON") ? "Hóa đơn" : "Sản phẩm";
                     }
-                    donToiThieuUI = donToiThieuDB > 0 ? String.format("%,.0f đ", donToiThieuDB) : "Không yêu cầu";
-                    doiTuongUI = rs.getString("doiTuongApDung") != null && rs.getString("doiTuongApDung").equals("HOA_DON") ? "Hóa đơn" : "Sản phẩm";
-                }
-                
-                String thoiGianUI = "N/A"; 
-                if (startDB != null && endDB != null) {
-                    thoiGianUI = new java.text.SimpleDateFormat("dd/MM/yyyy").format(startDB) + " - " + new java.text.SimpleDateFormat("dd/MM/yyyy").format(endDB);
-                }
+                    
+                    String thoiGianUI = "N/A"; 
+                    if (startDB != null && endDB != null) {
+                        thoiGianUI = new java.text.SimpleDateFormat("dd/MM/yyyy").format(startDB) + " - " + new java.text.SimpleDateFormat("dd/MM/yyyy").format(endDB);
+                    }
 
-                String trangThaiUI = "Tạm dừng"; 
-                boolean isToggleOn = false;
+                    String trangThaiUI = "Tạm dừng"; 
+                    boolean isToggleOn = false;
 
-                if (!trangThaiDB) { 
-                    trangThaiUI = "Tạm dừng"; 
-                    isToggleOn = false; 
-                } else if (startDB != null && endDB != null) {
-                    if (currentDate.before(startDB)) { trangThaiUI = "Sắp diễn ra"; isToggleOn = true; } 
-                    else if (currentDate.after(endDB)) { trangThaiUI = "Đã kết thúc"; isToggleOn = false; } 
-                    else { trangThaiUI = "Đang hoạt động"; isToggleOn = true; }
+                    if ("AN".equals(trangThaiStr)) {
+                        trangThaiUI = "Đã ẩn";
+                        isToggleOn = false;
+                    } else if (!trangThaiDB) { 
+                        trangThaiUI = "Tạm dừng"; 
+                        isToggleOn = false; 
+                    } else if (startDB != null && endDB != null) {
+                        if (currentDate.before(startDB)) { trangThaiUI = "Sắp diễn ra"; isToggleOn = true; } 
+                        else if (currentDate.after(endDB)) { trangThaiUI = "Đã kết thúc"; isToggleOn = false; } 
+                        else { trangThaiUI = "Đang hoạt động"; isToggleOn = true; }
+                    }
+                    
+                    listData.add(new Object[]{ 
+                        id, ten, hinhThucUI, mucGiamUI, donToiThieuUI, doiTuongUI, thoiGianUI, trangThaiUI, "Xem", isToggleOn, 
+                        mucGiamDB, donToiThieuDB, rs.getString("spYeuCau"), rs.getInt("slYeuCau"), rs.getString("dvdlYeuCau"),
+                        rs.getString("spTang"), rs.getInt("slTang"), rs.getString("dvdlTang"), giamToiDaDB
+                    });
                 }
-                
-                listData.add(new Object[]{ 
-                    id, ten, hinhThucUI, mucGiamUI, donToiThieuUI, doiTuongUI, thoiGianUI, trangThaiUI, "Xem", isToggleOn, 
-                    mucGiamDB, donToiThieuDB, rs.getString("spYeuCau"), rs.getInt("slYeuCau"), rs.getString("dvdlYeuCau"),
-                    rs.getString("spTang"), rs.getInt("slTang"), rs.getString("dvdlTang"), giamToiDaDB
-                });
             }
         } catch (Exception ex) { 
             // silent fail
@@ -331,8 +366,8 @@ public class DAO_KhuyenMai {
                          "AND (k.ngayKetThuc IS NULL OR CAST(k.ngayKetThuc AS DATE) >= CAST(GETDATE() AS DATE))";
                          
         try (Connection con = ConnectDB.getInstance().getConnection();
-             java.sql.Statement st = con.createStatement();
-             java.sql.ResultSet rs = st.executeQuery(sqlLoad)) {
+             Statement st = con.createStatement();
+             ResultSet rs = st.executeQuery(sqlLoad)) {
             
             while(rs.next()) {
                 result.add(new Object[]{
@@ -402,8 +437,6 @@ public class DAO_KhuyenMai {
                 }
             }
 
-            // ĐÃ FIX: Loại bỏ tính thuế VAT ra khỏi Doanh thu thuần để khớp với ManHinhThongKe
-            // ĐÃ FIX: Bổ sung điều kiện chỉ tính hóa đơn BAN_HANG (không tính đơn đổi trả)
             String sqlHD = "SELECT hd.id, " +
                            "(SELECT ISNULL(SUM(ct.soLuong * dv.gia), 0) " +
                            " FROM ChiTietHoaDon ct " +
@@ -443,9 +476,6 @@ public class DAO_KhuyenMai {
         return stats;
     }
 
-    // ==============================================================
-    // HÀM MỚI: KIỂM TRA KHUYẾN MÃI TRÙNG LẶP CHO SẢN PHẨM
-    // ==============================================================
     public boolean kiemTraTrungKhuyenMai(String tenSP, int loaiHinhThucStr, double mucGiam, String currentKMId) {
         String hinhThuc = "";
         if (loaiHinhThucStr == 0) hinhThuc = "GIAM_THEO_PHAN_TRAM";
@@ -469,10 +499,40 @@ public class DAO_KhuyenMai {
             pst.setDouble(4, mucGiam);
             pst.setString(5, currentKMId == null ? "" : currentKMId);
             try (ResultSet rs = pst.executeQuery()) {
-                return rs.next(); // True nếu tìm thấy 1 chương trình khác xịn hơn hoặc bằng
+                return rs.next();
             }
         } catch (Exception e) {
             return false;
         }
+    }
+
+    public Map<String, Object> layThongTinSanPhamVaLoHangGoiY(String tenHoacMaSP) {
+        Map<String, Object> dbResult = new HashMap<>();
+        String sql = "SELECT TOP 1 sp.id, sp.danhMuc, sp.ten, lh.soLoHang, lh.ngayHetHan, " +
+                     "DATEDIFF(day, GETDATE(), lh.ngayHetHan) as soNgay, " +
+                     "(SELECT ISNULL(SUM(soLuongLoHang), 0) FROM LoHang WHERE sanPhamId = sp.id AND trangThai <> 'AN') as tongTon " +
+                     "FROM SanPham sp " +
+                     "LEFT JOIN LoHang lh ON sp.id = lh.sanPhamId AND lh.trangThai <> 'AN' AND lh.soLuongLoHang > 0 " +
+                     "WHERE sp.id = ? OR sp.ten = ? " +
+                     "ORDER BY lh.ngayHetHan ASC";
+
+        try (Connection con = ConnectDB.getInstance().getConnection();
+             PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setString(1, tenHoacMaSP);
+            pst.setString(2, tenHoacMaSP);
+            try (ResultSet rs = pst.executeQuery()) {
+                if (rs.next()) {
+                    dbResult.put("danhMuc", rs.getString("danhMuc"));
+                    dbResult.put("tenThuc", rs.getString("ten"));
+                    dbResult.put("soLo", rs.getString("soLoHang"));
+                    dbResult.put("ngayHetHan", rs.getTimestamp("ngayHetHan"));
+                    dbResult.put("soNgay", rs.getInt("soNgay"));
+                    dbResult.put("tonKho", rs.getInt("tongTon"));
+                }
+            }
+        } catch (Exception e) {
+            // silent fail
+        }
+        return dbResult;
     }
 }
