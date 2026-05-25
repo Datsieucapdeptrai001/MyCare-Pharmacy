@@ -2555,9 +2555,9 @@ public class ManHinhKhuyenMai extends JPanel {
 
         try {
             boolean hienDaAn = chkHienDaAn != null && chkHienDaAn.isSelected();
-            List<Object[]> listData = busKhuyenMai.layDanhSachKhuyenMaiChoTable(); 
-            // Fix locally for hienDaAn if needed, currently DAO returns based on its logic. 
-            // (Assumes DAO_KhuyenMai has the boolean parameter method)
+            // ĐÃ SỬA: Bỏ biến hienDaAn vào trong ngoặc
+            List<Object[]> listData = busKhuyenMai.layDanhSachKhuyenMaiChoTable(hienDaAn); 
+            
             if (listData != null) {
                 for (Object[] row : listData) {
                     tableModel.addRow(row);
