@@ -494,7 +494,13 @@ public class DialogChonLieuMau extends JDialog {
     // ===== CÁC HÀM PHỤ TRỢ =====
     private void taiDanhSachThuocCuaLieu(String idLieuMau) {
         pnlDanhSachThuoc.removeAll(); danhSachRowThuoc.clear();
+        
+        // 1. Lấy dữ liệu Liều từ busSanPham để có các thông số Sáng/Trưa/Chiều/Tối
         SanPham.MauLieu mauLieu = busSanPham.layComboByIdNangCao(idLieuMau);
+        
+        // 2. Lấy thêm danh sách chứa VỊ TRÍ từ BUS_LieuMau mà ta đã sửa ở file DAO
+        BUS.BUS_LieuMau busLieuMau = new BUS.BUS_LieuMau();
+        List<Object[]> dsChiTietViTri = busLieuMau.getChiTietThuocCuaLieu(idLieuMau);
         
         if (mauLieu != null && mauLieu.getDsChiTiet() != null) {
             boolean isOdd = true;
@@ -507,7 +513,18 @@ public class DialogChonLieuMau extends JDialog {
                 if (sl1Ngay <= 0 && ct.getSoNgay() > 0) sl1Ngay = ct.getTongSoLuong() / ct.getSoNgay(); 
                 if (sl1Ngay <= 0) sl1Ngay = 1;
 
-                RowThuocCombo rowUI = new RowThuocCombo(idSP, tenSP, cachDung, sl1Ngay, ct.getDvt(), ct.getGiaDonVi(), ct.getSang(), ct.getTrua(), ct.getChieu(), ct.getToi(), isOdd);
+                // --- 3. TÌM VỊ TRÍ TƯƠNG ỨNG TRONG dsChiTietViTri ---
+                String viTriThuoc = "Chưa xếp vị trí";
+                for (Object[] rowViTri : dsChiTietViTri) {
+                    if (rowViTri[0] != null && rowViTri[0].toString().equals(idSP)) {
+                        // Vị trí nằm ở cột thứ 7 (index = 6) trong Object[]
+                        viTriThuoc = (rowViTri[6] != null) ? rowViTri[6].toString() : "Chưa xếp vị trí";
+                        break;
+                    }
+                }
+
+                // Truyền thêm viTriThuoc vào hàm khởi tạo RowThuocCombo
+                RowThuocCombo rowUI = new RowThuocCombo(idSP, tenSP, cachDung, sl1Ngay, ct.getDvt(), ct.getGiaDonVi(), ct.getSang(), ct.getTrua(), ct.getChieu(), ct.getToi(), viTriThuoc, isOdd);
                 danhSachRowThuoc.add(rowUI); 
                 pnlDanhSachThuoc.add(rowUI.pnlRow);
                 isOdd = !isOdd;
@@ -575,7 +592,7 @@ public class DialogChonLieuMau extends JDialog {
         public JLabel lblStatus;
         public JSpinner spnSoLuong;
 
-        public RowThuocCombo(String id, String ten, String cachDung, int sl, String dvt, double gia, double sang, double trua, double chieu, double toi, boolean isOddRow) {
+        public RowThuocCombo(String id, String ten, String cachDung, int sl, String dvt, double gia, double sang, double trua, double chieu, double toi, String viTriThuoc, boolean isOddRow) {
             this.sanPhamId = id; this.tenSP = ten; this.donViTinh = dvt; this.cachDung = cachDung;
             this.soLuongGoc = sl; this.donGia = gia;
             this.sang = sang; this.trua = trua; this.chieu = chieu; this.toi = toi;
@@ -603,7 +620,9 @@ public class DialogChonLieuMau extends JDialog {
             pnlTen.add(chkChon, BorderLayout.WEST); pnlTen.add(lblTen, BorderLayout.CENTER);
             gbc.gridx = 0; gbc.weightx = 3.2; pnlRow.add(pnlTen, gbc);
 
-            JLabel lblViTri = new JLabel("<html><span style='color:#6B7280; font-size:10px;'>Tủ A - Ngăn 1</span></html>", SwingConstants.CENTER);
+            // SỬA Ở ĐÂY: Hiển thị biến viTriThuoc truyền vào thay vì fix cứng
+            String viTriHienThi = (viTriThuoc != null && !viTriThuoc.trim().isEmpty() && !viTriThuoc.equals(" - ")) ? viTriThuoc : "Chưa xếp vị trí";
+            JLabel lblViTri = new JLabel("<html><span style='color:#6B7280; font-size:10px;'>" + viTriHienThi + "</span></html>", SwingConstants.CENTER);
             gbc.gridx = 1; gbc.weightx = 1.1; pnlRow.add(lblViTri, gbc);
 
             spnSoLuong = new JSpinner(new SpinnerNumberModel(sl, 1, 999, 1));

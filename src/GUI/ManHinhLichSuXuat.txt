@@ -155,7 +155,7 @@ public class ManHinhLichSuXuat extends JPanel {
                 "Thời gian xuất",
                 "Mã lô",
                 "Tên sản phẩm",
-                "SL",
+                "SL xuất",
                 "Lý do xuất",
                 "Người thực hiện"
         };
@@ -249,14 +249,31 @@ public class ManHinhLichSuXuat extends JPanel {
                 String tenSanPham = row[2] == null ? "" : row[2].toString();
                 String soLuong = row[3] == null ? "" : row[3].toString();
                 String lyDo = row[4] == null ? "" : row[4].toString();
-                String nguoiThucHien = row.length > 5 && row[5] != null ? row[5].toString() : "Không xác định";
+
+                String nguoiThucHien = row.length > 5 && row[5] != null
+                        ? row[5].toString().trim()
+                        : "Không xác định";
+
+                String donViCoBan = row.length > 6 && row[6] != null
+                        ? row[6].toString().trim()
+                        : "đơn vị";
+
+                if (nguoiThucHien.isEmpty()
+                        || nguoiThucHien.equalsIgnoreCase("NV-DEFAULT")
+                        || nguoiThucHien.equalsIgnoreCase("Người dùng hiện tại")) {
+                    nguoiThucHien = "Không xác định";
+                }
+
+                if (donViCoBan.isEmpty()) {
+                    donViCoBan = "đơn vị";
+                }
 
                 model.addRow(new Object[] {
                         stt++,
                         ngayXuatStr,
                         maLo,
                         tenSanPham,
-                        soLuong,
+                        "-" + soLuong + " " + donViCoBan,
                         lyDo,
                         nguoiThucHien
                 });
@@ -380,7 +397,7 @@ public class ManHinhLichSuXuat extends JPanel {
         grid.add(createInfoCard("Hành động", "Xuất / hủy kho", DANGER, DANGER_SOFT));
         grid.add(createInfoCard("Mã lô", maLo, PRIMARY_BLUE, new Color(240, 249, 255)));
         grid.add(createInfoCard("Sản phẩm", sanPham, TEXT_PRIMARY, Color.WHITE));
-        grid.add(createInfoCard("Số lượng xuất", "-" + soLuong + " đơn vị", DANGER, DANGER_SOFT));
+        grid.add(createInfoCard("Số lượng xuất", soLuong, DANGER, DANGER_SOFT));
         grid.add(createInfoCard("Lý do xuất", lyDo, PRIMARY_BLUE, BLUE_SOFT));
         grid.add(createInfoCard("Người thực hiện", nguoiThucHien, TEXT_PRIMARY, Color.WHITE));
 

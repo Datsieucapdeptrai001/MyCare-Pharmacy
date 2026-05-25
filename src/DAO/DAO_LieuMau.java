@@ -35,25 +35,28 @@ public class DAO_LieuMau {
     // Lấy chi tiết thuốc của 1 liều mẫu
     public List<Object[]> getChiTietThuocCuaLieu(String idLieuMau) {
         List<Object[]> dsChiTiet = new ArrayList<>();
-        // SỬA: Đổi bảng ChiTietLieuMau -> ChiTietMauLieu, ct.lieuMauId -> ct.comboId, ct.soLuong -> ct.tongSoLuong
-        String sql = "SELECT sp.id, sp.ten, sp.nhomBenhLy, ct.tongSoLuong AS soLuong, dv.ten AS donViTinh, dv.gia AS donGia " +
+        // Đã bổ sung LEFT JOIN ViTriThuoc và cột viTriThuocHienThi
+        String sql = "SELECT sp.id, sp.ten, sp.nhomBenhLy, ct.tongSoLuong AS soLuong, dv.ten AS donViTinh, dv.gia AS donGia, " +
+                     "ISNULL(vt.khu, '') + ' - ' + ISNULL(vt.ke, '') AS viTriThuocHienThi " +
                      "FROM ChiTietMauLieu ct " +
                      "JOIN SanPham sp ON ct.sanPhamId = sp.id " +
                      "JOIN DonViDoLuong dv ON sp.id = dv.sanPhamId AND sp.donViDoCoBan = dv.ten " +
+                     "LEFT JOIN ViTriThuoc vt ON sp.viTriId = vt.id " +
                      "WHERE ct.comboId = ?";
                      
         try (Connection con = ConnectDB.getInstance().getConnection();
              PreparedStatement pst = con.prepareStatement(sql)) {
-            pst.setString(1, idLieuMau);
+            pst.setString(1, idLieuMau); // Dấu ? sẽ được thay bằng mã liều mẫu ở đây
             ResultSet rs = pst.executeQuery();
             while (rs.next()) {
                 dsChiTiet.add(new Object[]{
                     rs.getString("id"),           
                     rs.getString("ten"),          
                     rs.getString("nhomBenhLy"),   
-                    rs.getInt("soLuong"),         // Lấy theo bí danh (Alias) đã đặt trong query
+                    rs.getInt("soLuong"),         
                     rs.getString("donViTinh"),    
-                    rs.getDouble("donGia")        
+                    rs.getDouble("donGia"),
+                    rs.getString("viTriThuocHienThi") // <--- Lấy thêm vị trí từ Database
                 });
             }
         } catch (SQLException e) {

@@ -243,10 +243,11 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         JPanel pnlQR = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
         pnlQR.setOpaque(false);
 
-        JButton btnScanQR = createSecondaryButton("Quét mã tem");
+        JButton btnScanQR = createSecondaryButton("Quét mã tem [F2]");
         btnScanQR.setIcon(new MenuIcon("BARCODE", 20, PRIMARY));
         btnScanQR.setIconTextGap(8);
         btnScanQR.setForeground(PRIMARY);
+        btnScanQR.setToolTipText("Phím tắt: F2");
         btnScanQR.addActionListener(e -> showQRScannerDialog());
         pnlQR.add(btnScanQR);
 
@@ -742,13 +743,15 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 0));
         actions.setOpaque(false);
 
-        JButton btnCancel = createSecondaryButton("Hủy");
+        JButton btnCancel = createSecondaryButton("Hủy [Esc]");
         btnCancel.setIcon(new MenuIcon("CANCEL"));
         btnCancel.setIconTextGap(8);
+        btnCancel.setToolTipText("Phím tắt: Esc");
 
-        JButton btnSubmit = createPrimaryButton("Lưu, lập phiếu & in");
+        JButton btnSubmit = createPrimaryButton("Lưu, lập phiếu & in [F10]");
         btnSubmit.setIcon(new MenuIcon("SAVE"));
         btnSubmit.setIconTextGap(8);
+        btnSubmit.setToolTipText("Phím tắt: F10");
 
         btnCancel.addActionListener(e -> dispose());
         btnSubmit.addActionListener(e -> handleSubmit());
@@ -865,13 +868,6 @@ public class ManHinhNhapLoHangMoi extends JDialog {
     private void registerKeyboardActions() {
         JRootPane rootPane = getRootPane();
 
-        /*
-         * FIX TELEX:
-         * Không submit toàn màn hình bằng ENTER nữa.
-         * Lý do: bộ gõ tiếng Việt/Telex có thể dùng Enter để chốt chữ hoặc chốt gợi ý
-         * IME.
-         * Nếu bắt ENTER toàn dialog thì dễ bị lỗi chữ, nhảy submit, mất dấu.
-         */
         rootPane.registerKeyboardAction(e -> {
             if (popupSanPham != null
                     && popupSanPham.isVisible()
@@ -884,12 +880,20 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         rootPane.registerKeyboardAction(
                 e -> dispose(),
                 KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0),
-                JComponent.WHEN_IN_FOCUSED_WINDOW);
+                JComponent.WHEN_IN_FOCUSED_WINDOW
+        );
+
+        rootPane.registerKeyboardAction(
+                e -> showQRScannerDialog(),
+                KeyStroke.getKeyStroke(KeyEvent.VK_F2, 0),
+                JComponent.WHEN_IN_FOCUSED_WINDOW
+        );
 
         rootPane.registerKeyboardAction(
                 e -> handleSubmit(),
-                KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, KeyEvent.CTRL_DOWN_MASK),
-                JComponent.WHEN_IN_FOCUSED_WINDOW);
+                KeyStroke.getKeyStroke(KeyEvent.VK_F10, 0),
+                JComponent.WHEN_IN_FOCUSED_WINDOW
+        );
     }
 
     private String getDigitsOnly(String text) {

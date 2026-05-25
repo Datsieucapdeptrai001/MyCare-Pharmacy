@@ -173,6 +173,10 @@ public class MainDashboard extends JFrame {
 
                 // Thêm tooltip để hướng dẫn người dùng khi rê chuột vào menu
                 btn.setToolTipText("Phím tắt nhanh: F" + hotkeyNum);
+
+                if (btn instanceof MenuShortcutButton) {
+                    ((MenuShortcutButton) btn).setShortcutText("F" + hotkeyNum);
+                }
             }
         }
 
@@ -423,7 +427,46 @@ public class MainDashboard extends JFrame {
         this.dispose();
         new MainDashboard().setVisible(true);
     }
+    class MenuShortcutButton extends JButton {
+        private String shortcutText = "";
 
+        public MenuShortcutButton(String text) {
+            super(text);
+        }
+
+        public void setShortcutText(String shortcutText) {
+            this.shortcutText = shortcutText == null ? "" : shortcutText;
+            repaint();
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setColor(getBackground());
+            g2.fillRoundRect(0, 0, getWidth(), getHeight(), 15, 15);
+
+            g2.dispose();
+
+            super.paintComponent(g);
+
+            if (shortcutText != null && !shortcutText.trim().isEmpty()) {
+                Graphics2D gShortcut = (Graphics2D) g.create();
+                gShortcut.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+                gShortcut.setFont(new Font("Segoe UI", Font.BOLD, 12));
+                gShortcut.setColor(new Color(203, 213, 225));
+
+                FontMetrics fm = gShortcut.getFontMetrics();
+                int x = getWidth() - fm.stringWidth(shortcutText) - 14;
+                int y = (getHeight() - fm.getHeight()) / 2 + fm.getAscent();
+
+                gShortcut.drawString(shortcutText, x, y);
+                gShortcut.dispose();
+            }
+        }
+    }
     // =================================================================================
     // CÁC HÀM UI CUSTOM BO GÓC (RoundedButton, RoundedPanel)
     // =================================================================================
@@ -757,6 +800,10 @@ public class MainDashboard extends JFrame {
         final JButton btnLogout = createMenuButton("Đăng xuất", true);
         btnLogout.setIcon(new MenuIcon("LOGOUT"));
         btnLogout.setToolTipText("Phím tắt nhanh: F12");
+
+        if (btnLogout instanceof MenuShortcutButton) {
+            ((MenuShortcutButton) btnLogout).setShortcutText("F12");
+        }
         btnLogout.addActionListener(e -> hienThiThongBaoDangXuat());
         JPanel wrapLogout = new JPanel(new BorderLayout());
         wrapLogout.setOpaque(false);
@@ -769,17 +816,7 @@ public class MainDashboard extends JFrame {
     }
 
     private JButton createMenuButton(String text, boolean isLogout) {
-        final JButton btn = new JButton(text) {
-            @Override
-            protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(getBackground());
-                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 15, 15);
-                g2.dispose();
-                super.paintComponent(g);
-            }
-        };
+    	final MenuShortcutButton btn = new MenuShortcutButton(text);
         btn.setPreferredSize(new Dimension(220, 46));
         btn.setHorizontalAlignment(SwingConstants.LEFT);
         btn.setFont(new Font("Segoe UI", Font.BOLD, 14));

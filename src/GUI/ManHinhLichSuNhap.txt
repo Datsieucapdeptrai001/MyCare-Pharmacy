@@ -166,7 +166,7 @@ public class ManHinhLichSuNhap extends JPanel {
                 "Mã lô",
                 "Sản phẩm",
                 "SL nhập",
-                "Giá vốn",
+                "Giá vốn / ĐVCB",
                 "Thành tiền",
                 "Người thực hiện"
         };
@@ -264,6 +264,11 @@ public class ManHinhLichSuNhap extends JPanel {
                 String maLo = safe(row[3]);
                 String sanPham = safe(row[4]);
 
+                String donViNhap = "đơn vị";
+                if (row.length > 9 && row[9] != null && !safe(row[9]).isEmpty()) {
+                    donViNhap = safe(row[9]);
+                }
+
                 int soLuongNhap = parseInt(row[5]);
                 double donGiaNhap = parseDouble(row[6]);
                 double thanhTien = parseDouble(row[7]);
@@ -283,8 +288,8 @@ public class ManHinhLichSuNhap extends JPanel {
                         hanhDong,
                         maLo,
                         sanPham,
-                        "+" + moneyFormat.format(soLuongNhap),
-                        formatMoneySmart(donGiaNhap) + "đ",
+                        "+" + moneyFormat.format(soLuongNhap) + " " + donViNhap,
+                        formatMoneySmart(donGiaNhap) + "đ / " + donViNhap,
                         moneyFormat.format(thanhTien) + "đ",
                         nguoiThucHien
                 });
@@ -420,8 +425,8 @@ public class ManHinhLichSuNhap extends JPanel {
         grid.add(createInfoCard("Hành động", hanhDong, SUCCESS, SUCCESS_SOFT));
         grid.add(createInfoCard("Mã lô", maLo, PRIMARY, new Color(240, 249, 255)));
         grid.add(createInfoCard("Sản phẩm", sanPham, TEXT_PRIMARY, Color.WHITE));
-        grid.add(createInfoCard("Số lượng nhập", soLuong + " đơn vị", SUCCESS, SUCCESS_SOFT));
-        grid.add(createInfoCard("Giá vốn / đơn vị", giaVon, BLUE, BLUE_SOFT));
+        grid.add(createInfoCard("Số lượng nhập", soLuong, SUCCESS, SUCCESS_SOFT));
+        grid.add(createInfoCard("Giá vốn / ĐVCB", giaVon, BLUE, BLUE_SOFT));
         grid.add(createInfoCard("Thành tiền", thanhTien, PRIMARY, new Color(240, 249, 255)));
 
         root.add(header, BorderLayout.NORTH);
