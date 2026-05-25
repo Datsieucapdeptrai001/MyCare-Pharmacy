@@ -438,46 +438,46 @@ INSERT [dbo].[KhuyenMai] VALUES (N'KM-2024-0018', N'Tuần lễ vàng', N'Giảm
 INSERT [dbo].[KhuyenMai] VALUES (N'KM-2024-0019', N'Tăng đề kháng Mùa Dịch', N'Mua 5 tặng 1 Vitamin C Sủi', CAST(N'2026-04-30T20:56:30.6133333' AS DateTime2), CAST(N'2024-01-01T00:00:00.0000000' AS DateTime2), CAST(N'2026-12-31T00:00:00.0000000' AS DateTime2), N'HOAT_DONG')
 INSERT [dbo].[KhuyenMai] VALUES (N'KM-2024-0020', N'Mua buôn giảm sốc', N'Giảm 25% cho hóa đơn từ 5.000.000đ', CAST(N'2026-04-30T20:56:30.6133333' AS DateTime2), CAST(N'2024-01-01T00:00:00.0000000' AS DateTime2), CAST(N'2026-12-31T00:00:00.0000000' AS DateTime2), N'HOAT_DONG')
 
-INSERT [dbo].[SanPham] VALUES (N'SP2024-0001', N'THUOC_KE_DON', N'VIEN_NANG', N'Amoxicillin 500mg', N'Amox 500', N'Pymepharco', N'Amoxicillin trihydrate', CAST(5.00 AS Decimal(18, 2)), N'500mg', N'Kháng sinh nhóm penicillin', N'Viên', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(2000.00 AS Decimal(18, 2)), N'8934663100017', N'Kháng sinh – Kháng viêm')
-INSERT [dbo].[SanPham] VALUES (N'SP2024-0002', N'THUOC_KE_DON', N'VIEN_NEN', N'Cefuroxime 500mg', N'Cefu 500', N'Stada VN', N'Cefuroxime axetil', CAST(5.00 AS Decimal(18, 2)), N'500mg', N'Kháng sinh cephalosporin', N'Viên', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(5000.00 AS Decimal(18, 2)), N'8934663100024', N'Kháng sinh – Kháng viêm')
+INSERT [dbo].[SanPham] VALUES (N'SP2024-0001', N'THUOC_KE_DON', N'VIEN_NANG', N'Amoxicillin 500mg', N'Amox 500', N'Pymepharco', N'Amoxicillin trihydrate', CAST(5.00 AS Decimal(18, 2)), N'500mg', N'Kháng sinh nhóm penicillin', N'Viên', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(2000.00 AS Decimal(18, 2)), N'8934663100017', N'Ho – Đờm – Viêm họng')
+INSERT [dbo].[SanPham] VALUES (N'SP2024-0002', N'THUOC_KE_DON', N'VIEN_NEN', N'Cefuroxime 500mg', N'Cefu 500', N'Stada VN', N'Cefuroxime axetil', CAST(5.00 AS Decimal(18, 2)), N'500mg', N'Kháng sinh cephalosporin', N'Viên', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(5000.00 AS Decimal(18, 2)), N'8934663100024', N'Ho – Đờm – Viêm họng')
 INSERT [dbo].[SanPham] VALUES (N'SP2024-0003', N'THUOC_KE_DON', N'VIEN_NEN', N'Metformin 500mg', N'Metf 500', N'Traphaco', N'Metformin hydrochloride', CAST(5.00 AS Decimal(18, 2)), N'500mg', N'Điều trị đái tháo đường', N'Viên', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(800.00 AS Decimal(18, 2)), N'8934663100031', N'Đái tháo đường')
 INSERT [dbo].[SanPham] VALUES (N'SP2024-0004', N'THUOC_KE_DON', N'VIEN_NEN', N'Losartan 50mg', N'Losar 50', N'Imexpharm', N'Losartan kali', CAST(5.00 AS Decimal(18, 2)), N'50mg', N'Thuốc hạ huyết áp', N'Viên', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(1500.00 AS Decimal(18, 2)), N'8934663100048', N'Tim mạch – Huyết áp')
-INSERT [dbo].[SanPham] VALUES (N'SP2024-0005', N'THUOC_KE_DON', N'HON_DICH', N'Augmentin 250mg/5ml Siro', N'Aug Siro', N'GSK', N'Amoxicillin + Acid clavulanic', CAST(5.00 AS Decimal(18, 2)), N'250mg/5ml', N'Kháng sinh cho trẻ em', N'Chai', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(90000.00 AS Decimal(18, 2)), N'8934663100086', N'Kháng sinh – Kháng viêm')
-INSERT [dbo].[SanPham] VALUES (N'SP2024-0006', N'THUOC_KE_DON', N'HON_DICH', N'Azithromycin 200mg/5ml', N'Azith Siro', N'Pymepharco', N'Azithromycin dihydrate', CAST(5.00 AS Decimal(18, 2)), N'200mg/5ml', N'Kháng sinh macrolide', N'Chai', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(75000.00 AS Decimal(18, 2)), N'8934663100093', N'Kháng sinh – Kháng viêm')
+INSERT [dbo].[SanPham] VALUES (N'SP2024-0005', N'THUOC_KE_DON', N'HON_DICH', N'Augmentin 250mg/5ml Siro', N'Aug Siro', N'GSK', N'Amoxicillin + Acid clavulanic', CAST(5.00 AS Decimal(18, 2)), N'250mg/5ml', N'Kháng sinh cho trẻ em', N'Chai', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(90000.00 AS Decimal(18, 2)), N'8934663100086', N'Ho – Đờm – Viêm họng')
+INSERT [dbo].[SanPham] VALUES (N'SP2024-0006', N'THUOC_KE_DON', N'HON_DICH', N'Azithromycin 200mg/5ml', N'Azith Siro', N'Pymepharco', N'Azithromycin dihydrate', CAST(5.00 AS Decimal(18, 2)), N'200mg/5ml', N'Kháng sinh macrolide', N'Chai', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(75000.00 AS Decimal(18, 2)), N'8934663100093', N'Ho – Đờm – Viêm họng')
 INSERT [dbo].[SanPham] VALUES (N'SP2024-0007', N'THUOC_KE_DON', N'VIEN_NEN', N'Amlodipine 5mg', N'Amlo 5', N'Stada VN', N'Amlodipine besylate', CAST(5.00 AS Decimal(18, 2)), N'5mg', N'Điều trị tăng huyết áp', N'Viên', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(2500.00 AS Decimal(18, 2)), N'8934663100109', N'Tim mạch – Huyết áp')
 INSERT [dbo].[SanPham] VALUES (N'SP2024-0008', N'THUOC_KE_DON', N'VIEN_NEN', N'Atorvastatin 20mg', N'Ator 20', N'Imexpharm', N'Atorvastatin calcium', CAST(5.00 AS Decimal(18, 2)), N'20mg', N'Thuốc hạ mỡ máu', N'Viên', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(3500.00 AS Decimal(18, 2)), N'8934663100116', N'Tim mạch – Huyết áp')
-INSERT [dbo].[SanPham] VALUES (N'SP2024-0009', N'THUOC_KHONG_KE_DON', N'VIEN_NEN', N'Paracetamol 500mg', N'Para 500', N'Domesco', N'Paracetamol', CAST(5.00 AS Decimal(18, 2)), N'500mg', N'Giảm đau, hạ sốt', N'Viên', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(400.00 AS Decimal(18, 2)), N'8934673100014', N'Thần kinh – Giảm đau')
-INSERT [dbo].[SanPham] VALUES (N'SP2024-0010', N'THUOC_KHONG_KE_DON', N'VIEN_NEN', N'Ibuprofen 400mg', N'Ibup 400', N'OPV', N'Ibuprofen', CAST(5.00 AS Decimal(18, 2)), N'400mg', N'Kháng viêm không steroid', N'Viên', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(600.00 AS Decimal(18, 2)), N'8934673100021', N'Thần kinh – Giảm đau')
-INSERT [dbo].[SanPham] VALUES (N'SP2024-0011', N'THUOC_KHONG_KE_DON', N'VIEN_SUI', N'Vitamin C 1000mg Sủi', N'VitC 1000', N'DHG Pharma', N'Acid ascorbic', CAST(5.00 AS Decimal(18, 2)), N'1000mg', N'Tăng sức đề kháng', N'Viên', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(2167.00 AS Decimal(18, 2)), N'8934673100038', N'Vitamin – Bổ sung')
-INSERT [dbo].[SanPham] VALUES (N'SP2024-0012', N'THUOC_KHONG_KE_DON', N'VIEN_NEN', N'Cetirizine 10mg', N'Cetir 10', N'Stada VN', N'Cetirizine hydrochloride', CAST(5.00 AS Decimal(18, 2)), N'10mg', N'Chống dị ứng', N'Viên', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(600.00 AS Decimal(18, 2)), N'8934673100045', N'Hô hấp – Dị ứng')
-INSERT [dbo].[SanPham] VALUES (N'SP2024-0013', N'THUOC_KHONG_KE_DON', N'THUOC_BOT', N'Oresol Cam', N'ORS Cam', N'Vinpharco', N'Glucose + Natri Clorid', CAST(5.00 AS Decimal(18, 2)), N'Chưa cập nhật', N'Bù nước và điện giải', N'Gói', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(3000.00 AS Decimal(18, 2)), N'8934673100069', N'Tiêu hóa – Dạ dày')
-INSERT [dbo].[SanPham] VALUES (N'SP2024-0014', N'THUOC_KHONG_KE_DON', N'DUNG_DICH', N'Xịt mũi Naphazoline 0.05%', N'Xịt Naphaz', N'Pharmedic', N'Naphazoline hydrochloride', CAST(5.00 AS Decimal(18, 2)), N'0.05%', N'Giảm ngạt mũi', N'Chai', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(35000.00 AS Decimal(18, 2)), N'8934673100052', N'Hô hấp – Dị ứng')
-INSERT [dbo].[SanPham] VALUES (N'SP2024-0015', N'THUOC_KHONG_KE_DON', N'VIEN_NEN', N'Domperidon 10mg', N'Domp 10', N'Pymepharco', N'Domperidone', CAST(5.00 AS Decimal(18, 2)), N'10mg', N'Chống nôn', N'Viên', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(1333.00 AS Decimal(18, 2)), N'8934673100076', N'Tiêu hóa – Dạ dày')
-INSERT [dbo].[SanPham] VALUES (N'SP2024-0016', N'THUOC_KHONG_KE_DON', N'VIEN_NANG', N'Omeprazole 20mg', N'Ome 20', N'Traphaco', N'Omeprazole', CAST(5.00 AS Decimal(18, 2)), N'20mg', N'Điều trị loét dạ dày', N'Viên', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(1733.00 AS Decimal(18, 2)), N'8934673100083', N'Tiêu hóa – Dạ dày')
-INSERT [dbo].[SanPham] VALUES (N'SP2024-0017', N'THUOC_KHONG_KE_DON', N'DUNG_DICH', N'Siro Ho Bổ Phế', N'Siro Ho BP', N'Traphaco', N'Thảo dược', CAST(5.00 AS Decimal(18, 2)), N'Chưa cập nhật', N'Giảm ho', N'Chai', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(55000.00 AS Decimal(18, 2)), N'8934673100090', N'Tiêu hóa – Dạ dày')
-INSERT [dbo].[SanPham] VALUES (N'SP2024-0018', N'THUOC_KHONG_KE_DON', N'THUOC_BOT', N'Smecta 3g Bột', N'Smecta', N'Ipsen', N'Diosmectite', CAST(5.00 AS Decimal(18, 2)), N'3g', N'Điều trị tiêu chảy', N'Gói', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(11000.00 AS Decimal(18, 2)), N'8934673100106', N'Tiêu hóa – Dạ dày')
-INSERT [dbo].[SanPham] VALUES (N'SP2024-0019', N'THUOC_KHONG_KE_DON', N'VIEN_NEN', N'Loratadine 10mg', N'Lorat 10', N'DHG Pharma', N'Loratadine', CAST(5.00 AS Decimal(18, 2)), N'10mg', N'Kháng histamine', N'Viên', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(533.00 AS Decimal(18, 2)), N'8934673100168', N'Hô hấp – Dị ứng')
-INSERT [dbo].[SanPham] VALUES (N'SP2024-0020', N'THUOC_KHONG_KE_DON', N'VIEN_NANG', N'Esomeprazole 20mg', N'Esome 20', N'AstraZeneca', N'Esomeprazole magnesium', CAST(5.00 AS Decimal(18, 2)), N'20mg', N'Điều trị trào ngược', N'Viên', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(1733.00 AS Decimal(18, 2)), N'8934673100175', N'Tiêu hóa – Dạ dày')
-INSERT [dbo].[SanPham] VALUES (N'SP2024-0021', N'THUC_PHAM_CHUC_NANG', N'VIEN_NANG', N'Vitamin D3 K2 2000IU', N'VitD3K2', N'Nature Made', N'Cholecalciferol', CAST(10.00 AS Decimal(18, 2)), N'2000IU', N'Hỗ trợ xương khớp', N'Viên', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(7333.00 AS Decimal(18, 2)), N'8934673100113', N'Vitamin – Bổ sung')
-INSERT [dbo].[SanPham] VALUES (N'SP2024-0022', N'THUC_PHAM_CHUC_NANG', N'VIEN_NANG', N'Omega-3 Fish Oil 1000mg', N'Omega3 1000', N'Nature Made', N'EPA + DHA', CAST(10.00 AS Decimal(18, 2)), N'1000mg', N'Hỗ trợ tim mạch', N'Viên', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(9333.00 AS Decimal(18, 2)), N'8934673100120', N'Vitamin – Bổ sung')
-INSERT [dbo].[SanPham] VALUES (N'SP2024-0023', N'THUC_PHAM_CHUC_NANG', N'VIEN_NEN', N'Canxi Nano 500mg', N'Canxi Nano', N'DHG Pharma', N'Calcium carbonate', CAST(10.00 AS Decimal(18, 2)), N'500mg', N'Bổ sung canxi', N'Viên', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(2833.00 AS Decimal(18, 2)), N'8934673100137', N'Vitamin – Bổ sung')
-INSERT [dbo].[SanPham] VALUES (N'SP2024-0024', N'THUC_PHAM_CHUC_NANG', N'DUNG_DICH', N'Collagen Peptide 5000mg', N'Collagen 5K', N'Kinoko VN', N'Collagen hydrolyzed', CAST(10.00 AS Decimal(18, 2)), N'5000mg', N'Làm đẹp da', N'Gói', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(42000.00 AS Decimal(18, 2)), N'4005900117908', N'Da liễu – Mỹ phẩm')
-INSERT [dbo].[SanPham] VALUES (N'SP2024-0025', N'THUC_PHAM_CHUC_NANG', N'KEO_NGAM', N'Melatonin 5mg', N'Melat 5', N'Natrol USA', N'Melatonin', CAST(10.00 AS Decimal(18, 2)), N'5mg', N'Hỗ trợ giấc ngủ', N'Viên', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(14000.00 AS Decimal(18, 2)), N'8934673100144', N'Vitamin – Bổ sung')
-INSERT [dbo].[SanPham] VALUES (N'SP2024-0026', N'THUC_PHAM_CHUC_NANG', N'VIEN_NEN', N'Magie B6 Úc', N'Mg B6', N'Blackmores', N'Magnesium + Vitamin B6', CAST(10.00 AS Decimal(18, 2)), N'500mg', N'Giảm căng thẳng', N'Viên', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(6500.00 AS Decimal(18, 2)), N'8934673100151', N'Vitamin – Bổ sung')
-INSERT [dbo].[SanPham] VALUES (N'SP2024-0027', N'THUC_PHAM_CHUC_NANG', N'THUOC_BOT', N'Probiotics 10 tỷ CFU', N'Probio 10B', N'Yakult VN', N'Lactobacillus', CAST(10.00 AS Decimal(18, 2)), N'Chưa cập nhật', N'Hỗ trợ tiêu hóa', N'Viên', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(5500.00 AS Decimal(18, 2)), N'8934673100229', N'Vitamin – Bổ sung')
-INSERT [dbo].[SanPham] VALUES (N'SP2024-0028', N'MY_PHAM', N'HON_DICH', N'Kem dưỡng da Eucerin Q10', N'Eucerin Q10', N'Eucerin', N'Chưa cập nhật', CAST(10.00 AS Decimal(18, 2)), N'Chưa cập nhật', N'Chống lão hóa', N'Hộp', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(650000.00 AS Decimal(18, 2)), N'4005900272935', N'Da liễu – Mỹ phẩm')
-INSERT [dbo].[SanPham] VALUES (N'SP2024-0029', N'MY_PHAM', N'HON_DICH', N'Kem chống nắng La Roche', N'LRP SPF50', N'La Roche-Posay', N'Chưa cập nhật', CAST(10.00 AS Decimal(18, 2)), N'Chưa cập nhật', N'Bảo vệ da nhạy cảm', N'Tuýp', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(580000.00 AS Decimal(18, 2)), N'3337872413148', N'Da liễu – Mỹ phẩm')
-INSERT [dbo].[SanPham] VALUES (N'SP2024-0030', N'MY_PHAM', N'DUNG_DICH', N'Sữa rửa mặt CeraVe', N'CeraVe Foam', N'CeraVe', N'Chưa cập nhật', CAST(10.00 AS Decimal(18, 2)), N'Chưa cập nhật', N'Sữa rửa mặt tạo bọt', N'Chai', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(320000.00 AS Decimal(18, 2)), N'3606000594227', N'Da liễu – Mỹ phẩm')
-INSERT [dbo].[SanPham] VALUES (N'SP2024-0031', N'MY_PHAM', N'DUNG_DICH', N'Nước tẩy trang Bioderma', N'Bioderma', N'Bioderma', N'Chưa cập nhật', CAST(10.00 AS Decimal(18, 2)), N'Chưa cập nhật', N'Tẩy trang dịu nhẹ', N'Chai', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(280000.00 AS Decimal(18, 2)), N'3701129801420', N'Da liễu – Mỹ phẩm')
-INSERT [dbo].[SanPham] VALUES (N'SP2024-0032', N'MY_PHAM', N'DUNG_DICH', N'Toner Paula Niacinamide', N'Paula Toner', N'Paula Choice', N'Niacinamide', CAST(10.00 AS Decimal(18, 2)), N'10%', N'Làm sáng da', N'Chai', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(850000.00 AS Decimal(18, 2)), N'0761591032015', N'Da liễu – Mỹ phẩm')
+INSERT [dbo].[SanPham] VALUES (N'SP2024-0009', N'THUOC_KHONG_KE_DON', N'VIEN_NEN', N'Paracetamol 500mg', N'Para 500', N'Domesco', N'Paracetamol', CAST(5.00 AS Decimal(18, 2)), N'500mg', N'Giảm đau, hạ sốt', N'Viên', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(400.00 AS Decimal(18, 2)), N'8934673100014', N'Đau đầu – Giảm đau – Hạ sốt')
+INSERT [dbo].[SanPham] VALUES (N'SP2024-0010', N'THUOC_KHONG_KE_DON', N'VIEN_NEN', N'Ibuprofen 400mg', N'Ibup 400', N'OPV', N'Ibuprofen', CAST(5.00 AS Decimal(18, 2)), N'400mg', N'Kháng viêm không steroid', N'Viên', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(600.00 AS Decimal(18, 2)), N'8934673100021', N'Đau đầu – Giảm đau – Hạ sốt')
+INSERT [dbo].[SanPham] VALUES (N'SP2024-0011', N'THUOC_KHONG_KE_DON', N'VIEN_SUI', N'Vitamin C 1000mg Sủi', N'VitC 1000', N'DHG Pharma', N'Acid ascorbic', CAST(5.00 AS Decimal(18, 2)), N'1000mg', N'Tăng sức đề kháng', N'Viên', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(2167.00 AS Decimal(18, 2)), N'8934673100038', N'Thuốc bổ – Vitamin – Khoáng chất')
+INSERT [dbo].[SanPham] VALUES (N'SP2024-0012', N'THUOC_KHONG_KE_DON', N'VIEN_NEN', N'Cetirizine 10mg', N'Cetir 10', N'Stada VN', N'Cetirizine hydrochloride', CAST(5.00 AS Decimal(18, 2)), N'10mg', N'Chống dị ứng', N'Viên', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(600.00 AS Decimal(18, 2)), N'8934673100045', N'Dị ứng – Mẩn ngứa – Mề đay')
+INSERT [dbo].[SanPham] VALUES (N'SP2024-0013', N'THUOC_KHONG_KE_DON', N'THUOC_BOT', N'Oresol Cam', N'ORS Cam', N'Vinpharco', N'Glucose + Natri Clorid', CAST(5.00 AS Decimal(18, 2)), N'Chưa cập nhật', N'Bù nước và điện giải', N'Gói', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(3000.00 AS Decimal(18, 2)), N'8934673100069', N'Dạ dày – Tiêu hóa – Đại tràng')
+INSERT [dbo].[SanPham] VALUES (N'SP2024-0014', N'THUOC_KHONG_KE_DON', N'DUNG_DICH', N'Xịt mũi Naphazoline 0.05%', N'Xịt Naphaz', N'Pharmedic', N'Naphazoline hydrochloride', CAST(5.00 AS Decimal(18, 2)), N'0.05%', N'Giảm ngạt mũi', N'Chai', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(35000.00 AS Decimal(18, 2)), N'8934673100052', N'Dị ứng – Mẩn ngứa – Mề đay')
+INSERT [dbo].[SanPham] VALUES (N'SP2024-0015', N'THUOC_KHONG_KE_DON', N'VIEN_NEN', N'Domperidon 10mg', N'Domp 10', N'Pymepharco', N'Domperidone', CAST(5.00 AS Decimal(18, 2)), N'10mg', N'Chống nôn', N'Viên', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(1333.00 AS Decimal(18, 2)), N'8934673100076', N'Dạ dày – Tiêu hóa – Đại tràng')
+INSERT [dbo].[SanPham] VALUES (N'SP2024-0016', N'THUOC_KHONG_KE_DON', N'VIEN_NANG', N'Omeprazole 20mg', N'Ome 20', N'Traphaco', N'Omeprazole', CAST(5.00 AS Decimal(18, 2)), N'20mg', N'Điều trị loét dạ dày', N'Viên', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(1733.00 AS Decimal(18, 2)), N'8934673100083', N'Dạ dày – Tiêu hóa – Đại tràng')
+INSERT [dbo].[SanPham] VALUES (N'SP2024-0017', N'THUOC_KHONG_KE_DON', N'DUNG_DICH', N'Siro Ho Bổ Phế', N'Siro Ho BP', N'Traphaco', N'Thảo dược', CAST(5.00 AS Decimal(18, 2)), N'Chưa cập nhật', N'Giảm ho', N'Chai', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(55000.00 AS Decimal(18, 2)), N'8934673100090', N'Ho – Đờm – Viêm họng')
+INSERT [dbo].[SanPham] VALUES (N'SP2024-0018', N'THUOC_KHONG_KE_DON', N'THUOC_BOT', N'Smecta 3g Bột', N'Smecta', N'Ipsen', N'Diosmectite', CAST(5.00 AS Decimal(18, 2)), N'3g', N'Điều trị tiêu chảy', N'Gói', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(11000.00 AS Decimal(18, 2)), N'8934673100106', N'Dạ dày – Tiêu hóa – Đại tràng')
+INSERT [dbo].[SanPham] VALUES (N'SP2024-0019', N'THUOC_KHONG_KE_DON', N'VIEN_NEN', N'Loratadine 10mg', N'Lorat 10', N'DHG Pharma', N'Loratadine', CAST(5.00 AS Decimal(18, 2)), N'10mg', N'Kháng histamine', N'Viên', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(533.00 AS Decimal(18, 2)), N'8934673100168', N'Dị ứng – Mẩn ngứa – Mề đay')
+INSERT [dbo].[SanPham] VALUES (N'SP2024-0020', N'THUOC_KHONG_KE_DON', N'VIEN_NANG', N'Esomeprazole 20mg', N'Esome 20', N'AstraZeneca', N'Esomeprazole magnesium', CAST(5.00 AS Decimal(18, 2)), N'20mg', N'Điều trị trào ngược', N'Viên', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(1733.00 AS Decimal(18, 2)), N'8934673100175', N'Dạ dày – Tiêu hóa – Đại tràng')
+INSERT [dbo].[SanPham] VALUES (N'SP2024-0021', N'THUC_PHAM_CHUC_NANG', N'VIEN_NANG', N'Vitamin D3 K2 2000IU', N'VitD3K2', N'Nature Made', N'Cholecalciferol', CAST(10.00 AS Decimal(18, 2)), N'2000IU', N'Hỗ trợ xương khớp', N'Viên', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(7333.00 AS Decimal(18, 2)), N'8934673100113', N'Thuốc bổ – Vitamin – Khoáng chất')
+INSERT [dbo].[SanPham] VALUES (N'SP2024-0022', N'THUC_PHAM_CHUC_NANG', N'VIEN_NANG', N'Omega-3 Fish Oil 1000mg', N'Omega3 1000', N'Nature Made', N'EPA + DHA', CAST(10.00 AS Decimal(18, 2)), N'1000mg', N'Hỗ trợ tim mạch', N'Viên', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(9333.00 AS Decimal(18, 2)), N'8934673100120', N'Thuốc bổ – Vitamin – Khoáng chất')
+INSERT [dbo].[SanPham] VALUES (N'SP2024-0023', N'THUC_PHAM_CHUC_NANG', N'VIEN_NEN', N'Canxi Nano 500mg', N'Canxi Nano', N'DHG Pharma', N'Calcium carbonate', CAST(10.00 AS Decimal(18, 2)), N'500mg', N'Bổ sung canxi', N'Viên', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(2833.00 AS Decimal(18, 2)), N'8934673100137', N'Thuốc bổ – Vitamin – Khoáng chất')
+INSERT [dbo].[SanPham] VALUES (N'SP2024-0024', N'THUC_PHAM_CHUC_NANG', N'DUNG_DICH', N'Collagen Peptide 5000mg', N'Collagen 5K', N'Kinoko VN', N'Collagen hydrolyzed', CAST(10.00 AS Decimal(18, 2)), N'5000mg', N'Làm đẹp da', N'Gói', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(42000.00 AS Decimal(18, 2)), N'4005900117908', N'Dược mỹ phẩm – Da liễu')
+INSERT [dbo].[SanPham] VALUES (N'SP2024-0025', N'THUC_PHAM_CHUC_NANG', N'KEO_NGAM', N'Melatonin 5mg', N'Melat 5', N'Natrol USA', N'Melatonin', CAST(10.00 AS Decimal(18, 2)), N'5mg', N'Hỗ trợ giấc ngủ', N'Viên', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(14000.00 AS Decimal(18, 2)), N'8934673100144', N'Thuốc bổ – Vitamin – Khoáng chất')
+INSERT [dbo].[SanPham] VALUES (N'SP2024-0026', N'THUC_PHAM_CHUC_NANG', N'VIEN_NEN', N'Magie B6 Úc', N'Mg B6', N'Blackmores', N'Magnesium + Vitamin B6', CAST(10.00 AS Decimal(18, 2)), N'500mg', N'Giảm căng thẳng', N'Viên', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(6500.00 AS Decimal(18, 2)), N'8934673100151', N'Thuốc bổ – Vitamin – Khoáng chất')
+INSERT [dbo].[SanPham] VALUES (N'SP2024-0027', N'THUC_PHAM_CHUC_NANG', N'THUOC_BOT', N'Probiotics 10 tỷ CFU', N'Probio 10B', N'Yakult VN', N'Lactobacillus', CAST(10.00 AS Decimal(18, 2)), N'Chưa cập nhật', N'Hỗ trợ tiêu hóa', N'Viên', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(5500.00 AS Decimal(18, 2)), N'8934673100229', N'Thuốc bổ – Vitamin – Khoáng chất')
+INSERT [dbo].[SanPham] VALUES (N'SP2024-0028', N'MY_PHAM', N'HON_DICH', N'Kem dưỡng da Eucerin Q10', N'Eucerin Q10', N'Eucerin', N'Chưa cập nhật', CAST(10.00 AS Decimal(18, 2)), N'Chưa cập nhật', N'Chống lão hóa', N'Hộp', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(650000.00 AS Decimal(18, 2)), N'4005900272935', N'Dược mỹ phẩm – Da liễu')
+INSERT [dbo].[SanPham] VALUES (N'SP2024-0029', N'MY_PHAM', N'HON_DICH', N'Kem chống nắng La Roche', N'LRP SPF50', N'La Roche-Posay', N'Chưa cập nhật', CAST(10.00 AS Decimal(18, 2)), N'Chưa cập nhật', N'Bảo vệ da nhạy cảm', N'Tuýp', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(580000.00 AS Decimal(18, 2)), N'3337872413148', N'Dược mỹ phẩm – Da liễu')
+INSERT [dbo].[SanPham] VALUES (N'SP2024-0030', N'MY_PHAM', N'DUNG_DICH', N'Sữa rửa mặt CeraVe', N'CeraVe Foam', N'CeraVe', N'Chưa cập nhật', CAST(10.00 AS Decimal(18, 2)), N'Chưa cập nhật', N'Sữa rửa mặt tạo bọt', N'Chai', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(320000.00 AS Decimal(18, 2)), N'3606000594227', N'Dược mỹ phẩm – Da liễu')
+INSERT [dbo].[SanPham] VALUES (N'SP2024-0031', N'MY_PHAM', N'DUNG_DICH', N'Nước tẩy trang Bioderma', N'Bioderma', N'Bioderma', N'Chưa cập nhật', CAST(10.00 AS Decimal(18, 2)), N'Chưa cập nhật', N'Tẩy trang dịu nhẹ', N'Chai', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(280000.00 AS Decimal(18, 2)), N'3701129801420', N'Dược mỹ phẩm – Da liễu')
+INSERT [dbo].[SanPham] VALUES (N'SP2024-0032', N'MY_PHAM', N'DUNG_DICH', N'Toner Paula Niacinamide', N'Paula Toner', N'Paula Choice', N'Niacinamide', CAST(10.00 AS Decimal(18, 2)), N'10%', N'Làm sáng da', N'Chai', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(850000.00 AS Decimal(18, 2)), N'0761591032015', N'Dược mỹ phẩm – Da liễu')
 INSERT [dbo].[SanPham] VALUES (N'SP2024-0033', N'THUOC_KHONG_KE_DON', N'THUOC_NHO_GIOT', N'V.Rohto Vitamin', N'V.Rohto', N'Rohto', N'Vitamin B5, B6', CAST(10.00 AS Decimal(18, 2)), N'13ml', N'Giảm mỏi mắt', N'Chai', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(52000.00 AS Decimal(18, 2)), N'4987241115532', N'Mắt – Tai – Mũi')
 INSERT [dbo].[SanPham] VALUES (N'SP2024-0034', N'THUOC_KHONG_KE_DON', N'THUOC_NHO_GIOT', N'Thuốc nhỏ mắt Osla', N'Osla', N'MerAP', N'Natri clorid', CAST(5.00 AS Decimal(18, 2)), N'15ml', N'Rửa mắt', N'Chai', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(22000.00 AS Decimal(18, 2)), N'8936077610014', N'Mắt – Tai – Mũi')
-INSERT [dbo].[SanPham] VALUES (N'SP2024-0035', N'MY_PHAM', N'SUC_MIENG', N'Listerine Cool Mint', N'Listerine', N'Johnson', N'Thymol', CAST(10.00 AS Decimal(18, 2)), N'750ml', N'Hơi thở thơm mát', N'Chai', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(115000.00 AS Decimal(18, 2)), N'0761591032022', N'Da liễu – Mỹ phẩm')
-INSERT [dbo].[SanPham] VALUES (N'SP2024-0036', N'MY_PHAM', N'SUC_MIENG', N'Betadine Gargle', N'Betadine', N'Mundipharma', N'Povidone-Iodine', CAST(10.00 AS Decimal(18, 2)), N'125ml', N'Sát khuẩn miệng', N'Chai', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(68000.00 AS Decimal(18, 2)), N'5038483381038', N'Da liễu – Mỹ phẩm')
-INSERT [dbo].[SanPham] VALUES (N'SP2024-0037', N'THUOC_KHONG_KE_DON', N'KEO_NGAM', N'Strepsils Cool', N'Strepsils', N'Reckitt', N'Dichlorobenzyl', CAST(10.00 AS Decimal(18, 2)), N'1.2mg', N'Giảm đau họng', N'Viên', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(8000.00 AS Decimal(18, 2)), N'8934673100205', N'Hô hấp – Dị ứng')
-INSERT [dbo].[SanPham] VALUES (N'SP2024-0038', N'THUOC_KHONG_KE_DON', N'VIEN_SUI', N'Efferalgan 500mg', N'Efferalgan', N'UPSA', N'Paracetamol', CAST(5.00 AS Decimal(18, 2)), N'500mg', N'Hạ sốt nhanh', N'Viên', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(3100.00 AS Decimal(18, 2)), N'8934673100182', N'Thần kinh – Giảm đau')
-INSERT [dbo].[SanPham] VALUES (N'SP2024-0039', N'THUOC_KHONG_KE_DON', N'THUOC_BOT', N'Hapacol 150', N'Hapacol 150', N'DHG Pharma', N'Paracetamol', CAST(5.00 AS Decimal(18, 2)), N'150mg', N'Hạ sốt cho trẻ', N'Gói', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(3400.00 AS Decimal(18, 2)), N'8934673100199', N'Vitamin – Bổ sung')
-INSERT [dbo].[SanPham] VALUES (N'SP2024-0040', N'THUOC_KE_DON', N'HON_DICH', N'Phosphalugel', N'Chữ P', N'Astellas', N'Aluminum phosphate', CAST(5.00 AS Decimal(18, 2)), N'20%', N'Kháng axit dạ dày', N'Gói', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(11000.00 AS Decimal(18, 2)), N'8934673100212', N'Tiêu hóa – Dạ dày')
+INSERT [dbo].[SanPham] VALUES (N'SP2024-0035', N'MY_PHAM', N'SUC_MIENG', N'Listerine Cool Mint', N'Listerine', N'Johnson', N'Thymol', CAST(10.00 AS Decimal(18, 2)), N'750ml', N'Hơi thở thơm mát', N'Chai', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(115000.00 AS Decimal(18, 2)), N'0761591032022', N'Dược mỹ phẩm – Da liễu')
+INSERT [dbo].[SanPham] VALUES (N'SP2024-0036', N'MY_PHAM', N'SUC_MIENG', N'Betadine Gargle', N'Betadine', N'Mundipharma', N'Povidone-Iodine', CAST(10.00 AS Decimal(18, 2)), N'125ml', N'Sát khuẩn miệng', N'Chai', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(68000.00 AS Decimal(18, 2)), N'5038483381038', N'Dược mỹ phẩm – Da liễu')
+INSERT [dbo].[SanPham] VALUES (N'SP2024-0037', N'THUOC_KHONG_KE_DON', N'KEO_NGAM', N'Strepsils Cool', N'Strepsils', N'Reckitt', N'Dichlorobenzyl', CAST(10.00 AS Decimal(18, 2)), N'1.2mg', N'Giảm đau họng', N'Viên', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(8000.00 AS Decimal(18, 2)), N'8934673100205', N'Dị ứng – Mẩn ngứa – Mề đay')
+INSERT [dbo].[SanPham] VALUES (N'SP2024-0038', N'THUOC_KHONG_KE_DON', N'VIEN_SUI', N'Efferalgan 500mg', N'Efferalgan', N'UPSA', N'Paracetamol', CAST(5.00 AS Decimal(18, 2)), N'500mg', N'Hạ sốt nhanh', N'Viên', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(3100.00 AS Decimal(18, 2)), N'8934673100182', N'Đau đầu – Giảm đau – Hạ sốt')
+INSERT [dbo].[SanPham] VALUES (N'SP2024-0039', N'THUOC_KHONG_KE_DON', N'THUOC_BOT', N'Hapacol 150', N'Hapacol 150', N'DHG Pharma', N'Paracetamol', CAST(5.00 AS Decimal(18, 2)), N'150mg', N'Hạ sốt cho trẻ', N'Gói', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(3400.00 AS Decimal(18, 2)), N'8934673100199', N'Sốt – Cảm cúm – Sổ mũi')
+INSERT [dbo].[SanPham] VALUES (N'SP2024-0040', N'THUOC_KE_DON', N'HON_DICH', N'Phosphalugel', N'Chữ P', N'Astellas', N'Aluminum phosphate', CAST(5.00 AS Decimal(18, 2)), N'20%', N'Kháng axit dạ dày', N'Gói', CAST(N'2026-01-01T00:00:00.0000000' AS DateTime2), N'HOAT_DONG', CAST(11000.00 AS Decimal(18, 2)), N'8934673100212', N'Dạ dày – Tiêu hóa – Đại tràng')
 -- ... (Các dòng INSERT [dbo].[SanPham] ...)
 GO
 
@@ -507,31 +507,6 @@ GO
 -- Tạo VIEW để cả 2 tên đều chạy được mà không phải sửa code Java.
 -- ==============================================================================
 GO
-CREATE VIEW [dbo].[MauLieu]
-AS
-SELECT
-    [id] AS [comboId],
-    [id] AS [mauLieuId],
-    [id],
-    [tenLieu] AS [tenCombo],
-    [tenLieu] AS [tenMauLieu],
-    [tenLieu],
-    [nhomBenh],
-    [moTa]
-FROM [dbo].[LieuMau];
-GO
-
-CREATE VIEW [dbo].[ChiTietMauLieu]
-AS
-SELECT
-    [lieuMauId] AS [comboId],
-    [lieuMauId] AS [mauLieuId],
-    [lieuMauId],
-    [sanPhamId],
-    [soLuong]
-FROM [dbo].[ChiTietLieuMau];
-GO
-
 
 -- ==============================================================================
 -- B. BẢNG CÓ KHÓA NGOẠI
@@ -849,13 +824,13 @@ INSERT [dbo].[ChiTietHoaDon] VALUES (N'HD2024-0004', N'DVL-0028', N'SP2024-0016'
 INSERT [dbo].[ChiTietHoaDon] VALUES (N'HD2024-0005', N'DVL-0052', N'SP2024-0030', 1, CAST(320000.00 AS Decimal(18,2)), CAST(320000.00 AS Decimal(18,2)), NULL)
 INSERT [dbo].[ChiTietHoaDon] VALUES (N'HD2024-0005', N'DVL-0053', N'SP2024-0031', 1, CAST(280000.00 AS Decimal(18,2)), CAST(280000.00 AS Decimal(18,2)), NULL)
 INSERT [dbo].[ChiTietHoaDon] VALUES (N'HD2024-0006', N'DVL-0025', N'SP2024-0014', 1, CAST(35000.00 AS Decimal(18,2)), CAST(35000.00 AS Decimal(18,2)), NULL)
-INSERT [dbo].[ChiTietHoaDon] VALUES (N'HD2024-0006', N'DVL-0033', N'SP2024-0019', 2, CAST(16000.00 AS Decimal(18,2)), CAST(32000.00 AS Decimal(18,2)), NULL)
+INSERT [dbo].[ChiTietHoaDon] VALUES (N'HD2024-0006', N'DVL-0033', N'SP2024-0019', 2, CAST(533.00 AS Decimal(18,2)), CAST(1066.00 AS Decimal(18,2)), NULL)
 INSERT [dbo].[ChiTietHoaDon] VALUES (N'HD2024-0007', N'DVL-0043', N'SP2024-0024', 2, CAST(420000.00 AS Decimal(18,2)), CAST(840000.00 AS Decimal(18,2)), NULL)
 INSERT [dbo].[ChiTietHoaDon] VALUES (N'HD2024-0007', N'DVL-0047', N'SP2024-0026', 1, CAST(195000.00 AS Decimal(18,2)), CAST(195000.00 AS Decimal(18,2)), NULL)
 INSERT [dbo].[ChiTietHoaDon] VALUES (N'HD2024-0008', N'DVL-0021', N'SP2024-0012', 1, CAST(18000.00 AS Decimal(18,2)), CAST(18000.00 AS Decimal(18,2)), NULL)
 INSERT [dbo].[ChiTietHoaDon] VALUES (N'HD2024-0008', N'DVL-0044', N'SP2024-0025', 5, CAST(280000.00 AS Decimal(18,2)), CAST(1400000.00 AS Decimal(18,2)), NULL)
 INSERT [dbo].[ChiTietHoaDon] VALUES (N'HD2024-0009', N'DVL-0030', N'SP2024-0017', 2, CAST(55000.00 AS Decimal(18,2)), CAST(110000.00 AS Decimal(18,2)), NULL)
-INSERT [dbo].[ChiTietHoaDon] VALUES (N'HD2024-0009', N'DVL-0031', N'SP2024-0018', 1, CAST(220000.00 AS Decimal(18,2)), CAST(220000.00 AS Decimal(18,2)), NULL)
+INSERT [dbo].[ChiTietHoaDon] VALUES (N'HD2024-0009', N'DVL-0031', N'SP2024-0018', 1, CAST(11000.00 AS Decimal(18,2)), CAST(11000.00 AS Decimal(18,2)), NULL)
 INSERT [dbo].[ChiTietHoaDon] VALUES (N'HD2024-0010', N'DVL-0006', N'SP2024-0003', 1, CAST(75000.00 AS Decimal(18,2)), CAST(75000.00 AS Decimal(18,2)), NULL)
 INSERT [dbo].[ChiTietHoaDon] VALUES (N'HD2024-0010', N'DVL-0008', N'SP2024-0004', 1, CAST(40000.00 AS Decimal(18,2)), CAST(40000.00 AS Decimal(18,2)), NULL)
 INSERT [dbo].[ChiTietHoaDon] VALUES (N'HD2024-0010', N'DVL-0019', N'SP2024-0011', 1, CAST(65000.00 AS Decimal(18,2)), CAST(65000.00 AS Decimal(18,2)), NULL)
@@ -871,7 +846,7 @@ INSERT [dbo].[ChiTietHoaDon] VALUES (N'HD-2025-7', N'DVL-0043', N'SP2024-0024', 
 INSERT [dbo].[ChiTietHoaDon] VALUES (N'HD-2025-8', N'DVL-0021', N'SP2024-0012', 1, CAST(18000.00 AS Decimal(18,2)), CAST(18000.00 AS Decimal(18,2)), NULL)
 INSERT [dbo].[ChiTietHoaDon] VALUES (N'HD-2025-9', N'DVL-0030', N'SP2024-0017', 2, CAST(55000.00 AS Decimal(18,2)), CAST(110000.00 AS Decimal(18,2)), NULL)
 INSERT [dbo].[ChiTietHoaDon] VALUES (N'HD-2025-10', N'DVL-0006', N'SP2024-0003', 1, CAST(75000.00 AS Decimal(18,2)), CAST(75000.00 AS Decimal(18,2)), NULL)
-INSERT [dbo].[ChiTietHoaDon] VALUES (N'HD-2025-11', N'DVL-0023', N'SP2024-0013', 1, CAST(90000.00 AS Decimal(18,2)), CAST(90000.00 AS Decimal(18,2)), NULL)
+INSERT [dbo].[ChiTietHoaDon] VALUES (N'HD-2025-11', N'DVL-0023', N'SP2024-0013', 1, CAST(3000.00 AS Decimal(18,2)), CAST(3000.00 AS Decimal(18,2)), NULL)
 INSERT [dbo].[ChiTietHoaDon] VALUES (N'HD-2025-12', N'DVL-0025', N'SP2024-0014', 1, CAST(35000.00 AS Decimal(18,2)), CAST(35000.00 AS Decimal(18,2)), NULL)
 
 -- CHI TIET HOA DON 2026
@@ -884,86 +859,86 @@ INSERT [dbo].[PhanBoLoHang] VALUES (N'HD2024-0001', N'DVL-0016', N'SP2024-0009',
 INSERT [dbo].[PhanBoLoHang] VALUES (N'HD2024-0002', N'DVL-0003', N'SP2024-0002', N'LH-0002', 1)
 INSERT [dbo].[PhanBoLoHang] VALUES (N'HD2024-0003', N'DVL-0018', N'SP2024-0010', N'LH-0010', 3)
 INSERT [dbo].[PhanBoLoHang] VALUES (N'HD2024-0004', N'DVL-0002', N'SP2024-0001', N'LH-0001', 1)
-INSERT [dbo].[PhanBoLoHang] VALUES (N'HD2024-0004', N'DVL-0028', N'SP2024-0016', N'LH-0015', 2)
-INSERT [dbo].[PhanBoLoHang] VALUES (N'HD2024-0005', N'DVL-0052', N'SP2024-0030', N'LH-0028', 1)
-INSERT [dbo].[PhanBoLoHang] VALUES (N'HD2024-0005', N'DVL-0053', N'SP2024-0031', N'LH-0029', 1)
-INSERT [dbo].[PhanBoLoHang] VALUES (N'HD2024-0006', N'DVL-0025', N'SP2024-0014', N'LH-0039', 1)
-INSERT [dbo].[PhanBoLoHang] VALUES (N'HD2024-0006', N'DVL-0033', N'SP2024-0019', N'LH-0018', 2)
-INSERT [dbo].[PhanBoLoHang] VALUES (N'HD2024-0007', N'DVL-0043', N'SP2024-0024', N'LH-0023', 2)
-INSERT [dbo].[PhanBoLoHang] VALUES (N'HD2024-0007', N'DVL-0047', N'SP2024-0026', N'LH-0025', 1)
+INSERT [dbo].[PhanBoLoHang] VALUES (N'HD2024-0004', N'DVL-0028', N'SP2024-0016', N'LH-0016', 2)
+INSERT [dbo].[PhanBoLoHang] VALUES (N'HD2024-0005', N'DVL-0052', N'SP2024-0030', N'LH-0030', 1)
+INSERT [dbo].[PhanBoLoHang] VALUES (N'HD2024-0005', N'DVL-0053', N'SP2024-0031', N'LH-0031', 1)
+INSERT [dbo].[PhanBoLoHang] VALUES (N'HD2024-0006', N'DVL-0025', N'SP2024-0014', N'LH-0014', 1)
+INSERT [dbo].[PhanBoLoHang] VALUES (N'HD2024-0006', N'DVL-0033', N'SP2024-0019', N'LH-0019', 2)
+INSERT [dbo].[PhanBoLoHang] VALUES (N'HD2024-0007', N'DVL-0043', N'SP2024-0024', N'LH-0024', 2)
+INSERT [dbo].[PhanBoLoHang] VALUES (N'HD2024-0007', N'DVL-0047', N'SP2024-0026', N'LH-0026', 1)
 INSERT [dbo].[PhanBoLoHang] VALUES (N'HD2024-0008', N'DVL-0021', N'SP2024-0012', N'LH-0012', 1)
-INSERT [dbo].[PhanBoLoHang] VALUES (N'HD2024-0008', N'DVL-0044', N'SP2024-0025', N'LH-0024', 5)
-INSERT [dbo].[PhanBoLoHang] VALUES (N'HD2024-0009', N'DVL-0030', N'SP2024-0017', N'LH-0016', 2)
-INSERT [dbo].[PhanBoLoHang] VALUES (N'HD2024-0009', N'DVL-0031', N'SP2024-0018', N'LH-0017', 1)
+INSERT [dbo].[PhanBoLoHang] VALUES (N'HD2024-0008', N'DVL-0044', N'SP2024-0025', N'LH-0025', 5)
+INSERT [dbo].[PhanBoLoHang] VALUES (N'HD2024-0009', N'DVL-0030', N'SP2024-0017', N'LH-0017', 2)
+INSERT [dbo].[PhanBoLoHang] VALUES (N'HD2024-0009', N'DVL-0031', N'SP2024-0018', N'LH-0018', 1)
 INSERT [dbo].[PhanBoLoHang] VALUES (N'HD2024-0010', N'DVL-0006', N'SP2024-0003', N'LH-0003', 1)
 INSERT [dbo].[PhanBoLoHang] VALUES (N'HD2024-0010', N'DVL-0008', N'SP2024-0004', N'LH-0004', 1)
 INSERT [dbo].[PhanBoLoHang] VALUES (N'HD2024-0010', N'DVL-0019', N'SP2024-0011', N'LH-0011', 1)
 
 -- PHAN BO LO HANG 2025
 INSERT [dbo].[PhanBoLoHang] VALUES (N'HD-2025-1', N'DVL-0008', N'SP2024-0004', N'LH-0004', 2)
-INSERT [dbo].[PhanBoLoHang] VALUES (N'HD-2025-2', N'DVL-0030', N'SP2024-0017', N'LH-0016', 1)
+INSERT [dbo].[PhanBoLoHang] VALUES (N'HD-2025-2', N'DVL-0030', N'SP2024-0017', N'LH-0017', 1)
 INSERT [dbo].[PhanBoLoHang] VALUES (N'HD-2025-3', N'DVL-0016', N'SP2024-0009', N'LH-0009', 2)
 INSERT [dbo].[PhanBoLoHang] VALUES (N'HD-2025-4', N'DVL-0002', N'SP2024-0001', N'LH-0001', 1)
-INSERT [dbo].[PhanBoLoHang] VALUES (N'HD-2025-5', N'DVL-0052', N'SP2024-0030', N'LH-0028', 1)
-INSERT [dbo].[PhanBoLoHang] VALUES (N'HD-2025-6', N'DVL-0025', N'SP2024-0014', N'LH-0039', 1)
-INSERT [dbo].[PhanBoLoHang] VALUES (N'HD-2025-7', N'DVL-0043', N'SP2024-0024', N'LH-0023', 2)
+INSERT [dbo].[PhanBoLoHang] VALUES (N'HD-2025-5', N'DVL-0052', N'SP2024-0030', N'LH-0030', 1)
+INSERT [dbo].[PhanBoLoHang] VALUES (N'HD-2025-6', N'DVL-0025', N'SP2024-0014', N'LH-0014', 1)
+INSERT [dbo].[PhanBoLoHang] VALUES (N'HD-2025-7', N'DVL-0043', N'SP2024-0024', N'LH-0024', 2)
 INSERT [dbo].[PhanBoLoHang] VALUES (N'HD-2025-8', N'DVL-0021', N'SP2024-0012', N'LH-0012', 1)
-INSERT [dbo].[PhanBoLoHang] VALUES (N'HD-2025-9', N'DVL-0030', N'SP2024-0017', N'LH-0016', 2)
+INSERT [dbo].[PhanBoLoHang] VALUES (N'HD-2025-9', N'DVL-0030', N'SP2024-0017', N'LH-0017', 2)
 INSERT [dbo].[PhanBoLoHang] VALUES (N'HD-2025-10', N'DVL-0006', N'SP2024-0003', N'LH-0003', 1)
 INSERT [dbo].[PhanBoLoHang] VALUES (N'HD-2025-11', N'DVL-0023', N'SP2024-0013', N'LH-0013', 1)
-INSERT [dbo].[PhanBoLoHang] VALUES (N'HD-2025-12', N'DVL-0025', N'SP2024-0014', N'LH-0039', 1)
+INSERT [dbo].[PhanBoLoHang] VALUES (N'HD-2025-12', N'DVL-0025', N'SP2024-0014', N'LH-0014', 1)
 
 -- PHAN BO LO HANG 2026
-INSERT [dbo].[PhanBoLoHang] VALUES (N'HD-2026-1', N'DVL-0026', N'SP2024-0015', N'LH-0014', 1)
-INSERT [dbo].[PhanBoLoHang] VALUES (N'HD-2026-2', N'DVL-0030', N'SP2024-0017', N'LH-0016', 1)
-INSERT [dbo].[PhanBoLoHang] VALUES (N'HD-2026-3', N'DVL-0039', N'SP2024-0022', N'LH-0021', 1)
-INSERT [dbo].[PhanBoLoHang] VALUES (N'HD-2026-4', N'DVL-0052', N'SP2024-0030', N'LH-0028', 1)
+INSERT [dbo].[PhanBoLoHang] VALUES (N'HD-2026-1', N'DVL-0026', N'SP2024-0015', N'LH-0015', 1)
+INSERT [dbo].[PhanBoLoHang] VALUES (N'HD-2026-2', N'DVL-0030', N'SP2024-0017', N'LH-0017', 1)
+INSERT [dbo].[PhanBoLoHang] VALUES (N'HD-2026-3', N'DVL-0039', N'SP2024-0022', N'LH-0022', 1)
+INSERT [dbo].[PhanBoLoHang] VALUES (N'HD-2026-4', N'DVL-0052', N'SP2024-0030', N'LH-0030', 1)
 GO
 
 -- ==============================================================================
 -- 5b. CẬP NHẬT maVach VÀ nhomBenhLy CHO 40 SẢN PHẨM
 -- ==============================================================================
 
-UPDATE [dbo].[SanPham] SET [maVach]=N'8934663100017', [nhomBenhLy]=N'Kháng sinh – Kháng viêm' WHERE [id]=N'SP2024-0001'
-UPDATE [dbo].[SanPham] SET [maVach]=N'8934663100024', [nhomBenhLy]=N'Kháng sinh – Kháng viêm' WHERE [id]=N'SP2024-0002'
-UPDATE [dbo].[SanPham] SET [maVach]=N'8934663100086', [nhomBenhLy]=N'Kháng sinh – Kháng viêm' WHERE [id]=N'SP2024-0005'
-UPDATE [dbo].[SanPham] SET [maVach]=N'8934663100093', [nhomBenhLy]=N'Kháng sinh – Kháng viêm' WHERE [id]=N'SP2024-0006'
-UPDATE [dbo].[SanPham] SET [maVach]=N'8934663100031', [nhomBenhLy]=N'Đái tháo đường' WHERE [id]=N'SP2024-0003'
-UPDATE [dbo].[SanPham] SET [maVach]=N'8934663100048', [nhomBenhLy]=N'Tim mạch – Huyết áp' WHERE [id]=N'SP2024-0004'
-UPDATE [dbo].[SanPham] SET [maVach]=N'8934663100109', [nhomBenhLy]=N'Tim mạch – Huyết áp' WHERE [id]=N'SP2024-0007'
-UPDATE [dbo].[SanPham] SET [maVach]=N'8934663100116', [nhomBenhLy]=N'Tim mạch – Huyết áp' WHERE [id]=N'SP2024-0008'
-UPDATE [dbo].[SanPham] SET [maVach]=N'8934673100014', [nhomBenhLy]=N'Thần kinh – Giảm đau' WHERE [id]=N'SP2024-0009'
-UPDATE [dbo].[SanPham] SET [maVach]=N'8934673100021', [nhomBenhLy]=N'Thần kinh – Giảm đau' WHERE [id]=N'SP2024-0010'
-UPDATE [dbo].[SanPham] SET [maVach]=N'8934673100182', [nhomBenhLy]=N'Thần kinh – Giảm đau' WHERE [id]=N'SP2024-0038'
-UPDATE [dbo].[SanPham] SET [maVach]=N'8934673100038', [nhomBenhLy]=N'Vitamin – Bổ sung' WHERE [id]=N'SP2024-0011'
-UPDATE [dbo].[SanPham] SET [maVach]=N'8934673100113', [nhomBenhLy]=N'Vitamin – Bổ sung' WHERE [id]=N'SP2024-0021'
-UPDATE [dbo].[SanPham] SET [maVach]=N'8934673100120', [nhomBenhLy]=N'Vitamin – Bổ sung' WHERE [id]=N'SP2024-0022'
-UPDATE [dbo].[SanPham] SET [maVach]=N'8934673100137', [nhomBenhLy]=N'Vitamin – Bổ sung' WHERE [id]=N'SP2024-0023'
-UPDATE [dbo].[SanPham] SET [maVach]=N'8934673100144', [nhomBenhLy]=N'Vitamin – Bổ sung' WHERE [id]=N'SP2024-0025'
-UPDATE [dbo].[SanPham] SET [maVach]=N'8934673100151', [nhomBenhLy]=N'Vitamin – Bổ sung' WHERE [id]=N'SP2024-0026'
-UPDATE [dbo].[SanPham] SET [maVach]=N'8934673100229', [nhomBenhLy]=N'Vitamin – Bổ sung' WHERE [id]=N'SP2024-0027'
-UPDATE [dbo].[SanPham] SET [maVach]=N'8934673100199', [nhomBenhLy]=N'Vitamin – Bổ sung' WHERE [id]=N'SP2024-0039'
-UPDATE [dbo].[SanPham] SET [maVach]=N'8934673100045', [nhomBenhLy]=N'Hô hấp – Dị ứng' WHERE [id]=N'SP2024-0012'
-UPDATE [dbo].[SanPham] SET [maVach]=N'8934673100052', [nhomBenhLy]=N'Hô hấp – Dị ứng' WHERE [id]=N'SP2024-0014'
-UPDATE [dbo].[SanPham] SET [maVach]=N'8934673100168', [nhomBenhLy]=N'Hô hấp – Dị ứng' WHERE [id]=N'SP2024-0019'
-UPDATE [dbo].[SanPham] SET [maVach]=N'8934673100205', [nhomBenhLy]=N'Hô hấp – Dị ứng' WHERE [id]=N'SP2024-0037'
-UPDATE [dbo].[SanPham] SET [maVach]=N'8934673100069', [nhomBenhLy]=N'Tiêu hóa – Dạ dày' WHERE [id]=N'SP2024-0013'
-UPDATE [dbo].[SanPham] SET [maVach]=N'8934673100076', [nhomBenhLy]=N'Tiêu hóa – Dạ dày' WHERE [id]=N'SP2024-0015'
-UPDATE [dbo].[SanPham] SET [maVach]=N'8934673100083', [nhomBenhLy]=N'Tiêu hóa – Dạ dày' WHERE [id]=N'SP2024-0016'
-UPDATE [dbo].[SanPham] SET [maVach]=N'8934673100090', [nhomBenhLy]=N'Tiêu hóa – Dạ dày' WHERE [id]=N'SP2024-0017'
-UPDATE [dbo].[SanPham] SET [maVach]=N'8934673100106', [nhomBenhLy]=N'Tiêu hóa – Dạ dày' WHERE [id]=N'SP2024-0018'
-UPDATE [dbo].[SanPham] SET [maVach]=N'8934673100175', [nhomBenhLy]=N'Tiêu hóa – Dạ dày' WHERE [id]=N'SP2024-0020'
-UPDATE [dbo].[SanPham] SET [maVach]=N'8934673100212', [nhomBenhLy]=N'Tiêu hóa – Dạ dày' WHERE [id]=N'SP2024-0040'
-UPDATE [dbo].[SanPham] SET [maVach]=N'4005900117908', [nhomBenhLy]=N'Da liễu – Mỹ phẩm' WHERE [id]=N'SP2024-0024'
-UPDATE [dbo].[SanPham] SET [maVach]=N'4005900272935', [nhomBenhLy]=N'Da liễu – Mỹ phẩm' WHERE [id]=N'SP2024-0028'
-UPDATE [dbo].[SanPham] SET [maVach]=N'3337872413148', [nhomBenhLy]=N'Da liễu – Mỹ phẩm' WHERE [id]=N'SP2024-0029'
-UPDATE [dbo].[SanPham] SET [maVach]=N'3606000594227', [nhomBenhLy]=N'Da liễu – Mỹ phẩm' WHERE [id]=N'SP2024-0030'
-UPDATE [dbo].[SanPham] SET [maVach]=N'3701129801420', [nhomBenhLy]=N'Da liễu – Mỹ phẩm' WHERE [id]=N'SP2024-0031'
-UPDATE [dbo].[SanPham] SET [maVach]=N'0761591032015', [nhomBenhLy]=N'Da liễu – Mỹ phẩm' WHERE [id]=N'SP2024-0032'
-UPDATE [dbo].[SanPham] SET [maVach]=N'0761591032022', [nhomBenhLy]=N'Da liễu – Mỹ phẩm' WHERE [id]=N'SP2024-0035'
-UPDATE [dbo].[SanPham] SET [maVach]=N'5038483381038', [nhomBenhLy]=N'Da liễu – Mỹ phẩm' WHERE [id]=N'SP2024-0036'
-UPDATE [dbo].[SanPham] SET [maVach]=N'4987241115532', [nhomBenhLy]=N'Mắt – Tai – Mũi' WHERE [id]=N'SP2024-0033'
-UPDATE [dbo].[SanPham] SET [maVach]=N'8936077610014', [nhomBenhLy]=N'Mắt – Tai – Mũi' WHERE [id]=N'SP2024-0034'
+UPDATE [dbo].[SanPham] SET [maVach]=N'8934663100017' WHERE [id]=N'SP2024-0001'
+UPDATE [dbo].[SanPham] SET [maVach]=N'8934663100024' WHERE [id]=N'SP2024-0002'
+UPDATE [dbo].[SanPham] SET [maVach]=N'8934663100086' WHERE [id]=N'SP2024-0005'
+UPDATE [dbo].[SanPham] SET [maVach]=N'8934663100093' WHERE [id]=N'SP2024-0006'
+UPDATE [dbo].[SanPham] SET [maVach]=N'8934663100031' WHERE [id]=N'SP2024-0003'
+UPDATE [dbo].[SanPham] SET [maVach]=N'8934663100048' WHERE [id]=N'SP2024-0004'
+UPDATE [dbo].[SanPham] SET [maVach]=N'8934663100109' WHERE [id]=N'SP2024-0007'
+UPDATE [dbo].[SanPham] SET [maVach]=N'8934663100116' WHERE [id]=N'SP2024-0008'
+UPDATE [dbo].[SanPham] SET [maVach]=N'8934673100014' WHERE [id]=N'SP2024-0009'
+UPDATE [dbo].[SanPham] SET [maVach]=N'8934673100021' WHERE [id]=N'SP2024-0010'
+UPDATE [dbo].[SanPham] SET [maVach]=N'8934673100182' WHERE [id]=N'SP2024-0038'
+UPDATE [dbo].[SanPham] SET [maVach]=N'8934673100038' WHERE [id]=N'SP2024-0011'
+UPDATE [dbo].[SanPham] SET [maVach]=N'8934673100113' WHERE [id]=N'SP2024-0021'
+UPDATE [dbo].[SanPham] SET [maVach]=N'8934673100120' WHERE [id]=N'SP2024-0022'
+UPDATE [dbo].[SanPham] SET [maVach]=N'8934673100137' WHERE [id]=N'SP2024-0023'
+UPDATE [dbo].[SanPham] SET [maVach]=N'8934673100144' WHERE [id]=N'SP2024-0025'
+UPDATE [dbo].[SanPham] SET [maVach]=N'8934673100151' WHERE [id]=N'SP2024-0026'
+UPDATE [dbo].[SanPham] SET [maVach]=N'8934673100229' WHERE [id]=N'SP2024-0027'
+UPDATE [dbo].[SanPham] SET [maVach]=N'8934673100199' WHERE [id]=N'SP2024-0039'
+UPDATE [dbo].[SanPham] SET [maVach]=N'8934673100045' WHERE [id]=N'SP2024-0012'
+UPDATE [dbo].[SanPham] SET [maVach]=N'8934673100052' WHERE [id]=N'SP2024-0014'
+UPDATE [dbo].[SanPham] SET [maVach]=N'8934673100168' WHERE [id]=N'SP2024-0019'
+UPDATE [dbo].[SanPham] SET [maVach]=N'8934673100205' WHERE [id]=N'SP2024-0037'
+UPDATE [dbo].[SanPham] SET [maVach]=N'8934673100069' WHERE [id]=N'SP2024-0013'
+UPDATE [dbo].[SanPham] SET [maVach]=N'8934673100076' WHERE [id]=N'SP2024-0015'
+UPDATE [dbo].[SanPham] SET [maVach]=N'8934673100083' WHERE [id]=N'SP2024-0016'
+UPDATE [dbo].[SanPham] SET [maVach]=N'8934673100090' WHERE [id]=N'SP2024-0017'
+UPDATE [dbo].[SanPham] SET [maVach]=N'8934673100106' WHERE [id]=N'SP2024-0018'
+UPDATE [dbo].[SanPham] SET [maVach]=N'8934673100175' WHERE [id]=N'SP2024-0020'
+UPDATE [dbo].[SanPham] SET [maVach]=N'8934673100212' WHERE [id]=N'SP2024-0040'
+UPDATE [dbo].[SanPham] SET [maVach]=N'4005900117908' WHERE [id]=N'SP2024-0024'
+UPDATE [dbo].[SanPham] SET [maVach]=N'4005900272935' WHERE [id]=N'SP2024-0028'
+UPDATE [dbo].[SanPham] SET [maVach]=N'3337872413148' WHERE [id]=N'SP2024-0029'
+UPDATE [dbo].[SanPham] SET [maVach]=N'3606000594227' WHERE [id]=N'SP2024-0030'
+UPDATE [dbo].[SanPham] SET [maVach]=N'3701129801420' WHERE [id]=N'SP2024-0031'
+UPDATE [dbo].[SanPham] SET [maVach]=N'0761591032015' WHERE [id]=N'SP2024-0032'
+UPDATE [dbo].[SanPham] SET [maVach]=N'0761591032022' WHERE [id]=N'SP2024-0035'
+UPDATE [dbo].[SanPham] SET [maVach]=N'5038483381038' WHERE [id]=N'SP2024-0036'
+UPDATE [dbo].[SanPham] SET [maVach]=N'4987241115532' WHERE [id]=N'SP2024-0033'
+UPDATE [dbo].[SanPham] SET [maVach]=N'8936077610014' WHERE [id]=N'SP2024-0034'
 
 GO
 
@@ -1534,7 +1509,7 @@ BEGIN
     VALUES
     ('CB-20260101-0001', 'CB-20260101-0001', N'Combo cảm cúm thông thường', N'Combo cảm cúm thông thường', N'Hô hấp', 85000, 85000, N'Dùng cho triệu chứng cảm cúm nhẹ', GETDATE()),
     ('CB-20260101-0002', 'CB-20260101-0002', N'Combo đau dạ dày nhẹ', N'Combo đau dạ dày nhẹ', N'Tiêu hóa', 95000, 95000, N'Dùng theo hướng dẫn dược sĩ', GETDATE()),
-    ('CB-20260101-0003', 'CB-20260101-0003', N'Combo đau nhức cơ xương', N'Combo đau nhức cơ xương', N'Cơ xương khớp', 120000, 120000, N'Dùng ngắn ngày', GETDATE());
+    ('CB-20260101-0003', 'CB-20260101-0003', N'Combo đau nhức cơ xương', N'Combo đau nhức cơ xương', N'Xương khớp – Gút', 120000, 120000, N'Dùng ngắn ngày', GETDATE());
 END
 GO
 
@@ -1605,4 +1580,626 @@ FROM dbo.ChiTietMauLieu
 ORDER BY id;
 
 PRINT N'===== PATCH FINAL THEO DAO_SanPham.java ĐÃ CHẠY XONG =====';
+GO
+-- Xóa trigger cũ
+DROP TRIGGER IF EXISTS [dbo].[TRG_DongBoGiaBan_LoHang];
+GO
+CREATE TRIGGER TRG_DongBoGiaBan_LoHang
+ON LoHang
+AFTER INSERT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    UPDATE SP
+    SET SP.giaBan = I.gia * 1.3
+    FROM SanPham SP
+    JOIN inserted I ON SP.id = I.sanPhamId
+    WHERE SP.giaBan = 0;
+END;
+GO
+/* =============================================================
+   MYCAREPHARMACY – PATCH BỔ SUNG 2026
+   Nội dung:
+   1. ViTriThuoc bổ sung (VT-0009 → VT-0016)
+   2. SanPham mới (SP2024-0041 → SP2024-0060)  – 20 sản phẩm
+   3. DonViDoLuong cho sản phẩm mới  (DVL-0067 → DVL-0104)
+   4. LoHang tương ứng               (LH-0041  → LH-0060)
+   5. PhieuNhapHang + ChiTietPhieu   (PN-0041  → PN-0060)
+   6. MauLieu – 42 combo theo nhóm bệnh × lứa tuổi
+   7. ChiTietMauLieu cho từng combo
+   ============================================================= */
+
+USE [MYCAREPHARMACY];
+GO
+
+/* ============================================================
+   1. VỊ TRÍ KỆ BỔ SUNG
+   ============================================================ */
+INSERT INTO dbo.ViTriThuoc(id,maViTri,tenViTri,khuVuc,maKe,tenKe,tang,ngan,moTa,trangThai,khu,ke)
+VALUES
+(N'VT-0009',N'VT-A2-01',N'Kệ A2 - Ngăn 01',N'Quầy bán thuốc',N'KE-A2',N'Kệ kháng sinh bổ sung',1,1,N'Kháng sinh bổ sung, beta-lactam, macrolide',N'HOAT_DONG',N'Khu A',N'Kệ A2'),
+(N'VT-0010',N'VT-A2-02',N'Kệ A2 - Ngăn 02',N'Quầy bán thuốc',N'KE-A2',N'Kệ thuốc tim mạch bổ sung',1,2,N'Lợi tiểu, corticoid, giãn phế quản',N'HOAT_DONG',N'Khu A',N'Kệ A2'),
+(N'VT-0011',N'VT-B2-01',N'Kệ B2 - Ngăn 01',N'Quầy OTC',N'KE-B2',N'Kệ OTC bổ sung',1,1,N'Ho, dị ứng thế hệ mới, siro trẻ em',N'HOAT_DONG',N'Khu B',N'Kệ B2'),
+(N'VT-0012',N'VT-B2-02',N'Kệ B2 - Ngăn 02',N'Quầy OTC',N'KE-B2',N'Kệ nhuận tràng – bù nước',1,2,N'Nhuận tràng, men tiêu hóa, bù nước',N'HOAT_DONG',N'Khu B',N'Kệ B2'),
+(N'VT-0013',N'VT-C2-01',N'Kệ C2 - Ngăn 01',N'Khu vitamin',N'KE-C2',N'Kệ khoáng chất bổ sung',1,1,N'Kẽm, sắt, biotin, vitamin nhóm B',N'HOAT_DONG',N'Khu C',N'Kệ C2'),
+(N'VT-0014',N'VT-C2-02',N'Kệ C2 - Ngăn 02',N'Khu vitamin',N'KE-C2',N'Kệ men vi sinh',1,2,N'Men vi sinh, Enterogermina, Probiotics',N'HOAT_DONG',N'Khu C',N'Kệ C2'),
+(N'VT-0015',N'VT-D2-01',N'Kệ D2 - Ngăn 01',N'Quầy dung dịch',N'KE-D2',N'Kệ dung dịch – muối',1,1,N'NaCl 0.9%, dung dịch bù nước',N'HOAT_DONG',N'Khu D',N'Kệ D2'),
+(N'VT-0016',N'VT-KHO-03',N'Kho dự trữ - Tủ 03',N'Kho dự trữ',N'TU-03',N'Tủ thuốc kê đơn bổ sung',1,3,N'Thuốc kê đơn dự trữ lâu dài',N'HOAT_DONG',N'Kho dự trữ',N'Tủ 03');
+GO
+
+/* ============================================================
+   2. SẢN PHẨM MỚI (SP2024-0041 → SP2024-0060)
+   ============================================================ */
+INSERT INTO [dbo].[SanPham]
+    (id, danhMuc, dang, ten, tenVietTat, nhaSanXuat, hoatChat, thueVAT, hamLuong, moTa, donViDoCoBan, ngayTao, trangThai, giaBan, maVach, nhomBenhLy, viTriId)
+VALUES
+(N'SP2024-0041',N'THUOC_KHONG_KE_DON',N'VIEN_NEN',N'Dextromethorphan 15mg',N'Dextro 15',N'Pymepharco',N'Dextromethorphan HBr',CAST(5.00 AS DECIMAL(18,2)),N'15mg',N'Ức chế ho trung ương, không gây buồn ngủ',N'Viên',CAST(N'2026-05-23' AS DATETIME2),N'HOAT_DONG',CAST(1200.00 AS DECIMAL(18,2)),N'8934683100011',N'Dị ứng – Mẩn ngứa – Mề đay',NULL),
+(N'SP2024-0042',N'THUOC_KHONG_KE_DON',N'VIEN_NEN',N'Diphenhydramine 25mg',N'Diphen 25',N'Domesco',N'Diphenhydramine HCl',CAST(5.00 AS DECIMAL(18,2)),N'25mg',N'Kháng histamine thế hệ 1, an thần nhẹ',N'Viên',CAST(N'2026-05-23' AS DATETIME2),N'HOAT_DONG',CAST(1500.00 AS DECIMAL(18,2)),N'8934683100028',N'Dị ứng – Mẩn ngứa – Mề đay',NULL),
+(N'SP2024-0043',N'THUC_PHAM_CHUC_NANG',N'VIEN_NEN',N'Zinc Gluconate 10mg',N'Zinc 10',N'DHG Pharma',N'Zinc gluconate',CAST(10.00 AS DECIMAL(18,2)),N'10mg',N'Bổ sung kẽm, tăng đề kháng',N'Viên',CAST(N'2026-05-23' AS DATETIME2),N'HOAT_DONG',CAST(2500.00 AS DECIMAL(18,2)),N'8934683100035',N'Thuốc bổ – Vitamin – Khoáng chất',NULL),
+(N'SP2024-0044',N'THUC_PHAM_CHUC_NANG',N'VIEN_NEN',N'Sắt (II) Sulfat 300mg',N'Fe Sulfat',N'Traphaco',N'Ferrous sulfate',CAST(10.00 AS DECIMAL(18,2)),N'300mg',N'Bổ sung sắt, hỗ trợ thiếu máu thiếu sắt',N'Viên',CAST(N'2026-05-23' AS DATETIME2),N'HOAT_DONG',CAST(1800.00 AS DECIMAL(18,2)),N'8934683100042',N'Thuốc bổ – Vitamin – Khoáng chất',NULL),
+(N'SP2024-0045',N'THUC_PHAM_CHUC_NANG',N'VIEN_NEN',N'Vitamin B Complex',N'B Complex',N'Imexpharm',N'B1+B2+B3+B5+B6+B12',CAST(10.00 AS DECIMAL(18,2)),N'Chưa cập nhật',N'Tổng hợp vitamin nhóm B, bổ sung năng lượng',N'Viên',CAST(N'2026-05-23' AS DATETIME2),N'HOAT_DONG',CAST(2000.00 AS DECIMAL(18,2)),N'8934683100059',N'Thuốc bổ – Vitamin – Khoáng chất',NULL),
+(N'SP2024-0046',N'THUOC_KHONG_KE_DON',N'HON_DICH',N'Ibuprofen 100mg/5ml Siro Trẻ em',N'Ibu Siro TE',N'Stada VN',N'Ibuprofen',CAST(5.00 AS DECIMAL(18,2)),N'100mg/5ml',N'Giảm đau hạ sốt cho trẻ từ 3 tháng',N'Chai',CAST(N'2026-05-23' AS DATETIME2),N'HOAT_DONG',CAST(65000.00 AS DECIMAL(18,2)),N'8934683100066',N'Đau đầu – Giảm đau – Hạ sốt',NULL),
+(N'SP2024-0047',N'THUC_PHAM_CHUC_NANG',N'DUNG_DICH',N'Enterogermina 5ml',N'Entero 5ml',N'Sanofi',N'Bacillus clausii',CAST(10.00 AS DECIMAL(18,2)),N'5ml',N'Men vi sinh, phục hồi hệ vi khuẩn ruột',N'Lọ',CAST(N'2026-05-23' AS DATETIME2),N'HOAT_DONG',CAST(18000.00 AS DECIMAL(18,2)),N'8934683100073',N'Dạ dày – Tiêu hóa – Đại tràng',NULL),
+(N'SP2024-0048',N'THUOC_KHONG_KE_DON',N'THUOC_BOT',N'Sorbitol 5g Bột',N'Sorbitol 5g',N'Vinpharco',N'Sorbitol',CAST(5.00 AS DECIMAL(18,2)),N'5g',N'Nhuận tràng thẩm thấu, điều trị táo bón',N'Gói',CAST(N'2026-05-23' AS DATETIME2),N'HOAT_DONG',CAST(5000.00 AS DECIMAL(18,2)),N'8934683100080',N'Dạ dày – Tiêu hóa – Đại tràng',NULL),
+(N'SP2024-0049',N'THUOC_KE_DON',N'VIEN_NEN',N'Metronidazole 250mg',N'Metro 250',N'Pymepharco',N'Metronidazole',CAST(5.00 AS DECIMAL(18,2)),N'250mg',N'Kháng ký sinh trùng, điều trị nhiễm trùng ruột',N'Viên',CAST(N'2026-05-23' AS DATETIME2),N'HOAT_DONG',CAST(1500.00 AS DECIMAL(18,2)),N'8934683100097',N'Ho – Đờm – Viêm họng',NULL),
+(N'SP2024-0050',N'THUOC_KE_DON',N'VIEN_NEN',N'Clarithromycin 250mg',N'Clari 250',N'Stada VN',N'Clarithromycin',CAST(5.00 AS DECIMAL(18,2)),N'250mg',N'Kháng sinh macrolide thế hệ mới',N'Viên',CAST(N'2026-05-23' AS DATETIME2),N'HOAT_DONG',CAST(5500.00 AS DECIMAL(18,2)),N'8934683100103',N'Ho – Đờm – Viêm họng',NULL),
+(N'SP2024-0051',N'THUOC_KE_DON',N'VIEN_NEN',N'Furosemide 40mg',N'Furo 40',N'Traphaco',N'Furosemide',CAST(5.00 AS DECIMAL(18,2)),N'40mg',N'Lợi tiểu quai, điều trị phù tim mạch',N'Viên',CAST(N'2026-05-23' AS DATETIME2),N'HOAT_DONG',CAST(1000.00 AS DECIMAL(18,2)),N'8934683100110',N'Tim mạch – Huyết áp',NULL),
+(N'SP2024-0052',N'THUOC_KE_DON',N'VIEN_NEN',N'Prednisolone 5mg',N'Predni 5',N'Imexpharm',N'Prednisolone',CAST(5.00 AS DECIMAL(18,2)),N'5mg',N'Corticosteroid, kháng viêm dị ứng mạnh',N'Viên',CAST(N'2026-05-23' AS DATETIME2),N'HOAT_DONG',CAST(1200.00 AS DECIMAL(18,2)),N'8934683100127',N'Ho – Đờm – Viêm họng',NULL),
+(N'SP2024-0053',N'THUOC_KE_DON',N'VIEN_NEN',N'Salbutamol 4mg',N'Salbu 4',N'OPV',N'Salbutamol sulfate',CAST(5.00 AS DECIMAL(18,2)),N'4mg',N'Giãn phế quản, điều trị hen phế quản',N'Viên',CAST(N'2026-05-23' AS DATETIME2),N'HOAT_DONG',CAST(2000.00 AS DECIMAL(18,2)),N'8934683100134',N'Dị ứng – Mẩn ngứa – Mề đay',NULL),
+(N'SP2024-0054',N'THUOC_KE_DON',N'VIEN_NANG',N'Pantoprazole 40mg',N'Panto 40',N'Stada VN',N'Pantoprazole sodium',CAST(5.00 AS DECIMAL(18,2)),N'40mg',N'Ức chế bơm proton mạnh, loét dạ dày tá tràng',N'Viên',CAST(N'2026-05-23' AS DATETIME2),N'HOAT_DONG',CAST(4500.00 AS DECIMAL(18,2)),N'8934683100141',N'Dạ dày – Tiêu hóa – Đại tràng',NULL),
+(N'SP2024-0055',N'THUOC_KHONG_KE_DON',N'DUNG_DICH',N'Nước muối NaCl 0.9%',N'NaCl 0.9%',N'Mekophar',N'Sodium chloride',CAST(5.00 AS DECIMAL(18,2)),N'0.9% 500ml',N'Rửa vết thương, vệ sinh mũi, pha dịch',N'Chai',CAST(N'2026-05-23' AS DATETIME2),N'HOAT_DONG',CAST(25000.00 AS DECIMAL(18,2)),N'8934683100158',N'Dị ứng – Mẩn ngứa – Mề đay',NULL),
+(N'SP2024-0056',N'THUOC_KE_DON',N'VIEN_NEN',N'Glibenclamide 5mg',N'Glib 5',N'Traphaco',N'Glibenclamide',CAST(5.00 AS DECIMAL(18,2)),N'5mg',N'Sulfonylurea, điều trị đái tháo đường type 2',N'Viên',CAST(N'2026-05-23' AS DATETIME2),N'HOAT_DONG',CAST(1500.00 AS DECIMAL(18,2)),N'8934683100165',N'Đái tháo đường',NULL),
+(N'SP2024-0057',N'THUOC_KE_DON',N'VIEN_NEN',N'Simvastatin 20mg',N'Simva 20',N'Domesco',N'Simvastatin',CAST(5.00 AS DECIMAL(18,2)),N'20mg',N'Statin, giảm cholesterol toàn phần và LDL',N'Viên',CAST(N'2026-05-23' AS DATETIME2),N'HOAT_DONG',CAST(2500.00 AS DECIMAL(18,2)),N'8934683100172',N'Tim mạch – Huyết áp',NULL),
+(N'SP2024-0058',N'THUC_PHAM_CHUC_NANG',N'VIEN_NEN',N'Vitamin B1 250mg',N'VitB1 250',N'DHG Pharma',N'Thiamine hydrochloride',CAST(10.00 AS DECIMAL(18,2)),N'250mg',N'Bổ sung B1, hỗ trợ thần kinh',N'Viên',CAST(N'2026-05-23' AS DATETIME2),N'HOAT_DONG',CAST(1500.00 AS DECIMAL(18,2)),N'8934683100189',N'Thuốc bổ – Vitamin – Khoáng chất',NULL),
+(N'SP2024-0059',N'THUC_PHAM_CHUC_NANG',N'VIEN_NEN',N'Biotin 5000mcg',N'Biotin 5K',N'Nature Made',N'D-Biotin',CAST(10.00 AS DECIMAL(18,2)),N'5000mcg',N'Hỗ trợ tóc móng da, chống rụng tóc',N'Viên',CAST(N'2026-05-23' AS DATETIME2),N'HOAT_DONG',CAST(8000.00 AS DECIMAL(18,2)),N'8934683100196',N'Dược mỹ phẩm – Da liễu',NULL),
+(N'SP2024-0060',N'THUOC_KHONG_KE_DON',N'VIEN_NEN',N'Clorpheniramine 4mg',N'Clorphen 4',N'Pymepharco',N'Chlorphenamine maleate',CAST(5.00 AS DECIMAL(18,2)),N'4mg',N'Kháng histamine thế hệ 1, giá rẻ phổ biến',N'Viên',CAST(N'2026-05-23' AS DATETIME2),N'HOAT_DONG',CAST(800.00 AS DECIMAL(18,2)),N'8934683100202',N'Dị ứng – Mẩn ngứa – Mề đay',NULL);
+GO
+
+/* ============================================================
+   3. ĐƠN VỊ ĐO LƯỜNG
+   ============================================================ */
+INSERT [dbo].[DonViDoLuong] VALUES
+(N'DVL-0067',N'SP2024-0041',N'Viên',CAST(1.00 AS DECIMAL(18,2)),CAST(1200.00 AS DECIMAL(18,2)),N'DVDL00410067'),
+(N'DVL-0068',N'SP2024-0041',N'Hộp', CAST(10.00 AS DECIMAL(18,2)),CAST(12000.00 AS DECIMAL(18,2)),N'DVDL00410068'),
+(N'DVL-0069',N'SP2024-0042',N'Viên',CAST(1.00 AS DECIMAL(18,2)),CAST(1500.00 AS DECIMAL(18,2)),N'DVDL00420069'),
+(N'DVL-0070',N'SP2024-0042',N'Hộp', CAST(20.00 AS DECIMAL(18,2)),CAST(30000.00 AS DECIMAL(18,2)),N'DVDL00420070'),
+(N'DVL-0071',N'SP2024-0043',N'Viên',CAST(1.00 AS DECIMAL(18,2)),CAST(2500.00 AS DECIMAL(18,2)),N'DVDL00430071'),
+(N'DVL-0072',N'SP2024-0043',N'Hộp', CAST(30.00 AS DECIMAL(18,2)),CAST(75000.00 AS DECIMAL(18,2)),N'DVDL00430072'),
+(N'DVL-0073',N'SP2024-0044',N'Viên',CAST(1.00 AS DECIMAL(18,2)),CAST(1800.00 AS DECIMAL(18,2)),N'DVDL00440073'),
+(N'DVL-0074',N'SP2024-0044',N'Hộp', CAST(30.00 AS DECIMAL(18,2)),CAST(54000.00 AS DECIMAL(18,2)),N'DVDL00440074'),
+(N'DVL-0075',N'SP2024-0045',N'Viên',CAST(1.00 AS DECIMAL(18,2)),CAST(2000.00 AS DECIMAL(18,2)),N'DVDL00450075'),
+(N'DVL-0076',N'SP2024-0045',N'Hộp', CAST(30.00 AS DECIMAL(18,2)),CAST(60000.00 AS DECIMAL(18,2)),N'DVDL00450076'),
+(N'DVL-0077',N'SP2024-0046',N'Chai',CAST(1.00 AS DECIMAL(18,2)),CAST(65000.00 AS DECIMAL(18,2)),N'DVDL00460077'),
+(N'DVL-0078',N'SP2024-0047',N'Lọ',  CAST(1.00 AS DECIMAL(18,2)),CAST(18000.00 AS DECIMAL(18,2)),N'DVDL00470078'),
+(N'DVL-0079',N'SP2024-0047',N'Hộp', CAST(10.00 AS DECIMAL(18,2)),CAST(180000.00 AS DECIMAL(18,2)),N'DVDL00470079'),
+(N'DVL-0080',N'SP2024-0048',N'Gói', CAST(1.00 AS DECIMAL(18,2)),CAST(5000.00 AS DECIMAL(18,2)),N'DVDL00480080'),
+(N'DVL-0081',N'SP2024-0048',N'Hộp', CAST(20.00 AS DECIMAL(18,2)),CAST(100000.00 AS DECIMAL(18,2)),N'DVDL00480081'),
+(N'DVL-0082',N'SP2024-0049',N'Viên',CAST(1.00 AS DECIMAL(18,2)),CAST(1500.00 AS DECIMAL(18,2)),N'DVDL00490082'),
+(N'DVL-0083',N'SP2024-0049',N'Hộp', CAST(30.00 AS DECIMAL(18,2)),CAST(45000.00 AS DECIMAL(18,2)),N'DVDL00490083'),
+(N'DVL-0084',N'SP2024-0050',N'Viên',CAST(1.00 AS DECIMAL(18,2)),CAST(5500.00 AS DECIMAL(18,2)),N'DVDL00500084'),
+(N'DVL-0085',N'SP2024-0050',N'Hộp', CAST(14.00 AS DECIMAL(18,2)),CAST(77000.00 AS DECIMAL(18,2)),N'DVDL00500085'),
+(N'DVL-0086',N'SP2024-0051',N'Viên',CAST(1.00 AS DECIMAL(18,2)),CAST(1000.00 AS DECIMAL(18,2)),N'DVDL00510086'),
+(N'DVL-0087',N'SP2024-0051',N'Hộp', CAST(30.00 AS DECIMAL(18,2)),CAST(30000.00 AS DECIMAL(18,2)),N'DVDL00510087'),
+(N'DVL-0088',N'SP2024-0052',N'Viên',CAST(1.00 AS DECIMAL(18,2)),CAST(1200.00 AS DECIMAL(18,2)),N'DVDL00520088'),
+(N'DVL-0089',N'SP2024-0052',N'Hộp', CAST(30.00 AS DECIMAL(18,2)),CAST(36000.00 AS DECIMAL(18,2)),N'DVDL00520089'),
+(N'DVL-0090',N'SP2024-0053',N'Viên',CAST(1.00 AS DECIMAL(18,2)),CAST(2000.00 AS DECIMAL(18,2)),N'DVDL00530090'),
+(N'DVL-0091',N'SP2024-0053',N'Hộp', CAST(30.00 AS DECIMAL(18,2)),CAST(60000.00 AS DECIMAL(18,2)),N'DVDL00530091'),
+(N'DVL-0092',N'SP2024-0054',N'Viên',CAST(1.00 AS DECIMAL(18,2)),CAST(4500.00 AS DECIMAL(18,2)),N'DVDL00540092'),
+(N'DVL-0093',N'SP2024-0054',N'Hộp', CAST(14.00 AS DECIMAL(18,2)),CAST(63000.00 AS DECIMAL(18,2)),N'DVDL00540093'),
+(N'DVL-0094',N'SP2024-0055',N'Chai',CAST(1.00 AS DECIMAL(18,2)),CAST(25000.00 AS DECIMAL(18,2)),N'DVDL00550094'),
+(N'DVL-0095',N'SP2024-0056',N'Viên',CAST(1.00 AS DECIMAL(18,2)),CAST(1500.00 AS DECIMAL(18,2)),N'DVDL00560095'),
+(N'DVL-0096',N'SP2024-0056',N'Hộp', CAST(30.00 AS DECIMAL(18,2)),CAST(45000.00 AS DECIMAL(18,2)),N'DVDL00560096'),
+(N'DVL-0097',N'SP2024-0057',N'Viên',CAST(1.00 AS DECIMAL(18,2)),CAST(2500.00 AS DECIMAL(18,2)),N'DVDL00570097'),
+(N'DVL-0098',N'SP2024-0057',N'Hộp', CAST(30.00 AS DECIMAL(18,2)),CAST(75000.00 AS DECIMAL(18,2)),N'DVDL00570098'),
+(N'DVL-0099',N'SP2024-0058',N'Viên',CAST(1.00 AS DECIMAL(18,2)),CAST(1500.00 AS DECIMAL(18,2)),N'DVDL00580099'),
+(N'DVL-0100',N'SP2024-0058',N'Hộp', CAST(30.00 AS DECIMAL(18,2)),CAST(45000.00 AS DECIMAL(18,2)),N'DVDL00580100'),
+(N'DVL-0101',N'SP2024-0059',N'Viên',CAST(1.00 AS DECIMAL(18,2)),CAST(8000.00 AS DECIMAL(18,2)),N'DVDL00590101'),
+(N'DVL-0102',N'SP2024-0059',N'Hộp', CAST(30.00 AS DECIMAL(18,2)),CAST(240000.00 AS DECIMAL(18,2)),N'DVDL00590102'),
+(N'DVL-0103',N'SP2024-0060',N'Viên',CAST(1.00 AS DECIMAL(18,2)),CAST(800.00 AS DECIMAL(18,2)),N'DVDL00600103'),
+(N'DVL-0104',N'SP2024-0060',N'Hộp', CAST(20.00 AS DECIMAL(18,2)),CAST(16000.00 AS DECIMAL(18,2)),N'DVDL00600104');
+GO
+
+/* ============================================================
+   4. LÔ HÀNG (giaNhap ~70% giaBan)
+   ============================================================ */
+INSERT [dbo].[LoHang] VALUES
+(N'LH-0041',N'LOT-DEX-260501',N'SP2024-0041',200,CAST(840.00 AS DECIMAL(18,2)),CAST(N'2028-06-30' AS DATETIME2),N'CON_HANG',CAST(N'2026-05-05T09:00:00' AS DATETIME2),N'KHO-0001',N'MVLH0041',N'VT-0011'),
+(N'LH-0042',N'LOT-DPH-260502',N'SP2024-0042',150,CAST(1050.00 AS DECIMAL(18,2)),CAST(N'2028-07-31' AS DATETIME2),N'CON_HANG',CAST(N'2026-05-05T09:00:00' AS DATETIME2),N'KHO-0001',N'MVLH0042',N'VT-0011'),
+(N'LH-0043',N'LOT-ZNC-260503',N'SP2024-0043',120,CAST(1750.00 AS DECIMAL(18,2)),CAST(N'2028-08-31' AS DATETIME2),N'CON_HANG',CAST(N'2026-05-08T09:00:00' AS DATETIME2),N'KHO-0002',N'MVLH0043',N'VT-0013'),
+(N'LH-0044',N'LOT-FES-260504',N'SP2024-0044',100,CAST(1260.00 AS DECIMAL(18,2)),CAST(N'2028-09-30' AS DATETIME2),N'CON_HANG',CAST(N'2026-05-08T09:00:00' AS DATETIME2),N'KHO-0002',N'MVLH0044',N'VT-0013'),
+(N'LH-0045',N'LOT-BCP-260505',N'SP2024-0045',150,CAST(1400.00 AS DECIMAL(18,2)),CAST(N'2028-10-31' AS DATETIME2),N'CON_HANG',CAST(N'2026-05-08T09:00:00' AS DATETIME2),N'KHO-0002',N'MVLH0045',N'VT-0013'),
+(N'LH-0046',N'LOT-IBS-260506',N'SP2024-0046', 80,CAST(45500.00 AS DECIMAL(18,2)),CAST(N'2028-11-30' AS DATETIME2),N'CON_HANG',CAST(N'2026-05-10T09:00:00' AS DATETIME2),N'KHO-0001',N'MVLH0046',N'VT-0011'),
+(N'LH-0047',N'LOT-ENT-260507',N'SP2024-0047',200,CAST(12600.00 AS DECIMAL(18,2)),CAST(N'2028-12-31' AS DATETIME2),N'CON_HANG',CAST(N'2026-05-10T09:00:00' AS DATETIME2),N'KHO-0002',N'MVLH0047',N'VT-0014'),
+(N'LH-0048',N'LOT-SOR-260508',N'SP2024-0048',200,CAST(3500.00 AS DECIMAL(18,2)),CAST(N'2029-01-31' AS DATETIME2),N'CON_HANG',CAST(N'2026-05-10T09:00:00' AS DATETIME2),N'KHO-0001',N'MVLH0048',N'VT-0012'),
+(N'LH-0049',N'LOT-MET-260509',N'SP2024-0049',300,CAST(1050.00 AS DECIMAL(18,2)),CAST(N'2029-02-28' AS DATETIME2),N'CON_HANG',CAST(N'2026-05-13T09:00:00' AS DATETIME2),N'KHO-0001',N'MVLH0049',N'VT-0009'),
+(N'LH-0050',N'LOT-CLA-260510',N'SP2024-0050',150,CAST(3850.00 AS DECIMAL(18,2)),CAST(N'2029-03-31' AS DATETIME2),N'CON_HANG',CAST(N'2026-05-13T09:00:00' AS DATETIME2),N'KHO-0001',N'MVLH0050',N'VT-0009'),
+(N'LH-0051',N'LOT-FUR-260511',N'SP2024-0051',250,CAST(700.00 AS DECIMAL(18,2)),CAST(N'2029-04-30' AS DATETIME2),N'CON_HANG',CAST(N'2026-05-15T09:00:00' AS DATETIME2),N'KHO-0001',N'MVLH0051',N'VT-0010'),
+(N'LH-0052',N'LOT-PRE-260512',N'SP2024-0052',200,CAST(840.00 AS DECIMAL(18,2)),CAST(N'2029-05-31' AS DATETIME2),N'CON_HANG',CAST(N'2026-05-15T09:00:00' AS DATETIME2),N'KHO-0001',N'MVLH0052',N'VT-0010'),
+(N'LH-0053',N'LOT-SAL-260513',N'SP2024-0053',200,CAST(1400.00 AS DECIMAL(18,2)),CAST(N'2029-06-30' AS DATETIME2),N'CON_HANG',CAST(N'2026-05-15T09:00:00' AS DATETIME2),N'KHO-0001',N'MVLH0053',N'VT-0010'),
+(N'LH-0054',N'LOT-PAN-260514',N'SP2024-0054',120,CAST(3150.00 AS DECIMAL(18,2)),CAST(N'2029-07-31' AS DATETIME2),N'CON_HANG',CAST(N'2026-05-17T09:00:00' AS DATETIME2),N'KHO-0001',N'MVLH0054',N'VT-0009'),
+(N'LH-0055',N'LOT-NCL-260515',N'SP2024-0055',100,CAST(17500.00 AS DECIMAL(18,2)),CAST(N'2029-08-31' AS DATETIME2),N'CON_HANG',CAST(N'2026-05-17T09:00:00' AS DATETIME2),N'KHO-0001',N'MVLH0055',N'VT-0015'),
+(N'LH-0056',N'LOT-GLI-260516',N'SP2024-0056',200,CAST(1050.00 AS DECIMAL(18,2)),CAST(N'2029-09-30' AS DATETIME2),N'CON_HANG',CAST(N'2026-05-19T09:00:00' AS DATETIME2),N'KHO-0001',N'MVLH0056',N'VT-0010'),
+(N'LH-0057',N'LOT-SIM-260517',N'SP2024-0057',180,CAST(1750.00 AS DECIMAL(18,2)),CAST(N'2029-10-31' AS DATETIME2),N'CON_HANG',CAST(N'2026-05-19T09:00:00' AS DATETIME2),N'KHO-0001',N'MVLH0057',N'VT-0010'),
+(N'LH-0058',N'LOT-VB1-260518',N'SP2024-0058',150,CAST(1050.00 AS DECIMAL(18,2)),CAST(N'2029-11-30' AS DATETIME2),N'CON_HANG',CAST(N'2026-05-21T09:00:00' AS DATETIME2),N'KHO-0002',N'MVLH0058',N'VT-0013'),
+(N'LH-0059',N'LOT-BIO-260519',N'SP2024-0059', 60,CAST(5600.00 AS DECIMAL(18,2)),CAST(N'2029-12-31' AS DATETIME2),N'CON_HANG',CAST(N'2026-05-21T09:00:00' AS DATETIME2),N'KHO-0002',N'MVLH0059',N'VT-0013'),
+(N'LH-0060',N'LOT-CPH-260520',N'SP2024-0060',300,CAST(560.00 AS DECIMAL(18,2)),CAST(N'2030-01-31' AS DATETIME2),N'CON_HANG',CAST(N'2026-05-23T09:00:00' AS DATETIME2),N'KHO-0001',N'MVLH0060',N'VT-0011');
+GO
+
+/* ============================================================
+   5. PHIẾU NHẬP
+   ============================================================ */
+INSERT [dbo].[PhieuNhapHang] VALUES
+(N'PN-0041',CAST(N'2026-05-05T09:00:00' AS DATETIME2),NULL,N'QL-0001',CAST(168000.00 AS DECIMAL(18,2)),N'Nhập mới - LOT-DEX-260501',N'HOAN_THANH'),
+(N'PN-0042',CAST(N'2026-05-05T09:00:00' AS DATETIME2),NULL,N'QL-0001',CAST(157500.00 AS DECIMAL(18,2)),N'Nhập mới - LOT-DPH-260502',N'HOAN_THANH'),
+(N'PN-0043',CAST(N'2026-05-08T09:00:00' AS DATETIME2),NULL,N'QL-0001',CAST(210000.00 AS DECIMAL(18,2)),N'Nhập mới - LOT-ZNC-260503',N'HOAN_THANH'),
+(N'PN-0044',CAST(N'2026-05-08T09:00:00' AS DATETIME2),NULL,N'QL-0001',CAST(126000.00 AS DECIMAL(18,2)),N'Nhập mới - LOT-FES-260504',N'HOAN_THANH'),
+(N'PN-0045',CAST(N'2026-05-08T09:00:00' AS DATETIME2),NULL,N'QL-0001',CAST(210000.00 AS DECIMAL(18,2)),N'Nhập mới - LOT-BCP-260505',N'HOAN_THANH'),
+(N'PN-0046',CAST(N'2026-05-10T09:00:00' AS DATETIME2),NULL,N'QL-0001',CAST(3640000.00 AS DECIMAL(18,2)),N'Nhập mới - LOT-IBS-260506',N'HOAN_THANH'),
+(N'PN-0047',CAST(N'2026-05-10T09:00:00' AS DATETIME2),NULL,N'QL-0001',CAST(2520000.00 AS DECIMAL(18,2)),N'Nhập mới - LOT-ENT-260507',N'HOAN_THANH'),
+(N'PN-0048',CAST(N'2026-05-10T09:00:00' AS DATETIME2),NULL,N'QL-0001',CAST(700000.00 AS DECIMAL(18,2)),N'Nhập mới - LOT-SOR-260508',N'HOAN_THANH'),
+(N'PN-0049',CAST(N'2026-05-13T09:00:00' AS DATETIME2),NULL,N'QL-0001',CAST(315000.00 AS DECIMAL(18,2)),N'Nhập mới - LOT-MET-260509',N'HOAN_THANH'),
+(N'PN-0050',CAST(N'2026-05-13T09:00:00' AS DATETIME2),NULL,N'QL-0001',CAST(577500.00 AS DECIMAL(18,2)),N'Nhập mới - LOT-CLA-260510',N'HOAN_THANH'),
+(N'PN-0051',CAST(N'2026-05-15T09:00:00' AS DATETIME2),NULL,N'QL-0001',CAST(175000.00 AS DECIMAL(18,2)),N'Nhập mới - LOT-FUR-260511',N'HOAN_THANH'),
+(N'PN-0052',CAST(N'2026-05-15T09:00:00' AS DATETIME2),NULL,N'QL-0001',CAST(168000.00 AS DECIMAL(18,2)),N'Nhập mới - LOT-PRE-260512',N'HOAN_THANH'),
+(N'PN-0053',CAST(N'2026-05-15T09:00:00' AS DATETIME2),NULL,N'QL-0001',CAST(280000.00 AS DECIMAL(18,2)),N'Nhập mới - LOT-SAL-260513',N'HOAN_THANH'),
+(N'PN-0054',CAST(N'2026-05-17T09:00:00' AS DATETIME2),NULL,N'QL-0001',CAST(378000.00 AS DECIMAL(18,2)),N'Nhập mới - LOT-PAN-260514',N'HOAN_THANH'),
+(N'PN-0055',CAST(N'2026-05-17T09:00:00' AS DATETIME2),NULL,N'QL-0001',CAST(1750000.00 AS DECIMAL(18,2)),N'Nhập mới - LOT-NCL-260515',N'HOAN_THANH'),
+(N'PN-0056',CAST(N'2026-05-19T09:00:00' AS DATETIME2),NULL,N'QL-0001',CAST(210000.00 AS DECIMAL(18,2)),N'Nhập mới - LOT-GLI-260516',N'HOAN_THANH'),
+(N'PN-0057',CAST(N'2026-05-19T09:00:00' AS DATETIME2),NULL,N'QL-0001',CAST(315000.00 AS DECIMAL(18,2)),N'Nhập mới - LOT-SIM-260517',N'HOAN_THANH'),
+(N'PN-0058',CAST(N'2026-05-21T09:00:00' AS DATETIME2),NULL,N'QL-0001',CAST(157500.00 AS DECIMAL(18,2)),N'Nhập mới - LOT-VB1-260518',N'HOAN_THANH'),
+(N'PN-0059',CAST(N'2026-05-21T09:00:00' AS DATETIME2),NULL,N'QL-0001',CAST(336000.00 AS DECIMAL(18,2)),N'Nhập mới - LOT-BIO-260519',N'HOAN_THANH'),
+(N'PN-0060',CAST(N'2026-05-23T09:00:00' AS DATETIME2),NULL,N'QL-0001',CAST(168000.00 AS DECIMAL(18,2)),N'Nhập mới - LOT-CPH-260520',N'HOAN_THANH');
+GO
+
+INSERT [dbo].[ChiTietPhieuNhapHang] VALUES
+(N'CTPN-0041',N'PN-0041',N'LH-0041',N'SP2024-0041',N'KHO-0001',N'LOT-DEX-260501',200,CAST(840.00 AS DECIMAL(18,2)),CAST(168000.00 AS DECIMAL(18,2)),CAST(N'2028-06-30' AS DATETIME2)),
+(N'CTPN-0042',N'PN-0042',N'LH-0042',N'SP2024-0042',N'KHO-0001',N'LOT-DPH-260502',150,CAST(1050.00 AS DECIMAL(18,2)),CAST(157500.00 AS DECIMAL(18,2)),CAST(N'2028-07-31' AS DATETIME2)),
+(N'CTPN-0043',N'PN-0043',N'LH-0043',N'SP2024-0043',N'KHO-0002',N'LOT-ZNC-260503',120,CAST(1750.00 AS DECIMAL(18,2)),CAST(210000.00 AS DECIMAL(18,2)),CAST(N'2028-08-31' AS DATETIME2)),
+(N'CTPN-0044',N'PN-0044',N'LH-0044',N'SP2024-0044',N'KHO-0002',N'LOT-FES-260504',100,CAST(1260.00 AS DECIMAL(18,2)),CAST(126000.00 AS DECIMAL(18,2)),CAST(N'2028-09-30' AS DATETIME2)),
+(N'CTPN-0045',N'PN-0045',N'LH-0045',N'SP2024-0045',N'KHO-0002',N'LOT-BCP-260505',150,CAST(1400.00 AS DECIMAL(18,2)),CAST(210000.00 AS DECIMAL(18,2)),CAST(N'2028-10-31' AS DATETIME2)),
+(N'CTPN-0046',N'PN-0046',N'LH-0046',N'SP2024-0046',N'KHO-0001',N'LOT-IBS-260506', 80,CAST(45500.00 AS DECIMAL(18,2)),CAST(3640000.00 AS DECIMAL(18,2)),CAST(N'2028-11-30' AS DATETIME2)),
+(N'CTPN-0047',N'PN-0047',N'LH-0047',N'SP2024-0047',N'KHO-0002',N'LOT-ENT-260507',200,CAST(12600.00 AS DECIMAL(18,2)),CAST(2520000.00 AS DECIMAL(18,2)),CAST(N'2028-12-31' AS DATETIME2)),
+(N'CTPN-0048',N'PN-0048',N'LH-0048',N'SP2024-0048',N'KHO-0001',N'LOT-SOR-260508',200,CAST(3500.00 AS DECIMAL(18,2)),CAST(700000.00 AS DECIMAL(18,2)),CAST(N'2029-01-31' AS DATETIME2)),
+(N'CTPN-0049',N'PN-0049',N'LH-0049',N'SP2024-0049',N'KHO-0001',N'LOT-MET-260509',300,CAST(1050.00 AS DECIMAL(18,2)),CAST(315000.00 AS DECIMAL(18,2)),CAST(N'2029-02-28' AS DATETIME2)),
+(N'CTPN-0050',N'PN-0050',N'LH-0050',N'SP2024-0050',N'KHO-0001',N'LOT-CLA-260510',150,CAST(3850.00 AS DECIMAL(18,2)),CAST(577500.00 AS DECIMAL(18,2)),CAST(N'2029-03-31' AS DATETIME2)),
+(N'CTPN-0051',N'PN-0051',N'LH-0051',N'SP2024-0051',N'KHO-0001',N'LOT-FUR-260511',250,CAST(700.00 AS DECIMAL(18,2)),CAST(175000.00 AS DECIMAL(18,2)),CAST(N'2029-04-30' AS DATETIME2)),
+(N'CTPN-0052',N'PN-0052',N'LH-0052',N'SP2024-0052',N'KHO-0001',N'LOT-PRE-260512',200,CAST(840.00 AS DECIMAL(18,2)),CAST(168000.00 AS DECIMAL(18,2)),CAST(N'2029-05-31' AS DATETIME2)),
+(N'CTPN-0053',N'PN-0053',N'LH-0053',N'SP2024-0053',N'KHO-0001',N'LOT-SAL-260513',200,CAST(1400.00 AS DECIMAL(18,2)),CAST(280000.00 AS DECIMAL(18,2)),CAST(N'2029-06-30' AS DATETIME2)),
+(N'CTPN-0054',N'PN-0054',N'LH-0054',N'SP2024-0054',N'KHO-0001',N'LOT-PAN-260514',120,CAST(3150.00 AS DECIMAL(18,2)),CAST(378000.00 AS DECIMAL(18,2)),CAST(N'2029-07-31' AS DATETIME2)),
+(N'CTPN-0055',N'PN-0055',N'LH-0055',N'SP2024-0055',N'KHO-0001',N'LOT-NCL-260515',100,CAST(17500.00 AS DECIMAL(18,2)),CAST(1750000.00 AS DECIMAL(18,2)),CAST(N'2029-08-31' AS DATETIME2)),
+(N'CTPN-0056',N'PN-0056',N'LH-0056',N'SP2024-0056',N'KHO-0001',N'LOT-GLI-260516',200,CAST(1050.00 AS DECIMAL(18,2)),CAST(210000.00 AS DECIMAL(18,2)),CAST(N'2029-09-30' AS DATETIME2)),
+(N'CTPN-0057',N'PN-0057',N'LH-0057',N'SP2024-0057',N'KHO-0001',N'LOT-SIM-260517',180,CAST(1750.00 AS DECIMAL(18,2)),CAST(315000.00 AS DECIMAL(18,2)),CAST(N'2029-10-31' AS DATETIME2)),
+(N'CTPN-0058',N'PN-0058',N'LH-0058',N'SP2024-0058',N'KHO-0002',N'LOT-VB1-260518',150,CAST(1050.00 AS DECIMAL(18,2)),CAST(157500.00 AS DECIMAL(18,2)),CAST(N'2029-11-30' AS DATETIME2)),
+(N'CTPN-0059',N'PN-0059',N'LH-0059',N'SP2024-0059',N'KHO-0002',N'LOT-BIO-260519', 60,CAST(5600.00 AS DECIMAL(18,2)),CAST(336000.00 AS DECIMAL(18,2)),CAST(N'2029-12-31' AS DATETIME2)),
+(N'CTPN-0060',N'PN-0060',N'LH-0060',N'SP2024-0060',N'KHO-0001',N'LOT-CPH-260520',300,CAST(560.00 AS DECIMAL(18,2)),CAST(168000.00 AS DECIMAL(18,2)),CAST(N'2030-01-31' AS DATETIME2));
+GO
+
+/* ============================================================
+   6. MẪU LIỀU – 42 COMBO (14 nhóm bệnh × 3 lứa tuổi)
+   ============================================================ */
+
+-- CẢM CÚM
+INSERT INTO dbo.MauLieu(comboId,mauLieuId,tenCombo,tenMauLieu,nhomBenh,giaBanCombo,giaBan,ghiChu,ngayTao) VALUES
+(N'CB-2026-CF-01',N'CB-2026-CF-01',N'Cảm cúm – Trẻ em',N'Cảm cúm – Trẻ em',N'Ho – Đờm – Viêm họng',32200,32200,N'Trẻ < 12 tuổi; liều theo cân nặng; cần kê đơn trước khi dùng kháng sinh',GETDATE()),
+(N'CB-2026-CF-02',N'CB-2026-CF-02',N'Cảm cúm – Người lớn',N'Cảm cúm – Người lớn',N'Ho – Đờm – Viêm họng',51000,51000,N'Người 18–59 tuổi; kháng sinh kèm giảm đau hạ sốt và kháng histamine',GETDATE()),
+(N'CB-2026-CF-03',N'CB-2026-CF-03',N'Cảm cúm – Người già',N'Cảm cúm – Người già',N'Ho – Đờm – Viêm họng',33200,33200,N'Người ≥ 60 tuổi; giảm liều para; ưu tiên kháng histamine ít buồn ngủ',GETDATE());
+
+-- HO
+INSERT INTO dbo.MauLieu(comboId,mauLieuId,tenCombo,tenMauLieu,nhomBenh,giaBanCombo,giaBan,ghiChu,ngayTao) VALUES
+(N'CB-2026-HO-01',N'CB-2026-HO-01',N'Ho – Trẻ em',N'Ho – Trẻ em',N'Ho – Đờm – Viêm họng',85600,85600,N'Siro ho thảo dược + hạ sốt; không dùng Dextromethorphan < 6 tuổi',GETDATE()),
+(N'CB-2026-HO-02',N'CB-2026-HO-02',N'Ho – Người lớn',N'Ho – Người lớn',N'Ho – Đờm – Viêm họng',110200,110200,N'Siro ho + giảm đau + Strepsils ngậm làm dịu họng',GETDATE()),
+(N'CB-2026-HO-03',N'CB-2026-HO-03',N'Ho – Người già',N'Ho – Người già',N'Ho – Đờm – Viêm họng',82600,82600,N'Giảm liều para; Strepsils ngậm tại chỗ; tránh kháng histamine gây buồn ngủ',GETDATE());
+
+-- SỐT
+INSERT INTO dbo.MauLieu(comboId,mauLieuId,tenCombo,tenMauLieu,nhomBenh,giaBanCombo,giaBan,ghiChu,ngayTao) VALUES
+(N'CB-2026-ST-01',N'CB-2026-ST-01',N'Sốt – Trẻ em',N'Sốt – Trẻ em',N'Sốt – Cảm cúm – Sổ mũi',58800,58800,N'Hapacol liều trẻ em + bù nước điện giải sau sốt',GETDATE()),
+(N'CB-2026-ST-02',N'CB-2026-ST-02',N'Sốt – Người lớn',N'Sốt – Người lớn',N'Sốt – Cảm cúm – Sổ mũi',40000,40000,N'Para + Efferalgan sủi nhanh + Oresol bù nước',GETDATE()),
+(N'CB-2026-ST-03',N'CB-2026-ST-03',N'Sốt – Người già',N'Sốt – Người già',N'Sốt – Cảm cúm – Sổ mũi',21600,21600,N'Liều nhẹ; không dùng Ibuprofen; bổ sung nước liên tục',GETDATE());
+
+-- TIÊU CHẢY
+INSERT INTO dbo.MauLieu(comboId,mauLieuId,tenCombo,tenMauLieu,nhomBenh,giaBanCombo,giaBan,ghiChu,ngayTao) VALUES
+(N'CB-2026-TC-01',N'CB-2026-TC-01',N'Tiêu chảy – Trẻ em',N'Tiêu chảy – Trẻ em',N'Dạ dày – Tiêu hóa – Đại tràng',126000,126000,N'Smecta + Oresol; không dùng Loperamide trẻ < 2 tuổi',GETDATE()),
+(N'CB-2026-TC-02',N'CB-2026-TC-02',N'Tiêu chảy – Người lớn',N'Tiêu chảy – Người lớn',N'Dạ dày – Tiêu hóa – Đại tràng',181000,181000,N'Smecta + Oresol + Probiotics phục hồi hệ vi khuẩn',GETDATE()),
+(N'CB-2026-TC-03',N'CB-2026-TC-03',N'Tiêu chảy – Người già',N'Tiêu chảy – Người già',N'Dạ dày – Tiêu hóa – Đại tràng',175500,175500,N'Theo dõi mất nước; Probiotics dài ngày; cẩn thận suy thận',GETDATE());
+
+-- DỊ ỨNG
+INSERT INTO dbo.MauLieu(comboId,mauLieuId,tenCombo,tenMauLieu,nhomBenh,giaBanCombo,giaBan,ghiChu,ngayTao) VALUES
+(N'CB-2026-DU-01',N'CB-2026-DU-01',N'Dị ứng – Trẻ em',N'Dị ứng – Trẻ em',N'Dị ứng – Mẩn ngứa – Mề đay',38700,38700,N'Loratadine ít gây buồn ngủ + xịt mũi hỗ trợ',GETDATE()),
+(N'CB-2026-DU-02',N'CB-2026-DU-02',N'Dị ứng – Người lớn',N'Dị ứng – Người lớn',N'Dị ứng – Mẩn ngứa – Mề đay',39200,39200,N'Cetirizine tối + xịt mũi khi ngạt',GETDATE()),
+(N'CB-2026-DU-03',N'CB-2026-DU-03',N'Dị ứng – Người già',N'Dị ứng – Người già',N'Dị ứng – Mẩn ngứa – Mề đay',38700,38700,N'Loratadine an toàn hơn; chú ý tương tác thuốc tim mạch',GETDATE());
+
+-- ĐAU DẠ DÀY
+INSERT INTO dbo.MauLieu(comboId,mauLieuId,tenCombo,tenMauLieu,nhomBenh,giaBanCombo,giaBan,ghiChu,ngayTao) VALUES
+(N'CB-2026-DD-01',N'CB-2026-DD-01',N'Đau dạ dày – Trẻ em',N'Đau dạ dày – Trẻ em',N'Dạ dày – Tiêu hóa – Đại tràng',119000,119000,N'Domperidon + Phosphalugel; hạn chế PPI cho trẻ nhỏ',GETDATE()),
+(N'CB-2026-DD-02',N'CB-2026-DD-02',N'Đau dạ dày – Người lớn',N'Đau dạ dày – Người lớn',N'Dạ dày – Tiêu hóa – Đại tràng',151300,151300,N'PPI + chống nôn + kháng acid; liệu trình 14 ngày',GETDATE()),
+(N'CB-2026-DD-03',N'CB-2026-DD-03',N'Đau dạ dày – Người già',N'Đau dạ dày – Người già',N'Dạ dày – Tiêu hóa – Đại tràng',178300,178300,N'Pantoprazole mạnh hơn + Phosphalugel; kiểm tra H.pylori',GETDATE());
+
+-- HUYẾT ÁP
+INSERT INTO dbo.MauLieu(comboId,mauLieuId,tenCombo,tenMauLieu,nhomBenh,giaBanCombo,giaBan,ghiChu,ngayTao) VALUES
+(N'CB-2026-HA-01',N'CB-2026-HA-01',N'Huyết áp – Người lớn',N'Huyết áp – Người lớn',N'Tim mạch – Huyết áp',120000,120000,N'Losartan + Amlodipine; đo HA hàng ngày; không ngừng đột ngột',GETDATE()),
+(N'CB-2026-HA-02',N'CB-2026-HA-02',N'Huyết áp – Người già',N'Huyết áp – Người già',N'Tim mạch – Huyết áp',225000,225000,N'Thêm Atorvastatin hạ mỡ máu; kê đơn bắt buộc; theo dõi điện giải',GETDATE()),
+(N'CB-2026-HA-03',N'CB-2026-HA-03',N'Huyết áp kết hợp mỡ máu',N'Huyết áp kết hợp mỡ máu',N'Tim mạch – Huyết áp',150000,150000,N'Amlodipine + Simvastatin; uống tối trước ngủ để tăng hiệu quả',GETDATE());
+
+-- ĐÁI THÁO ĐƯỜNG
+INSERT INTO dbo.MauLieu(comboId,mauLieuId,tenCombo,tenMauLieu,nhomBenh,giaBanCombo,giaBan,ghiChu,ngayTao) VALUES
+(N'CB-2026-DT-01',N'CB-2026-DT-01',N'Đái tháo đường – Người lớn',N'Đái tháo đường – Người lớn',N'Đái tháo đường',48000,48000,N'Metformin sau ăn; theo dõi đường huyết 2 lần/ngày',GETDATE()),
+(N'CB-2026-DT-02',N'CB-2026-DT-02',N'Đái tháo đường – Người già',N'Đái tháo đường – Người già',N'Đái tháo đường',69000,69000,N'Metformin liều thấp + Losartan bảo vệ thận; kiểm GFR định kỳ',GETDATE()),
+(N'CB-2026-DT-03',N'CB-2026-DT-03',N'ĐTĐ kết hợp biến chứng tim',N'ĐTĐ kết hợp biến chứng tim',N'Đái tháo đường',123000,123000,N'Kiểm soát đường huyết + huyết áp đồng thời; theo dõi tim mạch',GETDATE());
+
+-- KHÁNG SINH HÔ HẤP
+INSERT INTO dbo.MauLieu(comboId,mauLieuId,tenCombo,tenMauLieu,nhomBenh,giaBanCombo,giaBan,ghiChu,ngayTao) VALUES
+(N'CB-2026-KS-01',N'CB-2026-KS-01',N'Viêm họng – Trẻ em',N'Viêm họng – Trẻ em',N'Ho – Đờm – Viêm họng',141000,141000,N'Augmentin siro 7 ngày; liều theo cân nặng; kê đơn bắt buộc',GETDATE()),
+(N'CB-2026-KS-02',N'CB-2026-KS-02',N'Viêm họng – Người lớn',N'Viêm họng – Người lớn',N'Ho – Đờm – Viêm họng',128000,128000,N'Amoxicillin 7 ngày + hạ sốt + Strepsils ngậm',GETDATE()),
+(N'CB-2026-KS-03',N'CB-2026-KS-03',N'Viêm họng – Người già',N'Viêm họng – Người già',N'Ho – Đờm – Viêm họng',60000,60000,N'Cefuroxime phổ rộng hơn Amoxicillin; uống sau ăn',GETDATE());
+
+-- ĐAU NHỨC CƠ XƯƠNG
+INSERT INTO dbo.MauLieu(comboId,mauLieuId,tenCombo,tenMauLieu,nhomBenh,giaBanCombo,giaBan,ghiChu,ngayTao) VALUES
+(N'CB-2026-CN-01',N'CB-2026-CN-01',N'Đau nhức cơ xương – Trẻ em',N'Đau nhức cơ xương – Trẻ em',N'Xương khớp – Gút',200600,200600,N'Hạ sốt giảm đau + Canxi + D3 phát triển xương',GETDATE()),
+(N'CB-2026-CN-02',N'CB-2026-CN-02',N'Đau nhức cơ xương – Người lớn',N'Đau nhức cơ xương – Người lớn',N'Xương khớp – Gút',204000,204000,N'Ibuprofen ngắn ngày + Magie B6 lâu dài giảm co cơ',GETDATE()),
+(N'CB-2026-CN-03',N'CB-2026-CN-03',N'Đau nhức cơ xương – Người già',N'Đau nhức cơ xương – Người già',N'Xương khớp – Gút',447600,447600,N'Ibuprofen thận trọng + Canxi + D3; phòng loãng xương',GETDATE());
+
+-- MẤT NGỦ / CĂNG THẲNG
+INSERT INTO dbo.MauLieu(comboId,mauLieuId,tenCombo,tenMauLieu,nhomBenh,giaBanCombo,giaBan,ghiChu,ngayTao) VALUES
+(N'CB-2026-MN-01',N'CB-2026-MN-01',N'Mất ngủ – Người lớn',N'Mất ngủ – Người lớn',N'Đau đầu – Giảm đau – Hạ sốt',420000,420000,N'Melatonin 30 ngày; trước ngủ 30 phút; phòng tối; tắt màn hình',GETDATE()),
+(N'CB-2026-MN-02',N'CB-2026-MN-02',N'Mất ngủ – Người già',N'Mất ngủ – Người già',N'Đau đầu – Giảm đau – Hạ sốt',615000,615000,N'Melatonin + Magie B6 giảm căng thẳng; liều thấp hơn người trẻ',GETDATE()),
+(N'CB-2026-MN-03',N'CB-2026-MN-03',N'Căng thẳng – Người lớn/già',N'Căng thẳng – Người lớn/già',N'Đau đầu – Giảm đau – Hạ sốt',390000,390000,N'Magie B6 sáng chiều; an thần tự nhiên; không gây nghiện',GETDATE());
+
+-- VITAMIN BỔ SUNG
+INSERT INTO dbo.MauLieu(comboId,mauLieuId,tenCombo,tenMauLieu,nhomBenh,giaBanCombo,giaBan,ghiChu,ngayTao) VALUES
+(N'CB-2026-VT-01',N'CB-2026-VT-01',N'Vitamin bổ sung – Trẻ em',N'Vitamin bổ sung – Trẻ em',N'Thuốc bổ – Vitamin – Khoáng chất',390000,390000,N'Canxi + D3 hỗ trợ phát triển chiều cao và xương',GETDATE()),
+(N'CB-2026-VT-02',N'CB-2026-VT-02',N'Vitamin bổ sung – Người lớn',N'Vitamin bổ sung – Người lớn',N'Thuốc bổ – Vitamin – Khoáng chất',565000,565000,N'Vitamin C + D3 + Omega-3; sức khỏe tổng thể',GETDATE()),
+(N'CB-2026-VT-03',N'CB-2026-VT-03',N'Vitamin bổ sung – Người già',N'Vitamin bổ sung – Người già',N'Thuốc bổ – Vitamin – Khoáng chất',670000,670000,N'Canxi + D3 + Omega-3; phòng loãng xương và tim mạch',GETDATE());
+
+-- TÁO BÓN
+INSERT INTO dbo.MauLieu(comboId,mauLieuId,tenCombo,tenMauLieu,nhomBenh,giaBanCombo,giaBan,ghiChu,ngayTao) VALUES
+(N'CB-2026-TB-01',N'CB-2026-TB-01',N'Táo bón – Trẻ em',N'Táo bón – Trẻ em',N'Dạ dày – Tiêu hóa – Đại tràng',86000,86000,N'Probiotics cải thiện hệ vi sinh + bổ sung nước; không Sorbitol < 3 tuổi',GETDATE()),
+(N'CB-2026-TB-02',N'CB-2026-TB-02',N'Táo bón – Người lớn',N'Táo bón – Người lớn',N'Dạ dày – Tiêu hóa – Đại tràng',154000,154000,N'Probiotics dài hạn + Sorbitol cấp tốc khi cần',GETDATE()),
+(N'CB-2026-TB-03',N'CB-2026-TB-03',N'Táo bón – Người già',N'Táo bón – Người già',N'Dạ dày – Tiêu hóa – Đại tràng',193000,193000,N'Probiotics dài hạn + Domperidon tăng nhu động ruột',GETDATE());
+
+-- MẮT MŨI HỌNG
+INSERT INTO dbo.MauLieu(comboId,mauLieuId,tenCombo,tenMauLieu,nhomBenh,giaBanCombo,giaBan,ghiChu,ngayTao) VALUES
+(N'CB-2026-MT-01',N'CB-2026-MT-01',N'Mắt mũi họng – Trẻ em',N'Mắt mũi họng – Trẻ em',N'Mắt – Tai – Mũi',57000,57000,N'Osla rửa mắt + xịt mũi; an toàn cho trẻ',GETDATE()),
+(N'CB-2026-MT-02',N'CB-2026-MT-02',N'Mắt mũi họng – Người lớn',N'Mắt mũi họng – Người lớn',N'Mắt – Tai – Mũi',167000,167000,N'V.Rohto mắt + xịt mũi + Strepsils họng; bộ 3 triệu chứng',GETDATE()),
+(N'CB-2026-MT-03',N'CB-2026-MT-03',N'Mắt mũi họng – Người già',N'Mắt mũi họng – Người già',N'Mắt – Tai – Mũi',134000,134000,N'Osla nhẹ nhàng + Strepsils; tránh thuốc co mạch nếu có tăng HA',GETDATE());
+GO
+
+/* ============================================================
+   7. CHI TIẾT MẪU LIỀU
+   id = IDENTITY – không cần khai báo
+   tongSoLuong = (sang+trua+chieu+toi) × soNgay
+   ============================================================ */
+
+-- CB-2026-CF-01 Cảm cúm – Trẻ em
+INSERT INTO dbo.ChiTietMauLieu(comboId,mauLieuId,sanPhamId,dvt,sang,trua,chieu,toi,cachDung,soNgay,tongSoLuong,giaDonVi) VALUES
+(N'CB-2026-CF-01',N'CB-2026-CF-01',N'SP2024-0039',N'Gói', 1,1,1,0,N'Pha 100ml nước ấm; liều trẻ em theo cân nặng; cách 4–6h/lần',3,9,3400),
+(N'CB-2026-CF-01',N'CB-2026-CF-01',N'SP2024-0019',N'Viên',1,0,0,0,N'1 viên buổi sáng; Loratadine ít buồn ngủ phù hợp trẻ đi học',3,3,533);
+
+-- CB-2026-CF-02 Cảm cúm – Người lớn
+INSERT INTO dbo.ChiTietMauLieu(comboId,mauLieuId,sanPhamId,dvt,sang,trua,chieu,toi,cachDung,soNgay,tongSoLuong,giaDonVi) VALUES
+(N'CB-2026-CF-02',N'CB-2026-CF-02',N'SP2024-0009',N'Viên',2,2,2,0,N'2 viên sau ăn mỗi 6h khi sốt/đau; không quá 8 viên/ngày',3,18,400),
+(N'CB-2026-CF-02',N'CB-2026-CF-02',N'SP2024-0012',N'Viên',0,0,0,1,N'1 viên Cetirizine buổi tối; giảm chảy nước mũi dị ứng',3,3,600),
+(N'CB-2026-CF-02',N'CB-2026-CF-02',N'SP2024-0001',N'Viên',1,1,1,0,N'Amoxicillin 500mg 3 lần/ngày; uống đủ 7 ngày không bỏ giữa chừng',7,21,2000);
+
+-- CB-2026-CF-03 Cảm cúm – Người già
+INSERT INTO dbo.ChiTietMauLieu(comboId,mauLieuId,sanPhamId,dvt,sang,trua,chieu,toi,cachDung,soNgay,tongSoLuong,giaDonVi) VALUES
+(N'CB-2026-CF-03',N'CB-2026-CF-03',N'SP2024-0009',N'Viên',1,1,1,0,N'1 viên sau ăn; giảm liều nếu có bệnh gan/thận; không quá 3g/ngày',3,9,400),
+(N'CB-2026-CF-03',N'CB-2026-CF-03',N'SP2024-0019',N'Viên',0,0,0,1,N'Loratadine tối; an toàn hơn Diphenhydramine với người cao tuổi',3,3,533),
+(N'CB-2026-CF-03',N'CB-2026-CF-03',N'SP2024-0001',N'Viên',1,1,0,0,N'2 lần/ngày; uống đủ 7 ngày; theo dõi tương tác thuốc khác',7,14,2000);
+
+-- CB-2026-HO-01 Ho – Trẻ em
+INSERT INTO dbo.ChiTietMauLieu(comboId,mauLieuId,sanPhamId,dvt,sang,trua,chieu,toi,cachDung,soNgay,tongSoLuong,giaDonVi) VALUES
+(N'CB-2026-HO-01',N'CB-2026-HO-01',N'SP2024-0017',N'Chai',1,0,0,0,N'1 chai Siro Ho Bổ Phế; đo thìa đúng liều theo nhãn; dùng 5–7 ngày',1,1,55000),
+(N'CB-2026-HO-01',N'CB-2026-HO-01',N'SP2024-0039',N'Gói', 1,1,1,0,N'Hạ sốt khi trẻ sốt trên 38.5°C; pha 1 gói với 100ml nước ấm',3,9,3400);
+
+-- CB-2026-HO-02 Ho – Người lớn
+INSERT INTO dbo.ChiTietMauLieu(comboId,mauLieuId,sanPhamId,dvt,sang,trua,chieu,toi,cachDung,soNgay,tongSoLuong,giaDonVi) VALUES
+(N'CB-2026-HO-02',N'CB-2026-HO-02',N'SP2024-0017',N'Chai',1,0,0,0,N'1 chai siro ho; dùng 7–10 ngày theo hướng dẫn',1,1,55000),
+(N'CB-2026-HO-02',N'CB-2026-HO-02',N'SP2024-0009',N'Viên',2,2,2,0,N'2 viên sau ăn khi sốt hoặc đau họng',3,18,400),
+(N'CB-2026-HO-02',N'CB-2026-HO-02',N'SP2024-0037',N'Viên',1,0,1,0,N'Ngậm Strepsils tan chậm; không nhai; sáng tối',3,6,8000);
+
+-- CB-2026-HO-03 Ho – Người già
+INSERT INTO dbo.ChiTietMauLieu(comboId,mauLieuId,sanPhamId,dvt,sang,trua,chieu,toi,cachDung,soNgay,tongSoLuong,giaDonVi) VALUES
+(N'CB-2026-HO-03',N'CB-2026-HO-03',N'SP2024-0017',N'Chai',1,0,0,0,N'1 chai; uống liều người lớn; theo dõi đờm nếu nhiều',1,1,55000),
+(N'CB-2026-HO-03',N'CB-2026-HO-03',N'SP2024-0009',N'Viên',1,1,1,0,N'1 viên sau ăn; giảm liều nếu có bệnh gan thận',3,9,400),
+(N'CB-2026-HO-03',N'CB-2026-HO-03',N'SP2024-0037',N'Viên',1,0,0,0,N'1 viên ngậm buổi sáng; làm dịu họng rát',3,3,8000);
+
+-- CB-2026-ST-01 Sốt – Trẻ em
+INSERT INTO dbo.ChiTietMauLieu(comboId,mauLieuId,sanPhamId,dvt,sang,trua,chieu,toi,cachDung,soNgay,tongSoLuong,giaDonVi) VALUES
+(N'CB-2026-ST-01',N'CB-2026-ST-01',N'SP2024-0039',N'Gói', 1,1,1,1,N'Hapacol 150mg/gói cho trẻ; cách tối thiểu 4–6h; không quá 5 lần/ngày',3,12,3400),
+(N'CB-2026-ST-01',N'CB-2026-ST-01',N'SP2024-0013',N'Gói', 1,0,1,0,N'Bù nước điện giải sau sốt; pha đúng tỷ lệ theo nhãn',3,6,3000);
+
+-- CB-2026-ST-02 Sốt – Người lớn
+INSERT INTO dbo.ChiTietMauLieu(comboId,mauLieuId,sanPhamId,dvt,sang,trua,chieu,toi,cachDung,soNgay,tongSoLuong,giaDonVi) VALUES
+(N'CB-2026-ST-02',N'CB-2026-ST-02',N'SP2024-0009',N'Viên',2,2,2,2,N'2 viên mỗi 4–6h khi sốt; không quá 8 viên/ngày; sau ăn',3,24,400),
+(N'CB-2026-ST-02',N'CB-2026-ST-02',N'SP2024-0038',N'Viên',1,0,1,0,N'Efferalgan sủi trong 200ml nước; hạ sốt nhanh hơn viên thường',2,4,3100),
+(N'CB-2026-ST-02',N'CB-2026-ST-02',N'SP2024-0013',N'Gói', 1,1,0,0,N'Bù điện giải sau mồ hôi khi sốt cao',3,6,3000);
+
+-- CB-2026-ST-03 Sốt – Người già
+INSERT INTO dbo.ChiTietMauLieu(comboId,mauLieuId,sanPhamId,dvt,sang,trua,chieu,toi,cachDung,soNgay,tongSoLuong,giaDonVi) VALUES
+(N'CB-2026-ST-03',N'CB-2026-ST-03',N'SP2024-0009',N'Viên',1,1,1,0,N'1 viên sau ăn; không tự tăng liều; không dùng Ibuprofen',3,9,400),
+(N'CB-2026-ST-03',N'CB-2026-ST-03',N'SP2024-0013',N'Gói', 1,0,1,0,N'Bù nước thường xuyên; uống từng ngụm nhỏ liên tục',3,6,3000);
+
+-- CB-2026-TC-01 Tiêu chảy – Trẻ em
+INSERT INTO dbo.ChiTietMauLieu(comboId,mauLieuId,sanPhamId,dvt,sang,trua,chieu,toi,cachDung,soNgay,tongSoLuong,giaDonVi) VALUES
+(N'CB-2026-TC-01',N'CB-2026-TC-01',N'SP2024-0018',N'Gói', 1,1,1,0,N'Pha trong 50ml nước; uống sau mỗi lần đi ngoài; 3 gói/ngày',3,9,11000),
+(N'CB-2026-TC-01',N'CB-2026-TC-01',N'SP2024-0013',N'Gói', 1,1,1,0,N'Bù nước điện giải; pha đúng tỷ lệ; không thêm đường',3,9,3000);
+
+-- CB-2026-TC-02 Tiêu chảy – Người lớn
+INSERT INTO dbo.ChiTietMauLieu(comboId,mauLieuId,sanPhamId,dvt,sang,trua,chieu,toi,cachDung,soNgay,tongSoLuong,giaDonVi) VALUES
+(N'CB-2026-TC-02',N'CB-2026-TC-02',N'SP2024-0018',N'Gói', 1,1,1,0,N'3 gói Smecta/ngày sau ăn; dùng 3–5 ngày',3,9,11000),
+(N'CB-2026-TC-02',N'CB-2026-TC-02',N'SP2024-0013',N'Gói', 1,1,1,0,N'Bù nước sau mỗi lần đi ngoài; tối đa 3 gói/ngày',3,9,3000),
+(N'CB-2026-TC-02',N'CB-2026-TC-02',N'SP2024-0027',N'Viên',1,0,1,0,N'Probiotics xa kháng sinh ≥ 2h; sáng chiều trước ăn',5,10,5500);
+
+-- CB-2026-TC-03 Tiêu chảy – Người già
+INSERT INTO dbo.ChiTietMauLieu(comboId,mauLieuId,sanPhamId,dvt,sang,trua,chieu,toi,cachDung,soNgay,tongSoLuong,giaDonVi) VALUES
+(N'CB-2026-TC-03',N'CB-2026-TC-03',N'SP2024-0018',N'Gói', 1,1,0,0,N'2 gói/ngày; dùng 5 ngày; theo dõi chức năng thận',5,10,11000),
+(N'CB-2026-TC-03',N'CB-2026-TC-03',N'SP2024-0013',N'Gói', 1,1,1,0,N'Bù nước liên tục; người già dễ mất nước hơn',3,9,3000),
+(N'CB-2026-TC-03',N'CB-2026-TC-03',N'SP2024-0027',N'Viên',1,0,0,0,N'1 viên/ngày; phục hồi hệ vi sinh dài hạn',7,7,5500);
+
+-- CB-2026-DU-01 Dị ứng – Trẻ em
+INSERT INTO dbo.ChiTietMauLieu(comboId,mauLieuId,sanPhamId,dvt,sang,trua,chieu,toi,cachDung,soNgay,tongSoLuong,giaDonVi) VALUES
+(N'CB-2026-DU-01',N'CB-2026-DU-01',N'SP2024-0019',N'Viên',1,0,0,0,N'1 viên buổi sáng; Loratadine ít gây buồn ngủ; phù hợp ngày học',7,7,533),
+(N'CB-2026-DU-01',N'CB-2026-DU-01',N'SP2024-0014',N'Chai',1,0,0,0,N'Xịt 1–2 lần mỗi bên mũi; dùng 7–14 ngày',1,1,35000);
+
+-- CB-2026-DU-02 Dị ứng – Người lớn
+INSERT INTO dbo.ChiTietMauLieu(comboId,mauLieuId,sanPhamId,dvt,sang,trua,chieu,toi,cachDung,soNgay,tongSoLuong,giaDonVi) VALUES
+(N'CB-2026-DU-02',N'CB-2026-DU-02',N'SP2024-0012',N'Viên',0,0,0,1,N'1 viên Cetirizine buổi tối; tác dụng kéo dài 24h',7,7,600),
+(N'CB-2026-DU-02',N'CB-2026-DU-02',N'SP2024-0014',N'Chai',1,0,0,0,N'Xịt mũi 1–2 lần/bên; không dùng quá 5 ngày liên tiếp',1,1,35000);
+
+-- CB-2026-DU-03 Dị ứng – Người già
+INSERT INTO dbo.ChiTietMauLieu(comboId,mauLieuId,sanPhamId,dvt,sang,trua,chieu,toi,cachDung,soNgay,tongSoLuong,giaDonVi) VALUES
+(N'CB-2026-DU-03',N'CB-2026-DU-03',N'SP2024-0019',N'Viên',0,0,0,1,N'Loratadine tối; ít tương tác với thuốc tim mạch hơn Cetirizine',7,7,533),
+(N'CB-2026-DU-03',N'CB-2026-DU-03',N'SP2024-0014',N'Chai',1,0,0,0,N'Xịt nhẹ; tránh Naphazoline nếu có tăng huyết áp',1,1,35000);
+
+-- CB-2026-DD-01 Đau dạ dày – Trẻ em
+INSERT INTO dbo.ChiTietMauLieu(comboId,mauLieuId,sanPhamId,dvt,sang,trua,chieu,toi,cachDung,soNgay,tongSoLuong,giaDonVi) VALUES
+(N'CB-2026-DD-01',N'CB-2026-DD-01',N'SP2024-0015',N'Viên',1,1,1,0,N'Domperidon uống 30 phút trước ăn; giảm nôn nao',5,15,1333),
+(N'CB-2026-DD-01',N'CB-2026-DD-01',N'SP2024-0040',N'Gói', 1,1,1,0,N'Phosphalugel sau ăn 1–2h; kháng acid tại chỗ',3,9,11000);
+
+-- CB-2026-DD-02 Đau dạ dày – Người lớn
+INSERT INTO dbo.ChiTietMauLieu(comboId,mauLieuId,sanPhamId,dvt,sang,trua,chieu,toi,cachDung,soNgay,tongSoLuong,giaDonVi) VALUES
+(N'CB-2026-DD-02',N'CB-2026-DD-02',N'SP2024-0016',N'Viên',1,0,0,0,N'PPI Omeprazole trước bữa sáng 30 phút; liệu trình 14 ngày',14,14,1733),
+(N'CB-2026-DD-02',N'CB-2026-DD-02',N'SP2024-0015',N'Viên',1,1,1,0,N'Domperidon chống nôn 30 phút trước 3 bữa ăn',7,21,1333),
+(N'CB-2026-DD-02',N'CB-2026-DD-02',N'SP2024-0040',N'Gói', 1,1,1,0,N'Kháng acid sau ăn 1–2h; không pha thuốc khác vào',3,9,11000);
+
+-- CB-2026-DD-03 Đau dạ dày – Người già
+INSERT INTO dbo.ChiTietMauLieu(comboId,mauLieuId,sanPhamId,dvt,sang,trua,chieu,toi,cachDung,soNgay,tongSoLuong,giaDonVi) VALUES
+(N'CB-2026-DD-03',N'CB-2026-DD-03',N'SP2024-0054',N'Viên',1,0,0,0,N'Pantoprazole 40mg mạnh hơn; trước bữa sáng 30 phút; 14 ngày',14,14,4500),
+(N'CB-2026-DD-03',N'CB-2026-DD-03',N'SP2024-0040',N'Gói', 1,0,1,0,N'Kháng acid sáng tối; uống sau ăn 1h',7,14,11000);
+
+-- CB-2026-HA-01 Huyết áp – Người lớn
+INSERT INTO dbo.ChiTietMauLieu(comboId,mauLieuId,sanPhamId,dvt,sang,trua,chieu,toi,cachDung,soNgay,tongSoLuong,giaDonVi) VALUES
+(N'CB-2026-HA-01',N'CB-2026-HA-01',N'SP2024-0004',N'Viên',1,0,0,0,N'Losartan 50mg sáng; không ngừng đột ngột; đo HA hàng ngày',30,30,1500),
+(N'CB-2026-HA-01',N'CB-2026-HA-01',N'SP2024-0007',N'Viên',1,0,0,0,N'Amlodipine 5mg sáng; có thể phù chân nhẹ tuần đầu',30,30,2500);
+
+-- CB-2026-HA-02 Huyết áp – Người già
+INSERT INTO dbo.ChiTietMauLieu(comboId,mauLieuId,sanPhamId,dvt,sang,trua,chieu,toi,cachDung,soNgay,tongSoLuong,giaDonVi) VALUES
+(N'CB-2026-HA-02',N'CB-2026-HA-02',N'SP2024-0007',N'Viên',1,0,0,0,N'Amlodipine sáng; nhẹ nhàng không hạ HA đột ngột',30,30,2500),
+(N'CB-2026-HA-02',N'CB-2026-HA-02',N'SP2024-0004',N'Viên',0,0,0,1,N'Losartan tối; bảo vệ thận; không dùng NSAIDs đồng thời',30,30,1500),
+(N'CB-2026-HA-02',N'CB-2026-HA-02',N'SP2024-0008',N'Viên',0,0,0,1,N'Atorvastatin tối trước ngủ; không ăn bưởi',30,30,3500);
+
+-- CB-2026-HA-03 Huyết áp kết hợp mỡ máu
+INSERT INTO dbo.ChiTietMauLieu(comboId,mauLieuId,sanPhamId,dvt,sang,trua,chieu,toi,cachDung,soNgay,tongSoLuong,giaDonVi) VALUES
+(N'CB-2026-HA-03',N'CB-2026-HA-03',N'SP2024-0007',N'Viên',1,0,0,0,N'Amlodipine sáng; giảm sức cản ngoại vi hiệu quả',30,30,2500),
+(N'CB-2026-HA-03',N'CB-2026-HA-03',N'SP2024-0057',N'Viên',0,0,0,1,N'Simvastatin tối trước ngủ; kiểm men gan 3 tháng/lần',30,30,2500);
+
+-- CB-2026-DT-01 ĐTĐ – Người lớn
+INSERT INTO dbo.ChiTietMauLieu(comboId,mauLieuId,sanPhamId,dvt,sang,trua,chieu,toi,cachDung,soNgay,tongSoLuong,giaDonVi) VALUES
+(N'CB-2026-DT-01',N'CB-2026-DT-01',N'SP2024-0003',N'Viên',1,1,0,0,N'Metformin sau ăn sáng và trưa; giảm tác dụng phụ dạ dày',30,60,800);
+
+-- CB-2026-DT-02 ĐTĐ – Người già
+INSERT INTO dbo.ChiTietMauLieu(comboId,mauLieuId,sanPhamId,dvt,sang,trua,chieu,toi,cachDung,soNgay,tongSoLuong,giaDonVi) VALUES
+(N'CB-2026-DT-02',N'CB-2026-DT-02',N'SP2024-0003',N'Viên',1,0,0,0,N'Metformin liều thấp; chú ý GFR; ngừng khi GFR < 30',30,30,800),
+(N'CB-2026-DT-02',N'CB-2026-DT-02',N'SP2024-0004',N'Viên',1,0,0,0,N'Losartan bảo vệ thận và tim ở người ĐTĐ có tăng HA',30,30,1500);
+
+-- CB-2026-DT-03 ĐTĐ biến chứng tim
+INSERT INTO dbo.ChiTietMauLieu(comboId,mauLieuId,sanPhamId,dvt,sang,trua,chieu,toi,cachDung,soNgay,tongSoLuong,giaDonVi) VALUES
+(N'CB-2026-DT-03',N'CB-2026-DT-03',N'SP2024-0003',N'Viên',1,1,0,0,N'Metformin kiểm soát đường huyết; uống sau ăn',30,60,800),
+(N'CB-2026-DT-03',N'CB-2026-DT-03',N'SP2024-0007',N'Viên',1,0,0,0,N'Amlodipine kiểm soát HA; phòng biến chứng tim mạch',30,30,2500);
+
+-- CB-2026-KS-01 Viêm họng – Trẻ em
+INSERT INTO dbo.ChiTietMauLieu(comboId,mauLieuId,sanPhamId,dvt,sang,trua,chieu,toi,cachDung,soNgay,tongSoLuong,giaDonVi) VALUES
+(N'CB-2026-KS-01',N'CB-2026-KS-01',N'SP2024-0005',N'Chai',1,0,0,0,N'Augmentin siro 7 ngày; liều theo cân nặng kg/ml; kê đơn',1,1,90000),
+(N'CB-2026-KS-01',N'CB-2026-KS-01',N'SP2024-0039',N'Gói', 1,1,1,0,N'Hạ sốt khi trẻ sốt trên 38.5°C; cách tối thiểu 4h',5,15,3400);
+
+-- CB-2026-KS-02 Viêm họng – Người lớn
+INSERT INTO dbo.ChiTietMauLieu(comboId,mauLieuId,sanPhamId,dvt,sang,trua,chieu,toi,cachDung,soNgay,tongSoLuong,giaDonVi) VALUES
+(N'CB-2026-KS-02',N'CB-2026-KS-02',N'SP2024-0001',N'Viên',1,1,1,0,N'Amoxicillin 500mg 3 lần/ngày; uống đủ 7 ngày không bỏ',7,21,2000),
+(N'CB-2026-KS-02',N'CB-2026-KS-02',N'SP2024-0009',N'Viên',1,1,1,0,N'Giảm đau hạ sốt sau ăn; hỗ trợ triệu chứng',5,15,400),
+(N'CB-2026-KS-02',N'CB-2026-KS-02',N'SP2024-0037',N'Viên',1,0,1,0,N'Ngậm Strepsils làm dịu họng; sáng tối',5,10,8000);
+
+-- CB-2026-KS-03 Viêm họng – Người già
+INSERT INTO dbo.ChiTietMauLieu(comboId,mauLieuId,sanPhamId,dvt,sang,trua,chieu,toi,cachDung,soNgay,tongSoLuong,giaDonVi) VALUES
+(N'CB-2026-KS-03',N'CB-2026-KS-03',N'SP2024-0002',N'Viên',1,0,1,0,N'Cefuroxime 500mg sau ăn; phổ rộng hơn Amoxicillin; 7 ngày',7,14,5000),
+(N'CB-2026-KS-03',N'CB-2026-KS-03',N'SP2024-0009',N'Viên',1,0,1,0,N'1 viên cách 6h khi cần; không tự tăng liều',5,10,400);
+
+-- CB-2026-CN-01 Đau nhức cơ xương – Trẻ em
+INSERT INTO dbo.ChiTietMauLieu(comboId,mauLieuId,sanPhamId,dvt,sang,trua,chieu,toi,cachDung,soNgay,tongSoLuong,giaDonVi) VALUES
+(N'CB-2026-CN-01',N'CB-2026-CN-01',N'SP2024-0039',N'Gói', 1,1,1,0,N'Hạ sốt giảm đau liều trẻ em; theo cân nặng',3,9,3400),
+(N'CB-2026-CN-01',N'CB-2026-CN-01',N'SP2024-0023',N'Viên',1,0,1,0,N'Canxi sáng chiều sau ăn; tránh dùng cùng sắt',30,60,2833);
+
+-- CB-2026-CN-02 Đau nhức cơ xương – Người lớn
+INSERT INTO dbo.ChiTietMauLieu(comboId,mauLieuId,sanPhamId,dvt,sang,trua,chieu,toi,cachDung,soNgay,tongSoLuong,giaDonVi) VALUES
+(N'CB-2026-CN-02',N'CB-2026-CN-02',N'SP2024-0010',N'Viên',1,1,1,0,N'Ibuprofen 400mg sau ăn; không quá 5 ngày liên tiếp',5,15,600),
+(N'CB-2026-CN-02',N'CB-2026-CN-02',N'SP2024-0026',N'Viên',1,0,0,0,N'Magie B6 sáng; giảm co cơ và căng thẳng dài hạn',30,30,6500);
+
+-- CB-2026-CN-03 Đau nhức cơ xương – Người già
+INSERT INTO dbo.ChiTietMauLieu(comboId,mauLieuId,sanPhamId,dvt,sang,trua,chieu,toi,cachDung,soNgay,tongSoLuong,giaDonVi) VALUES
+(N'CB-2026-CN-03',N'CB-2026-CN-03',N'SP2024-0010',N'Viên',1,1,0,0,N'Ibuprofen thận trọng với bệnh thận/dạ dày; sau ăn',5,10,600),
+(N'CB-2026-CN-03',N'CB-2026-CN-03',N'SP2024-0023',N'Viên',1,0,1,0,N'Canxi sáng chiều; không dùng ban đêm tránh sỏi thận',30,60,2833),
+(N'CB-2026-CN-03',N'CB-2026-CN-03',N'SP2024-0021',N'Viên',1,0,0,0,N'Vitamin D3 sáng khi no; tăng hấp thu Canxi tối đa',30,30,7333);
+
+-- CB-2026-MN-01 Mất ngủ – Người lớn
+INSERT INTO dbo.ChiTietMauLieu(comboId,mauLieuId,sanPhamId,dvt,sang,trua,chieu,toi,cachDung,soNgay,tongSoLuong,giaDonVi) VALUES
+(N'CB-2026-MN-01',N'CB-2026-MN-01',N'SP2024-0025',N'Viên',0,0,0,1,N'Melatonin 5mg trước ngủ 30 phút; phòng tối; tắt màn hình',30,30,14000);
+
+-- CB-2026-MN-02 Mất ngủ – Người già
+INSERT INTO dbo.ChiTietMauLieu(comboId,mauLieuId,sanPhamId,dvt,sang,trua,chieu,toi,cachDung,soNgay,tongSoLuong,giaDonVi) VALUES
+(N'CB-2026-MN-02',N'CB-2026-MN-02',N'SP2024-0025',N'Viên',0,0,0,1,N'Melatonin 2.5–5mg trước ngủ; liều thấp hơn người trẻ',30,30,14000),
+(N'CB-2026-MN-02',N'CB-2026-MN-02',N'SP2024-0026',N'Viên',1,0,0,0,N'Magie B6 buổi sáng; giảm căng thẳng thần kinh ban ngày',30,30,6500);
+
+-- CB-2026-MN-03 Căng thẳng – Người lớn/già
+INSERT INTO dbo.ChiTietMauLieu(comboId,mauLieuId,sanPhamId,dvt,sang,trua,chieu,toi,cachDung,soNgay,tongSoLuong,giaDonVi) VALUES
+(N'CB-2026-MN-03',N'CB-2026-MN-03',N'SP2024-0026',N'Viên',1,0,1,0,N'Magie B6 sáng chiều; sau ăn; an thần tự nhiên; không gây nghiện',30,60,6500);
+
+-- CB-2026-VT-01 Vitamin – Trẻ em
+INSERT INTO dbo.ChiTietMauLieu(comboId,mauLieuId,sanPhamId,dvt,sang,trua,chieu,toi,cachDung,soNgay,tongSoLuong,giaDonVi) VALUES
+(N'CB-2026-VT-01',N'CB-2026-VT-01',N'SP2024-0023',N'Viên',1,0,1,0,N'Canxi sáng chiều; sau ăn; hỗ trợ chiều cao',30,60,2833),
+(N'CB-2026-VT-01',N'CB-2026-VT-01',N'SP2024-0021',N'Viên',1,0,0,0,N'Vitamin D3 sáng khi no; tăng hấp thu canxi vào xương',30,30,7333);
+
+-- CB-2026-VT-02 Vitamin – Người lớn
+INSERT INTO dbo.ChiTietMauLieu(comboId,mauLieuId,sanPhamId,dvt,sang,trua,chieu,toi,cachDung,soNgay,tongSoLuong,giaDonVi) VALUES
+(N'CB-2026-VT-02',N'CB-2026-VT-02',N'SP2024-0011',N'Viên',1,0,0,0,N'Vitamin C 1000mg sáng sau ăn; tránh kích ứng dạ dày',30,30,2167),
+(N'CB-2026-VT-02',N'CB-2026-VT-02',N'SP2024-0021',N'Viên',1,0,0,0,N'Vitamin D3 sáng khi no',30,30,7333),
+(N'CB-2026-VT-02',N'CB-2026-VT-02',N'SP2024-0022',N'Viên',1,0,0,0,N'Omega-3 sau bữa ăn có dầu; hỗ trợ tim mạch não bộ',30,30,9333);
+
+-- CB-2026-VT-03 Vitamin – Người già
+INSERT INTO dbo.ChiTietMauLieu(comboId,mauLieuId,sanPhamId,dvt,sang,trua,chieu,toi,cachDung,soNgay,tongSoLuong,giaDonVi) VALUES
+(N'CB-2026-VT-03',N'CB-2026-VT-03',N'SP2024-0023',N'Viên',1,0,1,0,N'Canxi sáng chiều; không dùng đêm tránh sỏi thận',30,60,2833),
+(N'CB-2026-VT-03',N'CB-2026-VT-03',N'SP2024-0021',N'Viên',1,0,0,0,N'Vitamin D3; đặc biệt quan trọng người ít ra nắng',30,30,7333),
+(N'CB-2026-VT-03',N'CB-2026-VT-03',N'SP2024-0022',N'Viên',1,0,0,0,N'Omega-3 giảm viêm bảo vệ tim mạch cho người cao tuổi',30,30,9333);
+
+-- CB-2026-TB-01 Táo bón – Trẻ em
+INSERT INTO dbo.ChiTietMauLieu(comboId,mauLieuId,sanPhamId,dvt,sang,trua,chieu,toi,cachDung,soNgay,tongSoLuong,giaDonVi) VALUES
+(N'CB-2026-TB-01',N'CB-2026-TB-01',N'SP2024-0027',N'Viên',1,0,0,0,N'Probiotics sáng trước ăn; uống nhiều nước; cải thiện dần',14,14,5500),
+(N'CB-2026-TB-01',N'CB-2026-TB-01',N'SP2024-0013',N'Gói', 0,0,1,0,N'1 gói Oresol chiều; tăng lượng nước bổ sung',3,3,3000);
+
+-- CB-2026-TB-02 Táo bón – Người lớn
+INSERT INTO dbo.ChiTietMauLieu(comboId,mauLieuId,sanPhamId,dvt,sang,trua,chieu,toi,cachDung,soNgay,tongSoLuong,giaDonVi) VALUES
+(N'CB-2026-TB-02',N'CB-2026-TB-02',N'SP2024-0027',N'Viên',1,0,1,0,N'Probiotics 2 lần/ngày trước ăn; duy trì 14 ngày',14,28,5500),
+(N'CB-2026-TB-02',N'CB-2026-TB-02',N'SP2024-0048',N'Gói', 0,0,0,1,N'Sorbitol 1 gói tối khi táo bón; không dùng quá 3 ngày liên tiếp',3,3,5000);
+
+-- CB-2026-TB-03 Táo bón – Người già
+INSERT INTO dbo.ChiTietMauLieu(comboId,mauLieuId,sanPhamId,dvt,sang,trua,chieu,toi,cachDung,soNgay,tongSoLuong,giaDonVi) VALUES
+(N'CB-2026-TB-03',N'CB-2026-TB-03',N'SP2024-0027',N'Viên',1,0,0,0,N'Probiotics dài hạn; cải thiện nhu động ruột chậm',30,30,5500),
+(N'CB-2026-TB-03',N'CB-2026-TB-03',N'SP2024-0015',N'Viên',1,1,1,0,N'Domperidon tăng nhu động dạ dày-ruột; uống 30 phút trước ăn',7,21,1333),
+(N'CB-2026-TB-03',N'CB-2026-TB-03',N'SP2024-0048',N'Gói', 0,0,0,1,N'Sorbitol 1 gói tối khi cần; theo dõi điện giải',3,3,5000);
+
+-- CB-2026-MT-01 Mắt mũi họng – Trẻ em
+INSERT INTO dbo.ChiTietMauLieu(comboId,mauLieuId,sanPhamId,dvt,sang,trua,chieu,toi,cachDung,soNgay,tongSoLuong,giaDonVi) VALUES
+(N'CB-2026-MT-01',N'CB-2026-MT-01',N'SP2024-0034',N'Chai',1,0,0,0,N'Nhỏ mắt Osla 1–2 giọt; rửa sạch mắt mỗi sáng',1,1,22000),
+(N'CB-2026-MT-01',N'CB-2026-MT-01',N'SP2024-0014',N'Chai',1,0,0,0,N'Xịt mũi 1 lần mỗi bên khi ngạt; dùng 5–7 ngày',1,1,35000);
+
+-- CB-2026-MT-02 Mắt mũi họng – Người lớn
+INSERT INTO dbo.ChiTietMauLieu(comboId,mauLieuId,sanPhamId,dvt,sang,trua,chieu,toi,cachDung,soNgay,tongSoLuong,giaDonVi) VALUES
+(N'CB-2026-MT-02',N'CB-2026-MT-02',N'SP2024-0033',N'Chai',1,0,0,0,N'V.Rohto 1–2 giọt; giảm mỏi mắt do màn hình; 2–3 lần/ngày',1,1,52000),
+(N'CB-2026-MT-02',N'CB-2026-MT-02',N'SP2024-0014',N'Chai',1,0,0,0,N'Xịt mũi khi ngạt; không quá 3 lần/ngày',1,1,35000),
+(N'CB-2026-MT-02',N'CB-2026-MT-02',N'SP2024-0037',N'Viên',1,0,1,0,N'Strepsils ngậm giảm đau rát họng; sáng tối',5,10,8000);
+
+-- CB-2026-MT-03 Mắt mũi họng – Người già
+INSERT INTO dbo.ChiTietMauLieu(comboId,mauLieuId,sanPhamId,dvt,sang,trua,chieu,toi,cachDung,soNgay,tongSoLuong,giaDonVi) VALUES
+(N'CB-2026-MT-03',N'CB-2026-MT-03',N'SP2024-0034',N'Chai',1,0,0,0,N'Osla nhẹ nhàng; tránh thuốc co mạch nếu có tăng HA',1,1,22000),
+(N'CB-2026-MT-03',N'CB-2026-MT-03',N'SP2024-0037',N'Viên',1,0,1,0,N'Strepsils sáng tối; ngậm tan chậm không nhai; làm dịu họng',7,14,8000);
+GO
+
+/* ============================================================
+   8. CẬP NHẬT viTriId, đồng bộ giaBan
+   ============================================================ */
+UPDATE dbo.SanPham SET viTriId=N'VT-0009' WHERE id IN (N'SP2024-0049',N'SP2024-0050',N'SP2024-0054');
+UPDATE dbo.SanPham SET viTriId=N'VT-0010' WHERE id IN (N'SP2024-0051',N'SP2024-0052',N'SP2024-0053',N'SP2024-0056',N'SP2024-0057');
+UPDATE dbo.SanPham SET viTriId=N'VT-0011' WHERE id IN (N'SP2024-0041',N'SP2024-0042',N'SP2024-0046',N'SP2024-0060');
+UPDATE dbo.SanPham SET viTriId=N'VT-0012' WHERE id = N'SP2024-0048';
+UPDATE dbo.SanPham SET viTriId=N'VT-0013' WHERE id IN (N'SP2024-0043',N'SP2024-0044',N'SP2024-0045',N'SP2024-0058',N'SP2024-0059');
+UPDATE dbo.SanPham SET viTriId=N'VT-0014' WHERE id = N'SP2024-0047';
+UPDATE dbo.SanPham SET viTriId=N'VT-0015' WHERE id = N'SP2024-0055';
+GO
+
+-- Đồng bộ giaBan từ DonViDoLuong theo đơn vị cơ bản
+UPDATE sp
+SET sp.giaBan = dvl.gia
+FROM dbo.SanPham sp
+JOIN dbo.DonViDoLuong dvl ON dvl.sanPhamId = sp.id AND dvl.ten = sp.donViDoCoBan
+WHERE sp.id LIKE N'SP2024-00[456]%' AND sp.giaBan <> dvl.gia;
+GO
+
+/* ============================================================
+   9. KIỂM TRA NHANH
+   ============================================================ */
+PRINT N'=== SẢN PHẨM MỚI (SP2024-0041 → 0060) ===';
+SELECT id, ten, danhMuc, giaBan, nhomBenhLy, viTriId
+FROM dbo.SanPham WHERE id LIKE N'SP2024-004%' OR id LIKE N'SP2024-005%' OR id LIKE N'SP2024-006%'
+ORDER BY id;
+
+PRINT N'=== VỊ TRÍ KỆ MỚI ===';
+SELECT id, maViTri, tenViTri, khuVuc FROM dbo.ViTriThuoc WHERE id LIKE N'VT-001%' ORDER BY id;
+
+PRINT N'=== TỔNG HỢP COMBO THEO NHÓM BỆNH ===';
+SELECT nhomBenh, COUNT(*) AS soCombo FROM dbo.MauLieu WHERE comboId LIKE N'CB-2026-%' GROUP BY nhomBenh ORDER BY nhomBenh;
+
+PRINT N'=== 42 COMBO MẪU LIỀU 2026 ===';
+SELECT comboId, tenCombo, nhomBenh, giaBanCombo FROM dbo.MauLieu WHERE comboId LIKE N'CB-2026-%' ORDER BY nhomBenh, comboId;
+
+PRINT N'=== PATCH HOÀN THÀNH ===';
+GO
+-- Đảm bảo tất cả viTriId trong SanPham đều trỏ đến ViTriThuoc hợp lệ
+-- (gán mặc định cho những SP chưa có)
+UPDATE [dbo].[SanPham]
+SET viTriId = N'VT-0003'
+WHERE viTriId IS NULL OR viTriId NOT IN (SELECT id FROM [dbo].[ViTriThuoc]);
+GO
+
+ALTER TABLE [dbo].[SanPham]
+ADD CONSTRAINT [FK_SanPham_ViTriThuoc]
+FOREIGN KEY ([viTriId]) REFERENCES [dbo].[ViTriThuoc]([id]);
+GO
+-- Đảm bảo không có comboId mồ côi trước khi thêm FK
+DELETE FROM [dbo].[ChiTietMauLieu]
+WHERE comboId NOT IN (SELECT comboId FROM [dbo].[MauLieu]);
+GO
+
+ALTER TABLE [dbo].[ChiTietMauLieu]
+ADD CONSTRAINT [FK_ChiTietMauLieu_MauLieu]
+FOREIGN KEY ([comboId]) REFERENCES [dbo].[MauLieu]([comboId]) ON DELETE CASCADE;
+GO
+CREATE TABLE [dbo].[NhaCungCap] (
+    [id]        NVARCHAR(50)  NOT NULL PRIMARY KEY,
+    [ten]       NVARCHAR(150) NOT NULL,
+    [diaChi]    NVARCHAR(255) NULL,
+    [sdt]       NVARCHAR(15)  NULL,
+    [email]     NVARCHAR(100) NULL,
+    [maSoThue]  NVARCHAR(20)  NULL,
+    [trangThai] NVARCHAR(20)  NOT NULL DEFAULT N'HOAT_DONG',
+    CONSTRAINT [CK_NhaCungCap_TrangThai]
+        CHECK ([trangThai] IN (N'HOAT_DONG', N'NGUNG_HOP_TAC'))
+);
+GO
+
+-- Dữ liệu mẫu khớp với nhà sản xuất trong SanPham
+INSERT INTO [dbo].[NhaCungCap] VALUES
+(N'NCC-0001', N'Pymepharco',          N'TP. Tuy Hòa, Phú Yên',    N'02573822896', N'info@pymepharco.com',   N'4100101123', N'HOAT_DONG'),
+(N'NCC-0002', N'Stada VN',            N'Bình Dương',               N'02743781516', N'info@stada.com.vn',     N'3700400235', N'HOAT_DONG'),
+(N'NCC-0003', N'Traphaco',            N'Hà Nội',                   N'02438584905', N'info@traphaco.com.vn',  N'0100108367', N'HOAT_DONG'),
+(N'NCC-0004', N'Imexpharm',           N'Đồng Tháp',                N'02773877214', N'info@imexpharm.com',    N'1400101095', N'HOAT_DONG'),
+(N'NCC-0005', N'DHG Pharma',          N'Cần Thơ',                  N'02923891433', N'info@dhgpharma.com.vn', N'1800100436', N'HOAT_DONG'),
+(N'NCC-0006', N'Domesco',             N'Đồng Tháp',                N'02773877862', N'info@domesco.com.vn',   N'1400101062', N'HOAT_DONG'),
+(N'NCC-0007', N'GSK Việt Nam',        N'Hà Nội',                   N'02439411100', N'info@gsk.com',          N'0101244889', N'HOAT_DONG'),
+(N'NCC-0008', N'Sanofi Việt Nam',     N'TP.HCM',                   N'02839106200', N'info@sanofi.com',       N'0301452946', N'HOAT_DONG'),
+(N'NCC-0009', N'Công ty Dược phẩm OPV', N'TP.HCM',               N'02838971818', N'info@opv.com.vn',       N'0302435789', N'HOAT_DONG'),
+(N'NCC-0010', N'Nature Made (Nhập khẩu)', N'TP.HCM',             N'02838001122', N'import@naturemade.vn',  N'0302876543', N'HOAT_DONG');
+GO
+
+-- Gắn FK vào PhieuNhapHang
+ALTER TABLE [dbo].[PhieuNhapHang]
+ADD CONSTRAINT [FK_PhieuNhapHang_NhaCungCap]
+FOREIGN KEY ([nhaCungCapId]) REFERENCES [dbo].[NhaCungCap]([id])
+ON UPDATE CASCADE ON DELETE SET NULL;
+GO
+
+-- Cập nhật mẫu: gán nhà cung cấp cho phiếu nhập theo nhà sản xuất
+UPDATE pn
+SET pn.nhaCungCapId = CASE
+    WHEN ct.sanPhamId LIKE 'SP2024-000[12]%' OR ct.sanPhamId IN ('SP2024-0001','SP2024-0006','SP2024-0041') THEN 'NCC-0001' -- Pymepharco
+    WHEN ct.sanPhamId IN ('SP2024-0002','SP2024-0007','SP2024-0050','SP2024-0054') THEN 'NCC-0002' -- Stada
+    WHEN ct.sanPhamId IN ('SP2024-0003','SP2024-0016','SP2024-0040','SP2024-0044','SP2024-0051','SP2024-0056') THEN 'NCC-0003' -- Traphaco
+    WHEN ct.sanPhamId IN ('SP2024-0004','SP2024-0008','SP2024-0052') THEN 'NCC-0004' -- Imexpharm
+    WHEN ct.sanPhamId IN ('SP2024-0011','SP2024-0019','SP2024-0023','SP2024-0039','SP2024-0058') THEN 'NCC-0005' -- DHG
+    WHEN ct.sanPhamId IN ('SP2024-0009','SP2024-0046') THEN 'NCC-0006' -- Domesco
+    WHEN ct.sanPhamId = 'SP2024-0005' THEN 'NCC-0007' -- GSK
+    WHEN ct.sanPhamId = 'SP2024-0047' THEN 'NCC-0008' -- Sanofi
+    WHEN ct.sanPhamId = 'SP2024-0010' THEN 'NCC-0009' -- OPV
+    ELSE 'NCC-0001'
+END
+FROM [dbo].[PhieuNhapHang] pn
+JOIN [dbo].[ChiTietPhieuNhapHang] ct ON ct.phieuNhapId = pn.id
+WHERE pn.nhaCungCapId IS NULL;
 GO
