@@ -5,14 +5,14 @@ import java.util.Objects;
 import Enumeration.VaiTro;
 
 public class TaiKhoan {
-	private String id;
+	private String maTaiKhoan;
 	private NhanVien nhanVienId;
 	private VaiTro vaiTro;
 	private String tenDangNhap;
 	private String matKhau;
 	public TaiKhoan(String id, NhanVien nhanVienId, VaiTro vaiTro, String tenDangNhap, String matKhau) {
 		super();
-		this.id = id;
+		this.maTaiKhoan = id;
 		this.nhanVienId = nhanVienId;
 		this.vaiTro = vaiTro;
 		this.tenDangNhap = tenDangNhap;
@@ -24,11 +24,11 @@ public class TaiKhoan {
 		// TODO Auto-generated constructor stub
 	}
 
-	public String getId() {
-		return id;
+	public String getMaTaiKhoan() {
+		return maTaiKhoan;
 	}
-	public void setId(String id) {
-		this.id = id;
+	public void setMaTaiKhoan(String id) {
+		this.maTaiKhoan = id;
 	}
 	public NhanVien getNhanVienId() {
 		return nhanVienId;
@@ -57,7 +57,7 @@ public class TaiKhoan {
 	
 	@Override
 	public int hashCode() {
-		return Objects.hash(id, matKhau, nhanVienId, tenDangNhap, vaiTro);
+		return Objects.hash(maTaiKhoan, matKhau, nhanVienId, tenDangNhap, vaiTro);
 	}
 
 	@Override
@@ -69,14 +69,14 @@ public class TaiKhoan {
 		if (getClass() != obj.getClass())
 			return false;
 		TaiKhoan other = (TaiKhoan) obj;
-		return Objects.equals(id, other.id) && Objects.equals(matKhau, other.matKhau)
+		return Objects.equals(maTaiKhoan, other.maTaiKhoan) && Objects.equals(matKhau, other.matKhau)
 				&& Objects.equals(nhanVienId, other.nhanVienId) && Objects.equals(tenDangNhap, other.tenDangNhap)
 				&& vaiTro == other.vaiTro;
 	}
 
 	@Override
 	public String toString() {
-		return "TaiKhoan [id=" + id + ", nhanVienId=" + nhanVienId + ", vaiTro=" + vaiTro + ", tenDangNhap="
+		return "TaiKhoan [maTaiKhoan=" + maTaiKhoan + ", nhanVienId=" + nhanVienId + ", vaiTro=" + vaiTro + ", tenDangNhap="
 				+ tenDangNhap + ", matKhau=" + matKhau + "]";
 	}
 	
