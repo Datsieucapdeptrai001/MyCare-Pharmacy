@@ -135,7 +135,7 @@ public class BUS_SanPham {
                 safe(vietTat).trim(), safe(nsx).trim(), safe(hoatChat).trim(), vat,
                 safe(hamLuong).trim(), safe(moTa).trim(), safe(dvt).trim(), giaBan,
                 safe(maVach).trim(), safe(nhomBenhLy).trim(), safe(viTriId).trim());
-        if (ok) daoSanPham.luuDonViQuyDoi(id.trim(), dvt, giaBan, dsDonVi);
+        if (ok && dsDonVi != null) daoSanPham.luuDonViQuyDoi(id.trim(), dvt, giaBan, dsDonVi);
         return ok;
     }
 
