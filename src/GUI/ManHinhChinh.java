@@ -1206,15 +1206,16 @@ public class ManHinhChinh extends JPanel {
         p.setLayout(new BorderLayout(0, 8));
         p.setPreferredSize(new Dimension(1050, 260));
         p.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
-        int cnt = busThongKe.getSoLoHangSapHetHanKhoang(90);
+
+        // --- HEADER (badge cập nhật sau khi thread xong) ---
         JPanel h2 = new JPanel(new BorderLayout());
         h2.setOpaque(false);
-        JLabel lbT = new JLabel("Lô hàng sắp hết hạn (trong 90 ngày)");
+        JLabel lbT = new JLabel("Lô hàng sắp hết hạn (trong 180 ngày)");
         lbT.setIcon(MenuIcon.IC_WARNING);
         lbT.setIconTextGap(6);
         lbT.setFont(new Font("Segoe UI", Font.BOLD, 12));
         lbT.setForeground(ORANGE);
-        JLabel badge = new JLabel(" " + cnt + " lô ", SwingConstants.CENTER);
+        JLabel badge = new JLabel(" ... lô ", SwingConstants.CENTER);
         badge.setOpaque(true);
         badge.setBackground(ORANGE);
         badge.setForeground(Color.WHITE);
@@ -1233,15 +1234,31 @@ public class ManHinhChinh extends JPanel {
         t.setRowHeight(26);
         t.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 11));
 
-        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
-        List<Object[]> dsHetHan = busThongKe.getLoHangSapHetHanNhanh(90);
-        if (dsHetHan != null) {
-            for (Object[] rs : dsHetHan) {
-                int cl = (int) rs[4];
-                m.addRow(new Object[] { rs[0], rs[1], String.format("%,d", (int) rs[2]), sdf.format((Timestamp) rs[3]),
-                        cl <= 0 ? "Đã hết hạn" : cl + " ngày" });
+        // --- Load dữ liệu trên background thread ---
+        new Thread(() -> {
+            try {
+                int cnt = busThongKe.getSoLoHangSapHetHanKhoang(180);
+                List<Object[]> dsHetHan = busThongKe.getLoHangSapHetHanNhanh(180);
+                SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
+                SwingUtilities.invokeLater(() -> {
+                    badge.setText(" " + cnt + " lô ");
+                    if (dsHetHan != null) {
+                        for (Object[] rs : dsHetHan) {
+                            int cl = (int) rs[4];
+                            m.addRow(new Object[] {
+                                rs[0], rs[1],
+                                String.format("%,d", (int) rs[2]),
+                                sdf.format((Timestamp) rs[3]),
+                                cl <= 0 ? "Đã hết hạn" : cl + " ngày"
+                            });
+                        }
+                    }
+                });
+            } catch (Exception ex) {
+                ex.printStackTrace();
             }
-        }
+        }).start();
+
         t.getColumnModel().getColumn(4).setCellRenderer((tbl2, val, sel, foc, r, c) -> {
             JLabel l = new JLabel(String.valueOf(val), SwingConstants.CENTER);
             l.setOpaque(true);

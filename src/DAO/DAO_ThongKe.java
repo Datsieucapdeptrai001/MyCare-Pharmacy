@@ -1322,9 +1322,10 @@ public class DAO_ThongKe {
 
     public List<Object[]> getLoHangSapHetHanNhanh(int days) {
         List<Object[]> list = new ArrayList<>();
-        String sql = "SELECT TOP 8 sp.ten, lh.soLoHang, lh.soLuongLoHang, lh.ngayHetHan, DATEDIFF(DAY,GETDATE(),lh.ngayHetHan) cl "
+        String sql = "SELECT TOP 100 sp.ten, lh.soLoHang, lh.soLuongLoHang, lh.ngayHetHan, DATEDIFF(DAY,GETDATE(),lh.ngayHetHan) cl "
                 + "FROM LoHang lh JOIN SanPham sp ON lh.sanPhamId=sp.id "
                 + "WHERE lh.ngayHetHan IS NOT NULL AND DATEDIFF(DAY,GETDATE(),lh.ngayHetHan)<=? "
+                + "AND lh.soLuongLoHang > 0 "
                 + "ORDER BY lh.ngayHetHan ASC";
         try (PreparedStatement ps = getConn().prepareStatement(sql)) {
             ps.setInt(1, days);
