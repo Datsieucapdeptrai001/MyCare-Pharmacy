@@ -153,8 +153,7 @@ public class MainDashboard extends JFrame {
         InputMap inputMap = getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
         ActionMap actionMap = getRootPane().getActionMap();
 
-        // Gán phím F1 -> F9 cho các nút menu (Dựa theo index danh sách quyền của tài
-        // khoản)
+        // Gán phím F1 -> F9 cho các nút menu (Dựa theo index danh sách quyền của tài khoản)
         for (int i = 0; i < menuButtons.size(); i++) {
             JButton btn = menuButtons.get(i);
             int hotkeyNum = i + 1;
@@ -170,9 +169,6 @@ public class MainDashboard extends JFrame {
                         btn.doClick(); // Kích hoạt chuyển tab y như click chuột
                     }
                 });
-
-                // Thêm tooltip để hướng dẫn người dùng khi rê chuột vào menu
-                btn.setToolTipText("Phím tắt nhanh: F" + hotkeyNum);
 
                 if (btn instanceof MenuShortcutButton) {
                     ((MenuShortcutButton) btn).setShortcutText("F" + hotkeyNum);
@@ -427,11 +423,29 @@ public class MainDashboard extends JFrame {
         this.dispose();
         new MainDashboard().setVisible(true);
     }
+
+    // =================================================================================
+    // HIỂN THỊ PHÍM TẮT DẠNG BADGE CHỈ KHI RÊ CHUỘT
+    // =================================================================================
     class MenuShortcutButton extends JButton {
         private String shortcutText = "";
+        private boolean isHovered = false;
 
         public MenuShortcutButton(String text) {
             super(text);
+            addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseEntered(MouseEvent e) {
+                    isHovered = true;
+                    repaint();
+                }
+
+                @Override
+                public void mouseExited(MouseEvent e) {
+                    isHovered = false;
+                    repaint();
+                }
+            });
         }
 
         public void setShortcutText(String shortcutText) {
@@ -451,22 +465,37 @@ public class MainDashboard extends JFrame {
 
             super.paintComponent(g);
 
-            if (shortcutText != null && !shortcutText.trim().isEmpty()) {
+            if (isHovered && shortcutText != null && !shortcutText.trim().isEmpty()) {
                 Graphics2D gShortcut = (Graphics2D) g.create();
                 gShortcut.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-                gShortcut.setFont(new Font("Segoe UI", Font.BOLD, 12));
-                gShortcut.setColor(new Color(203, 213, 225));
-
+                gShortcut.setFont(new Font("Segoe UI", Font.BOLD, 13));
+                
                 FontMetrics fm = gShortcut.getFontMetrics();
-                int x = getWidth() - fm.stringWidth(shortcutText) - 14;
-                int y = (getHeight() - fm.getHeight()) / 2 + fm.getAscent();
+                int textWidth = fm.stringWidth(shortcutText);
+                int textHeight = fm.getHeight();
+                
+                int paddingX = 8;
+                int paddingY = 4;
+                int boxWidth = textWidth + paddingX * 2;
+                int boxHeight = textHeight + paddingY * 2;
+                
+                int x = getWidth() - boxWidth - 14;
+                int y = (getHeight() - boxHeight) / 2;
 
-                gShortcut.drawString(shortcutText, x, y);
+                gShortcut.setColor(new Color(255, 255, 255, 45)); 
+                gShortcut.fillRoundRect(x, y, boxWidth, boxHeight, 8, 8);
+
+                gShortcut.setColor(Color.WHITE); 
+                int textX = x + paddingX;
+                int textY = y + (boxHeight - textHeight) / 2 + fm.getAscent();
+                gShortcut.drawString(shortcutText, textX, textY);
+                
                 gShortcut.dispose();
             }
         }
     }
+
     // =================================================================================
     // CÁC HÀM UI CUSTOM BO GÓC (RoundedButton, RoundedPanel)
     // =================================================================================
@@ -799,8 +828,7 @@ public class MainDashboard extends JFrame {
 
         final JButton btnLogout = createMenuButton("Đăng xuất", true);
         btnLogout.setIcon(new MenuIcon("LOGOUT"));
-        btnLogout.setToolTipText("Phím tắt nhanh: F12");
-
+        
         if (btnLogout instanceof MenuShortcutButton) {
             ((MenuShortcutButton) btnLogout).setShortcutText("F12");
         }
@@ -816,7 +844,7 @@ public class MainDashboard extends JFrame {
     }
 
     private JButton createMenuButton(String text, boolean isLogout) {
-    	final MenuShortcutButton btn = new MenuShortcutButton(text);
+        final MenuShortcutButton btn = new MenuShortcutButton(text);
         btn.setPreferredSize(new Dimension(220, 46));
         btn.setHorizontalAlignment(SwingConstants.LEFT);
         btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
