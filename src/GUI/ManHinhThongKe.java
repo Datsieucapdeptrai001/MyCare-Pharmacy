@@ -1,4 +1,5 @@
 package GUI;
+import Entity.BoLocThongKe;
 
 import Utils.UserSession;
 import Utils.MenuIcon;
@@ -208,8 +209,9 @@ public class ManHinhThongKe extends JPanel {
     @Override
     public void addNotify() {
         super.addNotify();
-        // Chỉ refresh nếu data chưa được load (tránh double-load khi init)
-        SwingUtilities.invokeLater(() -> refreshAll());
+        if (cboNhanVien != null) {
+            SwingUtilities.invokeLater(() -> refreshAll());
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -515,15 +517,15 @@ public class ManHinhThongKe extends JPanel {
         selectedNVIdx = idx;
         if (chartNVDaily != null) chartNVDaily.setFilter(idx);
         if (chartNVShift != null) chartNVShift.setFilter(idx);
-        if (tblNVDetail  != null) tblNVDetail.refreshData();
+        if (tblNVDetail  != null) tblNVDetail.setFilter(idx);
         repaint();
     }
 
     // ─────────────────────────────────────────────────────────────────────────
     // BUILD CONDITION
     // ─────────────────────────────────────────────────────────────────────────
-    private BUS.BUS_ThongKe.ThongKeFilter buildCond() {
-        BUS.BUS_ThongKe.ThongKeFilter filter = new BUS.BUS_ThongKe.ThongKeFilter();
+    private Entity.BoLocThongKe buildCond() {
+        Entity.BoLocThongKe filter = new Entity.BoLocThongKe();
 
         // -----------------------------------------------------------------
         // ĐOẠN FIX: Lấy thẳng biến currentYear cậu đã lưu sẵn
@@ -579,7 +581,7 @@ public class ManHinhThongKe extends JPanel {
         return filter;
     }
 
-    private BUS.BUS_ThongKe.ThongKeFilter buildCondHD() { return buildCond(); }
+    private Entity.BoLocThongKe buildCondHD() { return buildCond(); }
 
     private String buildCondString(String dateColumn) {
         switch (modeLocThoiGian) {
@@ -620,7 +622,7 @@ public class ManHinhThongKe extends JPanel {
     private String buildCondPN() { return buildCondString("ngayNhap"); }
 
     private void loadDataFromDB(int year) {
-        final BUS.BUS_ThongKe.ThongKeFilter fCondHD = buildCondHD();
+        final Entity.BoLocThongKe fCondHD = buildCondHD();
         new Thread(() -> {
             try {
                 java.util.List<String[]> nvList = busThongKe.getDuocSiList();
@@ -647,13 +649,13 @@ public class ManHinhThongKe extends JPanel {
                 // ──────────────────────────────────────────────────────────────
                 // BIỂU ĐỒ DT-CP-LN: Load động theo kỳ lọc hiện tại
                 // ──────────────────────────────────────────────────────────────
-                BUS.BUS_ThongKe.ThongKeFilter filterBieuDo;
+                Entity.BoLocThongKe filterBieuDo;
                 String chartGroupBy;
                 String chartSubtitleStr;
 
                 if ("NAM".equals(modeLocThoiGian)) {
                     // Cả năm → 12 tháng
-                    filterBieuDo = new BUS.BUS_ThongKe.ThongKeFilter();
+                    filterBieuDo = new Entity.BoLocThongKe();
                     filterBieuDo.maNV = fCondHD.maNV;
                     filterBieuDo.year = year;
                     filterBieuDo.modeLocThoiGian = "NAM";
@@ -730,7 +732,7 @@ public class ManHinhThongKe extends JPanel {
                 for (int i = 0; i < 30; i++)
                     tmp_DAILY_30_DATES[29-i] = today.minusDays(i).format(dtf);
                 
-                BUS.BUS_ThongKe.ThongKeFilter filterDaily30 = new BUS.BUS_ThongKe.ThongKeFilter();
+                Entity.BoLocThongKe filterDaily30 = new Entity.BoLocThongKe();
                 filterDaily30.maNV = fCondHD.maNV; 
                 filterDaily30.fromDate = java.sql.Date.valueOf(today.minusDays(29));
                 filterDaily30.toDate   = java.sql.Date.valueOf(today);
@@ -890,7 +892,7 @@ public class ManHinhThongKe extends JPanel {
 
     /** Load dữ liệu tab Đơn hàng */
     private void loadDonHangTab() {
-        final BUS.BUS_ThongKe.ThongKeFilter f = buildCondHD();
+        final Entity.BoLocThongKe f = buildCondHD();
         if (lblDonPeriod != null) lblDonPeriod.setText(getKyString() + " " + currentYear);
         new Thread(() -> {
         	double[] kpi = busThongKe.getKpiTongQuat(f);
@@ -974,7 +976,7 @@ public class ManHinhThongKe extends JPanel {
         }).start();
     }
 
-    private void loadKhachHang(int year, BUS.BUS_ThongKe.ThongKeFilter condHD) {
+    private void loadKhachHang(int year, Entity.BoLocThongKe condHD) {
         new Thread(() -> {
             Object[] kpi = busThongKe.getKpiKhachHang();
             int tk=(int)kpi[0], kc=(int)kpi[1], td=(int)kpi[2];
@@ -1335,7 +1337,7 @@ public class ManHinhThongKe extends JPanel {
         cards.add(makeClickableKpiCard("Doanh thu thuần", kpiDTVal, kpiDTSub, "TAB_CHART", "#EEF2FF",
                 hdrsDTT, () -> {
                     java.util.List<Object[]> rows = new ArrayList<>();
-                    BUS.BUS_ThongKe.ThongKeFilter f = buildCond();
+                    Entity.BoLocThongKe f = buildCond();
                     String groupBy = ("HOM_NAY".equals(modeLocThoiGian) || "TUAN".equals(modeLocThoiGian) || "TUYCHINH".equals(modeLocThoiGian)) ? "NGAY" : "THANG";
                     for (Object[] row : busThongKe.getBaoCaoTaiChinh(f, groupBy))
                         rows.add(new Object[]{ row[0],
@@ -1348,7 +1350,7 @@ public class ManHinhThongKe extends JPanel {
         cards.add(makeClickableKpiCard("Giá vốn hàng bán", kpiGVVal, kpiGVSub, "STORE", "#F3E5F5",
                 hdrsGV, () -> {
                     java.util.List<Object[]> rows = new ArrayList<>();
-                    BUS.BUS_ThongKe.ThongKeFilter f = buildCond();
+                    Entity.BoLocThongKe f = buildCond();
                     String groupBy = ("HOM_NAY".equals(modeLocThoiGian) || "TUAN".equals(modeLocThoiGian) || "TUYCHINH".equals(modeLocThoiGian)) ? "NGAY" : "THANG";
                     for (Object[] row : busThongKe.getBaoCaoTaiChinh(f, groupBy)) {
                         double dtt  = (double) row[4];
@@ -1366,7 +1368,7 @@ public class ManHinhThongKe extends JPanel {
         cards.add(makeClickableKpiCard("Lợi nhuận gộp", kpiLNGVal, kpiLNGSub, "TAB_CHART", "#E8F5E9",
                 hdrsGV, () -> {
                     java.util.List<Object[]> rows = new ArrayList<>();
-                    BUS.BUS_ThongKe.ThongKeFilter f = buildCond();
+                    Entity.BoLocThongKe f = buildCond();
                     String groupBy = ("HOM_NAY".equals(modeLocThoiGian) || "TUAN".equals(modeLocThoiGian) || "TUYCHINH".equals(modeLocThoiGian)) ? "NGAY" : "THANG";
                     for (Object[] row : busThongKe.getBaoCaoTaiChinh(f, groupBy)) {
                         double dtt  = (double) row[4];
@@ -1384,7 +1386,7 @@ public class ManHinhThongKe extends JPanel {
         cards.add(makeClickableKpiCard("Thuế VAT thu hộ", kpiTBVal, kpiTBSub, "DOCUMENT", "#FFF3E0",
                 hdrsVAT, () -> {
                     java.util.List<Object[]> rows = new ArrayList<>();
-                    BUS.BUS_ThongKe.ThongKeFilter f = buildCond();
+                    Entity.BoLocThongKe f = buildCond();
                     String groupBy = ("HOM_NAY".equals(modeLocThoiGian) || "TUAN".equals(modeLocThoiGian) || "TUYCHINH".equals(modeLocThoiGian)) ? "NGAY" : "THANG";
                     for (Object[] row : busThongKe.getBaoCaoTaiChinh(f, groupBy)) {
                         double dtGop    = (double) row[1]; // Doanh thu gộp (bán ra)
@@ -2685,34 +2687,7 @@ public class ManHinhThongKe extends JPanel {
             detailSp.getVerticalScrollBar().setUI(new ModernScrollBarUI());
             attachDynamicRows(tbl, detailSp);
 
-            // ── Double-click: xem lại Bill Kết Ca gần nhất của nhân viên ──────
-            tbl.addMouseListener(new MouseAdapter() {
-                @Override
-                public void mouseClicked(MouseEvent e) {
-                    if (e.getClickCount() < 2) return;
-                    int row = tbl.rowAtPoint(e.getPoint());
-                    // Bỏ qua dòng TỔNG (dòng cuối) và dòng ngoài phạm vi
-                    if (row < 0 || row >= visibleMaNVList.size()) return;
-
-                    String maNV = visibleMaNVList.get(row);
-                    int nvIdx = findNVIdx(maNV);
-                    String tenNV = (nvIdx >= 0 && nvIdx < NV_NAMES.length) ? NV_NAMES[nvIdx] : maNV;
-
-                    // Lấy ca đã đóng gần nhất từ DB
-                    CaLamViec ca = busCaLamViec.getCaDaKetThucGanNhat(maNV);
-                    if (ca == null) {
-                        JOptionPane.showMessageDialog(
-                            SwingUtilities.getWindowAncestor(ManHinhThongKe.this),
-                            "Nhân viên này chưa có ca làm việc nào đã kết thúc.",
-                            "Không tìm thấy ca", JOptionPane.INFORMATION_MESSAGE);
-                        return;
-                    }
-
-                    Frame parentFrame = (Frame) SwingUtilities.getWindowAncestor(
-                            ManHinhThongKe.this);
-                    ManHinhChinh.hienThiBillKetCaLichSu(parentFrame, ca, tenNV);
-                }
-            });
+            // Double-click bill kết ca đã bị xóa (không còn dùng)
 
             add(detailSp, BorderLayout.CENTER);
         }
@@ -3327,7 +3302,7 @@ public class ManHinhThongKe extends JPanel {
         return p;
     }
 
-    private void reloadTopSP(BUS.BUS_ThongKe.ThongKeFilter condHD, int year) {
+    private void reloadTopSP(Entity.BoLocThongKe condHD, int year) {
         if (modelTopSP == null)
             return;
         modelTopSP.setRowCount(0);
@@ -3479,7 +3454,7 @@ public class ManHinhThongKe extends JPanel {
     // Mỗi dòng: Kỳ | DT gộp | (−)VAT | (−)Hoàn trả | DT thuần | Giá vốn | LN gộp
     // Dòng cuối: tổng cộng toàn kỳ
     // ─────────────────────────────────────────────────────────────────────────
-    private void reloadTaiChinh(BUS.BUS_ThongKe.ThongKeFilter condHD) {
+    private void reloadTaiChinh(Entity.BoLocThongKe condHD) {
         if (modelTaiChinh == null) return;
         modelTaiChinh.setRowCount(0);
         new Thread(() -> {
@@ -4671,12 +4646,12 @@ public class ManHinhThongKe extends JPanel {
         });
 
         tbl.setFillsViewportHeight(false);
-        tbl.setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN);
-        tbl.getColumnModel().getColumn(0).setPreferredWidth(150);
-        tbl.getColumnModel().getColumn(1).setPreferredWidth(60);
-        tbl.getColumnModel().getColumn(2).setPreferredWidth(65);
-        tbl.getColumnModel().getColumn(3).setPreferredWidth(130);
-        tbl.getColumnModel().getColumn(4).setMinWidth(200);
+        tbl.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+        tbl.getColumnModel().getColumn(0).setPreferredWidth(200); // Sản phẩm – đủ thấy tên đầy đủ
+        tbl.getColumnModel().getColumn(1).setPreferredWidth(70);  // Bán/năm
+        tbl.getColumnModel().getColumn(2).setPreferredWidth(75);  // Biên LN
+        tbl.getColumnModel().getColumn(3).setPreferredWidth(160); // Gợi ý KM
+        tbl.getColumnModel().getColumn(4).setPreferredWidth(320); // Lý do – đủ thấy hết text
 
         JScrollPane sp = new JScrollPane(tbl);
         sp.setBorder(BorderFactory.createEmptyBorder());
