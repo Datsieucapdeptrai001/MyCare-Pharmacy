@@ -50,7 +50,7 @@ public class ManHinhHuongDan extends JPanel {
     private final List<FaqItem> dsFaq = new ArrayList<>();
     private final List<SidebarBtn> sidebarBtns = new ArrayList<>();
 
-    private int activeTab = 0; // 0: Tất cả, 1: Tài liệu, 2: FAQ, 3: Video
+    private int activeTab = 0; // 0: Tất cả, 1: Tài liệu, 2: FAQ
 
     private static final Color BG_APP = new Color(241, 245, 249);
     private static final Color BG_CARD = Color.WHITE;
@@ -116,8 +116,6 @@ public class ManHinhHuongDan extends JPanel {
         addSidebarBtn("HOME", "Tất cả nội dung", 0);
         addSidebarBtn("DOCUMENT", "Tài liệu hướng dẫn", 1);
         addSidebarBtn("HELP", "Câu hỏi thường gặp", 2);
-        addSidebarBtn("VIDEO", "Video hướng dẫn", 3);
-
         topBox.add(sidebarPanel);
         sidebar.add(topBox, BorderLayout.NORTH);
 
@@ -198,7 +196,7 @@ public class ManHinhHuongDan extends JPanel {
         titleRow.add(lblIcon);
         titleRow.add(lblTitle);
 
-        JLabel lblSub = new JLabel("Khám phá tài liệu, FAQ và video hướng dẫn"); 
+        JLabel lblSub = new JLabel("Khám phá tài liệu hướng dẫn và câu hỏi thường gặp");
         lblSub.setFont(FONT_PLAIN_14);
         lblSub.setForeground(SUBTEXT);
         lblSub.setBorder(new EmptyBorder(0, 10, 0, 0));
@@ -288,25 +286,24 @@ public class ManHinhHuongDan extends JPanel {
 
     private void renderContent() {
         contentPanel.removeAll();
+
         String keyword = txtSearch == null || txtSearch.getText().equals("Tìm kiếm...")
-                ? "" : txtSearch.getText().trim().toLowerCase();
+                ? ""
+                : txtSearch.getText().trim().toLowerCase();
+
         int count = 0;
 
-        if (activeTab == 0 || activeTab == 1 || activeTab == 3) {
+        if (activeTab == 0 || activeTab == 1) {
             boolean hasTitle = false;
-            for (TaiLieuItem item : dsTaiLieu) {
-                if (activeTab == 3 && !item.isVideo()) continue;
 
+            for (TaiLieuItem item : dsTaiLieu) {
                 if (matchKeyword(keyword, item.title, item.description, item.tag)) {
                     if (!hasTitle) {
-                        if (activeTab == 3) {
-                            contentPanel.add(createSectionTitle("VIDEO", "VIDEO HƯỚNG DẪN"));
-                        } else {
-                            contentPanel.add(createSectionTitle("DOCUMENT", "TÀI LIỆU HỆ THỐNG"));
-                        }
+                        contentPanel.add(createSectionTitle("DOCUMENT", "TÀI LIỆU HƯỚNG DẪN"));
                         contentPanel.add(Box.createVerticalStrut(16));
                         hasTitle = true;
                     }
+
                     contentPanel.add(createDocumentCard(item));
                     contentPanel.add(Box.createVerticalStrut(16));
                     count++;
@@ -316,6 +313,7 @@ public class ManHinhHuongDan extends JPanel {
 
         if (activeTab == 0 || activeTab == 2) {
             boolean hasTitle = false;
+
             for (FaqItem faq : dsFaq) {
                 if (matchKeyword(keyword, faq.question, faq.answer)) {
                     if (!hasTitle) {
@@ -324,6 +322,7 @@ public class ManHinhHuongDan extends JPanel {
                         contentPanel.add(Box.createVerticalStrut(16));
                         hasTitle = true;
                     }
+
                     contentPanel.add(createFaqCard(faq));
                     contentPanel.add(Box.createVerticalStrut(12));
                     count++;
@@ -338,7 +337,7 @@ public class ManHinhHuongDan extends JPanel {
         contentPanel.revalidate();
         contentPanel.repaint();
     }
-
+    
     private JPanel createSectionTitle(String iconType, String text) {
         JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
         row.setOpaque(false);
@@ -379,13 +378,16 @@ public class ManHinhHuongDan extends JPanel {
 
     private JPanel createDocumentCard(TaiLieuItem item) {
         HoverRoundedPanel card = new HoverRoundedPanel(16, BG_CARD, new Color(248, 250, 252));
-        card.setLayout(new BorderLayout(20, 0));
+        card.setLayout(new BorderLayout(18, 0));
         card.setBorder(new CompoundRoundBorder(
-                new RoundedLineBorder(BORDER, 1, 16),
+                new RoundedLineBorder(item.expanded ? PRIMARY : BORDER, 1, 16),
                 new EmptyBorder(16, 20, 16, 20)
         ));
-        
-        card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 120));
+
+        card.setMaximumSize(new Dimension(
+                Integer.MAX_VALUE,
+                item.expanded ? Integer.MAX_VALUE : 120
+        ));
         card.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
         JPanel iconBadge = new JPanel(new BorderLayout()) {
@@ -398,72 +400,92 @@ public class ManHinhHuongDan extends JPanel {
                 g2.dispose();
             }
         };
+
         iconBadge.setOpaque(false);
-        iconBadge.setPreferredSize(new Dimension(60, 60));
-        
+        iconBadge.setPreferredSize(new Dimension(58, 58));
+
         JLabel lblIcon = new JLabel(new MenuIcon(item.icon), SwingConstants.CENTER);
         lblIcon.setForeground(item.featured ? Color.WHITE : PRIMARY);
         iconBadge.add(lblIcon, BorderLayout.CENTER);
 
-        JPanel infoBox = new JPanel();
-        infoBox.setOpaque(false);
-        infoBox.setLayout(new BoxLayout(infoBox, BoxLayout.Y_AXIS));
+        JPanel centerBox = new JPanel();
+        centerBox.setOpaque(false);
+        centerBox.setLayout(new BoxLayout(centerBox, BoxLayout.Y_AXIS));
+
+        JPanel titleRow = new JPanel(new BorderLayout());
+        titleRow.setOpaque(false);
 
         JLabel lblTitle = new JLabel(item.title);
         lblTitle.setFont(FONT_BOLD_14);
-        lblTitle.setForeground(TEXT);
+        lblTitle.setForeground(item.expanded ? PRIMARY : TEXT);
 
-        JLabel lblDesc = new JLabel(item.description);
+        JLabel lblArrow = new JLabel(new MenuIcon(item.expanded ? "CLOSE" : "ADD"));
+        lblArrow.setForeground(item.expanded ? PRIMARY : SUBTEXT);
+
+        titleRow.add(lblTitle, BorderLayout.CENTER);
+        titleRow.add(lblArrow, BorderLayout.EAST);
+
+        JLabel lblDesc = new JLabel("<html><div style='width:650px;'>"
+                + escapeHtml(item.description)
+                + "</div></html>");
         lblDesc.setFont(FONT_PLAIN_14);
         lblDesc.setForeground(SUBTEXT);
 
-        infoBox.add(Box.createVerticalStrut(4));
-        infoBox.add(lblTitle);
-        infoBox.add(Box.createVerticalStrut(6));
-        infoBox.add(lblDesc);
+        JPanel metaRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        metaRow.setOpaque(false);
+        metaRow.add(createMetaLabel("TIME", item.duration, SUBTEXT));
+        metaRow.add(createMetaLabel("DOCUMENT", item.tag, SUBTEXT));
 
-        JPanel rightBox = new JPanel();
-        rightBox.setOpaque(false);
-        rightBox.setLayout(new BoxLayout(rightBox, BoxLayout.Y_AXIS));
+        centerBox.add(titleRow);
+        centerBox.add(Box.createVerticalStrut(6));
+        centerBox.add(lblDesc);
+        centerBox.add(Box.createVerticalStrut(10));
+        centerBox.add(metaRow);
 
-        JLabel lblMeta1 = createMetaLabel("TIME", item.duration, SUBTEXT);
-        lblMeta1.setAlignmentX(Component.RIGHT_ALIGNMENT); // Ép sát vào mép phải
+        if (item.expanded) {
+            JTextArea txtContent = new JTextArea(item.content);
+            txtContent.setEditable(false);
+            txtContent.setFocusable(false);
+            txtContent.setLineWrap(true);
+            txtContent.setWrapStyleWord(true);
+            txtContent.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+            txtContent.setForeground(new Color(51, 65, 85));
+            txtContent.setBackground(new Color(248, 250, 252));
+            txtContent.setBorder(new EmptyBorder(14, 16, 14, 16));
 
-        JLabel lblMeta2 = createMetaLabel(item.isVideo() ? "VIDEO" : "DOCUMENT", item.tag, SUBTEXT);
-        lblMeta2.setAlignmentX(Component.RIGHT_ALIGNMENT);
+            RoundedPanel contentWrapper = new RoundedPanel(14, new Color(248, 250, 252), false);
+            contentWrapper.setLayout(new BorderLayout());
+            contentWrapper.setBorder(new RoundedLineBorder(BORDER, 1, 14));
+            contentWrapper.add(txtContent, BorderLayout.CENTER);
+            contentWrapper.setMaximumSize(new Dimension(Integer.MAX_VALUE, 260));
 
-        rightBox.add(Box.createVerticalGlue());
-        rightBox.add(lblMeta1);
-        rightBox.add(Box.createVerticalStrut(8));
-        rightBox.add(lblMeta2);
-
-        if (item.isVideo()) {
-            JLabel lblLink = createMetaLabel("EXPORT", "Mở video", PRIMARY);
-            lblLink.setAlignmentX(Component.RIGHT_ALIGNMENT);
-            rightBox.add(Box.createVerticalStrut(8));
-            rightBox.add(lblLink);
+            centerBox.add(Box.createVerticalStrut(12));
+            centerBox.add(contentWrapper);
         }
 
-        rightBox.add(Box.createVerticalGlue());
-
         card.add(iconBadge, BorderLayout.WEST);
-        card.add(infoBox, BorderLayout.CENTER);
-        card.add(rightBox, BorderLayout.EAST);
+        card.add(centerBox, BorderLayout.CENTER);
 
         card.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                if (item.isVideo() && item.videoUrl != null && !item.videoUrl.isBlank()) {
-                    moLinkVideo(item.videoUrl);
-                } else {
-                    JOptionPane.showMessageDialog(ManHinhHuongDan.this, "Đang mở tài liệu: " + item.title);
-                }
+                item.expanded = !item.expanded;
+                renderContent();
             }
         });
 
         return card;
     }
+    private String escapeHtml(String s) {
+        if (s == null) {
+            return "";
+        }
 
+        return s
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;");
+    }
     private JLabel createMetaLabel(String iconType, String text, Color color) {
         JLabel lbl = new JLabel(text);
         lbl.setIcon(new MenuIcon(iconType));
@@ -529,54 +551,144 @@ public class ManHinhHuongDan extends JPanel {
         return card;
     }
 
-    private void moLinkVideo(String url) {
-        try {
-            if (!Desktop.isDesktopSupported()) {
-                JOptionPane.showMessageDialog(this, "Máy tính của bạn không hỗ trợ mở trình duyệt web.");
-                return;
-            }
-            Desktop desktop = Desktop.getDesktop();
-            if (desktop.isSupported(Desktop.Action.BROWSE)) {
-                desktop.browse(new URI(url));
-            } else {
-                JOptionPane.showMessageDialog(this, "Không thể mở link video do thiếu quyền hệ thống.");
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-            JOptionPane.showMessageDialog(this, "Có lỗi xảy ra khi cố gắng mở link video!");
-        }
-    }
 
     private void initData() {
         dsTaiLieu.clear();
         dsFaq.clear();
 
         dsTaiLieu.add(new TaiLieuItem(
-                "DOCUMENT", "Hướng dẫn sử dụng cơ bản", "Làm quen giao diện, thanh công cụ và các chức năng chính của hệ thống MYCARE.", "10 phút", "Cơ bản", false, null
-        ));
-        dsTaiLieu.add(new TaiLieuItem(
-                "BOX", "Video: Quản lý kho dược & Cảnh báo", "Hướng dẫn chi tiết cách nhập kho, xuất kho và xem cảnh báo thuốc sắp hết hạn.", "15 phút", "Video", true, "https://www.youtube.com/watch?v=J---aiyznGQ" 
-        ));
-        dsTaiLieu.add(new TaiLieuItem(
-                "PILL", "Quy trình tạo & quản lý Lô hàng", "Cách nhập lô thuốc mới, theo dõi số lượng tồn kho và vòng đời lô hàng.", "12 phút", "Nghiệp vụ", false, null
-        ));
-        dsTaiLieu.add(new TaiLieuItem(
-                "CART", "Quy trình Bán lẻ & Kê đơn", "Các bước tạo hóa đơn nhanh, áp dụng mã khuyến mãi và in biên lai thanh toán.", "8 phút", "Quy trình", false, null
-        ));
-        dsTaiLieu.add(new TaiLieuItem(
-                "CHART", "Video: Xem thống kê & Báo cáo doanh thu", "Hướng dẫn đọc biểu đồ, lọc dữ liệu theo thời gian và xuất báo cáo ra file Excel.", "20 phút", "Video", true, "https://www.youtube.com/watch?v=dQw4w9WgXcQ" 
-        ));
-        dsTaiLieu.add(new TaiLieuItem(
-                "USERS", "Quản lý Nhân sự & Phân quyền", "Thêm tài khoản nhân viên mới, cấp quyền truy cập và kiểm tra lịch sử đăng nhập.", "10 phút", "Hệ thống", false, null
-        ));
-        dsTaiLieu.add(new TaiLieuItem(
-                "SETTING", "Thiết lập Danh mục & Nhà cung cấp", "Cách thêm mới thông tin thuốc, tạo đơn vị tính và lưu trữ hồ sơ Nhà cung cấp.", "15 phút", "Hệ thống", false, null
+                "DOCUMENT",
+                "Hướng dẫn sử dụng cơ bản",
+                "Làm quen giao diện, thanh công cụ và các chức năng chính của hệ thống MYCARE.",
+                "10 phút",
+                "Cơ bản",
+                true,
+                "1. Đăng nhập bằng tài khoản được cấp.\n"
+                        + "2. Tại màn hình chính, chọn chức năng cần thao tác ở thanh menu bên trái.\n"
+                        + "3. Các màn hình chính gồm: Bán hàng, Sản phẩm, Lô hàng, Nhập kho, Xuất kho, Kiểm kê, Thống kê.\n"
+                        + "4. Sử dụng ô tìm kiếm để lọc nhanh dữ liệu theo mã, tên hoặc trạng thái.\n"
+                        + "5. Khi hoàn tất thao tác, kiểm tra lại thông báo hệ thống để biết thao tác thành công hay thất bại."
         ));
 
-        dsFaq.add(new FaqItem("Làm thế nào để thêm một loại thuốc mới vào hệ thống?", "Vào menu Sản phẩm > Chọn Thêm mới. Nhập đầy đủ thông tin bắt buộc (Mã thuốc, Tên thuốc, Giá bán, Lô SX, Hạn sử dụng) rồi bấm Lưu lại.", false));
-        dsFaq.add(new FaqItem("Phần mềm có tự động cảnh báo thuốc hết hạn không?", "Có. Hệ thống tự động kiểm tra mỗi ngày và sẽ hiển thị danh sách các loại thuốc còn dưới 30 ngày sử dụng tại màn hình Trang chủ (Dashboard) cũng như nháy đỏ ở phần Lô Hàng.", false));
-        dsFaq.add(new FaqItem("Cách xuất báo cáo doanh thu ra file Excel?", "Mở màn hình Thống kê > Chọn khoảng thời gian cần xuất ở góc trên màn hình > Nhấn nút 'Xuất Excel' hoặc bấm vào Icon Tải xuống.", false));
-        dsFaq.add(new FaqItem("Tôi quên mật khẩu tài khoản nhân viên, phải làm sao?", "Bạn có thể nhấn vào 'Quên mật khẩu' ở màn hình Đăng nhập để nhận mã OTP qua Email, hoặc nhờ Quản lý (Admin) vào mục Tài khoản để đặt lại mật khẩu giúp bạn.", false));
+        dsTaiLieu.add(new TaiLieuItem(
+                "PILL",
+                "Quy trình tạo & quản lý lô hàng",
+                "Cách nhập lô thuốc mới, theo dõi số lượng tồn kho và vòng đời lô hàng.",
+                "12 phút",
+                "Nghiệp vụ",
+                false,
+                "1. Vào màn hình Lô hàng hoặc Nhập lô hàng.\n"
+                        + "2. Chọn sản phẩm cần nhập lô.\n"
+                        + "3. Nhập số lô, hạn sử dụng, số lượng, giá vốn và kho lưu trữ.\n"
+                        + "4. Hệ thống tạo mã vạch nội bộ cho lô hàng.\n"
+                        + "5. Lô hàng được theo dõi theo số lượng tồn, hạn dùng và trạng thái.\n"
+                        + "6. Lô hết hàng hoặc bị ẩn sẽ không được hiển thị ở màn hình xuất kho.\n"
+                        + "7. Khi bán/xuất kho, ưu tiên lô gần hết hạn trước theo nguyên tắc FEFO."
+        ));
+
+        dsTaiLieu.add(new TaiLieuItem(
+                "CART",
+                "Quy trình bán lẻ & kê đơn",
+                "Các bước tạo hóa đơn nhanh, áp dụng mã khuyến mãi và in biên lai thanh toán.",
+                "8 phút",
+                "Quy trình",
+                false,
+                "1. Vào màn hình Bán hàng.\n"
+                        + "2. Quét mã vạch hoặc tìm sản phẩm theo tên/mã.\n"
+                        + "3. Chọn đúng đơn vị bán như hộp, vỉ hoặc viên.\n"
+                        + "4. Nhập số lượng bán.\n"
+                        + "5. Kiểm tra giỏ hàng, tổng tiền và thông tin khách hàng nếu có.\n"
+                        + "6. Xác nhận thanh toán.\n"
+                        + "7. Hệ thống trừ tồn kho và lưu hóa đơn bán hàng."
+        ));
+
+        dsTaiLieu.add(new TaiLieuItem(
+                "BOX",
+                "Quy trình xuất kho / xuất hủy",
+                "Hướng dẫn xuất lô hàng khỏi kho do bán hàng, trả nhà cung cấp, hủy hàng hoặc tiêu hao nội bộ.",
+                "10 phút",
+                "Kho",
+                false,
+                "1. Vào màn hình Xuất kho / Xuất hủy.\n"
+                        + "2. Quét QR hoặc nhập mã lô/mã vạch nội bộ.\n"
+                        + "3. Kiểm tra đúng sản phẩm, kho và tồn hiện tại.\n"
+                        + "4. Nhập số lượng xuất và chọn lý do xuất.\n"
+                        + "5. Bấm Thêm vào phiếu.\n"
+                        + "6. Kiểm tra danh sách chờ xuất.\n"
+                        + "7. Bấm Xác nhận xuất kho.\n"
+                        + "8. Hệ thống trừ tồn kho và cho xem trước phiếu xuất trước khi in."
+        ));
+
+        dsTaiLieu.add(new TaiLieuItem(
+                "CHECK_CIRCLE",
+                "Quy trình kiểm kê kho",
+                "Đối chiếu tồn hệ thống với tồn thực tế ngoài kho/kệ.",
+                "15 phút",
+                "Kho",
+                false,
+                "1. Vào màn hình Kiểm kê kho.\n"
+                        + "2. Chọn kho cần kiểm kê.\n"
+                        + "3. Có thể nhập tồn thực tế trực tiếp trên bảng hoặc xuất file mẫu kiểm kê.\n"
+                        + "4. Nếu dùng file mẫu, nhân viên đi kiểm thực tế rồi nhập tồn thực tế, tình trạng và lý do.\n"
+                        + "5. Import lại file kiểm kê vào phần mềm.\n"
+                        + "6. Hệ thống tự tính chênh lệch = tồn thực tế - tồn hệ thống.\n"
+                        + "7. Nếu có chênh lệch, phải nhập lý do.\n"
+                        + "8. Bấm Lưu phiếu kiểm kê để cập nhật tồn kho.\n"
+                        + "9. Sau khi lưu, có thể xem trước phiếu kiểm kê rồi in."
+        ));
+
+        dsTaiLieu.add(new TaiLieuItem(
+                "USERS",
+                "Quản lý nhân sự & phân quyền",
+                "Thêm tài khoản nhân viên mới, cấp quyền truy cập và kiểm tra lịch sử đăng nhập.",
+                "10 phút",
+                "Hệ thống",
+                false,
+                "1. Chỉ tài khoản Quản lý được chỉnh thông tin nhân sự và phân quyền.\n"
+                        + "2. Vào màn hình Nhân viên hoặc Tài khoản.\n"
+                        + "3. Thêm thông tin nhân viên: họ tên, số điện thoại, email và vai trò.\n"
+                        + "4. Vai trò chính trong hệ thống gồm Quản lý và Dược sĩ.\n"
+                        + "5. Quản lý có quyền xem báo cáo, quản lý danh mục, kiểm kê và phân quyền.\n"
+                        + "6. Dược sĩ có thể bán hàng, nhập/xuất kho theo quyền được cấp."
+        ));
+
+        dsTaiLieu.add(new TaiLieuItem(
+                "SETTING",
+                "Thiết lập danh mục & nhà cung cấp",
+                "Cách thêm mới thông tin thuốc, tạo đơn vị tính và lưu trữ hồ sơ nhà cung cấp.",
+                "15 phút",
+                "Hệ thống",
+                false,
+                "1. Vào màn hình Sản phẩm để thêm hoặc sửa thông tin thuốc.\n"
+                        + "2. Khai báo đầy đủ tên thuốc, nhóm thuốc, giá bán, đơn vị tính và mã vạch nếu có.\n"
+                        + "3. Thiết lập đơn vị quy đổi như hộp, vỉ, viên để bán/xuất đúng số lượng.\n"
+                        + "4. Vào màn hình Nhà cung cấp để lưu thông tin đơn vị cung ứng.\n"
+                        + "5. Khi nhập lô hàng, chọn đúng nhà cung cấp để phục vụ tra cứu lịch sử nhập."
+        ));
+
+        dsFaq.add(new FaqItem(
+                "Làm thế nào để thêm một loại thuốc mới vào hệ thống?",
+                "Vào menu Sản phẩm > Chọn Thêm mới. Nhập đầy đủ thông tin bắt buộc như mã thuốc, tên thuốc, đơn vị tính, giá bán rồi bấm Lưu.",
+                false
+        ));
+
+        dsFaq.add(new FaqItem(
+                "Phần mềm có tự động cảnh báo thuốc hết hạn không?",
+                "Có. Hệ thống cảnh báo lô đã hết hạn, lô sắp hết hạn trong 30 ngày và lô cận hạn trong 31-180 ngày để ưu tiên xử lý.",
+                false
+        ));
+
+        dsFaq.add(new FaqItem(
+                "Kiểm kê kho có tạo lô mới không?",
+                "Không. Kiểm kê chỉ đối chiếu tồn hệ thống với tồn thực tế của các lô đã có. Nếu phát hiện lô mới, phải nhập lô ở màn hình Nhập lô hàng trước.",
+                false
+        ));
+
+        dsFaq.add(new FaqItem(
+                "Tôi quên mật khẩu tài khoản nhân viên, phải làm sao?",
+                "Có thể dùng chức năng Quên mật khẩu ở màn hình đăng nhập hoặc nhờ Quản lý đặt lại mật khẩu.",
+                false
+        ));
     }
 
     private boolean matchKeyword(String keyword, String... values) {
@@ -670,14 +782,26 @@ public class ManHinhHuongDan extends JPanel {
     }
 
     private static class TaiLieuItem {
-        String icon, title, description, duration, tag, videoUrl;
+        String icon;
+        String title;
+        String description;
+        String duration;
+        String tag;
+        String content;
         boolean featured;
-        TaiLieuItem(String i, String t, String d, String du, String ta, boolean f, String url) {
-            icon = i; title = t; description = d; duration = du; tag = ta; featured = f; videoUrl = url;
-        }
-        boolean isVideo() { return "Video".equalsIgnoreCase(tag); }
-    }
+        boolean expanded;
 
+        TaiLieuItem(String i, String t, String d, String du, String ta, boolean f, String c) {
+            icon = i;
+            title = t;
+            description = d;
+            duration = du;
+            tag = ta;
+            featured = f;
+            content = c;
+            expanded = false;
+        }
+    }
     private static class FaqItem {
         String question, answer;
         boolean expanded;
