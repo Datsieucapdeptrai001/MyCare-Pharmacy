@@ -53,11 +53,11 @@ public class ManHinhChinh extends JPanel {
 
     private Entity.BoLocThongKe getHienTaiFilter() {
         Entity.BoLocThongKe f = new Entity.BoLocThongKe();
-        f.maNV = filterMaNV;
+        f.setMaNV(filterMaNV);
         if (!UserSession.getInstance().isAdmin() && UserSession.getInstance().getCaHienTai() != null) {
-            f.startTime = UserSession.getInstance().getCaHienTai().getThoiGianBatDau();
+            f.setStartTime(UserSession.getInstance().getCaHienTai().getThoiGianBatDau());
         } else {
-            f.ca = (filterCa > 0) ? filterCa : null;
+            f.setCa((filterCa > 0) ? filterCa : null);
         }
         return f;
     }
@@ -1400,28 +1400,28 @@ public class ManHinhChinh extends JPanel {
             java.time.LocalDate now = java.time.LocalDate.now();
             if (currentDoiChieuFilterIndex == 0) {
                 int hour = java.time.LocalTime.now().getHour();
-                filter.fromDate = java.sql.Date.valueOf(now);
-                filter.toDate   = java.sql.Date.valueOf(now);
-                filter.modeLocThoiGian = "TUYCHINH";
-                if (hour >= 6 && hour <= 13)       filter.ca = 1; 
-                else if (hour >= 14 && hour <= 21) filter.ca = 2; 
-                else                               filter.ca = 3; 
+                filter.setFromDate(java.sql.Date.valueOf(now));
+                filter.setToDate(java.sql.Date.valueOf(now));
+                filter.setModeLocThoiGian("TUYCHINH");
+                if (hour >= 6 && hour <= 13)       filter.setCa(1); 
+                else if (hour >= 14 && hour <= 21) filter.setCa(2); 
+                else                               filter.setCa(3); 
             } else if (currentDoiChieuFilterIndex == 1) {
-                filter.fromDate = java.sql.Date.valueOf(now);
-                filter.toDate   = java.sql.Date.valueOf(now);
-                filter.modeLocThoiGian = "TUYCHINH";
+                filter.setFromDate(java.sql.Date.valueOf(now));
+                filter.setToDate(java.sql.Date.valueOf(now));
+                filter.setModeLocThoiGian("TUYCHINH");
             } else if (currentDoiChieuFilterIndex == 2) {
-                filter.fromDate = java.sql.Date.valueOf(now.with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY)));
-                filter.toDate   = java.sql.Date.valueOf(now.with(java.time.temporal.TemporalAdjusters.nextOrSame(java.time.DayOfWeek.SUNDAY)));
-                filter.modeLocThoiGian = "TUYCHINH";
+                filter.setFromDate(java.sql.Date.valueOf(now.with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY))));
+                filter.setToDate(java.sql.Date.valueOf(now.with(java.time.temporal.TemporalAdjusters.nextOrSame(java.time.DayOfWeek.SUNDAY))));
+                filter.setModeLocThoiGian("TUYCHINH");
             } else if (currentDoiChieuFilterIndex == 3) {
-                filter.fromDate = java.sql.Date.valueOf(now.withDayOfMonth(1));
-                filter.toDate   = java.sql.Date.valueOf(now.withDayOfMonth(now.lengthOfMonth()));
-                filter.modeLocThoiGian = "TUYCHINH";
+                filter.setFromDate(java.sql.Date.valueOf(now.withDayOfMonth(1)));
+                filter.setToDate(java.sql.Date.valueOf(now.withDayOfMonth(now.lengthOfMonth())));
+                filter.setModeLocThoiGian("TUYCHINH");
             }
         } else {
             filter = getHienTaiFilter();
-            try { filter.maNV = Utils.UserSession.getInstance().getMaNhanVien(); } catch(Exception ex) {}
+            try { filter.setMaNV(Utils.UserSession.getInstance().getMaNhanVien()); } catch(Exception ex) {}
 
             CaLamViec caHienTai = Utils.UserSession.getInstance().getCaHienTai();
             String caTimeLabel = "";
@@ -1461,18 +1461,18 @@ public class ManHinhChinh extends JPanel {
         body.setLayout(new BoxLayout(body, BoxLayout.Y_AXIS));
         body.setBackground(Color.WHITE);
 
-        JPanel pnlBanHang = createBlockPanel("CHI TIẾT BÁN HÀNG (Hóa đơn: " + kq.soHdBan + ")", new Color(230, 247, 255));
-        pnlBanHang.add(createRowMoi("Giá gốc chưa thuế:", formatMoney((long)kq.a_giaGocChuaThue)));
-        pnlBanHang.add(createRowMoi("(-) Khuyến mãi:", formatMoney((long)kq.a_khuyenMai)));
+        JPanel pnlBanHang = createBlockPanel("CHI TIẾT BÁN HÀNG (Hóa đơn: " + kq.getSoHdBan() + ")", new Color(230, 247, 255));
+        pnlBanHang.add(createRowMoi("Giá gốc chưa thuế:", formatMoney((long)kq.getA_giaGocChuaThue())));
+        pnlBanHang.add(createRowMoi("(-) Khuyến mãi:", formatMoney((long)kq.getA_khuyenMai())));
         pnlBanHang.add(createRowMoi("(=) Doanh thu thuần:", formatMoney((long)kq.get_a_DoanhThuThuan())));
-        pnlBanHang.add(createRowMoi("(+) Thuế VAT bán ra:", formatMoney((long)kq.a_vat)));
+        pnlBanHang.add(createRowMoi("(+) Thuế VAT bán ra:", formatMoney((long)kq.getA_vat())));
         pnlBanHang.add(createHighlightedRowMoi("(A) Tổng doanh thu bán ra:", formatMoney((long)kq.get_a_TongDoanhThu()), Color.decode("#1A73E8")));
         
-        JPanel pnlTraHang = createBlockPanel("ĐỔI / TRẢ HÀNG (Phiếu: " + kq.soHdTra + ")", new Color(255, 241, 240));
-        pnlTraHang.add(createRowMoi("Giá gốc món trả:", formatMoney((long)kq.b_giaGocMonTra)));
-        pnlTraHang.add(createRowMoi("Khuyến mãi hoàn trả:", formatMoney((long)kq.b_khuyenMaiHoanTra)));
+        JPanel pnlTraHang = createBlockPanel("ĐỔI / TRẢ HÀNG (Phiếu: " + kq.getSoHdTra() + ")", new Color(255, 241, 240));
+        pnlTraHang.add(createRowMoi("Giá gốc món trả:", formatMoney((long)kq.getB_giaGocMonTra())));
+        pnlTraHang.add(createRowMoi("Khuyến mãi hoàn trả:", formatMoney((long)kq.getB_khuyenMaiHoanTra())));
         pnlTraHang.add(createRowMoi("Doanh thu thuần giảm trừ:", formatMoney((long)kq.get_b_DoanhThuThuan())));
-        pnlTraHang.add(createRowMoi("Thuế VAT hoàn trả:", formatMoney((long)kq.b_vatHoanTra)));
+        pnlTraHang.add(createRowMoi("Thuế VAT hoàn trả:", formatMoney((long)kq.getB_vatHoanTra())));
         pnlTraHang.add(createHighlightedRowMoi("(B) Tổng tiền chi trả hàng:", formatMoney((long)kq.get_b_TongChiTra()), Color.RED));
 
         JPanel pnlThucThu = createBlockPanel("THỰC TẾ CHỐT SỔ (BÀN GIAO TIỀN MẶT)", new Color(246, 255, 237));

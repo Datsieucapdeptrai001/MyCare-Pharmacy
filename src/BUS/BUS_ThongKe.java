@@ -218,14 +218,14 @@ public class BUS_ThongKe {
     // Doanh thu thực thu hôm nay của 1 NV cụ thể
     public double getDoanhThuHomNay(String maNV) {
         BoLocThongKe f = new BoLocThongKe();
-        f.maNV = maNV;
+        f.setMaNV(maNV);
         return getDoanhThuHomNay(f);
     }
 
     // Doanh thu tiền mặt hôm nay của 1 NV cụ thể
     public double getDoanhThuTienMatHomNay(String maNV) {
         BoLocThongKe f = new BoLocThongKe();
-        f.maNV = maNV;
+        f.setMaNV(maNV);
         List<Object[]> raw = dao.getRawHDHomNay(f, "TIEN_MAT");
         return sumThucThu(raw);
     }
@@ -233,30 +233,30 @@ public class BUS_ThongKe {
     // Doanh thu thực thu 7 ngày qua của 1 NV cụ thể
     public double getDoanhThu7NgayQua(String maNV) {
         BoLocThongKe f = new BoLocThongKe();
-        f.maNV = maNV;
+        f.setMaNV(maNV);
         return getDoanhThu7NgayQua(f);
     }
 
     // Doanh thu thuần 7 ngày qua của 1 NV cụ thể
     public double getDoanhThuThuan7NgayQua(String maNV) {
         BoLocThongKe f = new BoLocThongKe();
-        f.maNV = maNV;
+        f.setMaNV(maNV);
         return getDoanhThuThuan7NgayQua(f);
     }
 
     // Doanh thu thực thu hôm nay của 1 NV, lọc theo ca (1=sáng, 2=chiều, 3=tối)
     public double getDoanhThuHomNay(String maNV, int ca) {
         BoLocThongKe f = new BoLocThongKe();
-        f.maNV = maNV;
-        f.ca = ca;
+        f.setMaNV(maNV);
+        f.setCa(ca);
         return getDoanhThuHomNay(f);
     }
 
     // Doanh thu tiền mặt hôm nay của 1 NV, lọc theo ca
     public double getDoanhThuTienMatHomNay(String maNV, int ca) {
         BoLocThongKe f = new BoLocThongKe();
-        f.maNV = maNV;
-        f.ca = ca;
+        f.setMaNV(maNV);
+        f.setCa(ca);
         List<Object[]> raw = dao.getRawHDHomNay(f, "TIEN_MAT");
         return sumThucThu(raw);
     }
@@ -264,8 +264,8 @@ public class BUS_ThongKe {
     // Doanh thu thuần hôm nay của 1 NV, lọc theo ca
     public double getDoanhThuThuanHomNay(String maNV, int ca) {
         BoLocThongKe f = new BoLocThongKe();
-        f.maNV = maNV;
-        f.ca = ca;
+        f.setMaNV(maNV);
+        f.setCa(ca);
         return getDoanhThuThuanHomNay(f);
     }
 
@@ -502,7 +502,7 @@ public class BUS_ThongKe {
     // Danh sách HĐ gần đây trong ca của NV (theo số ca 1/2/3), tính thucThu từng HĐ
     // Trả về List<{id, tenKH, thucThu, pttt}>
     public List<Object[]> getHoaDonGanDayTrongCa(String maNV, int ca) {
-        BoLocThongKe f = new BoLocThongKe(); f.maNV = maNV; f.ca = ca;
+        BoLocThongKe f = new BoLocThongKe(); f.setMaNV(maNV); f.setCa(ca);
         List<Object[]> rawList = dao.getRawHDDashboard(f, 100, false);
         List<Object[]> result = new ArrayList<>();
         for (Object[] row : rawList) {
@@ -575,7 +575,7 @@ public class BUS_ThongKe {
 
     // Overload: lấy HĐ gần nhất theo maNV và ca
     public List<Object[]> getHoaDonGanNhat(String maNV, int ca, int limit) {
-        BoLocThongKe f = new BoLocThongKe(); f.maNV = maNV; f.ca = ca;
+        BoLocThongKe f = new BoLocThongKe(); f.setMaNV(maNV); f.setCa(ca);
         return getHoaDonGanNhat(f, limit);
     }
 
@@ -587,7 +587,7 @@ public class BUS_ThongKe {
     // Lấy top limit HĐ giá trị cao nhất hôm nay, có thể lọc theo NV
     // Trả về List<{id, tenKH, thucThu, gio}>
     public List<Object[]> getHoaDonGiaTriCaoHomNay(int limit, String maNV) {
-        BoLocThongKe f = new BoLocThongKe(); f.maNV = maNV;
+        BoLocThongKe f = new BoLocThongKe(); f.setMaNV(maNV);
         List<Object[]> rawList = dao.getRawHDGiaTriCao(limit, f);
         List<Object[]> result = new ArrayList<>();
         for (Object[] row : rawList) {
@@ -611,15 +611,15 @@ public class BUS_ThongKe {
         String dateCondForTra;
         String today = LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"));
 
-        if (f != null && f.startTime != null) {
+        if (f != null && f.getStartTime() != null) {
             // NV trong ca: hôm nay + từ giờ startTime
             rows = dao.getRawHDByDay(today, f);
             dateCondForTra = "CAST(hd.ngayLapHD AS DATE) = CAST(GETDATE() AS DATE)"
-                    + " AND hd.ngayLapHD >= '" + f.startTime.toString().replace("T", " ") + "'";
-        } else if (f != null && f.fromDate != null && f.toDate != null) {
+                    + " AND hd.ngayLapHD >= '" + f.getStartTime().toString().replace("T", " ") + "'";
+        } else if (f != null && f.getFromDate() != null && f.getToDate() != null) {
             // Admin theo khoảng ngày
             rows = dao.getRawHDByFilter(f);
-            dateCondForTra = "CAST(hd.ngayLapHD AS DATE) BETWEEN '" + f.fromDate + "' AND '" + f.toDate + "'";
+            dateCondForTra = "CAST(hd.ngayLapHD AS DATE) BETWEEN '" + f.getFromDate() + "' AND '" + f.getToDate() + "'";
         } else {
             // Admin xem hôm nay
             rows = dao.getRawHDByDay(today, f);
@@ -664,7 +664,7 @@ public class BUS_ThongKe {
     // KPI đối chiếu 7 ngày qua của 1 NV cụ thể, tương tự getKpiDoiChieu nhưng không chia TM/CK
     // Trả về double[9] (tương tự, [5] và [6] = 0)
     public double[] getKpiDoiChieu7NgayQua(String maNV) {
-        BoLocThongKe f = new BoLocThongKe(); f.maNV = maNV;
+        BoLocThongKe f = new BoLocThongKe(); f.setMaNV(maNV);
         int hd7 = dao.getSoHoaDon7NgayQua(f);
         List<Object[]> rows = dao.getRawHD7NgayQua(f, null);
 
@@ -705,13 +705,13 @@ public class BUS_ThongKe {
 
     // Tổng điều chỉnh đổi/trả hôm nay của NV trong ca (parse ghiChu)
     public double getDieuChinhDoiTraHomNay(String maNV, int ca) {
-        BoLocThongKe f = new BoLocThongKe(); f.maNV = maNV; f.ca = ca;
+        BoLocThongKe f = new BoLocThongKe(); f.setMaNV(maNV); f.setCa(ca);
         return tinhDieuChinhDoiTra("CONVERT(DATE,hd.ngayLapHD)=CONVERT(DATE,GETDATE())", f);
     }
 
     // Tổng điều chỉnh đổi/trả 7 ngày qua của NV (parse ghiChu)
     public double getDieuChinhDoiTra7NgayQua(String maNV) {
-        BoLocThongKe f = new BoLocThongKe(); f.maNV = maNV;
+        BoLocThongKe f = new BoLocThongKe(); f.setMaNV(maNV);
         return tinhDieuChinhDoiTra("hd.ngayLapHD>=DATEADD(DAY,-7,GETDATE())", f);
     }
 
@@ -728,13 +728,13 @@ public class BUS_ThongKe {
 
     // Số HĐ BAN_HANG hôm nay của 1 NV
     public int getHoaDonHomNay(String maNV) {
-        BoLocThongKe f = new BoLocThongKe(); f.maNV = maNV;
+        BoLocThongKe f = new BoLocThongKe(); f.setMaNV(maNV);
         return dao.getSoHoaDonHomNay(f);
     }
 
     // Số HĐ BAN_HANG hôm nay của 1 NV, lọc theo ca
     public int getHoaDonHomNay(String maNV, int ca) {
-        BoLocThongKe f = new BoLocThongKe(); f.maNV = maNV; f.ca = ca;
+        BoLocThongKe f = new BoLocThongKe(); f.setMaNV(maNV); f.setCa(ca);
         return dao.getSoHoaDonHomNay(f);
     }
 
@@ -752,7 +752,7 @@ public class BUS_ThongKe {
 
     // Số HĐ BAN_HANG 7 ngày qua của 1 NV
     public int getSoHoaDon7NgayQua(String maNV) {
-        BoLocThongKe f = new BoLocThongKe(); f.maNV = maNV;
+        BoLocThongKe f = new BoLocThongKe(); f.setMaNV(maNV);
         return dao.getSoHoaDon7NgayQua(f);
     }
 
@@ -1137,17 +1137,8 @@ public class BUS_ThongKe {
     // Lấy dữ liệu đối chiếu doanh thu theo ca, map sang BUS result object có getter tính toán
     public BUS_KetQuaDoiChieuCa layDoiChieuDoanhThuTheoCa(BoLocThongKe filter) {
         DoiChieuCa raw = dao.layDoiChieuDoanhThuTheoCa(filter);
-        BUS_KetQuaDoiChieuCa kq = new BUS_KetQuaDoiChieuCa();
-        if (raw == null) return kq;
-        kq.soHdBan           = raw.soHdBan;
-        kq.a_giaGocChuaThue  = raw.a_giaGocChuaThue;
-        kq.a_khuyenMai       = raw.a_khuyenMai;
-        kq.a_vat             = raw.a_vat;
-        kq.soHdTra           = raw.soHdTra;
-        kq.b_giaGocMonTra    = raw.b_giaGocMonTra;
-        kq.b_khuyenMaiHoanTra= raw.b_khuyenMaiHoanTra;
-        kq.b_vatHoanTra      = raw.b_vatHoanTra;
-        return kq;
+        if (raw == null) raw = new DoiChieuCa();
+        return new BUS_KetQuaDoiChieuCa(raw);
     }
 
     // Thống kê BAN_HANG từng ngày trong tuần bắt đầu weekStartYMD: {ngay, soHD, dtTrieu}

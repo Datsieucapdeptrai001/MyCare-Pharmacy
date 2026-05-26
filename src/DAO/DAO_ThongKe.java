@@ -28,48 +28,48 @@ public class DAO_ThongKe {
         sql.append(" AND (hd.ghiChu IS NULL OR (hd.ghiChu NOT LIKE N'%Lưu nháp%' AND hd.ghiChu NOT LIKE N'%Đã hủy%'))");
 
         // Lọc theo mã nhân viên nếu có
-        if (filter.maNV != null && !filter.maNV.isEmpty()) {
+        if (filter.getMaNV() != null && !filter.getMaNV().isEmpty()) {
             sql.append(" AND ").append(nvCol).append(" = ?");
-            params.add(filter.maNV);
+            params.add(filter.getMaNV());
         }
 
         // Lọc theo giờ bắt đầu ca (startTime) hoặc theo số ca (1=sáng 6-13, 2=chiều 14-21, 3=tối 22-6)
-        if (filter.startTime != null) {
+        if (filter.getStartTime() != null) {
             sql.append(" AND ").append(dateCol).append(" >= ?");
-            params.add(Timestamp.valueOf(filter.startTime));
-        } else if (filter.ca != null && filter.ca > 0) {
-            if (filter.ca == 1)
+            params.add(Timestamp.valueOf(filter.getStartTime()));
+        } else if (filter.getCa() != null && filter.getCa() > 0) {
+            if (filter.getCa() == 1)
                 sql.append(" AND DATEPART(HOUR, ").append(dateCol).append(") BETWEEN 6 AND 13");
-            else if (filter.ca == 2)
+            else if (filter.getCa() == 2)
                 sql.append(" AND DATEPART(HOUR, ").append(dateCol).append(") BETWEEN 14 AND 21");
-            else if (filter.ca == 3)
+            else if (filter.getCa() == 3)
                 sql.append(" AND (DATEPART(HOUR, ").append(dateCol).append(") >= 22 OR DATEPART(HOUR, ").append(dateCol)
                         .append(") < 6)");
         }
 
         // Lọc theo năm nếu có
-        if (filter.year != null) {
+        if (filter.getYear() != null) {
             sql.append(" AND YEAR(").append(dateCol).append(") = ?");
-            params.add(filter.year);
+            params.add(filter.getYear());
         }
 
         // Lọc theo tháng / quý / khoảng ngày tùy chỉnh (fromDate - toDate)
-        if ("THANG".equals(filter.modeLocThoiGian) && filter.month != null) {
+        if ("THANG".equals(filter.getModeLocThoiGian()) && filter.getMonth() != null) {
             sql.append(" AND MONTH(").append(dateCol).append(") = ?");
-            params.add(filter.month);
-        } else if ("QUY".equals(filter.modeLocThoiGian) && filter.quarter != null) {
-            if (filter.quarter == 1)
+            params.add(filter.getMonth());
+        } else if ("QUY".equals(filter.getModeLocThoiGian()) && filter.getQuarter() != null) {
+            if (filter.getQuarter() == 1)
                 sql.append(" AND MONTH(").append(dateCol).append(") BETWEEN 1 AND 3");
-            else if (filter.quarter == 2)
+            else if (filter.getQuarter() == 2)
                 sql.append(" AND MONTH(").append(dateCol).append(") BETWEEN 4 AND 6");
-            else if (filter.quarter == 3)
+            else if (filter.getQuarter() == 3)
                 sql.append(" AND MONTH(").append(dateCol).append(") BETWEEN 7 AND 9");
-            else if (filter.quarter == 4)
+            else if (filter.getQuarter() == 4)
                 sql.append(" AND MONTH(").append(dateCol).append(") BETWEEN 10 AND 12");
-        } else if ("TUYCHINH".equals(filter.modeLocThoiGian) && filter.fromDate != null && filter.toDate != null) {
+        } else if ("TUYCHINH".equals(filter.getModeLocThoiGian()) && filter.getFromDate() != null && filter.getToDate() != null) {
             sql.append(" AND CAST(").append(dateCol).append(" AS DATE) BETWEEN ? AND ?");
-            params.add(filter.fromDate);
-            params.add(filter.toDate);
+            params.add(filter.getFromDate());
+            params.add(filter.getToDate());
         }
     }
 
@@ -1581,13 +1581,13 @@ public class DAO_ThongKe {
     public String buildConditionFromFilter(Entity.BoLocThongKe f) {
 	    if (f == null) return " 1=1 ";
 	    StringBuilder sb = new StringBuilder(" 1=1 ");
-	    if (f.modeLocThoiGian != null) {
-	        if (f.modeLocThoiGian.equals("THANG")) 
-	            sb.append(" AND MONTH(hd.ngayLapHD) = ").append(f.month).append(" AND YEAR(hd.ngayLapHD) = YEAR(GETDATE())");
-	        else if (f.modeLocThoiGian.equals("QUY"))
-	            sb.append(" AND DATEPART(QUARTER, hd.ngayLapHD) = ").append(f.quarter).append(" AND YEAR(hd.ngayLapHD) = YEAR(GETDATE())");
-	        else if (f.modeLocThoiGian.equals("TUYCHINH") && f.fromDate != null && f.toDate != null)
-	            sb.append(" AND CAST(hd.ngayLapHD AS DATE) BETWEEN '").append(f.fromDate).append("' AND '").append(f.toDate).append("'");
+	    if (f.getModeLocThoiGian() != null) {
+	        if (f.getModeLocThoiGian().equals("THANG")) 
+	            sb.append(" AND MONTH(hd.ngayLapHD) = ").append(f.getMonth()).append(" AND YEAR(hd.ngayLapHD) = YEAR(GETDATE())");
+	        else if (f.getModeLocThoiGian().equals("QUY"))
+	            sb.append(" AND DATEPART(QUARTER, hd.ngayLapHD) = ").append(f.getQuarter()).append(" AND YEAR(hd.ngayLapHD) = YEAR(GETDATE())");
+	        else if (f.getModeLocThoiGian().equals("TUYCHINH") && f.getFromDate() != null && f.getToDate() != null)
+	            sb.append(" AND CAST(hd.ngayLapHD AS DATE) BETWEEN '").append(f.getFromDate()).append("' AND '").append(f.getToDate()).append("'");
 	    }
 	    return sb.toString();
 	}
@@ -1600,16 +1600,16 @@ public class DAO_ThongKe {
 	    List<Object> params = new ArrayList<>();
 	    
 	    // Lọc theo mode thời gian trước
-	    if (filter.modeLocThoiGian != null) {
-	        if (filter.modeLocThoiGian.equals("THANG")) {
+	    if (filter.getModeLocThoiGian() != null) {
+	        if (filter.getModeLocThoiGian().equals("THANG")) {
 	            sql.append(" AND MONTH(hd.ngayLapHD) = ? AND YEAR(hd.ngayLapHD) = YEAR(GETDATE())");
-	            params.add(filter.month);
-	        } else if (filter.modeLocThoiGian.equals("QUY")) {
+	            params.add(filter.getMonth());
+	        } else if (filter.getModeLocThoiGian().equals("QUY")) {
 	            sql.append(" AND DATEPART(QUARTER, hd.ngayLapHD) = ? AND YEAR(hd.ngayLapHD) = YEAR(GETDATE())");
-	            params.add(filter.quarter);
-	        } else if (filter.modeLocThoiGian.equals("TUYCHINH")) {
+	            params.add(filter.getQuarter());
+	        } else if (filter.getModeLocThoiGian().equals("TUYCHINH")) {
 	            sql.append(" AND CAST(hd.ngayLapHD AS DATE) BETWEEN ? AND ?");
-	            params.add(filter.fromDate); params.add(filter.toDate);
+	            params.add(filter.getFromDate()); params.add(filter.getToDate());
 	        }
 	    }
 	    // Rồi gắn thêm filter NV/Ca
@@ -2157,19 +2157,19 @@ public class DAO_ThongKe {
 
     	    // Gắn điều kiện filter
     	    if (filter != null) {
-    	        if (filter.maNV != null && !filter.maNV.isEmpty()) {
-    	            sql.append(" AND hd.nhanVienId = '").append(filter.maNV).append("' ");
+    	        if (filter.getMaNV() != null && !filter.getMaNV().isEmpty()) {
+    	            sql.append(" AND hd.nhanVienId = '").append(filter.getMaNV()).append("' ");
     	        }
-    	        if (filter.fromDate != null) {
-    	            sql.append(" AND CAST(hd.ngayLapHD AS DATE) >= '").append(filter.fromDate.toString()).append("' ");
+    	        if (filter.getFromDate() != null) {
+    	            sql.append(" AND CAST(hd.ngayLapHD AS DATE) >= '").append(filter.getFromDate().toString()).append("' ");
     	        }
-    	        if (filter.toDate != null) {
-    	            sql.append(" AND CAST(hd.ngayLapHD AS DATE) <= '").append(filter.toDate.toString()).append("' ");
+    	        if (filter.getToDate() != null) {
+    	            sql.append(" AND CAST(hd.ngayLapHD AS DATE) <= '").append(filter.getToDate().toString()).append("' ");
     	        }
-    	        if (filter.startTime != null) {
+    	        if (filter.getStartTime() != null) {
     	            sql.append(" AND hd.ngayLapHD >= ? ");
-    	        } else if (filter.ca != null && filter.fromDate == null && filter.toDate == null) {
-    	            int ca = filter.ca;
+    	        } else if (filter.getCa() != null && filter.getFromDate() == null && filter.getToDate() == null) {
+    	            int ca = filter.getCa();
     	            if (ca == 1) sql.append(" AND DATEPART(HOUR, hd.ngayLapHD) BETWEEN 6 AND 13 ");
     	            else if (ca == 2) sql.append(" AND DATEPART(HOUR, hd.ngayLapHD) BETWEEN 14 AND 21 ");
     	            else if (ca == 3) sql.append(" AND (DATEPART(HOUR, hd.ngayLapHD) >= 22 OR DATEPART(HOUR, hd.ngayLapHD) < 6) ");
@@ -2177,21 +2177,21 @@ public class DAO_ThongKe {
     	    }
 
     	    try (java.sql.PreparedStatement ps = getConn().prepareStatement(sql.toString())) {
-    	        if (filter != null && filter.startTime != null) {
-    	            ps.setTimestamp(1, java.sql.Timestamp.valueOf(filter.startTime));
+    	        if (filter != null && filter.getStartTime() != null) {
+    	            ps.setTimestamp(1, java.sql.Timestamp.valueOf(filter.getStartTime()));
     	        }
     	        
     	        try (java.sql.ResultSet rs = ps.executeQuery()) {
     	            if (rs.next()) {
-    	                kq.soHdBan = rs.getInt("soHdBan");
-    	                kq.a_giaGocChuaThue = rs.getDouble("a_giaGoc");
-    	                kq.a_khuyenMai = rs.getDouble("a_khuyenMai");
-    	                kq.a_vat = rs.getDouble("a_vat");
+    	                kq.setSoHdBan(rs.getInt("soHdBan"));
+    	                kq.setA_giaGocChuaThue(rs.getDouble("a_giaGoc"));
+    	                kq.setA_khuyenMai(rs.getDouble("a_khuyenMai"));
+    	                kq.setA_vat(rs.getDouble("a_vat"));
 
-    	                kq.soHdTra = rs.getInt("soHdTra");
-    	                kq.b_giaGocMonTra = rs.getDouble("b_giaGoc");
-    	                kq.b_khuyenMaiHoanTra = rs.getDouble("b_khuyenMai");
-    	                kq.b_vatHoanTra = rs.getDouble("b_vat");
+    	                kq.setSoHdTra(rs.getInt("soHdTra"));
+    	                kq.setB_giaGocMonTra(rs.getDouble("b_giaGoc"));
+    	                kq.setB_khuyenMaiHoanTra(rs.getDouble("b_khuyenMai"));
+    	                kq.setB_vatHoanTra(rs.getDouble("b_vat"));
     	            }
     	        }
     	    } catch (Exception e) {

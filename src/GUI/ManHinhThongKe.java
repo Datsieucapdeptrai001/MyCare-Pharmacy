@@ -530,53 +530,53 @@ public class ManHinhThongKe extends JPanel {
         // -----------------------------------------------------------------
         // ĐOẠN FIX: Lấy thẳng biến currentYear cậu đã lưu sẵn
         // -----------------------------------------------------------------
-        filter.year = currentYear;
+        filter.setYear(currentYear);
         // -----------------------------------------------------------------
 
         // NV filter (index 0 = "Tất cả")
         int nvIdx = cboNhanVien.getSelectedIndex() - 1;
-        if (nvIdx >= 0 && nvIdx < NV_IDS.length) filter.maNV = NV_IDS[nvIdx];
+        if (nvIdx >= 0 && nvIdx < NV_IDS.length) filter.setMaNV(NV_IDS[nvIdx]);
 
         LocalDate today = LocalDate.now();
         switch (modeLocThoiGian) {
             case "HOM_NAY":
-                filter.modeLocThoiGian = "TUYCHINH";
-                filter.fromDate = java.sql.Date.valueOf(today);
-                filter.toDate   = java.sql.Date.valueOf(today);
+                filter.setModeLocThoiGian("TUYCHINH");
+                filter.setFromDate(java.sql.Date.valueOf(today));
+                filter.setToDate(java.sql.Date.valueOf(today));
                 break;
             case "TUAN":
                 LocalDate weekStart = today.with(DayOfWeek.MONDAY);
-                filter.modeLocThoiGian = "TUYCHINH";
-                filter.fromDate = java.sql.Date.valueOf(weekStart);
-                filter.toDate   = java.sql.Date.valueOf(today);
+                filter.setModeLocThoiGian("TUYCHINH");
+                filter.setFromDate(java.sql.Date.valueOf(weekStart));
+                filter.setToDate(java.sql.Date.valueOf(today));
                 break;
             case "THANG":
-                filter.modeLocThoiGian = "THANG";
+                filter.setModeLocThoiGian("THANG");
                 String val = (String) cboThang.getSelectedItem();
                 if (val != null && !val.equals("Cả năm"))
-                    filter.month = Integer.parseInt(val.replace("T", ""));
+                    filter.setMonth(Integer.parseInt(val.replace("T", "")));
                 break;
             case "QUY":
-                filter.modeLocThoiGian = "QUY";
-                filter.quarter = cboQuy.getSelectedIndex() + 1;
+                filter.setModeLocThoiGian("QUY");
+                filter.setQuarter(cboQuy.getSelectedIndex() + 1);
                 break;
             case "NAM":
-                filter.modeLocThoiGian = "THANG"; // month=null → cả năm
+                filter.setModeLocThoiGian("THANG"); // month=null → cả năm
                 break;
             case "TUYCHINH":
-                filter.modeLocThoiGian = "TUYCHINH";
+                filter.setModeLocThoiGian("TUYCHINH");
                 String tu = txtTuNgay.getText(), den = txtDenNgay.getText();
                 if (!tu.contains("d") && !den.contains("d")) {
                     try {
                         String from = tu.split("/")[2]+"-"+tu.split("/")[1]+"-"+tu.split("/")[0];
                         String to   = den.split("/")[2]+"-"+den.split("/")[1]+"-"+den.split("/")[0];
-                        filter.fromDate = java.sql.Date.valueOf(from);
-                        filter.toDate   = java.sql.Date.valueOf(to);
+                        filter.setFromDate(java.sql.Date.valueOf(from));
+                        filter.setToDate(java.sql.Date.valueOf(to));
                     } catch (Exception ignored) {}
                 }
                 break;
             default:
-                filter.modeLocThoiGian = "THANG";
+                filter.setModeLocThoiGian("THANG");
         }
         return filter;
     }
@@ -656,9 +656,9 @@ public class ManHinhThongKe extends JPanel {
                 if ("NAM".equals(modeLocThoiGian)) {
                     // Cả năm → 12 tháng
                     filterBieuDo = new Entity.BoLocThongKe();
-                    filterBieuDo.maNV = fCondHD.maNV;
-                    filterBieuDo.year = year;
-                    filterBieuDo.modeLocThoiGian = "NAM";
+                    filterBieuDo.setMaNV(fCondHD.getMaNV());
+                    filterBieuDo.setYear(year);
+                    filterBieuDo.setModeLocThoiGian("NAM");
                     chartGroupBy = "THANG";
                     chartSubtitleStr = "12 tháng · " + year;
                 } else if ("QUY".equals(modeLocThoiGian)) {
@@ -733,10 +733,10 @@ public class ManHinhThongKe extends JPanel {
                     tmp_DAILY_30_DATES[29-i] = today.minusDays(i).format(dtf);
                 
                 Entity.BoLocThongKe filterDaily30 = new Entity.BoLocThongKe();
-                filterDaily30.maNV = fCondHD.maNV; 
-                filterDaily30.fromDate = java.sql.Date.valueOf(today.minusDays(29));
-                filterDaily30.toDate   = java.sql.Date.valueOf(today);
-                filterDaily30.modeLocThoiGian = "TUYCHINH";
+                filterDaily30.setMaNV(fCondHD.getMaNV()); 
+                filterDaily30.setFromDate(java.sql.Date.valueOf(today.minusDays(29)));
+                filterDaily30.setToDate(java.sql.Date.valueOf(today));
+                filterDaily30.setModeLocThoiGian("TUYCHINH");
 
                 java.util.List<Object[]> daily30BCTC = busThongKe.getBaoCaoTaiChinh(filterDaily30, "NGAY");
                 java.util.List<Object[]> daily30HD = busThongKe.getThongKe30NgayGanNhat(filterDaily30);
