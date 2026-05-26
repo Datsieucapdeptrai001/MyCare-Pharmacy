@@ -748,7 +748,7 @@ public class ManHinhNhapLoHangMoi extends JDialog {
         btnCancel.setIconTextGap(8);
         btnCancel.setToolTipText("Phím tắt: Esc");
 
-        JButton btnSubmit = createPrimaryButton("Lưu, lập phiếu & in [F10]");
+        JButton btnSubmit = createPrimaryButton("Lưu, lập phiếu [F10]");
         btnSubmit.setIcon(new MenuIcon("SAVE"));
         btnSubmit.setIconTextGap(8);
         btnSubmit.setToolTipText("Phím tắt: F10");
@@ -1774,10 +1774,8 @@ public class ManHinhNhapLoHangMoi extends JDialog {
             printOptions[1] = false;
         }
 
-        dispose();
-
         if (printOptions[0]) {
-            inPhieuNhapLoHang(loHang, giaNhapDonViLon);
+            xemTruocPhieuNhapLoHang(loHang, giaNhapDonViLon);
         }
 
         if (printOptions[1]) {
@@ -1791,6 +1789,8 @@ public class ManHinhNhapLoHangMoi extends JDialog {
 
             dialogMaVach.setVisible(true);
         }
+
+        dispose();
     }
 
     private String taoMaLoHangTuDong() {
@@ -2535,7 +2535,157 @@ public class ManHinhNhapLoHangMoi extends JDialog {
             pack();
         }
     }
+    private void xemTruocPhieuNhapLoHang(LoHang loHang, long giaNhapDonViLon) {
+        if (loHang == null) {
+            showModernAlert("Không có dữ liệu phiếu nhập để xem.", false);
+            return;
+        }
 
+        JDialog dialog = new JDialog(this, "Xem trước phiếu nhập", Dialog.ModalityType.APPLICATION_MODAL);
+        dialog.setUndecorated(true);
+        dialog.setBackground(BG_TRANSPARENT);
+
+        JPanel root = new JPanel(new BorderLayout());
+        root.setBackground(Color.WHITE);
+        root.setBorder(BorderFactory.createLineBorder(PRIMARY, 2));
+
+        JPanel header = new JPanel(new BorderLayout());
+        header.setBackground(PRIMARY);
+        header.setBorder(new EmptyBorder(14, 20, 14, 18));
+
+        JLabel lblTitle = new JLabel("XEM TRƯỚC PHIẾU NHẬP");
+        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        lblTitle.setForeground(Color.WHITE);
+
+        JButton btnX = new JButton("×");
+        btnX.setFont(new Font("Segoe UI", Font.BOLD, 24));
+        btnX.setForeground(Color.WHITE);
+        btnX.setFocusPainted(false);
+        btnX.setBorderPainted(false);
+        btnX.setContentAreaFilled(false);
+        btnX.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btnX.addActionListener(e -> dialog.dispose());
+
+        header.add(lblTitle, BorderLayout.WEST);
+        header.add(btnX, BorderLayout.EAST);
+
+        JTextArea txtPreview = new JTextArea();
+        txtPreview.setEditable(false);
+        txtPreview.setFont(new Font("Consolas", Font.PLAIN, 14));
+        txtPreview.setForeground(TEXT_PRIMARY);
+        txtPreview.setBackground(Color.WHITE);
+        txtPreview.setMargin(new Insets(18, 22, 18, 22));
+        txtPreview.setText(buildNoiDungPhieuNhapPreview(loHang, giaNhapDonViLon));
+        txtPreview.setCaretPosition(0);
+
+        JScrollPane scroll = new JScrollPane(txtPreview);
+        scroll.setBorder(BorderFactory.createEmptyBorder());
+        scroll.getVerticalScrollBar().setUnitIncrement(18);
+
+        JPanel footer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 14));
+        footer.setBackground(new Color(248, 250, 252));
+        footer.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, BORDER));
+
+        JButton btnDong = createSecondaryButton("Đóng");
+        btnDong.setPreferredSize(new Dimension(110, 40));
+        btnDong.addActionListener(e -> dialog.dispose());
+
+        JButton btnIn = createPrimaryButton("In phiếu");
+        btnIn.setPreferredSize(new Dimension(130, 40));
+        btnIn.addActionListener(e -> {
+            dialog.dispose();
+            inPhieuNhapLoHang(loHang, giaNhapDonViLon);
+        });
+
+        footer.add(btnDong);
+        footer.add(btnIn);
+
+        root.add(header, BorderLayout.NORTH);
+        root.add(scroll, BorderLayout.CENTER);
+        root.add(footer, BorderLayout.SOUTH);
+
+        dialog.setContentPane(root);
+        dialog.setSize(620, 620);
+        dialog.setShape(new RoundRectangle2D.Double(0, 0, dialog.getWidth(), dialog.getHeight(), 16, 16));
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+    }
+    private String buildNoiDungPhieuNhapPreview(LoHang loHang, long giaNhapDonViLon) {
+        String tenSP = selectedSanPham != null && selectedSanPham.getTen() != null
+                ? selectedSanPham.getTen()
+                : "Sản phẩm không xác định";
+
+        String maSP = selectedSanPham != null && selectedSanPham.getId() != null
+                ? selectedSanPham.getId()
+                : "N/A";
+
+        String kho = loHang.getKhoHangId() != null && loHang.getKhoHangId().getId() != null
+                ? loHang.getKhoHangId().getId()
+                : "N/A";
+
+        String hsd = loHang.getNgayHetHan() == null
+                ? "N/A"
+                : loHang.getNgayHetHan().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+
+        long thanhTien = giaNhapDonViLon * Math.max(1, parseLongSafe(txtSoLuong.getText()));
+
+        StringBuilder sb = new StringBuilder();
+
+        sb.append("MYCARE PHARMACY\n");
+        sb.append("==============================================\n");
+        sb.append("              PHIẾU NHẬP LÔ HÀNG\n");
+        sb.append("==============================================\n\n");
+
+        sb.append("Ngày nhập        : ")
+                .append(LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")))
+                .append("\n");
+
+        sb.append("Mã lô hệ thống   : ").append(loHang.getId()).append("\n");
+        sb.append("Số lô NSX        : ").append(loHang.getSoLoHang()).append("\n");
+        sb.append("Mã vạch nội bộ   : ").append(loHang.getMaVachNoiBo()).append("\n");
+        sb.append("Kho nhập         : ").append(kho).append("\n\n");
+
+        sb.append("Sản phẩm         : ").append(tenSP).append("\n");
+        sb.append("Mã sản phẩm      : ").append(maSP).append("\n");
+        sb.append("Hạn sử dụng      : ").append(hsd).append("\n\n");
+
+        sb.append("Số lượng nhập    : ")
+                .append(vnNumberFormat.format(loHang.getSoLuongLoHang()))
+                .append(" ")
+                .append(currentDonViNho)
+                .append("\n");
+
+        sb.append("Giá nhập / ")
+                .append(currentDonViLon)
+                .append(" : ")
+                .append(vnNumberFormat.format(giaNhapDonViLon))
+                .append(" đ\n");
+
+        sb.append("Giá vốn / ")
+                .append(currentDonViNho)
+                .append("  : ")
+                .append(vnNumberFormat.format(loHang.getGia()))
+                .append(" đ\n");
+
+        sb.append("Thành tiền       : ")
+                .append(vnNumberFormat.format(thanhTien))
+                .append(" đ\n\n");
+
+        sb.append("==============================================\n");
+        sb.append("Người lập phiếu     Dược sĩ phụ trách    Quản lý\n\n\n");
+        sb.append("(Ký, ghi rõ họ tên)    (Ký tên)          (Ký tên)\n");
+
+        return sb.toString();
+    }
+
+    private long parseLongSafe(String text) {
+        try {
+            String digits = getDigitsOnly(text);
+            return digits.isEmpty() ? 0 : Long.parseLong(digits);
+        } catch (Exception e) {
+            return 0;
+        }
+    }
     private void inPhieuNhapLoHang(LoHang loHang, long giaNhapDonViLon) {
         PrinterJob job = PrinterJob.getPrinterJob();
         job.setJobName("PhieuNhapLoHang_" + loHang.getId());
