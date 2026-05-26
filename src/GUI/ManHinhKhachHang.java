@@ -9,6 +9,7 @@ import Utils.MenuIcon;
 import java.awt.*;
 import java.awt.event.*;
 import java.util.List;
+import BUS.BUS_KhachHang;
 
 public class ManHinhKhachHang extends JPanel {
 
@@ -575,11 +576,46 @@ public class ManHinhKhachHang extends JPanel {
         pnlHistoryList.repaint();
 
         // [Giữ nguyên đoạn SwingWorker truy vấn hóa đơn bên dưới...]
-        SwingWorker<Void, JPanel> worker = new SwingWorker<Void, JPanel>() {
+        SwingWorker<List<String[]>, Void> worker = new SwingWorker<List<String[]>, Void>() {
             @Override
-            protected Void doInBackground() throws Exception {
-                // ... (giữ nguyên code cũ của bạn) ...
-                return null;
+            protected List<String[]> doInBackground() throws Exception {
+                BUS_KhachHang bus = new BUS_KhachHang();
+                return bus.getLichSuDiem(id);
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    List<String[]> danhSach = get();
+                    pnlHistoryList.removeAll();
+                    if (danhSach == null || danhSach.isEmpty()) {
+                        JLabel lbl = new JLabel("Chưa có lịch sử điểm nào.");
+                        lbl.setFont(new Font("Segoe UI", Font.ITALIC, 12));
+                        lbl.setForeground(Color.GRAY);
+                        lbl.setBorder(new EmptyBorder(10, 0, 0, 0));
+                        pnlHistoryList.add(lbl);
+                    } else {
+                        for (String[] row : danhSach) {
+                            // row: [0]=hoaDonId, [1]=loai, [2]=soDiem, [3]=ghiChu, [4]=thoiGian
+                            boolean laTich = "TICH".equals(row[1]);
+                            String diemHienThi = (laTich ? "+" : "-") + row[2] + " điểm";
+                            JPanel item = createHistoryItem(row[0], row[4], diemHienThi, row[3]);
+                            try {
+                                JPanel pnlLeft = (JPanel) item.getComponent(0);
+                                JLabel lblDiem = (JLabel) pnlLeft.getComponent(1);
+                                lblDiem.setForeground(laTich
+                                    ? Color.decode("#16A34A")
+                                    : Color.decode("#DC2626"));
+                                lblDiem.setFont(new Font("Segoe UI", Font.BOLD, 12));
+                            } catch (Exception ignored) {}
+                            pnlHistoryList.add(item);
+                        }
+                    }
+                    pnlHistoryList.revalidate();
+                    pnlHistoryList.repaint();
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
             }
         };
         worker.execute();

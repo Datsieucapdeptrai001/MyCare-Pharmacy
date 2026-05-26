@@ -108,6 +108,19 @@ public class BUS_KhachHang {
         }
         return false;
     }
+    public List<String[]> getLichSuDiem(String khachHangId) {
+        return daoKhachHang.getLichSuDiem(khachHangId);
+    }
+
+    public boolean ghiTichDiem(String khachHangId, String hoaDonId, int soDiem) {
+        return daoKhachHang.ghiLichSuDiem(khachHangId, hoaDonId, "TICH",
+                soDiem, "Tích điểm từ hóa đơn " + (hoaDonId != null ? hoaDonId : ""));
+    }
+
+    public boolean ghiSuDungDiem(String khachHangId, String hoaDonId, int soDiem) {
+        return daoKhachHang.ghiLichSuDiem(khachHangId, hoaDonId, "TIEU",
+                soDiem, "Dùng điểm thanh toán hóa đơn " + (hoaDonId != null ? hoaDonId : ""));
+    }
 
     public String phatSinhMaKHTiepTheo() {
         return daoKhachHang.phatSinhMaKHTiepTheo();
