@@ -252,11 +252,26 @@ public class ManHinhDangNhap extends JFrame {
         lblForgot.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                ManHinhQuenMatKhauOTP otpDialog = new ManHinhQuenMatKhauOTP(ManHinhDangNhap.this, (email, newPass) -> {
-                    new BUS_TaiKhoan().capNhatMatKhauTheoEmail(email, newPass);
-                    JOptionPane.showMessageDialog(ManHinhDangNhap.this, "Đổi mật khẩu thành công! Hãy đăng nhập lại.");
-                });
-                otpDialog.setVisible(true);
+            	ManHinhQuenMatKhauOTP otpDialog = new ManHinhQuenMatKhauOTP(ManHinhDangNhap.this, (email, newPass) -> {
+            	    BUS_TaiKhoan busTaiKhoan = new BUS_TaiKhoan();
+
+            	    boolean ok = busTaiKhoan.capNhatMatKhauTheoEmail(email, newPass);
+
+            	    if (ok) {
+            	        JOptionPane.showMessageDialog(
+            	                ManHinhDangNhap.this,
+            	                "Đổi mật khẩu thành công! Hãy đăng nhập lại."
+            	        );
+            	    } else {
+            	        JOptionPane.showMessageDialog(
+            	                ManHinhDangNhap.this,
+            	                "Đổi mật khẩu thất bại. Mật khẩu phải có ít nhất 8 ký tự, gồm chữ và số.",
+            	                "Lỗi",
+            	                JOptionPane.ERROR_MESSAGE
+            	        );
+            	    }
+            	});
+            	otpDialog.setVisible(true);
             }
         });
         pnlContent.add(lblForgot);
