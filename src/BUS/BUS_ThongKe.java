@@ -1153,4 +1153,15 @@ public class BUS_ThongKe {
         java.text.DecimalFormat df = new java.text.DecimalFormat("#,### đ");
         return df.format(tien);
     }
+    
+    /** Phân bổ doanh thu theo giờ theo filter kỳ hiện tại (THANG/QUY/TUYCHINH). Trả về double[24] triệu đồng. */
+    public double[] getDTTheoGioTheoFilter(BoLocThongKe filter) {
+        double[] data = new double[24];
+        List<Object[]> rawList = dao.getRawHDGioTheoFilter(filter);
+        for (Object[] row : rawList) {
+            int h = (Integer) row[0];
+            if (h >= 0 && h < 24) data[h] += (Double) row[1] / 1_000_000.0;
+        }
+        return data;
+    }
 }

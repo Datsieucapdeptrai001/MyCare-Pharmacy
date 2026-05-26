@@ -689,7 +689,7 @@ public class ManHinhThongKe extends JPanel {
                 }
 
                 java.util.List<Object[]> dataBieuDo = busThongKe.getBaoCaoTaiChinh(filterBieuDo, chartGroupBy);
-                int chartN = Math.max(1, dataBieuDo.size());
+                int chartN = dataBieuDo.isEmpty() ? 0 : dataBieuDo.size();
                 double[] tmp_DT_DATA = new double[chartN];
                 double[] tmp_CP_DATA = new double[chartN];
                 double[] tmp_LN_DATA = new double[chartN];
@@ -905,7 +905,7 @@ public class ManHinhThongKe extends JPanel {
         	double dtTB    = fBanC > 0 ? tongDTT / fBanC : 0; // TB chỉ tính trên đơn bán
 
             // Phân bổ theo giờ dùng 30 ngày gần nhất làm xấp xỉ
-            double[] hourData = busThongKe.getDTTheoGioTrongNgay(LocalDate.now().toString(), f);
+        	double[] hourData = busThongKe.getDTTheoGioTheoFilter(f);
 
             // Top giờ cao điểm
             int gioCaoDiem = 0;
@@ -2038,6 +2038,7 @@ public class ManHinhThongKe extends JPanel {
                     g2.setColor(Color.decode("#888888"));
                     g2.setFont(new Font("Segoe UI", Font.BOLD, 10));
                     String lbl = CHART_LABELS[i];
+                    if (lbl == null) lbl = "";
                     int lblW = g2.getFontMetrics().stringWidth(lbl);
                     g2.drawString(lbl, chartOffsetX + i * groupW + (groupW - lblW) / 2, h - 16);
                 }
@@ -2059,7 +2060,7 @@ public class ManHinhThongKe extends JPanel {
             if (hoverGroupIdx >= 0 && hoverBarSeries >= 0 && tooltipPt != null
                     && hoverGroupIdx < DT_DATA.length) {
                 int i = hoverGroupIdx;
-                String xLabel = i < CHART_LABELS.length ? CHART_LABELS[i] : String.valueOf(i + 1);
+                String xLabel = (i < CHART_LABELS.length && CHART_LABELS[i] != null) ? CHART_LABELS[i] : String.valueOf(i + 1);
                 String[] seriesNames = { "Doanh thu", "Chi phí", "Lợi nhuận" };
                 double[] seriesVals = { DT_DATA[i], CP_DATA[i], LN_DATA[i] };
                 String seriesName  = seriesNames[hoverBarSeries];

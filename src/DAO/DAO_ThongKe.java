@@ -548,16 +548,24 @@ public class DAO_ThongKe {
         List<Object[]> result = new ArrayList<>();
         String topStr = limit > 0 ? "TOP " + limit + " " : "";
         String gioCol = includeGio ? ", FORMAT(hd.ngayLapHD, 'HH:mm') AS gio" : "";
-        
+        boolean hasDateFilter = filter != null && (
+            filter.getFromDate() != null ||
+            "THANG".equals(filter.getModeLocThoiGian()) || // bao gồm cả năm (month=null)
+            ("QUY".equals(filter.getModeLocThoiGian())   && filter.getQuarter() != null) ||
+            "CANAM".equals(filter.getModeLocThoiGian()));
+
         StringBuilder sql = new StringBuilder("SELECT " + topStr + "hd.id, ISNULL(kh.hoVaTen, N'Khách lẻ') AS kh, "
                 + "ISNULL(SUM(ABS(ct.thanhTien)), 0) AS tongGocCoVAT, "
-                + "hd.ghiChu, hd.phuongThucThanhToan AS pttt " + gioCol + ", hd.loaiHD " 
+                + "hd.ghiChu, hd.phuongThucThanhToan AS pttt " + gioCol + ", hd.loaiHD "
                 + "FROM HoaDon hd "
                 + "LEFT JOIN KhachHang kh ON hd.khachHangId = kh.id "
                 + "LEFT JOIN ChiTietHoaDon ct ON hd.id = ct.hoaDonId "
                 + "LEFT JOIN DonViDoLuong dvl ON ct.donViDoLuongId = dvl.id AND ct.sanPhamId = dvl.sanPhamId "
                 + "LEFT JOIN SanPham sp ON ct.sanPhamId = sp.id "
-                + "WHERE hd.loaiHD IN ('BAN_HANG', 'TRA_HANG', 'DOI_HANG') AND CAST(hd.ngayLapHD AS DATE) = CAST(GETDATE() AS DATE) ");
+                + "WHERE hd.loaiHD IN ('BAN_HANG', 'TRA_HANG', 'DOI_HANG') ");
+        if (!hasDateFilter) {
+            sql.append("AND CAST(hd.ngayLapHD AS DATE) = CAST(GETDATE() AS DATE) ");
+        }
         
         List<Object> params = new ArrayList<>();
         applyFilter(filter, sql, params, "hd.ngayLapHD", "hd.nhanVienId");
@@ -1602,8 +1610,16 @@ public class DAO_ThongKe {
 	    // Lọc theo mode thời gian trước
 	    if (filter.getModeLocThoiGian() != null) {
 	        if (filter.getModeLocThoiGian().equals("THANG")) {
-	            sql.append(" AND MONTH(hd.ngayLapHD) = ? AND YEAR(hd.ngayLapHD) = YEAR(GETDATE())");
-	            params.add(filter.getMonth());
+	        	int yr = (filter.getYear() != null) ? filter.getYear() : java.time.LocalDate.now().getYear();
+	        	if (filter.getMonth() != null) {
+	        	    sql.append(" AND YEAR(hd.ngayLapHD) = ? AND MONTH(hd.ngayLapHD) = ?");
+	        	    params.add(yr);
+	        	    params.add(filter.getMonth());
+	        	} else {
+	        	    // Cả năm: chỉ lọc theo năm
+	        	    sql.append(" AND YEAR(hd.ngayLapHD) = ?");
+	        	    params.add(yr);
+	        	}
 	        } else if (filter.getModeLocThoiGian().equals("QUY")) {
 	            sql.append(" AND DATEPART(QUARTER, hd.ngayLapHD) = ? AND YEAR(hd.ngayLapHD) = YEAR(GETDATE())");
 	            params.add(filter.getQuarter());
@@ -2199,4 +2215,52 @@ public class DAO_ThongKe {
     	    }
     	    return kq;
     	}
+     
+     /** Phân bổ doanh thu theo giờ (0-23) theo bất kỳ filter kỳ nào (THANG/QUY/TUYCHINH).
+      *  Trả về List<{h(int), tienThucThu(double)}> */
+     public List<Object[]> getRawHDGioTheoFilter(Entity.BoLocThongKe filter) {
+         List<Object[]> result = new ArrayList<>();
+         StringBuilder sql = new StringBuilder(
+             "SELECT DATEPART(HOUR, hd.ngayLapHD) AS h, SUM(ABS(ct.thanhTien)) AS tienThucThu "
+             + "FROM HoaDon hd JOIN ChiTietHoaDon ct ON hd.id = ct.hoaDonId "
+             + "WHERE hd.loaiHD = 'BAN_HANG' "
+             + "AND (hd.ghiChu IS NULL OR (hd.ghiChu NOT LIKE N'%Lưu nháp%' AND hd.ghiChu NOT LIKE N'%Đã hủy%')) ");
+         List<Object> params = new ArrayList<>();
+
+         int year = (filter != null && filter.getYear() != null)
+                    ? filter.getYear() : java.time.LocalDate.now().getYear();
+
+         if (filter != null && "THANG".equals(filter.getModeLocThoiGian()) && filter.getMonth() != null) {
+             sql.append(" AND YEAR(hd.ngayLapHD)=? AND MONTH(hd.ngayLapHD)=?");
+             params.add(year); params.add(filter.getMonth());
+         } else if (filter != null && "THANG".equals(filter.getModeLocThoiGian()) && filter.getMonth() == null) {
+             // Cả năm
+             sql.append(" AND YEAR(hd.ngayLapHD)=?");
+             params.add(year);
+         } else if (filter != null && "QUY".equals(filter.getModeLocThoiGian()) && filter.getQuarter() != null) {
+             sql.append(" AND YEAR(hd.ngayLapHD)=? AND DATEPART(QUARTER,hd.ngayLapHD)=?");
+             params.add(year); params.add(filter.getQuarter());
+         } else if (filter != null && "TUYCHINH".equals(filter.getModeLocThoiGian()) && filter.getFromDate() != null) {
+             sql.append(" AND CAST(hd.ngayLapHD AS DATE) BETWEEN ? AND ?");
+             params.add(filter.getFromDate()); params.add(filter.getToDate());
+         } else if (filter != null && "CANAM".equals(filter.getModeLocThoiGian())) {
+             sql.append(" AND YEAR(hd.ngayLapHD)=?");
+             params.add(year);
+         } else {
+             sql.append(" AND CAST(hd.ngayLapHD AS DATE) = CAST(GETDATE() AS DATE)");
+         }
+
+         if (filter != null && filter.getMaNV() != null && !filter.getMaNV().isEmpty()) {
+             sql.append(" AND hd.nhanVienId=?");
+             params.add(filter.getMaNV());
+         }
+         sql.append(" GROUP BY DATEPART(HOUR, hd.ngayLapHD)");
+
+         try (PreparedStatement ps = getConn().prepareStatement(sql.toString())) {
+             for (int i = 0; i < params.size(); i++) ps.setObject(i + 1, params.get(i));
+             ResultSet rs = ps.executeQuery();
+             while (rs.next()) result.add(new Object[]{ rs.getInt("h"), rs.getDouble("tienThucThu") });
+         } catch (Exception e) { e.printStackTrace(); }
+         return result;
+     }
 }
