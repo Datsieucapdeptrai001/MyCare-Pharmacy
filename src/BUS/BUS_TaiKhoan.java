@@ -18,6 +18,13 @@ public class BUS_TaiKhoan {
         if (tk == null || tk.getMatKhau() == null) {
             return false;
         }
+        if (tk.getNhanVienId() != null && tk.getNhanVienId().getTrangThaiLamViec() != null) {
+            String trangThai = tk.getNhanVienId().getTrangThaiLamViec().name();
+            if ("NGHI_VIEC".equalsIgnoreCase(trangThai) || "AN".equalsIgnoreCase(trangThai)) {
+                System.out.println("Đăng nhập thất bại: Nhân viên này đã nghỉ việc!");
+                return false; 
+            }
+        }
 
         String matKhauDB = tk.getMatKhau();
         // Nhận diện mật khẩu thô: Nếu chuỗi lấy từ DB không chứa dấu ":" -> Nó là mật khẩu thô!
@@ -93,7 +100,7 @@ public class BUS_TaiKhoan {
     }
 
     public boolean validateMatKhauMoi(String matKhauMoi) {
-        if (matKhauMoi == null || matKhauMoi.length() < 6) return false;
+    	if (matKhauMoi == null || matKhauMoi.length() < 8) return false;
         boolean hasLetter = false, hasDigit = false;
         for (char c : matKhauMoi.toCharArray()) {
             if (Character.isLetter(c)) hasLetter = true;
