@@ -66,6 +66,7 @@ public class TaoHoaDon extends JDialog {
     private Color borderColor = Color.decode("#DFE3E8");
     private long tongTienMat = 0;
     private BUS.BUS_LieuMau busLieuMau = new BUS.BUS_LieuMau();
+    private final BUS.BUS_Kho busKho = new BUS.BUS_Kho();
     private JLabel lblTotalValue;
     private int editingRow = -1;
     private SwingWorker<java.util.List<Object[]>, Void> currentSearchWorker; // FIX: Quản lý luồng tìm kiếm
@@ -76,6 +77,7 @@ public class TaoHoaDon extends JDialog {
     private JLabel lblDiscountValue;
     private JPanel pnlDonThuoc;
     private JTextField txtBacSi, txtCoSo, txtChuanDoan;
+    private JButton btnToggleKeDon; // Thêm dòng này
     public static String pendingDraftIdToOpen = null; 
     // --- TÍCH HỢP TÍNH NĂNG DÙNG ĐIỂM (SHOPEE STYLE) ---
     private int diemHienTaiKH = 0;
@@ -463,9 +465,17 @@ public class TaoHoaDon extends JDialog {
         String userNote = txtNote.getText().trim();
         if (userNote.equals("Ghi chú thêm...")) userNote = "";
         String prefixUserNote = userNote.isEmpty() ? "" : (userNote + " | ");
+        String strKeDon = "";
+        if (pnlDonThuoc != null && pnlDonThuoc.isVisible()) {
+            String bs = txtBacSi.getText().trim();
+            String cs = txtCoSo.getText().trim();
+            String cd = txtChuanDoan.getText().trim();
+            if (cd.contains("Chẩn đoán bệnh")) cd = ""; 
+            strKeDon = " | BS:" + bs + " | CS:" + cs + (cd.isEmpty() ? "" : " | CD:" + cd);
+        }
         
-        // SỬA DÒNG SET GHI CHÚ (Thêm prefixUserNote vào đầu)
-        hd.setGhiChu(prefixUserNote + (phuongThuc.equals("Tiền mặt") ? "CASH:" + tongTienMat : "BANK") + strKM + strDiem + strGifts.toString() + lieuMauPart + " | VAT_AMT:" + this.vat);
+        // SỬA DÒNG SET GHI CHÚ (Thêm biến strKeDon vào giữa)
+        hd.setGhiChu(prefixUserNote + (phuongThuc.equals("Tiền mặt") ? "CASH:" + tongTienMat : "BANK") + strKeDon + strKM + strDiem + strGifts.toString() + lieuMauPart + " | VAT_AMT:" + this.vat);
 
         Entity.NhanVien nv = new Entity.NhanVien();
         String maNV = Utils.UserSession.getInstance().getMaNhanVien();
@@ -551,7 +561,7 @@ public class TaoHoaDon extends JDialog {
         pnlDonThuoc.setVisible(false); // Mặc định ẩn
 
         // 1. Tạo nút bấm Toggle
-        JButton btnToggleKeDon = new JButton(" Thêm thông tin kê đơn");
+        btnToggleKeDon = new JButton(" Thêm thông tin kê đơn");
         btnToggleKeDon.setIcon(new MenuIcon("FILE")); 
         btnToggleKeDon.setFont(new Font("Segoe UI", Font.BOLD, 13));
         btnToggleKeDon.setBackground(Color.decode("#F3F4F6")); 
@@ -3204,6 +3214,10 @@ public class TaoHoaDon extends JDialog {
                                 String danhMuc = (firstItem.length > 5 && firstItem[5] != null) ? firstItem[5].toString() : "Khác";
 
                                 String thueVat = "5%";
+                                String danhMucCheck = (firstItem.length > 5 && firstItem[5] != null) ? firstItem[5].toString() : "";
+                                if (danhMucCheck.toLowerCase().contains("kê đơn") && !danhMucCheck.toLowerCase().contains("không kê đơn")) {
+                                    
+                                }
                                 if (firstItem.length > 6 && firstItem[6] != null) {
                                     String rawVat = firstItem[6].toString().trim();
                                     try {
@@ -3359,6 +3373,7 @@ public class TaoHoaDon extends JDialog {
                                 } else {
                                     showCustomNotification("KHÔNG TÌM THẤY", "Không tìm thấy sản phẩm với mã: " + searchText, "WARNING");
                                     txtSearchProduct.setText("");
+                                    txtSearchProduct.requestFocus();
                                 }
                             } catch (Exception ex) {}
                         }
@@ -3386,6 +3401,27 @@ public class TaoHoaDon extends JDialog {
         String unit = firstItem[2] != null ? firstItem[2].toString() : "";
         long giaBan = Math.round(Double.parseDouble(firstItem[3].toString()));
         String price = String.valueOf(giaBan);
+        
+        int tonKhoThucTe = 0;
+        try {
+            if (firstItem.length > 4 && firstItem[4] != null) {
+                tonKhoThucTe = Integer.parseInt(firstItem[4].toString().trim());
+            }
+        } catch (NumberFormatException ignored) {}
+
+        if (tonKhoThucTe <= 0) {
+            JOptionPane.showMessageDialog(
+                txtSearchProduct,
+                "Mã vạch lạ! Thuốc chưa được nhập vào hệ thống\n"
+                    + "hoặc lô hàng hiện tại đã hết tồn kho.\n\n"
+                    + "Sản phẩm: " + name,
+                "Không thể thêm vào hóa đơn",
+                JOptionPane.ERROR_MESSAGE
+            );
+            txtSearchProduct.setText(""); 
+            txtSearchProduct.requestFocus();
+            return; 
+        }
         
         String thueVat = "5%";
         if (firstItem.length > 6 && firstItem[6] != null) {
@@ -3419,7 +3455,10 @@ public class TaoHoaDon extends JDialog {
                 }
             } catch (Exception ex) {}
         }
-
+        String danhMucCheck = (firstItem.length > 5 && firstItem[5] != null) ? firstItem[5].toString() : "";
+        if (danhMucCheck.toLowerCase().contains("kê đơn") && !danhMucCheck.toLowerCase().contains("không kê đơn")) {
+            moBangKeDonTuDong();
+        }
         boolean daTonTai = false;
         int rowIndex = -1;
         int currentQty = 0;
@@ -4319,13 +4358,16 @@ public class TaoHoaDon extends JDialog {
 
         if (danhMuc != null) {
             String dm = danhMuc.toLowerCase();
-            if (dm.contains("thuốc") || dm.contains("kê đơn")) {
+            if (dm.contains("không kê đơn")) {
+                badgeText = "Thuốc thường"; 
+                bgColor = Color.decode("#D1FAE5"); fgColor = Color.decode("#059669"); // Xanh lá
+            } else if (dm.contains("kê đơn")) {
                 badgeText = "Thuốc KĐ"; 
-                bgColor = Color.decode("#DBEAFE"); fgColor = Color.decode("#2563EB"); 
+                bgColor = Color.decode("#DBEAFE"); fgColor = Color.decode("#2563EB"); // Xanh dương
             } else if (dm.contains("mỹ phẩm")) {
                 badgeText = "Mỹ phẩm"; bgColor = Color.decode("#F3E8FF"); fgColor = Color.decode("#9333EA");
             } else if (dm.contains("chức năng") || dm.contains("tpcn")) {
-                badgeText = "TPCN"; bgColor = Color.decode("#D1FAE5"); fgColor = Color.decode("#059669");
+                badgeText = "TPCN"; bgColor = Color.decode("#FEF3C7"); fgColor = Color.decode("#D97706");
             } else if (dm.contains("vật tư") || dm.contains("y tế")) {
                 badgeText = "Vật tư"; bgColor = Color.decode("#E5E7EB"); fgColor = Color.decode("#374151");
             }
@@ -4494,6 +4536,9 @@ public class TaoHoaDon extends JDialog {
                 }
                 
                 if (isLeftClick) {
+                	if (danhMuc != null && danhMuc.toLowerCase().contains("kê đơn") && !danhMuc.toLowerCase().contains("không kê đơn")) {
+                        moBangKeDonTuDong();
+                    }
                     currentQty++;
                     if (daTonTai) {
                         productModel.setValueAt(String.valueOf(currentQty), rowIndex, 3);
@@ -4725,73 +4770,75 @@ public class TaoHoaDon extends JDialog {
         SwingUtilities.invokeLater(() -> {
             productModel.setRowCount(0); 
             try {
-            	BUS.BUS_ChiTietHoaDon busCT = new BUS.BUS_ChiTietHoaDon();
-            	java.util.List<Object[]> dsMonHang = busCT.layDuLieuDoiTra(maHoaDon);
+                BUS.BUS_ChiTietHoaDon busCT = new BUS.BUS_ChiTietHoaDon();
+                java.util.List<Object[]> dsMonHang = busCT.layDuLieuDoiTra(maHoaDon);
                 
-            	for (Object[] row : dsMonHang) {
-            	    Object[] newRow = new Object[10]; 
-            	    newRow[0] = row.length > 0 && row[0] != null ? row[0] : ""; 
-            	    newRow[1] = row.length > 1 && row[1] != null ? row[1] : ""; 
-            	    newRow[3] = row.length > 2 && row[2] != null ? row[2] : "1"; 
-            	    
-            	    String giaTien = "0đ";
-            	    if (row.length > 3 && row[3] != null) {
-            	        String valStr = row[3].toString();
-            	        if (!valStr.contains("đ")) {
-            	            try { giaTien = String.format("%,d", (long)Double.parseDouble(valStr)).replace(',', '.') + "đ"; } catch(Exception e) {}
-            	        } else giaTien = valStr;
-            	    }
-            	    newRow[4] = giaTien; 
-            	    newRow[5] = "0%"; 
-            	    
-            	    // FIX: TẢI ĐÚNG VAT VÀ LÔ FEFO MẶC ĐỊNH
-            	    String vatStr = "0%";
-            	    String loHsdText = "Chưa có lô";
-            	    try {
-            	        BUS.BUS_SanPham busSP = new BUS.BUS_SanPham();
-            	        java.util.List<Object[]> ketQua = busSP.timKiemSanPhamBan(newRow[0].toString());
-            	        if (ketQua != null && !ketQua.isEmpty()) {
-            	            Object[] firstItem = ketQua.get(0);
-            	            if (firstItem.length > 6 && firstItem[6] != null) {
-            	                String rawVat = firstItem[6].toString().trim();
-            	                double v = Double.parseDouble(rawVat);
-            	                if (v > 0 && v < 1) v = v * 100;
-            	                vatStr = (int)v + "%";
-            	            }
-            	            String loHang = (firstItem.length > 7 && firstItem[7] != null) ? firstItem[7].toString() : "";
-            	            String hsd = (firstItem.length > 8 && firstItem[8] != null) ? firstItem[8].toString() : "";
-            	            if (!loHang.isEmpty()) loHsdText = loHang + (!hsd.isEmpty() ? " — " + hsd : "");
-            	            else if (!hsd.isEmpty()) loHsdText = hsd;
-            	        }
-            	    } catch(Exception e) {}
-            	    
-            	    newRow[2] = loHsdText; 
-            	    newRow[8] = vatStr; 
-            	    
-            	    long thanhTien = 0;
-            	    try {
-            	        int sl = Integer.parseInt(newRow[3].toString());
-            	        long dg = Long.parseLong(newRow[4].toString().replaceAll("\\D+", ""));
-            	        thanhTien = dg * sl; 
-            	    } catch(Exception e) {}
-            	    
-            	    newRow[6] = String.format("%,d", thanhTien).replace(',', '.') + "đ"; 
-            	    newRow[7] = ""; 
-            	    newRow[9] = "1";    
-            	    
-            	    productModel.addRow(newRow);
-            	}
+                for (Object[] row : dsMonHang) {
+                    Object[] newRow = new Object[10]; 
+                    newRow[0] = row.length > 0 && row[0] != null ? row[0] : ""; 
+                    newRow[1] = row.length > 1 && row[1] != null ? row[1] : ""; 
+                    newRow[3] = row.length > 2 && row[2] != null ? row[2] : "1"; 
+                    
+                    String giaTien = "0đ";
+                    if (row.length > 3 && row[3] != null) {
+                        String valStr = row[3].toString();
+                        if (!valStr.contains("đ")) {
+                            try { giaTien = String.format("%,d", (long)Double.parseDouble(valStr)).replace(',', '.') + "đ"; } catch(Exception e) {}
+                        } else giaTien = valStr;
+                    }
+                    newRow[4] = giaTien; 
+                    newRow[5] = "0%"; 
+                    
+                    // FIX: TẢI ĐÚNG VAT VÀ LÔ FEFO MẶC ĐỊNH
+                    String vatStr = "0%";
+                    String loHsdText = "Chưa có lô";
+                    try {
+                        BUS.BUS_SanPham busSP = new BUS.BUS_SanPham();
+                        java.util.List<Object[]> ketQua = busSP.timKiemSanPhamBan(newRow[0].toString());
+                        if (ketQua != null && !ketQua.isEmpty()) {
+                            Object[] firstItem = ketQua.get(0);
+                            if (firstItem.length > 6 && firstItem[6] != null) {
+                                String rawVat = firstItem[6].toString().trim();
+                                double v = Double.parseDouble(rawVat);
+                                if (v > 0 && v < 1) v = v * 100;
+                                vatStr = (int)v + "%";
+                            }
+                            String loHang = (firstItem.length > 7 && firstItem[7] != null) ? firstItem[7].toString() : "";
+                            String hsd = (firstItem.length > 8 && firstItem[8] != null) ? firstItem[8].toString() : "";
+                            if (!loHang.isEmpty()) loHsdText = loHang + (!hsd.isEmpty() ? " — " + hsd : "");
+                            else if (!hsd.isEmpty()) loHsdText = hsd;
+                        }
+                    } catch(Exception e) {}
+                    
+                    newRow[2] = loHsdText; 
+                    newRow[8] = vatStr; 
+                    
+                    long thanhTien = 0;
+                    try {
+                        int sl = Integer.parseInt(newRow[3].toString());
+                        long dg = Long.parseLong(newRow[4].toString().replaceAll("\\D+", ""));
+                        thanhTien = dg * sl; 
+                    } catch(Exception e) {}
+                    
+                    newRow[6] = String.format("%,d", thanhTien).replace(',', '.') + "đ"; 
+                    newRow[7] = ""; 
+                    newRow[9] = "1";    
+                    
+                    productModel.addRow(newRow);
+                }
                 
                 BUS.BUS_HoaDon busHD = new BUS.BUS_HoaDon();
                 Entity.HoaDon hdGoc = busHD.layHoaDonTheoMa(maHoaDon);
                 
                 if (hdGoc != null) {
-                	String ghiChu = hdGoc.getGhiChu();
-                    if (ghiChu != null && ghiChu.contains("| BATCH:")) {
+                    String ghiChu = hdGoc.getGhiChu();
+                    // FIX: Bỏ điều kiện ghiChu.contains("| BATCH:") để nó đọc được cả thông tin Kê đơn
+                    if (ghiChu != null) {
                         String[] parts = ghiChu.split("\\|");
                         for(String p : parts) {
-                            if(p.trim().startsWith("BATCH:")) {
-                                String bData = p.trim().substring(6); 
+                            String pTrim = p.trim();
+                            if(pTrim.startsWith("BATCH:")) {
+                                String bData = pTrim.substring(6); 
                                 int eqIndex = bData.indexOf("=");
                                 if(eqIndex != -1) {
                                     String bName = bData.substring(0, eqIndex);
@@ -4805,8 +4852,26 @@ public class TaoHoaDon extends JDialog {
                                     }
                                 }
                             }
+                            // --- PHẦN KHÔI PHỤC KÊ ĐƠN ---
+                            else if (pTrim.startsWith("BS:")) {
+                                txtBacSi.setText(pTrim.substring(3).trim());
+                                txtBacSi.setForeground(Color.BLACK);
+                                if (pnlDonThuoc != null) pnlDonThuoc.setVisible(true);
+                                if (btnToggleKeDon != null) {
+                                    btnToggleKeDon.setText(" Đã thêm thông tin kê đơn");
+                                    btnToggleKeDon.setBackground(Color.decode("#FEE2E2"));
+                                    btnToggleKeDon.setForeground(Color.decode("#DC2626"));
+                                }
+                            } else if (pTrim.startsWith("CS:")) {
+                                txtCoSo.setText(pTrim.substring(3).trim());
+                                txtCoSo.setForeground(Color.BLACK);
+                            } else if (pTrim.startsWith("CD:")) {
+                                txtChuanDoan.setText(pTrim.substring(3).trim());
+                                txtChuanDoan.setForeground(Color.BLACK);
+                            }
                         }
                     }
+                    
                     if (hdGoc.getKhachHangId() != null && hdGoc.getKhachHangId().getId() != null) {
                         BUS.BUS_KhachHang busKH = new BUS.BUS_KhachHang();
                         Entity.KhachHang kh = busKH.timKhachHangTheoMa(hdGoc.getKhachHangId().getId());
@@ -5604,5 +5669,12 @@ public class TaoHoaDon extends JDialog {
         dlg.setResizable(false);
         dlg.setLocationRelativeTo(this);
         dlg.setVisible(true);
+    }
+    private void moBangKeDonTuDong() {
+        // Nếu bảng đang bị ẩn thì tự động giả lập một cú click chuột để mở nó ra
+        if (pnlDonThuoc != null && !pnlDonThuoc.isVisible() && btnToggleKeDon != null) {
+            btnToggleKeDon.doClick(); 
+            showCustomNotification("LƯU Ý KÊ ĐƠN", "Bạn vừa thêm Thuốc Kê Đơn vào giỏ hàng.\nHệ thống đã tự động mở bảng nhập thông tin Bác sĩ!", "WARNING");
+        }
     }
 }

@@ -146,7 +146,7 @@ public class DAO_TaiKhoan {
         Connection con = ConnectDB.getInstance().getConnection();
 
         try (PreparedStatement pst = con.prepareStatement(sql)) {
-            pst.setString(1, tk.getId());
+            pst.setString(1, tk.getMaTaiKhoan());
             pst.setString(2, tk.getNhanVienId().getNhanVien());
             pst.setString(3, tk.getVaiTro().name());
             pst.setString(4, tk.getTenDangNhap());
@@ -179,7 +179,7 @@ public class DAO_TaiKhoan {
 
     private TaiKhoan mapTaiKhoan(ResultSet rs, String tenDangNhapMacDinh) throws SQLException {
         TaiKhoan tk = new TaiKhoan();
-        tk.setId(rs.getString("id"));
+        tk.setMaTaiKhoan(rs.getString("id"));
 
         String vaiTro = rs.getString("vaiTro");
         if (vaiTro != null) {
@@ -233,7 +233,7 @@ public class DAO_TaiKhoan {
             try (ResultSet rs = pst.executeQuery()) {
                 if (rs.next()) {
                     tk = new TaiKhoan();
-                    tk.setId(rs.getString("id"));
+                    tk.setMaTaiKhoan(rs.getString("id"));
                     tk.setTenDangNhap(rs.getString("tenDangNhap"));
                     tk.setMatKhau(rs.getString("matKhau"));
                     

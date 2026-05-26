@@ -269,7 +269,6 @@ public class ManHinhSanPham extends JPanel {
             "Xương khớp – Gút",
             "Tim mạch – Huyết áp",
             "Đái tháo đường",
-            "Khác"
         };
  // --- Các biến trạng thái tích hợp từ PanelCatLieu ---
     private static final int COL_L_MA_SP      = 0;
@@ -345,6 +344,7 @@ public class ManHinhSanPham extends JPanel {
 
         loadDataFromDatabase();
         capNhatDuLieuComboBoxTuDB();
+        loadDanhSachComboNangCaoRaGiaoDien(true);
         setDetailVisible(false);
     }
  // =========================================================================
@@ -402,37 +402,28 @@ public class ManHinhSanPham extends JPanel {
         // [FIX NHÓM BỆNH] Dùng danh sách chuẩn giống tab Sản phẩm
         cbNhomBenhLieuNangCao = new JComboBox<>();
         for (String nb : DANH_SACH_NHOM_BENH_LY) cbNhomBenhLieuNangCao.addItem(nb);
-        cbNhomBenhLieuNangCao.setEditable(true);
-        ((JTextField) cbNhomBenhLieuNangCao.getEditor().getEditorComponent())
-            .addActionListener(ev -> {
-                String newItem = cbNhomBenhLieuNangCao.getEditor().getItem().toString().trim();
-                if (!newItem.isEmpty()) {
-                    boolean exists = false;
-                    for (int i = 0; i < cbNhomBenhLieuNangCao.getItemCount(); i++)
-                        if (cbNhomBenhLieuNangCao.getItemAt(i).equalsIgnoreCase(newItem)) { exists = true; break; }
-                    if (!exists) {
-                        cbNhomBenhLieuNangCao.addItem(newItem);
-                        cbNhomBenhLieuNangCao.setSelectedItem(newItem);
-                    }
-                }
-            });
+        cbNhomBenhLieuNangCao.addItem("+ Thêm nhóm mới...");
         pnlInfo.add(cbNhomBenhLieuNangCao, g);
  
         // Lọc danh sách khi chọn nhóm bệnh
         cbNhomBenhLieuNangCao.addActionListener(ev -> {
-            if (dangCapNhatBangLieu) return;
-            Object selected = cbNhomBenhLieuNangCao.getSelectedItem();
-            if (selected == null) return;
-            String nhomLoc = selected.toString().trim();
-            dangCapNhatBangLieu = true;
-            mdlDanhSachLieuNangCao.setRowCount(0);
-            for (Object[] r : new BUS_SanPham().layDanhSachComboNangCao()) {
-            	if (nhomLoc.isEmpty() || r[2].toString().equalsIgnoreCase(nhomLoc)) {
-                    mdlDanhSachLieuNangCao.addRow(new Object[]{
-                        r[0], r[1], r[2], String.format("%,.0f đ", (Double) r[3])});
+        	if ("+ Thêm nhóm mới...".equals(cbNhomBenhLieuNangCao.getSelectedItem())) {
+                String tenMoi = showNhomBenhLyInputDialog(cbNhomBenhLieuNangCao);
+                if (tenMoi != null && !tenMoi.isEmpty()) {
+                    cbNhomBenhLieuNangCao.insertItemAt(tenMoi, cbNhomBenhLieuNangCao.getItemCount() - 1);
+                    cbNhomBenhLieuNangCao.setSelectedItem(tenMoi);
+                    // Đồng bộ ngược sang tab Sản phẩm
+                    boolean existsSP = false;
+                    for (int i = 0; i < cbNhomBenhLy.getItemCount(); i++) {
+                        if (cbNhomBenhLy.getItemAt(i).equalsIgnoreCase(tenMoi)) { existsSP = true; break; }
+                    }
+                    if (!existsSP) cbNhomBenhLy.insertItemAt(tenMoi, cbNhomBenhLy.getItemCount() - 1);
+                } else {
+                    cbNhomBenhLieuNangCao.setSelectedIndex(0);
                 }
+                return;
             }
-            dangCapNhatBangLieu = false;
+            if (dangCapNhatBangLieu) return;
         });
  
         g.gridx = 0; g.gridy = 2; g.weightx = 0;
@@ -1130,7 +1121,7 @@ public class ManHinhSanPham extends JPanel {
         pnlPage.setBackground(Color.WHITE);
         btnPrev = new JButton("< Trang trước"); stylePageBtn(btnPrev);
         btnNext = new JButton("Trang tiếp >");  stylePageBtn(btnNext);
-        cbLimit = new JComboBox<>(new String[]{"20", "30", "50"});
+        cbLimit = new JComboBox<>(new String[]{"20", "30", "50", "100", "Tất cả"});
         cbLimit.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         cbLimit.setBackground(Color.WHITE);
         lblPage = new JLabel("Trang 1/1 (Tổng: 0)");
@@ -1142,7 +1133,8 @@ public class ManHinhSanPham extends JPanel {
             if (currentPageMock < max) { currentPageMock++; updatePagination(); }
         });
         cbLimit.addActionListener(e -> {
-            itemsPerPageMock = Integer.parseInt(cbLimit.getSelectedItem().toString());
+            String sel = cbLimit.getSelectedItem().toString();
+            itemsPerPageMock = sel.equals("Tất cả") ? Integer.MAX_VALUE : Integer.parseInt(sel);
             currentPageMock = 1; updatePagination();
         });
         pnlPage.add(btnPrev); pnlPage.add(btnNext); pnlPage.add(cbLimit); pnlPage.add(lblPage);
@@ -1163,17 +1155,23 @@ public class ManHinhSanPham extends JPanel {
         if (lblTotalTopBar != null)
             lblTotalTopBar.setText("(" + allDataMock.size() + " sản phẩm)");
 
-        int total      = currentFilteredData.size();
-        int totalPages = (int) Math.ceil((double) total / itemsPerPageMock);
+        int total = currentFilteredData.size();
+        boolean showAll = (itemsPerPageMock == Integer.MAX_VALUE);
+
+        int totalPages = showAll ? 1 : (int) Math.ceil((double) total / itemsPerPageMock);
         if (totalPages == 0) totalPages = 1;
         if (currentPageMock > totalPages) currentPageMock = totalPages;
 
-        lblPage.setText("Trang " + currentPageMock + "/" + totalPages + " (Tổng: " + total + ")");
-        btnPrev.setEnabled(currentPageMock > 1);
-        btnNext.setEnabled(currentPageMock < totalPages);
+        if (showAll) {
+            lblPage.setText("Tất cả (" + total + " sản phẩm)");
+        } else {
+            lblPage.setText("Trang " + currentPageMock + "/" + totalPages + " (Tổng: " + total + ")");
+        }
+        btnPrev.setEnabled(!showAll && currentPageMock > 1);
+        btnNext.setEnabled(!showAll && currentPageMock < totalPages);
 
-        int start = (currentPageMock - 1) * itemsPerPageMock;
-        int end   = Math.min(start + itemsPerPageMock, total);
+        int start = showAll ? 0 : (currentPageMock - 1) * itemsPerPageMock;
+        int end   = showAll ? total : Math.min(start + itemsPerPageMock, total);
         modelSanPham.setRowCount(0);
 
         for (int i = start; i < end; i++) {
@@ -1340,23 +1338,19 @@ public class ManHinhSanPham extends JPanel {
         cbNhomBenhLy.addActionListener(e -> {
             Object sel = cbNhomBenhLy.getSelectedItem();
             if (sel != null && sel.toString().startsWith("+ Thêm nhóm")) {
-                String newNhom = JOptionPane.showInputDialog(
-                    SwingUtilities.getWindowAncestor(ManHinhSanPham.this),
-                    "Nhập tên nhóm bệnh lý mới:",
-                    "Thêm nhóm bệnh lý",
-                    JOptionPane.PLAIN_MESSAGE);
-                if (newNhom != null && !newNhom.trim().isEmpty()) {
-                    String trimmed = newNhom.trim();
-                    // Kiểm tra trùng
-                    boolean exists = false;
-                    for (int i = 0; i < cbNhomBenhLy.getItemCount(); i++) {
-                        if (cbNhomBenhLy.getItemAt(i).equalsIgnoreCase(trimmed)) { exists = true; break; }
+                String tenMoi = showNhomBenhLyInputDialog(cbNhomBenhLy);
+                if (tenMoi != null) {
+                    // Chèn trước item "+ Thêm..."
+                    cbNhomBenhLy.insertItemAt(tenMoi, cbNhomBenhLy.getItemCount() - 1);
+                    cbNhomBenhLy.setSelectedItem(tenMoi);
+                    // Đồng bộ sang combo bên tab mẫu liều
+                    boolean existsLieu = false;
+                    for (int i = 0; i < cbNhomBenhLieuNangCao.getItemCount(); i++) {
+                        if (cbNhomBenhLieuNangCao.getItemAt(i).equalsIgnoreCase(tenMoi)) {
+                            existsLieu = true; break;
+                        }
                     }
-                    if (!exists) {
-                        // Chen them vao truoc item "+ Them..."
-                        cbNhomBenhLy.insertItemAt(trimmed, cbNhomBenhLy.getItemCount() - 1);
-                    }
-                    cbNhomBenhLy.setSelectedItem(trimmed);
+                    if (!existsLieu) cbNhomBenhLieuNangCao.addItem(tenMoi);
                 } else {
                     cbNhomBenhLy.setSelectedIndex(0);
                 }
@@ -2545,31 +2539,78 @@ public class ManHinhSanPham extends JPanel {
     // MAP DB <-> LABEL
     // =========================================================================
     private String mapToDbDanhMuc(String label) {
-        switch (label) {
-            case "Thuốc kê đơn":        return "THUOC_KE_DON";
-            case "Thuốc không kê đơn":  return "THUOC_KHONG_KE_DON";
-            case "Mỹ phẩm":             return "MY_PHAM";
-            default:                    return "THUC_PHAM_CHUC_NANG";
+        if (label == null) return "THUC_PHAM_CHUC_NANG";
+        switch (label.trim()) {
+            // label tiếng Việt (file xuất ra)
+            case "Thuốc kê đơn":           return "THUOC_KE_DON";
+            case "Thuốc không kê đơn":     return "THUOC_KHONG_KE_DON";
+            case "Mỹ phẩm":                return "MY_PHAM";
+            case "Sản phẩm chức năng":     return "THUC_PHAM_CHUC_NANG";
+            // enum name thô (phòng trường hợp file cũ)
+            case "THUOC_KE_DON":           return "THUOC_KE_DON";
+            case "THUOC_KHONG_KE_DON":     return "THUOC_KHONG_KE_DON";
+            case "MY_PHAM":                return "MY_PHAM";
+            case "THUC_PHAM_CHUC_NANG":    return "THUC_PHAM_CHUC_NANG";
+            default:                       return "THUC_PHAM_CHUC_NANG";
         }
     }
 
     private String mapToDbDang(String label) {
-        switch (label) {
-            case "Viên nang":       return "VIEN_NANG";
-            case "Viên sủi":        return "VIEN_SUI";
-            case "Thuốc bột":       return "THUOC_BOT";
-            case "Kẹo ngậm":        return "KEO_NGAM";
-            case "Dung dịch":       return "DUNG_DICH";
-            case "Hỗn dịch":        return "HON_DICH";
-            case "Thuốc nhỏ giọt":  return "THUOC_NHO_GIOT";
-            case "Súc miệng":       return "SUC_MIENG";
-            default:                return "VIEN_NEN";
+        if (label == null) return "VIEN_NEN";
+        switch (label.trim()) {
+            // label tiếng Việt (file xuất ra)
+            case "Viên nang":        return "VIEN_NANG";
+            case "Viên sủi":         return "VIEN_SUI";
+            case "Thuốc bột":        return "THUOC_BOT";
+            case "Kẹo ngậm":         return "KEO_NGAM";
+            case "Dung dịch":        return "DUNG_DICH";
+            case "Hỗn dịch":         return "HON_DICH";
+            case "Thuốc nhỏ giọt":   return "THUOC_NHO_GIOT";
+            case "Súc miệng":        return "SUC_MIENG";
+            case "Viên nén":         return "VIEN_NEN";
+            // enum name thô (phòng trường hợp file cũ)
+            case "VIEN_NANG":        return "VIEN_NANG";
+            case "VIEN_SUI":         return "VIEN_SUI";
+            case "THUOC_BOT":        return "THUOC_BOT";
+            case "KEO_NGAM":         return "KEO_NGAM";
+            case "DUNG_DICH":        return "DUNG_DICH";
+            case "HON_DICH":         return "HON_DICH";
+            case "THUOC_NHO_GIOT":   return "THUOC_NHO_GIOT";
+            case "SUC_MIENG":        return "SUC_MIENG";
+            default:                 return "VIEN_NEN";
         }
     }
 
     // =========================================================================
     // UI HELPERS
     // =========================================================================
+    /** Chuyển enum name DB → label tiếng Việt để xuất Excel (nhập lại được) */
+    private String mapDanhMucToExcelLabel(String db) {
+        if (db == null) return "";
+        switch (db) {
+            case "THUOC_KE_DON":        return "Thuốc kê đơn";
+            case "THUOC_KHONG_KE_DON":  return "Thuốc không kê đơn";
+            case "MY_PHAM":             return "Mỹ phẩm";
+            case "THUC_PHAM_CHUC_NANG": return "Sản phẩm chức năng";
+            default:                    return db;
+        }
+    }
+
+    /** Chuyển enum name DB → label tiếng Việt để xuất Excel (nhập lại được) */
+    private String mapDangToExcelLabel(String db) {
+        if (db == null) return "";
+        switch (db) {
+            case "VIEN_NANG":       return "Viên nang";
+            case "VIEN_SUI":        return "Viên sủi";
+            case "THUOC_BOT":       return "Thuốc bột";
+            case "KEO_NGAM":        return "Kẹo ngậm";
+            case "DUNG_DICH":       return "Dung dịch";
+            case "HON_DICH":        return "Hỗn dịch";
+            case "THUOC_NHO_GIOT":  return "Thuốc nhỏ giọt";
+            case "SUC_MIENG":       return "Súc miệng";
+            default:                return "Viên nén";
+        }
+    }
     private void applyTableCellRenderers() {
         DefaultTableCellRenderer center = new DefaultTableCellRenderer();
         center.setHorizontalAlignment(SwingConstants.CENTER);
@@ -2886,8 +2927,9 @@ public class ManHinhSanPham extends JPanel {
             for (int i = 0; i < data.size(); i++) {
                 Row row = sheet.createRow(i + 1); SanPham sp = data.get(i);
                 row.createCell(0).setCellValue(sp.getId() != null ? sp.getId() : "");
-                row.createCell(1).setCellValue(sp.getDanhMuc() != null ? sp.getDanhMuc().name() : "");
-                row.createCell(2).setCellValue(sp.getDang() != null ? sp.getDang().name() : "");
+                // FIX: xuất label tiếng Việt để nhập lại khớp với mapToDbDanhMuc/mapToDbDang
+                row.createCell(1).setCellValue(sp.getDanhMuc() != null ? mapDanhMucToExcelLabel(sp.getDanhMuc().name()) : "");
+                row.createCell(2).setCellValue(sp.getDang() != null ? mapDangToExcelLabel(sp.getDang().name()) : "");
                 row.createCell(3).setCellValue(sp.getTen() != null ? sp.getTen() : "");
                 row.createCell(4).setCellValue(sp.getTenVietTat() != null ? sp.getTenVietTat() : "");
                 row.createCell(5).setCellValue(sp.getNhaSanXuat() != null ? sp.getNhaSanXuat() : "");
@@ -2950,21 +2992,110 @@ public class ManHinhSanPham extends JPanel {
                         String maVach   = row.getCell(14) != null ? formatter.formatCellValue(row.getCell(14)).trim() : "";
                         String nhomBL   = row.getCell(15) != null ? formatter.formatCellValue(row.getCell(15)).trim() : "";
 
+                        String idTuFile = formatter.formatCellValue(row.getCell(0)).trim();
                         SanPham spCu = null;
-                        for (SanPham sp : dsHienTai) { if (sp.getTen().equalsIgnoreCase(ten)) { spCu = sp; break; } }
+                        for (SanPham sp : dsHienTai) {
+                            if (sp.getId().equalsIgnoreCase(idTuFile)) { spCu = sp; break; }
+                        }
+                        if (spCu == null) {
+                            for (SanPham sp : dsHienTai) {
+                                if (sp.getTen().equalsIgnoreCase(ten)) { spCu = sp; break; }
+                            }
+                        }
 
                         if (spCu != null) {
-                            bus.capNhatSP(spCu.getId(), mapToDbDanhMuc(loai), mapToDbDang(dang), ten, vietTat, nsx, hoatChat, vat, hamLuong, moTa, donVi, spCu.getGiaBan(), maVach, nhomBL, new ArrayList<>());
-                            updateCount++;
-                        } else {
+                            double giaBanExcel = spCu.getGiaBan();
+                            try {
+                                org.apache.poi.ss.usermodel.Cell cellGia = row.getCell(13);
+                                if (cellGia != null) {
+                                    if (cellGia.getCellType() == org.apache.poi.ss.usermodel.CellType.NUMERIC) {
+                                        giaBanExcel = cellGia.getNumericCellValue();
+                                    } else {
+                                        String gs = formatter.formatCellValue(cellGia).replace(",", "").trim();
+                                        if (!gs.isEmpty() && !gs.equals("NULL")) giaBanExcel = Double.parseDouble(gs);
+                                    }
+                                }
+                            } catch (Exception ignored) {}
+                            
+                         // 1. LẤY LẠI VỊ TRÍ CŨ TRƯỚC KHI CẬP NHẬT
+                            String viTriCu = (spCu.getViTriId() != null) ? spCu.getViTriId() : "";
+                            List<Object[]> dsDonViCu = new ArrayList<>();
+                            try {
+                                dsDonViCu = bus.layDonViQuyDoiTheoSP(spCu.getId()); 
+                            } catch (Exception ignored) {}
+
+                            if (dsDonViCu == null) dsDonViCu = new ArrayList<>();
+                            boolean updated = bus.capNhatSP(
+                                spCu.getId(), mapToDbDanhMuc(loai), mapToDbDang(dang), ten, vietTat, 
+                                nsx, hoatChat, vat, hamLuong, moTa, donVi, giaBanExcel, 
+                                maVach, nhomBL, viTriCu, dsDonViCu 
+                            );
+
+                            if (updated) updateCount++; else errorRows.add(i + 1);
+                        	}else {
+                            // 1. Tính giá bán
                             double giaBanMoi = 0;
-                            try { String gs = formatter.formatCellValue(row.getCell(13)).replace(",","").replace(".","").trim(); if (!gs.isEmpty() && !gs.equals("NULL")) giaBanMoi = Double.parseDouble(gs); } catch (Exception ignored) {}
+                            try {
+                                org.apache.poi.ss.usermodel.Cell cellGia = row.getCell(13);
+                                if (cellGia != null) {
+                                    if (cellGia.getCellType() == org.apache.poi.ss.usermodel.CellType.NUMERIC) {
+                                        giaBanMoi = cellGia.getNumericCellValue();
+                                    } else {
+                                        String gs = formatter.formatCellValue(cellGia).replace(",", "").trim();
+                                        if (!gs.isEmpty() && !gs.equals("NULL")) giaBanMoi = Double.parseDouble(gs);
+                                    }
+                                }
+                            } catch (Exception ignored) {}
                             if (giaBanMoi < 0) giaBanMoi = 0;
+
+                            // 2. Tạo mã SP mới
                             String newId = bus.taoMaMoi();
-                            boolean isSaved = bus.themSP(newId, mapToDbDanhMuc(loai), mapToDbDang(dang), ten, vietTat, nsx, hoatChat, vat, hamLuong, moTa, donVi, giaBanMoi, maVach, nhomBL, new ArrayList<>());
-                            if (isSaved) { successCount++; SanPham ns = new SanPham(); ns.setId(newId); ns.setTen(ten); dsHienTai.add(ns); }
+
+                            // 3. LOGIC TỰ SINH MÃ VẠCH CHO EXCEL (Giống form thủ công)
+                            if (maVach == null || maVach.isEmpty()) {
+                                String numOnly = newId.replaceAll("[^0-9]", "");
+                                if (numOnly.isEmpty()) numOnly = "0";
+                                try {
+                                    String digits12 = String.format("200%09d", Long.parseLong(numOnly) % 1000000000L);
+                                    maVach = digits12 + tinhCheckDigitEAN13(digits12);
+                                } catch (Exception ex) {
+                                    String digits12 = String.format("200%09d", System.currentTimeMillis() % 1000000000L);
+                                    maVach = digits12 + tinhCheckDigitEAN13(digits12);
+                                }
+                            }
+
+                            // 4. Kiểm tra trùng mã vạch (Chống lỗi SQL Unique Constraint)
+                            if (bus.kiemTraMaVachTonTai(maVach, null)) {
+                                // Nếu mã vạch lấy từ Excel đã tồn tại, đánh dấu lỗi dòng này và bỏ qua
+                                errorRows.add(i + 1);
+                                continue;
+                            }
+
+                            // 5. Fallback cho Tên viết tắt nếu Excel bỏ trống (Tránh lỗi SQL Not Null)
+                            if (vietTat == null || vietTat.isEmpty()) {
+                                vietTat = ten.length() > 10 ? ten.substring(0, 10) : ten;
+                            }
+
+                            // 6. Lưu xuống DB
+                            boolean isSaved = bus.themSP(
+                                    newId, mapToDbDanhMuc(loai), mapToDbDang(dang), ten, vietTat, 
+                                    nsx, hoatChat, vat, hamLuong, moTa, donVi, giaBanMoi, 
+                                    maVach, nhomBL, "", new ArrayList<>()
+                                );
+
+                            if (isSaved) { 
+                                successCount++; 
+                                SanPham ns = new SanPham(); 
+                                ns.setId(newId); 
+                                ns.setTen(ten); 
+                                dsHienTai.add(ns); 
+                            } else {
+                                errorRows.add(i + 1);
+                            }
                         }
-                    } catch (Exception rowEx) { errorRows.add(i + 1); }
+                    } catch (Exception rowEx) { 
+                        errorRows.add(i + 1); 
+                    }
                 }
 
                 setCursor(Cursor.getDefaultCursor());
@@ -2975,7 +3106,9 @@ public class ManHinhSanPham extends JPanel {
                 if (!missingDataRows.isEmpty()) { msg.append("\n⚠ Bỏ qua dòng thiếu dữ liệu: ").append(missingDataRows); hasError = true; }
                 if (!errorRows.isEmpty())       { msg.append("\n⚠ Lỗi format dòng: ").append(errorRows); hasError = true; }
                 showCustomNotification(hasError ? "NHẬP CÓ CẢNH BÁO" : "NHẬP THÀNH CÔNG", msg.toString(), hasError ? "WARNING" : "SUCCESS");
-                loadDataFromDatabase();
+                
+                // FIX: reload bảng trên Event Dispatch Thread để UI cập nhật ngay
+                SwingUtilities.invokeLater(() -> loadDataFromDatabase());
             } catch (Exception ex) {
                 setCursor(Cursor.getDefaultCursor());
                 ex.printStackTrace();
@@ -3862,6 +3995,251 @@ public class ManHinhSanPham extends JPanel {
         dlg.pack();
         dlg.setLocationRelativeTo(this);
         dlg.setVisible(true);
+        return result[0];
+    }
+    private String showNhomBenhLyInputDialog(JComboBox<String> existingCombo) {
+        final String[] result = {null};
+ 
+        JDialog dialog = new JDialog(
+            (java.awt.Frame) SwingUtilities.getWindowAncestor(this), true);
+        dialog.setUndecorated(true);
+ 
+        // ── Wrapper chính ──────────────────────────────────────────────────────
+        JPanel pnlMain = new JPanel(new BorderLayout());
+        pnlMain.setBorder(BorderFactory.createLineBorder(Color.decode("#1E3A8A"), 2));
+        pnlMain.setBackground(Color.WHITE);
+ 
+        // ── Header ─────────────────────────────────────────────────────────────
+        JPanel pnlHeader = new JPanel(new BorderLayout());
+        pnlHeader.setBackground(Color.decode("#1E3A8A"));
+        pnlHeader.setPreferredSize(new Dimension(0, 48));
+        pnlHeader.setBorder(BorderFactory.createEmptyBorder(0, 16, 0, 16));
+ 
+        // Icon dấu + bên trái header
+        JLabel lblIconH = new JLabel() {
+            @Override protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(Color.decode("#93C5FD")); // xanh nhạt
+                g2.setStroke(new BasicStroke(2.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                int cx = getWidth() / 2, cy = getHeight() / 2;
+                g2.drawLine(cx, cy - 8, cx, cy + 8); // dọc
+                g2.drawLine(cx - 8, cy, cx + 8, cy); // ngang
+                g2.dispose();
+            }
+        };
+        lblIconH.setPreferredSize(new Dimension(28, 48));
+ 
+        JLabel lblTitle = new JLabel("THÊM NHÓM BỆNH LÝ MỚI", SwingConstants.CENTER);
+        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        lblTitle.setForeground(Color.WHITE);
+ 
+        pnlHeader.add(lblIconH, BorderLayout.WEST);
+        pnlHeader.add(lblTitle, BorderLayout.CENTER);
+ 
+        // ── Body ───────────────────────────────────────────────────────────────
+        JPanel pnlBody = new JPanel();
+        pnlBody.setLayout(new BoxLayout(pnlBody, BoxLayout.Y_AXIS));
+        pnlBody.setBackground(Color.WHITE);
+        pnlBody.setBorder(BorderFactory.createEmptyBorder(16, 24, 12, 24));
+
+        // Mô tả nhỏ
+        JLabel lblDesc = new JLabel(
+            "<html><span style='color:#64748B;font-size:12px'>"
+            + "Nhóm mới sẽ được thêm vào danh sách và chọn ngay lập tức.</span></html>");
+        lblDesc.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        lblDesc.setAlignmentX(Component.LEFT_ALIGNMENT);
+        pnlBody.add(lblDesc);
+        pnlBody.add(Box.createVerticalStrut(14));
+
+        // Label nhãn field
+        JLabel lblFieldLabel = new JLabel("Tên nhóm bệnh lý");
+        lblFieldLabel.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        lblFieldLabel.setForeground(Color.decode("#1E3A8A"));
+        lblFieldLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        pnlBody.add(lblFieldLabel);
+        pnlBody.add(Box.createVerticalStrut(6));
+
+        // Panel nhập liệu (icon + textfield)
+        JPanel pnlInput = new JPanel(new BorderLayout(8, 0));
+        pnlInput.setBackground(Color.WHITE);
+        pnlInput.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
+        pnlInput.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JLabel lblFieldIcon = new JLabel() {
+            @Override protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(Color.decode("#3B82F6"));
+                int[] xp = {2, 14, 14, 8, 2};
+                int[] yp = {4, 4, 14, 19, 14};
+                g2.fillPolygon(xp, yp, 5);
+                g2.setColor(Color.WHITE);
+                g2.fillOval(9, 7, 4, 4);
+                g2.dispose();
+            }
+        };
+        lblFieldIcon.setPreferredSize(new Dimension(28, 40));
+        lblFieldIcon.setOpaque(false);
+
+        JTextField txtNhomMoi = new JTextField();
+        txtNhomMoi.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        txtNhomMoi.setPreferredSize(new Dimension(0, 40));
+        txtNhomMoi.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(Color.decode("#CBD5E1"), 1, true),
+            BorderFactory.createEmptyBorder(4, 10, 4, 10)));
+        txtNhomMoi.putClientProperty("JTextField.placeholderText", "Ví dụ: Xương khớp – Gút");
+
+        pnlInput.add(lblFieldIcon, BorderLayout.WEST);
+        pnlInput.add(txtNhomMoi, BorderLayout.CENTER);
+        pnlBody.add(pnlInput);
+        pnlBody.add(Box.createVerticalStrut(4));
+
+        // Label cảnh báo trùng (ẩn mặc định)
+        JLabel lblWarning = new JLabel(" ");
+        lblWarning.setFont(new Font("Segoe UI", Font.ITALIC, 12));
+        lblWarning.setForeground(Color.decode("#EF4444"));
+        lblWarning.setAlignmentX(Component.LEFT_ALIGNMENT);
+        pnlBody.add(lblWarning);
+        pnlBody.add(Box.createVerticalStrut(10));
+
+        // ── Gợi ý danh sách hiện có ────────────────────────────────────────────
+        // Gom tên các nhóm đã có (bỏ qua "--Chọn--" và "+ Thêm")
+        StringBuilder sb = new StringBuilder();
+        int count = 0;
+        for (int i = 0; i < existingCombo.getItemCount(); i++) {
+            String it = existingCombo.getItemAt(i);
+            if (it.startsWith("--") || it.startsWith("+")) continue;
+            if (count > 0) sb.append("  ·  ");
+            sb.append(it);
+            count++;
+        }
+
+        JPanel pnlHint = new JPanel();
+        pnlHint.setLayout(new BoxLayout(pnlHint, BoxLayout.Y_AXIS));
+        pnlHint.setBackground(Color.decode("#F8FAFC"));
+        pnlHint.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(Color.decode("#E2E8F0"), 1, true),
+            BorderFactory.createEmptyBorder(8, 12, 8, 12)));
+        pnlHint.setAlignmentX(Component.LEFT_ALIGNMENT);
+        pnlHint.setMaximumSize(new Dimension(Integer.MAX_VALUE, 200));
+
+        JLabel lblHintTitle = new JLabel("Nhóm hiện có:");
+        lblHintTitle.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        lblHintTitle.setForeground(Color.decode("#64748B"));
+        lblHintTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
+        pnlHint.add(lblHintTitle);
+        pnlHint.add(Box.createVerticalStrut(4));
+
+        // Dùng JTextArea để tự xuống dòng khi danh sách dài
+        JTextArea taHintList = new JTextArea(sb.toString());
+        taHintList.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        taHintList.setForeground(Color.decode("#94A3B8"));
+        taHintList.setBackground(Color.decode("#F8FAFC"));
+        taHintList.setEditable(false);
+        taHintList.setFocusable(false);
+        taHintList.setLineWrap(true);
+        taHintList.setWrapStyleWord(true);
+        taHintList.setBorder(null);
+        taHintList.setAlignmentX(Component.LEFT_ALIGNMENT);
+        pnlHint.add(taHintList);
+
+        pnlBody.add(pnlHint);
+ 
+        // ── Footer buttons ──────────────────────────────────────────────────────
+        JPanel pnlFooter = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 10));
+        pnlFooter.setBackground(Color.WHITE);
+        pnlFooter.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, Color.decode("#E2E8F0")));
+ 
+        JButton btnHuy = new JButton("Hủy");
+        btnHuy.setPreferredSize(new Dimension(90, 36));
+        btnHuy.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnHuy.setBackground(Color.decode("#64748B"));
+        btnHuy.setForeground(Color.WHITE);
+        btnHuy.setFocusPainted(false);
+        btnHuy.setBorderPainted(false);
+        btnHuy.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnHuy.addMouseListener(new MouseAdapter() {
+            @Override public void mouseEntered(MouseEvent e) { btnHuy.setBackground(Color.decode("#475569")); }
+            @Override public void mouseExited(MouseEvent e)  { btnHuy.setBackground(Color.decode("#64748B")); }
+        });
+        btnHuy.addActionListener(e -> dialog.dispose());
+ 
+        JButton btnThem = new JButton("✚  Thêm nhóm");
+        btnThem.setPreferredSize(new Dimension(130, 36));
+        btnThem.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnThem.setBackground(Color.decode("#1E3A8A"));
+        btnThem.setForeground(Color.WHITE);
+        btnThem.setFocusPainted(false);
+        btnThem.setBorderPainted(false);
+        btnThem.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnThem.addMouseListener(new MouseAdapter() {
+            @Override public void mouseEntered(MouseEvent e) { btnThem.setBackground(Color.decode("#1e40af")); }
+            @Override public void mouseExited(MouseEvent e)  { btnThem.setBackground(Color.decode("#1E3A8A")); }
+        });
+ 
+        // Đổi màu border khi focus txtNhomMoi
+        txtNhomMoi.addFocusListener(new java.awt.event.FocusAdapter() {
+            @Override public void focusGained(java.awt.event.FocusEvent e) {
+                txtNhomMoi.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(Color.decode("#3B82F6"), 2, true),
+                    BorderFactory.createEmptyBorder(3, 9, 3, 9)));
+            }
+            @Override public void focusLost(java.awt.event.FocusEvent e) {
+                txtNhomMoi.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(Color.decode("#CBD5E1"), 1, true),
+                    BorderFactory.createEmptyBorder(4, 10, 4, 10)));
+            }
+        });
+ 
+        // Logic xác nhận thêm
+        Runnable doAdd = () -> {
+            String ten = txtNhomMoi.getText().trim();
+            if (ten.isEmpty()) {
+                lblWarning.setText("⚠  Vui lòng nhập tên nhóm bệnh lý!");
+                txtNhomMoi.requestFocus();
+                return;
+            }
+            // Kiểm tra trùng
+            for (int i = 0; i < existingCombo.getItemCount(); i++) {
+                if (existingCombo.getItemAt(i).equalsIgnoreCase(ten)) {
+                    lblWarning.setText("⚠  Nhóm \"" + ten + "\" đã tồn tại trong danh sách!");
+                    txtNhomMoi.selectAll();
+                    txtNhomMoi.requestFocus();
+                    return;
+                }
+            }
+            result[0] = ten;
+            dialog.dispose();
+        };
+ 
+        btnThem.addActionListener(e -> doAdd.run());
+        // Nhấn Enter trong ô text cũng xác nhận
+        txtNhomMoi.addActionListener(e -> doAdd.run());
+        // Xóa cảnh báo khi gõ lại
+        txtNhomMoi.getDocument().addDocumentListener(new DocumentListener() {
+            @Override public void insertUpdate(DocumentEvent e)  { lblWarning.setText(" "); }
+            @Override public void removeUpdate(DocumentEvent e)  { lblWarning.setText(" "); }
+            @Override public void changedUpdate(DocumentEvent e) { lblWarning.setText(" "); }
+        });
+ 
+        pnlFooter.add(btnHuy);
+        pnlFooter.add(btnThem);
+ 
+        // ── Lắp ráp ────────────────────────────────────────────────────────────
+        pnlMain.add(pnlHeader, BorderLayout.NORTH);
+        pnlMain.add(pnlBody,   BorderLayout.CENTER);
+        pnlMain.add(pnlFooter, BorderLayout.SOUTH);
+ 
+        dialog.add(pnlMain);
+        dialog.setPreferredSize(new Dimension(480, 360));
+        dialog.pack();
+        dialog.setLocationRelativeTo(this);
+ 
+        // Focus vào ô nhập khi dialog mở
+        SwingUtilities.invokeLater(txtNhomMoi::requestFocusInWindow);
+        dialog.setVisible(true);
+ 
         return result[0];
     }
 }

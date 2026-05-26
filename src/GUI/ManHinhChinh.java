@@ -1,4 +1,5 @@
 package GUI;
+import Entity.BoLocThongKe;
 
 import BUS.BUS_CaLamViec;
 import BUS.BUS_ThongKe;
@@ -50,13 +51,13 @@ public class ManHinhChinh extends JPanel {
     private JComboBox<String> cbxNhanVien;
     private List<String> listMaNV = new ArrayList<>();
 
-    private BUS.BUS_ThongKe.ThongKeFilter getHienTaiFilter() {
-        BUS.BUS_ThongKe.ThongKeFilter f = new BUS.BUS_ThongKe.ThongKeFilter();
-        f.maNV = filterMaNV;
+    private Entity.BoLocThongKe getHienTaiFilter() {
+        Entity.BoLocThongKe f = new Entity.BoLocThongKe();
+        f.setMaNV(filterMaNV);
         if (!UserSession.getInstance().isAdmin() && UserSession.getInstance().getCaHienTai() != null) {
-            f.startTime = UserSession.getInstance().getCaHienTai().getThoiGianBatDau();
+            f.setStartTime(UserSession.getInstance().getCaHienTai().getThoiGianBatDau());
         } else {
-            f.ca = (filterCa > 0) ? filterCa : null;
+            f.setCa((filterCa > 0) ? filterCa : null);
         }
         return f;
     }
@@ -438,7 +439,7 @@ public class ManHinhChinh extends JPanel {
         // 2. MỞ THREAD CHẠY DATABASE NGẦM
         new Thread(() -> {
             try {
-                BUS.BUS_ThongKe.ThongKeFilter caFilterNV = getHienTaiFilter();
+                Entity.BoLocThongKe caFilterNV = getHienTaiFilter();
                 
                 // Các query nặng sẽ chạy ở luồng phụ này
                 int sp = busThongKe.getTongSoLuongSPHomNay(caFilterNV);
@@ -987,7 +988,7 @@ public class ManHinhChinh extends JPanel {
         new Thread(() -> {
             try {
                 int currentYear = java.time.Year.now().getValue();
-                BUS.BUS_ThongKe.ThongKeFilter condHD = getHienTaiFilter();
+                Entity.BoLocThongKe condHD = getHienTaiFilter();
                 
                 // 1. Dùng biến TEMP để lấy dữ liệu và xử lý
                 double[] tempMonthly = busThongKe.getDoanhThu12Thang(currentYear, condHD);
@@ -1027,7 +1028,6 @@ public class ManHinhChinh extends JPanel {
     private JPanel buildBottomRow() {
         JPanel row = new JPanel(new GridLayout(1, 2, 12, 0));
         row.setOpaque(false);
-        row.setPreferredSize(new Dimension(1050, 260));
         row.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
 
         // --- CỘT 1: BẢNG HÓA ĐƠN VỎ TRỐNG ---
@@ -1078,6 +1078,7 @@ public class ManHinhChinh extends JPanel {
         
         mInv.addRow(new Object[] { "—", "Đang tải dữ liệu...", "—", "—" }); // Dòng loading tạm
 
+        tInv.setFillsViewportHeight(false);
         JScrollPane scrollHoaDon = new JScrollPane(tInv);
         scrollHoaDon.getVerticalScrollBar().setUI(new Utils.ModernScrollBarUI());
         scrollHoaDon.getVerticalScrollBar().setPreferredSize(new Dimension(8, 0));
@@ -1113,7 +1114,7 @@ public class ManHinhChinh extends JPanel {
         // --- GỌI THREAD CHUNG CHO CẢ BOTTOM ROW ---
         new Thread(() -> {
             try {
-                BUS.BUS_ThongKe.ThongKeFilter filter = getHienTaiFilter();
+                Entity.BoLocThongKe filter = getHienTaiFilter();
                 List<Object[]> hdList = busThongKe.getHoaDonGanDayTrongCa(filter);
                 List<Object[]> ls = busThongKe.getTop4SanPhamSapHetHang();
                 int duTon = busThongKe.getSoSanPhamDuTon();
@@ -1192,6 +1193,14 @@ public class ManHinhChinh extends JPanel {
 
                     listS.revalidate();
                     listS.repaint();
+
+                    // Tự co chiều cao theo số dòng thực tế
+                    int rowH  = tInv.getRowHeight();
+                    int hdrH  = tInv.getTableHeader().getPreferredSize().height;
+                    int totalH = hdrH + mInv.getRowCount() * rowH + 4;
+                    scrollHoaDon.setPreferredSize(new Dimension(0, totalH));
+                    row.revalidate();
+                    row.repaint();
                 });
             } catch (Exception e) {
                 e.printStackTrace();
@@ -1204,17 +1213,17 @@ public class ManHinhChinh extends JPanel {
     private JPanel buildExpiringPanel() {
         JPanel p = wCard();
         p.setLayout(new BorderLayout(0, 8));
-        p.setPreferredSize(new Dimension(1050, 260));
         p.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
-        int cnt = busThongKe.getSoLoHangSapHetHanKhoang(90);
+
+        // --- HEADER (badge cập nhật sau khi thread xong) ---
         JPanel h2 = new JPanel(new BorderLayout());
         h2.setOpaque(false);
-        JLabel lbT = new JLabel("Lô hàng sắp hết hạn (trong 90 ngày)");
+        JLabel lbT = new JLabel("Lô hàng sắp hết hạn (trong 180 ngày)");
         lbT.setIcon(MenuIcon.IC_WARNING);
         lbT.setIconTextGap(6);
         lbT.setFont(new Font("Segoe UI", Font.BOLD, 12));
         lbT.setForeground(ORANGE);
-        JLabel badge = new JLabel(" " + cnt + " lô ", SwingConstants.CENTER);
+        JLabel badge = new JLabel(" ... lô ", SwingConstants.CENTER);
         badge.setOpaque(true);
         badge.setBackground(ORANGE);
         badge.setForeground(Color.WHITE);
@@ -1233,15 +1242,43 @@ public class ManHinhChinh extends JPanel {
         t.setRowHeight(26);
         t.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 11));
 
-        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
-        List<Object[]> dsHetHan = busThongKe.getLoHangSapHetHanNhanh(90);
-        if (dsHetHan != null) {
-            for (Object[] rs : dsHetHan) {
-                int cl = (int) rs[4];
-                m.addRow(new Object[] { rs[0], rs[1], String.format("%,d", (int) rs[2]), sdf.format((Timestamp) rs[3]),
-                        cl <= 0 ? "Đã hết hạn" : cl + " ngày" });
+        t.setFillsViewportHeight(false);
+        JScrollPane scrollLoHang = new JScrollPane(t);
+        scrollLoHang.getVerticalScrollBar().setUI(new Utils.ModernScrollBarUI());
+        scrollLoHang.getVerticalScrollBar().setPreferredSize(new Dimension(8, 0));
+
+        // --- Load dữ liệu trên background thread ---
+        new Thread(() -> {
+            try {
+                int cnt = busThongKe.getSoLoHangSapHetHanKhoang(180);
+                List<Object[]> dsHetHan = busThongKe.getLoHangSapHetHanNhanh(180);
+                SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
+                SwingUtilities.invokeLater(() -> {
+                    badge.setText(" " + cnt + " lô ");
+                    if (dsHetHan != null) {
+                        for (Object[] rs : dsHetHan) {
+                            int cl = (int) rs[4];
+                            m.addRow(new Object[] {
+                                rs[0], rs[1],
+                                String.format("%,d", (int) rs[2]),
+                                sdf.format((Timestamp) rs[3]),
+                                cl <= 0 ? "Đã hết hạn" : cl + " ngày"
+                            });
+                        }
+                    }
+                    // Tự co chiều cao theo số dòng thực tế
+                    int rowH2  = t.getRowHeight();
+                    int hdrH2  = t.getTableHeader().getPreferredSize().height;
+                    int totalH2 = hdrH2 + m.getRowCount() * rowH2 + 4;
+                    scrollLoHang.setPreferredSize(new Dimension(0, totalH2));
+                    p.revalidate();
+                    p.repaint();
+                });
+            } catch (Exception ex) {
+                ex.printStackTrace();
             }
-        }
+        }).start();
+
         t.getColumnModel().getColumn(4).setCellRenderer((tbl2, val, sel, foc, r, c) -> {
             JLabel l = new JLabel(String.valueOf(val), SwingConstants.CENTER);
             l.setOpaque(true);
@@ -1277,9 +1314,6 @@ public class ManHinhChinh extends JPanel {
             }
         });
 
-        JScrollPane scrollLoHang = new JScrollPane(t);
-        scrollLoHang.getVerticalScrollBar().setUI(new Utils.ModernScrollBarUI());
-        scrollLoHang.getVerticalScrollBar().setPreferredSize(new Dimension(8, 0));
         p.add(scrollLoHang, BorderLayout.CENTER);
         return p;
     }
@@ -1315,7 +1349,7 @@ public class ManHinhChinh extends JPanel {
             isAdmin = Utils.UserSession.getInstance().isAdmin();
         } catch (Exception e) { e.printStackTrace(); }
 
-        BUS.BUS_ThongKe.ThongKeFilter filter = new BUS.BUS_ThongKe.ThongKeFilter();
+        Entity.BoLocThongKe filter = new Entity.BoLocThongKe();
 
         if (isAdmin) {
             String[] locOptions = {"Ca hiện tại", "Hôm nay", "Tuần này", "Tháng này"};
@@ -1366,28 +1400,28 @@ public class ManHinhChinh extends JPanel {
             java.time.LocalDate now = java.time.LocalDate.now();
             if (currentDoiChieuFilterIndex == 0) {
                 int hour = java.time.LocalTime.now().getHour();
-                filter.fromDate = java.sql.Date.valueOf(now);
-                filter.toDate   = java.sql.Date.valueOf(now);
-                filter.modeLocThoiGian = "TUYCHINH";
-                if (hour >= 6 && hour <= 13)       filter.ca = 1; 
-                else if (hour >= 14 && hour <= 21) filter.ca = 2; 
-                else                               filter.ca = 3; 
+                filter.setFromDate(java.sql.Date.valueOf(now));
+                filter.setToDate(java.sql.Date.valueOf(now));
+                filter.setModeLocThoiGian("TUYCHINH");
+                if (hour >= 6 && hour <= 13)       filter.setCa(1); 
+                else if (hour >= 14 && hour <= 21) filter.setCa(2); 
+                else                               filter.setCa(3); 
             } else if (currentDoiChieuFilterIndex == 1) {
-                filter.fromDate = java.sql.Date.valueOf(now);
-                filter.toDate   = java.sql.Date.valueOf(now);
-                filter.modeLocThoiGian = "TUYCHINH";
+                filter.setFromDate(java.sql.Date.valueOf(now));
+                filter.setToDate(java.sql.Date.valueOf(now));
+                filter.setModeLocThoiGian("TUYCHINH");
             } else if (currentDoiChieuFilterIndex == 2) {
-                filter.fromDate = java.sql.Date.valueOf(now.with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY)));
-                filter.toDate   = java.sql.Date.valueOf(now.with(java.time.temporal.TemporalAdjusters.nextOrSame(java.time.DayOfWeek.SUNDAY)));
-                filter.modeLocThoiGian = "TUYCHINH";
+                filter.setFromDate(java.sql.Date.valueOf(now.with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY))));
+                filter.setToDate(java.sql.Date.valueOf(now.with(java.time.temporal.TemporalAdjusters.nextOrSame(java.time.DayOfWeek.SUNDAY))));
+                filter.setModeLocThoiGian("TUYCHINH");
             } else if (currentDoiChieuFilterIndex == 3) {
-                filter.fromDate = java.sql.Date.valueOf(now.withDayOfMonth(1));
-                filter.toDate   = java.sql.Date.valueOf(now.withDayOfMonth(now.lengthOfMonth()));
-                filter.modeLocThoiGian = "TUYCHINH";
+                filter.setFromDate(java.sql.Date.valueOf(now.withDayOfMonth(1)));
+                filter.setToDate(java.sql.Date.valueOf(now.withDayOfMonth(now.lengthOfMonth())));
+                filter.setModeLocThoiGian("TUYCHINH");
             }
         } else {
             filter = getHienTaiFilter();
-            try { filter.maNV = Utils.UserSession.getInstance().getMaNhanVien(); } catch(Exception ex) {}
+            try { filter.setMaNV(Utils.UserSession.getInstance().getMaNhanVien()); } catch(Exception ex) {}
 
             CaLamViec caHienTai = Utils.UserSession.getInstance().getCaHienTai();
             String caTimeLabel = "";
@@ -1427,18 +1461,18 @@ public class ManHinhChinh extends JPanel {
         body.setLayout(new BoxLayout(body, BoxLayout.Y_AXIS));
         body.setBackground(Color.WHITE);
 
-        JPanel pnlBanHang = createBlockPanel("CHI TIẾT BÁN HÀNG (Hóa đơn: " + kq.soHdBan + ")", new Color(230, 247, 255));
-        pnlBanHang.add(createRowMoi("Giá gốc chưa thuế:", formatMoney((long)kq.a_giaGocChuaThue)));
-        pnlBanHang.add(createRowMoi("(-) Khuyến mãi:", formatMoney((long)kq.a_khuyenMai)));
+        JPanel pnlBanHang = createBlockPanel("CHI TIẾT BÁN HÀNG (Hóa đơn: " + kq.getSoHdBan() + ")", new Color(230, 247, 255));
+        pnlBanHang.add(createRowMoi("Giá gốc chưa thuế:", formatMoney((long)kq.getA_giaGocChuaThue())));
+        pnlBanHang.add(createRowMoi("(-) Khuyến mãi:", formatMoney((long)kq.getA_khuyenMai())));
         pnlBanHang.add(createRowMoi("(=) Doanh thu thuần:", formatMoney((long)kq.get_a_DoanhThuThuan())));
-        pnlBanHang.add(createRowMoi("(+) Thuế VAT bán ra:", formatMoney((long)kq.a_vat)));
+        pnlBanHang.add(createRowMoi("(+) Thuế VAT bán ra:", formatMoney((long)kq.getA_vat())));
         pnlBanHang.add(createHighlightedRowMoi("(A) Tổng doanh thu bán ra:", formatMoney((long)kq.get_a_TongDoanhThu()), Color.decode("#1A73E8")));
         
-        JPanel pnlTraHang = createBlockPanel("ĐỔI / TRẢ HÀNG (Phiếu: " + kq.soHdTra + ")", new Color(255, 241, 240));
-        pnlTraHang.add(createRowMoi("Giá gốc món trả:", formatMoney((long)kq.b_giaGocMonTra)));
-        pnlTraHang.add(createRowMoi("Khuyến mãi hoàn trả:", formatMoney((long)kq.b_khuyenMaiHoanTra)));
+        JPanel pnlTraHang = createBlockPanel("ĐỔI / TRẢ HÀNG (Phiếu: " + kq.getSoHdTra() + ")", new Color(255, 241, 240));
+        pnlTraHang.add(createRowMoi("Giá gốc món trả:", formatMoney((long)kq.getB_giaGocMonTra())));
+        pnlTraHang.add(createRowMoi("Khuyến mãi hoàn trả:", formatMoney((long)kq.getB_khuyenMaiHoanTra())));
         pnlTraHang.add(createRowMoi("Doanh thu thuần giảm trừ:", formatMoney((long)kq.get_b_DoanhThuThuan())));
-        pnlTraHang.add(createRowMoi("Thuế VAT hoàn trả:", formatMoney((long)kq.b_vatHoanTra)));
+        pnlTraHang.add(createRowMoi("Thuế VAT hoàn trả:", formatMoney((long)kq.getB_vatHoanTra())));
         pnlTraHang.add(createHighlightedRowMoi("(B) Tổng tiền chi trả hàng:", formatMoney((long)kq.get_b_TongChiTra()), Color.RED));
 
         JPanel pnlThucThu = createBlockPanel("THỰC TẾ CHỐT SỔ (BÀN GIAO TIỀN MẶT)", new Color(246, 255, 237));
@@ -2687,242 +2721,4 @@ public class ManHinhChinh extends JPanel {
         }
     }
 
-    public static void hienThiBillKetCaLichSu(Frame parentFrame, Entity.CaLamViec ca, String tenNV) {
-        if (ca == null) return;
-
-        long tienDauCa = (long) ca.getTienDauCa();
-        long tienHT    = (long) ca.getTienHeThongGhiNhan();
-        long tienKetCa = (long) ca.getTienKetCa();
-        long chenh     = tienKetCa - tienHT;
-        String ghiChu  = ca.getGhiChuKetCa() != null ? ca.getGhiChuKetCa() : "";
-
-        String[] CA_LABELS = { "Ca Sáng", "Ca Chiều", "Ca Tối" };
-        String tenCa = (ca.getLoaiCa() >= 0 && ca.getLoaiCa() <= 2) ? CA_LABELS[ca.getLoaiCa()] : "—";
-        String gioBD = "—", gioKT = "—";
-        if (ca.getThoiGianBatDau() != null) {
-            java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("dd/MM/yyyy  HH:mm");
-            gioBD = sdf.format(java.sql.Timestamp.valueOf(ca.getThoiGianBatDau()));
-        }
-        if (ca.getThoiGianKetThuc() != null) {
-            java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("HH:mm");
-            gioKT = sdf.format(java.sql.Timestamp.valueOf(ca.getThoiGianKetThuc()));
-        }
-
-        JDialog dlg = new JDialog(parentFrame, true);
-        dlg.setUndecorated(true);
-        dlg.getRootPane().setBorder(BorderFactory.createLineBorder(Color.decode("#DFE3E8"), 1));
-        dlg.setSize(900, 520);
-        dlg.setLocationRelativeTo(parentFrame);
-        dlg.setLayout(new BorderLayout());
-        dlg.setResizable(false);
-        dlg.getContentPane().setBackground(Color.WHITE);
-
-        JPanel hdr = new JPanel(new BorderLayout()) {
-            @Override protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setPaint(new GradientPaint(0, 0, Color.decode("#152A4B"), getWidth(), 0, Color.decode("#1A73E8")));
-                g2.fillRect(0, 0, getWidth(), getHeight());
-                g2.dispose();
-            }
-        };
-        hdr.setOpaque(false);
-        hdr.setBorder(new EmptyBorder(14, 24, 14, 18));
-
-        JPanel hdrLeft = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
-        hdrLeft.setOpaque(false);
-
-        JLabel hTitle = new JLabel("XEM LẠI BILL KẾT CA");
-        hTitle.setFont(new Font("Segoe UI", Font.BOLD, 17));
-        hTitle.setForeground(Color.WHITE);
-
-        JLabel hSubtitle = new JLabel(
-                "   " + tenNV + "  ·  " + tenCa + "  ·  Bắt đầu: " + gioBD + "  ·  Kết thúc: " + gioKT);
-        hSubtitle.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        hSubtitle.setForeground(new Color(255, 255, 255, 180));
-
-        hdrLeft.add(hTitle);
-        hdrLeft.add(hSubtitle);
-
-        JButton btnClose = new JButton(new MenuIcon("CLOSE"));
-        btnClose.setForeground(new Color(255, 255, 255, 160));
-        btnClose.setContentAreaFilled(false);
-        btnClose.setBorderPainted(false);
-        btnClose.setFocusPainted(false);
-        btnClose.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        btnClose.setPreferredSize(new Dimension(32, 32));
-        btnClose.addActionListener(e -> dlg.dispose());
-        btnClose.addMouseListener(new MouseAdapter() {
-            public void mouseEntered(MouseEvent e) { btnClose.setForeground(Color.WHITE); }
-            public void mouseExited(MouseEvent  e) { btnClose.setForeground(new Color(255, 255, 255, 160)); }
-        });
-
-        hdr.add(hdrLeft,  BorderLayout.WEST);
-        hdr.add(btnClose, BorderLayout.EAST);
-        dlg.add(hdr, BorderLayout.NORTH);
-
-        JPanel body = new JPanel(new GridLayout(1, 2, 1, 0));
-        body.setBackground(Color.decode("#DFE3E8"));
-        dlg.add(body, BorderLayout.CENTER);
-
-        JPanel colLeft = new JPanel();
-        colLeft.setLayout(new BoxLayout(colLeft, BoxLayout.Y_AXIS));
-        colLeft.setBackground(Color.WHITE);
-        colLeft.setBorder(new EmptyBorder(28, 32, 28, 28));
-
-        JLabel lblLeftTitle = new JLabel("Số liệu hệ thống đã ghi nhận");
-        lblLeftTitle.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        lblLeftTitle.setForeground(Color.decode("#637381"));
-        lblLeftTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
-        colLeft.add(lblLeftTitle);
-        colLeft.add(Box.createRigidArea(new Dimension(0, 18)));
-
-        colLeft.add(buildKetCaRow(
-            "Tiền đầu ca",
-            formatMoney(tienDauCa),
-            Color.decode("#212B36"), Color.decode("#212B36"), false));
-        colLeft.add(Box.createRigidArea(new Dimension(0, 10)));
-
-        JSeparator sep1 = new JSeparator();
-        sep1.setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
-        sep1.setForeground(Color.decode("#EEF2F6"));
-        sep1.setAlignmentX(Component.LEFT_ALIGNMENT);
-        colLeft.add(sep1);
-        colLeft.add(Box.createRigidArea(new Dimension(0, 10)));
-
-        long netFlow = tienHT - tienDauCa;
-        String netFlowStr = (netFlow >= 0 ? "+ " : "− ") + formatMoney(Math.abs(netFlow));
-        colLeft.add(buildKetCaRow(
-            "Tiền phát sinh ròng trong ca (TM)",
-            netFlowStr,
-            Color.decode("#637381"),
-            netFlow >= 0 ? Color.decode("#00A76F") : Color.decode("#FF5630"),
-            false));
-        colLeft.add(Box.createRigidArea(new Dimension(0, 16)));
-
-        JSeparator sep2 = new JSeparator();
-        sep2.setMaximumSize(new Dimension(Integer.MAX_VALUE, 2));
-        sep2.setForeground(Color.decode("#152A4B"));
-        sep2.setBackground(Color.decode("#152A4B"));
-        sep2.setAlignmentX(Component.LEFT_ALIGNMENT);
-        colLeft.add(sep2);
-        colLeft.add(Box.createRigidArea(new Dimension(0, 16)));
-
-        colLeft.add(buildKetCaRow(
-            "TIỀN CẦN NỘP  (Tiền mặt — đã lưu)",
-            formatMoney(tienHT),
-            Color.decode("#152A4B"), Color.decode("#FF5630"), true));
-
-        colLeft.add(Box.createVerticalGlue());
-        body.add(colLeft);
-
-        JPanel colRight = new JPanel();
-        colRight.setLayout(new BoxLayout(colRight, BoxLayout.Y_AXIS));
-        colRight.setBackground(Color.decode("#F4F6F8"));
-        colRight.setBorder(new EmptyBorder(28, 28, 28, 32));
-
-        JLabel badgeXemLai = new JLabel("  CHỈ XEM  ");
-        badgeXemLai.setFont(new Font("Segoe UI", Font.BOLD, 10));
-        badgeXemLai.setForeground(Color.WHITE);
-        badgeXemLai.setBackground(Color.decode("#637381"));
-        badgeXemLai.setOpaque(true);
-        badgeXemLai.setBorder(new EmptyBorder(2, 6, 2, 6));
-        badgeXemLai.setAlignmentX(Component.LEFT_ALIGNMENT);
-        colRight.add(badgeXemLai);
-        colRight.add(Box.createRigidArea(new Dimension(0, 14)));
-
-        JLabel lblThucTe = new JLabel("Tiền thực đếm được (VNĐ)");
-        lblThucTe.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        lblThucTe.setForeground(Color.decode("#212B36"));
-        lblThucTe.setAlignmentX(Component.LEFT_ALIGNMENT);
-        colRight.add(lblThucTe);
-        colRight.add(Box.createRigidArea(new Dimension(0, 8)));
-
-        JTextField txtThucTe = new JTextField(
-                new java.text.DecimalFormat("###,###,###").format(tienKetCa).replace(",", "."));
-        txtThucTe.setFont(new Font("Segoe UI", Font.BOLD, 22));
-        txtThucTe.setForeground(Color.decode("#1A73E8"));
-        txtThucTe.setHorizontalAlignment(SwingConstants.RIGHT);
-        txtThucTe.setMaximumSize(new Dimension(Integer.MAX_VALUE, 52));
-        txtThucTe.setAlignmentX(Component.LEFT_ALIGNMENT);
-        txtThucTe.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(Color.decode("#DFE3E8"), 2, true),
-                new EmptyBorder(8, 14, 8, 14)));
-        txtThucTe.setBackground(Color.decode("#F4F6F8"));
-        txtThucTe.setEditable(false);
-        colRight.add(txtThucTe);
-        colRight.add(Box.createRigidArea(new Dimension(0, 6)));
-
-        String chenhStr;
-        Color chenhColor;
-        if (chenh == 0) {
-            chenhStr  = "✓  Khớp với hệ thống";
-            chenhColor = Color.decode("#00A76F");
-        } else {
-            chenhStr  = "Lệch: " + formatChenhLech(chenh);
-            chenhColor = Color.decode("#FF5630");
-        }
-        JLabel lblChenh = new JLabel(chenhStr, SwingConstants.RIGHT);
-        lblChenh.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        lblChenh.setForeground(chenhColor);
-        lblChenh.setAlignmentX(Component.LEFT_ALIGNMENT);
-        lblChenh.setMaximumSize(new Dimension(Integer.MAX_VALUE, 20));
-        colRight.add(lblChenh);
-        colRight.add(Box.createRigidArea(new Dimension(0, 20)));
-
-        JLabel lblNote = new JLabel("Ghi chú");
-        lblNote.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        lblNote.setForeground(Color.decode("#212B36"));
-        lblNote.setAlignmentX(Component.LEFT_ALIGNMENT);
-        colRight.add(lblNote);
-        colRight.add(Box.createRigidArea(new Dimension(0, 8)));
-
-        JTextArea txtNote = new JTextArea(ghiChu, 4, 20);
-        txtNote.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        txtNote.setLineWrap(true);
-        txtNote.setWrapStyleWord(true);
-        txtNote.setBackground(Color.decode("#EDEFF1"));
-        txtNote.setEditable(false);
-        txtNote.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(Color.decode("#DFE3E8"), 1, true),
-                new EmptyBorder(8, 12, 8, 12)));
-        txtNote.setMaximumSize(new Dimension(Integer.MAX_VALUE, 90));
-        txtNote.setAlignmentX(Component.LEFT_ALIGNMENT);
-        if (ghiChu.isEmpty()) {
-            txtNote.setText("(Không có ghi chú)");
-            txtNote.setForeground(Color.GRAY);
-        }
-        colRight.add(txtNote);
-        colRight.add(Box.createVerticalGlue());
-        body.add(colRight);
-
-        JPanel ft = new JPanel(new FlowLayout(FlowLayout.RIGHT, 14, 14));
-        ft.setBackground(Color.WHITE);
-        ft.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, Color.decode("#DFE3E8")));
-
-        JButton bDong = new JButton("Đóng") {
-            @Override protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(Color.decode("#637381"));
-                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 8, 8);
-                super.paintComponent(g2);
-                g2.dispose();
-            }
-        };
-        bDong.setIcon(MenuIcon.of("CLOSE", 15, Color.WHITE));
-        bDong.setIconTextGap(6);
-        bDong.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        bDong.setPreferredSize(new Dimension(120, 40));
-        bDong.setForeground(Color.WHITE);
-        bDong.setContentAreaFilled(false);
-        bDong.setBorderPainted(false);
-        bDong.setFocusPainted(false);
-        bDong.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        bDong.addActionListener(e -> dlg.dispose());
-
-        ft.add(bDong);
-        dlg.add(ft, BorderLayout.SOUTH);
-        dlg.setVisible(true);
-    }
 }

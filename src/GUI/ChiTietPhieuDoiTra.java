@@ -5,7 +5,6 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
 import java.awt.*;
 import java.util.List;
-import Utils.UserSession;
 import Utils.MenuIcon;
 import BUS.BUS_TraHang;
 import javax.swing.table.DefaultTableModel;
@@ -14,6 +13,7 @@ import com.google.zxing.oned.Code128Writer;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.common.BitMatrix;
 import java.awt.image.BufferedImage;
+
 public class ChiTietPhieuDoiTra extends JDialog {
     
     private Color primaryBlue = Color.decode("#1967D2"); 
@@ -22,95 +22,64 @@ public class ChiTietPhieuDoiTra extends JDialog {
     private Color textGray = Color.decode("#6B7280");
     private Color borderGray = Color.decode("#DFE3E8");
     
-    private String maPhieu, loaiPhieu, trangThai, ngayTao, hoaDonGoc, khachHang, lyDo, nhanVien;
+    private String maPhieu, loaiPhieu, trangThai, ngayTao, hoaDonGoc, lyDo;
+    private String khachHang, sdtKhachHang, nhanVien; // Các biến đã được đồng bộ
     private String tienHoanThucTe, chenhLechThucTe;
     
     private BUS_TraHang busTraHang = new BUS_TraHang(); 
 
+    // Constructor 1: Gọi từ lịch sử
     public ChiTietPhieuDoiTra(Frame parent, String maPhieu) {
         super(parent, "Chi tiết phiếu đổi/trả", true);
         this.maPhieu = maPhieu;
 
-        // ── Tải dữ liệu hoàn toàn từ BUS ──────────────────────────────────────
         try {
             BUS.BUS_HoaDon busHD = new BUS.BUS_HoaDon();
             Entity.HoaDon hd = busHD.layHoaDonTheoMa(maPhieu);
 
             if (hd != null) {
-                // Loại phiếu
                 String loaiHDStr = hd.getLoaiHD() != null ? hd.getLoaiHD().toString() : "";
                 this.loaiPhieu = "TRA_HANG".equals(loaiHDStr) ? "Trả hàng" : "Đổi hàng";
-
-                // Trạng thái — mặc định "Hoàn thành"; có thể mở rộng theo hd.getTrangThai() nếu entity hỗ trợ
                 this.trangThai = "Hoàn thành";
+                this.ngayTao = hd.getNgayLapHD() != null ? hd.getNgayLapHD().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss")) : "—";
 
-                // Ngày tạo
-                this.ngayTao = hd.getNgayLapHD() != null
-                        ? hd.getNgayLapHD().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss"))
-                        : "—";
-
-                // Khách hàng
-                this.khachHang = hd.getKhachHangId() != null
-                        ? hd.getKhachHangId().getHoVaTen() : "Khách lẻ";
-
-                // Nhân viên — ưu tiên từ HoaDon entity, fallback về Session
-                if (hd.getNhanVienId() != null && hd.getNhanVienId().getHoVaTen() != null) {
-                    this.nhanVien = hd.getNhanVienId().getHoVaTen();
-                } else {
-                    String tenNVSession = Utils.UserSession.getInstance().getTenHienThi();
-                    this.nhanVien = (tenNVSession != null && !tenNVSession.isEmpty())
-                            ? tenNVSession : "Nhân viên hệ thống";
-                }
-
-                // Lấy hoaDonGoc từ entity (field hoaDonGocId), không parse ghiChu
                 Entity.HoaDon hdGoc = hd.getHoaDonGocId();
                 this.hoaDonGoc = (hdGoc != null && hdGoc.getId() != null) ? hdGoc.getId() : "";
 
-                // Lấy lyDo từ parts[1] của ghiChu (format: "trangThai|lyDo|tienHoan|chenhLech|TRA:...|DOI:...")
                 String ghiChu = hd.getGhiChu() != null ? hd.getGhiChu() : "";
                 String[] parts = ghiChu.split("\\|");
-                this.lyDo = parts.length > 1 ? parts[1].trim()
-                        : (!ghiChu.isEmpty() ? ghiChu : "Không có ghi chú");
+                this.lyDo = parts.length > 1 ? parts[1].trim() : (!ghiChu.isEmpty() ? ghiChu : "Không có ghi chú");
 
-                // tienHoanThucTe và chenhLechThucTe:
-                // createProductListPanel() sẽ tự tính từ busTraHang → truyền chuỗi rỗng là an toàn.
-                // (Nếu rỗng, summary panel sẽ hiển thị giá trị đã tính từ danh sách sản phẩm.)
                 this.tienHoanThucTe  = "";
                 this.chenhLechThucTe = "";
-
             } else {
-                // HoaDon không tìm thấy — set giá trị mặc định an toàn
-                this.loaiPhieu       = "Đổi hàng";
-                this.trangThai       = "—";
-                this.ngayTao         = "—";
-                this.khachHang       = "Khách lẻ";
-                this.nhanVien        = "Nhân viên hệ thống";
-                this.hoaDonGoc       = "";
-                this.lyDo            = "Không tìm thấy hóa đơn";
-                this.tienHoanThucTe  = "";
+                this.loaiPhieu = "Đổi hàng";
+                this.trangThai = "—";
+                this.ngayTao = "—";
+                this.hoaDonGoc = "";
+                this.lyDo = "Không tìm thấy hóa đơn";
+                this.tienHoanThucTe = "";
                 this.chenhLechThucTe = "";
             }
         } catch (Exception ex) {
             ex.printStackTrace();
-            this.loaiPhieu       = "Đổi hàng";
-            this.trangThai       = "—";
-            this.ngayTao         = "—";
-            this.khachHang       = "Khách lẻ";
-            this.nhanVien        = "Nhân viên hệ thống";
-            this.hoaDonGoc       = "";
-            this.lyDo            = "Lỗi tải dữ liệu";
-            this.tienHoanThucTe  = "";
+            this.loaiPhieu = "Đổi hàng";
+            this.trangThai = "—";
+            this.ngayTao = "—";
+            this.hoaDonGoc = "";
+            this.lyDo = "Lỗi tải dữ liệu";
+            this.tienHoanThucTe = "";
             this.chenhLechThucTe = "";
         }
 
-        // Cập nhật tiêu đề dialog sau khi đã biết loại phiếu
+        // Đảm bảo lấy thông tin Tên KH, SĐT, Tên NV CHUẨN XÁC 100% từ DB
+        fetchThongTinChinhXacTuDB();
+
         setTitle("Chi tiết phiếu " + loaiPhieu);
         initUI();
     }
 
-    /**
-     * Constructor đầy đủ tham số — dùng khi gọi từ ManHinhBanHang (đã có dữ liệu sẵn).
-     */
+    // Constructor 2: Gọi từ Màn Hình Bán Hàng
     public ChiTietPhieuDoiTra(Frame parent, String maPhieu, String loaiPhieu, String trangThai, 
             String ngayTao, String hoaDonGoc, String khachHang, String lyDo, String nhanVienTruyenVao,
             String tienHoan, String chenhLech) {
@@ -120,23 +89,62 @@ public class ChiTietPhieuDoiTra extends JDialog {
         this.trangThai = trangThai;
         this.ngayTao = ngayTao;
         this.hoaDonGoc = hoaDonGoc;
-        this.khachHang = khachHang;
         this.lyDo = lyDo;
         this.tienHoanThucTe = tienHoan;
         this.chenhLechThucTe = chenhLech;
 
-        String tenNVTuSession = Utils.UserSession.getInstance().getTenHienThi();
-        if (tenNVTuSession != null && !tenNVTuSession.isEmpty() && !tenNVTuSession.equals("Người dùng")) {
-            this.nhanVien = tenNVTuSession; 
-        } else {
-            this.nhanVien = nhanVienTruyenVao; 
-        }
-        if (nhanVienTruyenVao != null && !nhanVienTruyenVao.trim().isEmpty()) {
-            this.nhanVien = nhanVienTruyenVao;
-        } else {
-            this.nhanVien = "Nhân viên hệ thống";
-        }
+        // Bỏ qua hoàn toàn dữ liệu Session/Truyền vào, bắt DB tự quét để đảm bảo chính xác tuyệt đối
+        fetchThongTinChinhXacTuDB();
+
         initUI();
+    }
+
+    // =========================================================================
+    // HÀM QUAN TRỌNG: CHỌC THẲNG DB LẤY THÔNG TIN NV XỬ LÝ & KHÁCH HÀNG
+    // =========================================================================
+    private void fetchThongTinChinhXacTuDB() {
+        try {
+            java.sql.Connection con = ConnectDB.ConnectDB.getInstance().getConnection();
+            
+            // 1. TÌM NHÂN VIÊN XỬ LÝ (Không dính dáng tới Session)
+            String sqlNV = "SELECT nv.hoVaTen FROM HoaDon hd JOIN NhanVien nv ON hd.nhanVienId = nv.id WHERE hd.id = ?";
+            try (java.sql.PreparedStatement pst = con.prepareStatement(sqlNV)) {
+                pst.setString(1, this.maPhieu);
+                java.sql.ResultSet rs = pst.executeQuery();
+                if (rs.next()) {
+                    this.nhanVien = rs.getString("hoVaTen");
+                } else if (this.hoaDonGoc != null && !this.hoaDonGoc.isEmpty()) {
+                    pst.setString(1, this.hoaDonGoc);
+                    rs = pst.executeQuery();
+                    if (rs.next()) this.nhanVien = rs.getString("hoVaTen");
+                }
+            }
+
+            // 2. TÌM KHÁCH HÀNG & SĐT
+            String sqlKH = "SELECT kh.hoVaTen, kh.sdt FROM HoaDon hd JOIN KhachHang kh ON hd.khachHangId = kh.id WHERE hd.id = ?";
+            try (java.sql.PreparedStatement pst = con.prepareStatement(sqlKH)) {
+                pst.setString(1, this.maPhieu);
+                java.sql.ResultSet rs = pst.executeQuery();
+                if (rs.next()) {
+                    this.khachHang = rs.getString("hoVaTen");
+                    this.sdtKhachHang = rs.getString("sdt");
+                } else if (this.hoaDonGoc != null && !this.hoaDonGoc.isEmpty()) {
+                    pst.setString(1, this.hoaDonGoc);
+                    rs = pst.executeQuery();
+                    if (rs.next()) {
+                        this.khachHang = rs.getString("hoVaTen");
+                        this.sdtKhachHang = rs.getString("sdt");
+                    }
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        
+        // Giá trị dự phòng nếu DB thực sự trống
+        if (this.nhanVien == null || this.nhanVien.isEmpty()) this.nhanVien = "Nhân viên hệ thống";
+        if (this.khachHang == null || this.khachHang.isEmpty()) this.khachHang = "Khách lẻ";
+        if (this.sdtKhachHang == null || this.sdtKhachHang.isEmpty()) this.sdtKhachHang = "Không cung cấp";
     }
 
     private void initUI() {
@@ -165,10 +173,6 @@ public class ChiTietPhieuDoiTra extends JDialog {
         add(pnlBody, BorderLayout.CENTER);
         pack(); 
         setLocationRelativeTo(getParent());
-    }
-
-    private String fetchSoDienThoai(String maHDGoc) {
-        return busTraHang.laySoDienThoaiKhachHang(maHDGoc);
     }
 
     private JPanel createHeaderPanel(Color bgColor) {
@@ -277,15 +281,14 @@ public class ChiTietPhieuDoiTra extends JDialog {
         pnlGrid.add(createLabelPair("Ngày tạo: ", ngayTao));
         pnlGrid.add(createLabelPair("NV xử lý: ", nhanVien));
         pnlGrid.add(createLabelPair("Hóa đơn gốc: ", hoaDonGoc));
+        
+        // Gắn Tên và SĐT Khách hàng chuẩn
         pnlGrid.add(createLabelPair("Khách hàng: ", khachHang));
+        pnlGrid.add(createLabelPair("SĐT: ", sdtKhachHang)); 
         
-        
-        String sdtThucTe = fetchSoDienThoai(hoaDonGoc); 
-        pnlGrid.add(createLabelPair("SĐT: ", sdtThucTe)); 
-        
-        // GỌI HÀM VÀ THÊM PHƯƠNG THỨC THANH TOÁN VÀO CỘT BÊN PHẢI (DƯỚI KHÁCH HÀNG)
         String phuongThuc = fetchPhuongThucThanhToan(maPhieu);
         pnlGrid.add(createLabelPair("Thanh toán: ", phuongThuc));
+        
         JPanel pnlLyDo = new JPanel(new BorderLayout());
         pnlLyDo.setBackground(Color.WHITE);
         
@@ -383,11 +386,9 @@ public class ChiTietPhieuDoiTra extends JDialog {
                     if (sp[1] != null) sl = Integer.parseInt(sp[1].toString().replaceAll("[^0-9]", "")); 
                 } catch(Exception e){}
                 
-                // [2]=dvt, [3]=donGia (sau khi BUS_TraHang đã fix thứ tự đúng)
                 String dvt = sp[2] != null ? sp[2].toString() : "Hộp";
                 long gia = 0;
                 
-                // LỚP BẢO VỆ 1: Lọc sạch chuỗi, chỉ lấy số
                 try { 
                     if (sp[3] != null) {
                         String giaStr = sp[3].toString().replaceAll(",00$|\\.00$|,0$|\\.0$", "");
@@ -396,7 +397,6 @@ public class ChiTietPhieuDoiTra extends JDialog {
                     }
                 } catch(Exception e){}
                 
-                // LỚP BẢO VỆ 2: Truy vấn thẳng vào Hóa Đơn Gốc nếu giá <= 1
                 if (gia <= 1) {
                     try {
                         Object[] info = daoHD.layThongTinGiaTuHDGoc(hoaDonGoc, ten);
@@ -411,23 +411,18 @@ public class ChiTietPhieuDoiTra extends JDialog {
                 }
 
                 long giaGomVAT = gia;
-
-                // NHÂN PHẦN TRĂM HOÀN VÀO THÀNH TIỀN ĐỂ ÉP VỀ 0 HOẶC TRỪ %
                 long thanhTien = (long) (giaGomVAT * sl * phanTramHoan);
                 tongTienTra += thanhTien;
                 
                 model.addRow(new Object[]{
                     "[TRẢ] " + ten, dvt, sl, 
-                    String.format("%,dđ", giaGomVAT).replace(',', '.'), // <-- Hiển thị giá đã có VAT
+                    String.format("%,dđ", giaGomVAT).replace(',', '.'), 
                     String.format("%,dđ", thanhTien).replace(',', '.')
                 });
             }
         }
 
         // ==========================================
-        // 2. ĐỔ DỮ LIỆU SẢN PHẨM KHÁCH ĐỔI LẤY MỚI
-        // ==========================================
-     // ==========================================
         // 2. ĐỔ DỮ LIỆU SẢN PHẨM KHÁCH ĐỔI LẤY MỚI
         // ==========================================
         if (dsDoi != null) {
@@ -449,14 +444,10 @@ public class ChiTietPhieuDoiTra extends JDialog {
                     }
                 } catch(Exception e){}
 
-                // --- SỬA Ở ĐÂY: LẤY VAT CỦA SẢN PHẨM ĐỔI MỚI ---
                 double thueVat = new DAO.DAO_SanPham().layThueVATTheoTenSP(ten);
                 if (thueVat > 0 && thueVat < 1) thueVat = thueVat * 100;
                 
-                // Cộng VAT vào đơn giá
                 long giaGomVAT = Math.round(gia * (1.0 + thueVat / 100.0));
-                
-                // Tính thành tiền = Đơn giá đã có VAT * Số lượng
                 long thanhTien = giaGomVAT * sl;
                 tongTienDoi += thanhTien;
                 
@@ -500,14 +491,12 @@ public class ChiTietPhieuDoiTra extends JDialog {
         pnlSummary.setBackground(Color.WHITE);
         
         if (trangThai.equalsIgnoreCase("Từ chối")) {
-            // NẾU TỪ CHỐI -> ÉP HIỂN THỊ TRẠNG THÁI HỦY BỎ GIAO DỊCH
             pnlSummary.add(createTotalRow("Giá trị SP Mới / Trả:", 
                 String.format("%,dđ", tongTienDoi).replace(',', '.') + " / " + String.format("%,dđ", tongTienTra).replace(',', '.'), 
                 Color.GRAY, 12));
             pnlSummary.add(createTotalRow("Trạng thái giao dịch:", "ĐÃ TỪ CHỐI", primaryRed, 18));
             
         } else {
-            // GIAO DỊCH HỢP LỆ (CHỜ XỬ LÝ / HOÀN THÀNH)
             if (loaiPhieu.equalsIgnoreCase("Trả hàng")) {
                 pnlSummary.add(createTotalRow("Tổng tiền SP trả:", String.format("%,dđ", tongTienTra).replace(',', '.'), Color.GRAY, 12));
                 
@@ -545,45 +534,22 @@ public class ChiTietPhieuDoiTra extends JDialog {
         } catch (Exception e) {}
         return phuongThuc;
     }
- // THAY THẾ HÀM createTotalRow() CŨ BẰNG HÀM NÀY:
+
     private JPanel createTotalRow(String label, String value, Color color, int fontSize) {
         JPanel p = new JPanel(new BorderLayout());
         p.setBackground(Color.WHITE);
         
         JLabel lbl = new JLabel(label); 
-        lbl.setForeground(textDark); // FIX: Luôn để chữ màu đậm chuẩn, không bị đỏ chói
+        lbl.setForeground(textDark); 
         lbl.setFont(new Font("Segoe UI", Font.BOLD, 13));
         
         JLabel val = new JLabel(value); 
-        val.setForeground(color); // Màu đỏ/xanh/vàng chỉ áp dụng cho Số tiền
+        val.setForeground(color); 
         val.setFont(new Font("Segoe UI", Font.BOLD, fontSize));
         
         p.add(lbl, BorderLayout.WEST); 
         p.add(val, BorderLayout.EAST);
         return p;
-    }
-
-    private JPanel createSignaturePanel() {
-        JPanel pnl = new JPanel(new GridLayout(1, 2));
-        pnl.setBackground(Color.WHITE);
-        pnl.setBorder(new EmptyBorder(10, 0, 10, 0)); 
-
-        JPanel pnlKhach = new JPanel(new GridLayout(2, 1, 0, 3));
-        pnlKhach.setBackground(Color.WHITE);
-        JLabel lbl1 = new JLabel("Khách hàng", SwingConstants.CENTER); lbl1.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        JLabel lbl2 = new JLabel("(Ký & Ghi rõ họ tên)", SwingConstants.CENTER); lbl2.setFont(new Font("Segoe UI", Font.ITALIC, 11)); lbl2.setForeground(textGray);
-        pnlKhach.add(lbl1); pnlKhach.add(lbl2);
-
-        JPanel pnlNV = new JPanel(new GridLayout(3, 1, 0, 3)); 
-        pnlNV.setBackground(Color.WHITE);
-        JLabel lbl3 = new JLabel("Nhân viên xử lý", SwingConstants.CENTER); lbl3.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        JLabel lbl4 = new JLabel("(Ký & Ghi rõ họ tên)", SwingConstants.CENTER); lbl4.setFont(new Font("Segoe UI", Font.ITALIC, 11)); lbl4.setForeground(textGray);
-        JLabel lbl5 = new JLabel(nhanVien, SwingConstants.CENTER); lbl5.setFont(new Font("Segoe UI", Font.BOLD, 12)); lbl5.setBorder(new EmptyBorder(20, 0, 0, 0));
-
-        pnlNV.add(lbl3); pnlNV.add(lbl4); pnlNV.add(lbl5);
-
-        pnl.add(pnlKhach); pnl.add(pnlNV);
-        return pnl;
     }
 
     private JPanel createDashedLine() {
@@ -602,6 +568,7 @@ public class ChiTietPhieuDoiTra extends JDialog {
         linePanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 15));
         return linePanel;
     }
+
     private ImageIcon generateBarcode1D(String data, int width, int height) {
         try {
             Code128Writer barcodeWriter = new Code128Writer();
@@ -633,7 +600,6 @@ public class ChiTietPhieuDoiTra extends JDialog {
         pnl.setBackground(Color.WHITE);
         pnl.setBorder(new EmptyBorder(15, 0, 20, 0));
 
-        // 1. MÃ VẠCH (Canh giữa)
         ImageIcon barcodeIcon = generateBarcode1D(maPhieu, 220, 50); 
         if (barcodeIcon != null) {
             JLabel lblBarcode = new JLabel(barcodeIcon);
@@ -649,13 +615,11 @@ public class ChiTietPhieuDoiTra extends JDialog {
         
         pnl.add(Box.createRigidArea(new Dimension(0, 15))); 
 
-        // 2. LỜI CẢM ƠN & GHI CHÚ ĐÃ ĐỔI TRẢ
         JLabel l1 = new JLabel("Cảm ơn quý khách đã tin dùng!"); 
         l1.setFont(new Font("Segoe UI", Font.PLAIN, 11)); 
         l1.setForeground(textGray);
         l1.setAlignmentX(Component.CENTER_ALIGNMENT); 
         
-        // KIỂM TRA TRẠNG THÁI ĐỂ HIỂN THỊ CÂU CHỮ CHO ĐÚNG
         boolean isTuChoi = trangThai.equalsIgnoreCase("Từ chối");
         String footerText = isTuChoi ? "Yêu cầu đổi trả đã bị từ chối." : "Hóa đơn này đã được đổi trả.";
         

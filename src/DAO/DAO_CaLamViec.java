@@ -13,70 +13,43 @@ public class DAO_CaLamViec {
     public DAO_CaLamViec() {}
 
     /**
-     * Tính tổng tiền mặt hệ thống ghi nhận trong két sắt cho một ca làm việc.
+     * Lấy danh sách hóa đơn tiền mặt trong một ca làm việc (dữ liệu thô).
+     * Mỗi phần tử: Object[]{ loaiHD (String), tongTienHienTai (double), tongTienGoc (double) }
+     * Tính toán nghiệp vụ (BAN_HANG / TRA_HANG / DOI_HANG) do BUS đảm nhiệm.
      *
-     * Công thức:
-     *   tienHeThong = tienDauCa
-     *               + Σ thanhTien (BAN_HANG / TIEN_MAT)        ← tiền vào
-     *               + Σ (thanhTien mới − thanhTien cũ) (DOI_HANG / TIEN_MAT)
-     *                     > 0 → khách bù thêm (tiền vào)
-     *                     < 0 → tiệm hoàn lại (tiền ra)
-     *               − Σ thanhTien (TRA_HANG / TIEN_MAT)        ← tiền ra
-     *
-     * Lưu ý thiết kế SQL:
-     * - Dùng LEFT JOIN để ca không có hóa đơn nào vẫn trả về tienDauCa.
-     * - Điều kiện phuongThucThanhToan đặt trong ON để không loại dòng NULL.
-     * - ISNULL(..., 0) ở mọi tầng SUM chống NullPointerException.
-     * - Correlated sub-query cho ChiTietHoaDon gốc dùng hoaDonGocId của DOI_HANG.
-     *
-     * @param maCa  id của CaLamViec cần tính
-     * @return      số tiền hệ thống ghi nhận (tienHeThongGhiNhan)
+     * @param maCa  id của CaLamViec
+     * @return      list row thô
      */
-    public double tinhTienMatThucTeTrongCa(String maCa) {
+    public List<Object[]> getHoaDonTienMatTrongCa(String maCa) {
+        List<Object[]> result = new ArrayList<>();
         String sql =
-            "SELECT " +
-            "    clv.tienDauCa + ISNULL(SUM( " +
-            "        CASE hd.loaiHD " +
-            "            WHEN 'BAN_HANG' THEN ISNULL(ct_hien_tai.tongTien, 0) " +
-            "            WHEN 'DOI_HANG' THEN ISNULL(ct_hien_tai.tongTien, 0) - ISNULL(ct_goc.tongTien, 0) " +
-            "            WHEN 'TRA_HANG' THEN -ISNULL(ct_hien_tai.tongTien, 0) " +
-            "            ELSE 0 " +
-            "        END " +
-            "    ), 0) AS tienHeThongGhiNhan " +
+            "SELECT hd.loaiHD, " +
+            "    ISNULL((SELECT SUM(thanhTien) FROM ChiTietHoaDon WHERE hoaDonId = hd.id), 0)          AS tongTienHienTai, " +
+            "    ISNULL((SELECT SUM(thanhTien) FROM ChiTietHoaDon WHERE hoaDonId = hd.hoaDonGocId), 0) AS tongTienGoc " +
             "FROM CaLamViec clv " +
-            "LEFT JOIN HoaDon hd " +
+            "JOIN HoaDon hd " +
             "    ON  hd.nhanVienId = clv.nhanVienId " +
             "    AND hd.ngayLapHD >= clv.thoiGianBatDau " +
             "    AND (clv.thoiGianKetThuc IS NULL OR hd.ngayLapHD <= clv.thoiGianKetThuc) " +
             "    AND hd.phuongThucThanhToan = 'TIEN_MAT' " +
-            "OUTER APPLY ( " +
-            "    SELECT SUM(thanhTien) AS tongTien " +
-            "    FROM ChiTietHoaDon " +
-            "    WHERE hoaDonId = hd.id " +
-            ") ct_hien_tai " +
-            "OUTER APPLY ( " +
-            "    SELECT SUM(thanhTien) AS tongTien " +
-            "    FROM ChiTietHoaDon " +
-            "    WHERE hoaDonId = hd.hoaDonGocId AND hd.loaiHD = 'DOI_HANG' " +
-            ") ct_goc " +
-            "WHERE clv.id = ? " +
-            "GROUP BY clv.tienDauCa";
+            "WHERE clv.id = ?";
 
         try (Connection con = ConnectDB.getInstance().getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {
-
             ps.setString(1, maCa);
-
             try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    return rs.getDouble("tienHeThongGhiNhan");
+                while (rs.next()) {
+                    result.add(new Object[]{
+                        rs.getString("loaiHD"),
+                        rs.getDouble("tongTienHienTai"),
+                        rs.getDouble("tongTienGoc")
+                    });
                 }
             }
         } catch (SQLException e) {
             e.printStackTrace();
         }
-        // Trường hợp không tìm thấy ca → trả 0
-        return 0.0;
+        return result;
     }
 
     public Entity.CaLamViec layCaChuaDongCuaNhanVien(String maNV) {
@@ -205,28 +178,5 @@ public class DAO_CaLamViec {
             e.printStackTrace();
             return false;
         }
-    }
-
-    /**
-     * Lấy ca làm việc đã đóng gần nhất của một nhân viên.
-     * Dùng cho tính năng xem lại Bill Kết Ca ở ManHinhThongKe.
-     *
-     * @param maNV  mã nhân viên
-     * @return      CaLamViec đã đóng gần nhất, hoặc null nếu không có
-     */
-    public CaLamViec getCaDaKetThucGanNhat(String maNV) {
-        String sql = "SELECT TOP 1 * FROM CaLamViec " +
-                     "WHERE nhanVienId = ? AND thoiGianKetThuc IS NOT NULL " +
-                     "ORDER BY thoiGianKetThuc DESC";
-        Connection con = ConnectDB.getInstance().getConnection();
-        try (PreparedStatement ps = con.prepareStatement(sql)) {
-            ps.setString(1, maNV);
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) return mapRow(rs);
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return null;
     }
 }

@@ -15,8 +15,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
 import java.time.LocalDateTime;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 
 public class BUS_KhuyenMai {
     private DAO_KhuyenMai daoKhuyenMai;
@@ -25,7 +23,6 @@ public class BUS_KhuyenMai {
     private DAO_SanPham daoSanPham; 
     private DAO_LoHang daoLoHang; 
 
-    
     public BUS_KhuyenMai() {
         this.daoKhuyenMai = new DAO_KhuyenMai();
         this.daoDieuKienKhuyenMai = new DAO_DieuKienKhuyenMai();
@@ -33,6 +30,7 @@ public class BUS_KhuyenMai {
         this.daoSanPham = new DAO_SanPham(); 
         this.daoLoHang = new DAO_LoHang(); 
     }
+
     public List<Object[]> layDanhSachKhuyenMaiHopLe() {
         return daoKhuyenMai.layDanhSachKhuyenMaiHopLe();
     }
@@ -44,6 +42,7 @@ public class BUS_KhuyenMai {
     public List<Object[]> layDanhSachKhuyenMaiFull() {
         return daoKhuyenMai.layDanhSachKhuyenMaiFull(); 
     }
+
     public Object[] timKhuyenMaiTotNhat(double tongTienHoaDon) {
         List<String> dsMaKM = daoKhuyenMai.layDanhSachMaKMCoHieuLuc();
         String maTotNhat = null;
@@ -70,6 +69,10 @@ public class BUS_KhuyenMai {
     public boolean capNhatTrangThai(String maKM, boolean trangThai) {
         return daoKhuyenMai.capNhatTrangThai(maKM, trangThai);
     }
+    
+    public boolean anKhuyenMai(String maKM) {
+        return daoKhuyenMai.anKhuyenMai(maKM);
+    }
 
     public int[] layCauHinhTichDiem() {
         return daoKhuyenMai.layCauHinhTichDiem();
@@ -79,8 +82,8 @@ public class BUS_KhuyenMai {
         return daoKhuyenMai.luuCauHinhTichDiem(tienMua, diemThuong, tienDoi, diemToiThieu);
     }
 
-    public List<Object[]> layDanhSachKhuyenMaiChoTable() {
-        return daoKhuyenMai.layDanhSachKhuyenMaiChoTable();
+    public List<Object[]> layDanhSachKhuyenMaiChoTable(boolean hienDaAn) {
+        return daoKhuyenMai.layDanhSachKhuyenMaiChoTable(hienDaAn);
     }
     
     public List<KhuyenMai> layDsKhuyenMai() {
@@ -158,11 +161,7 @@ public class BUS_KhuyenMai {
         return true;
     }
 
-    // ==============================================================
-    // HÀM MỚI: KIỂM TRA CHI TIẾT GIỎ HÀNG CHUẨN 3 LỚP (TRẢ VỀ LỜI NHẮC NHỞ)
-    // ==============================================================
     public String kiemTraChiTietKhuyenMaiVoiGioHang(String maKM, double tongTienHienTai, Map<String, Integer> gioHang) {
-        // 1. Kiểm tra Tổng tiền hóa đơn (Nếu khuyến mãi có yêu cầu Đơn tối thiểu)
         List<DieuKienKhuyenMai> dsDieuKien = daoDieuKienKhuyenMai.layTheoKhuyenMaiId(maKM);
         if (dsDieuKien != null && !dsDieuKien.isEmpty()) {
             for (DieuKienKhuyenMai dk : dsDieuKien) {
@@ -175,32 +174,26 @@ public class BUS_KhuyenMai {
             }
         }
 
-        // 2. Kiểm tra Số lượng Sản phẩm yêu cầu trong Giỏ hàng
         HinhThucKhuyenMai htkm = daoHinhThucKhuyenMai.layTheoMaKM(maKM);
         if (htkm != null && htkm.getDoiTuongApDung() == DoiTuongApDung.SAN_PHAM) {
-            String spYeuCau = htkm.getSpYeuCau(); // spYeuCau lúc này đang chứa Mã SP (Ví dụ: SP001)
+            String spYeuCau = htkm.getSpYeuCau();
             int slYeuCau = htkm.getSlYeuCau();
 
-            // Nếu chương trình có chỉ định 1 sản phẩm bắt buộc phải mua
             if (spYeuCau != null && !spYeuCau.trim().isEmpty()) {
                 String tenSpCheck = spYeuCau.trim();
                 
-                // [CHUẨN 3 LỚP]: Dùng DAO_SanPham để lấy thông tin Tên Sản Phẩm thực tế
                 Entity.SanPham sp = daoSanPham.getSanPhamTheoMa(tenSpCheck);
                 if (sp != null && sp.getTen() != null) {
-                    tenSpCheck = sp.getTen().trim(); // Đã dịch từ Mã SP (SP001) sang Tên SP (Panadol)
+                    tenSpCheck = sp.getTen().trim(); 
                 }
 
                 int slTrongGio = 0;
-                
-                // Quét giỏ hàng xem có sản phẩm này không (Quét không phân biệt hoa thường để an toàn)
                 for (Map.Entry<String, Integer> entry : gioHang.entrySet()) {
                     if (entry.getKey().trim().equalsIgnoreCase(tenSpCheck)) {
                         slTrongGio += entry.getValue();
                     }
                 }
 
-                // Nếu số lượng trong giỏ chưa đạt đủ số lượng yêu cầu của Khuyến mãi
                 if (slTrongGio < slYeuCau) {
                     int slThieu = slYeuCau - slTrongGio;
                     String donVi = (htkm.getDvdlYeuCau() == null || htkm.getDvdlYeuCau().trim().isEmpty()) ? "SP" : htkm.getDvdlYeuCau().trim();
@@ -208,8 +201,7 @@ public class BUS_KhuyenMai {
                 }
             }
         }
-
-        return "OK"; // Thỏa mãn tất cả mọi điều kiện
+        return "OK"; 
     }
 
     public double apDungKM(String maKM, double tongTienHoaDon) {
@@ -272,95 +264,87 @@ public class BUS_KhuyenMai {
         }
     }
 
-    public double[] layThongKeHieuSuatKM(String maKM) {
-        try {
-            return daoKhuyenMai.layThongKeHieuSuatKM(maKM);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return new double[]{0, 0, 0};
-        }
-    }
+    public Map<String, Object> kiemTraHopLeKhiThemThuCong(String tenHoacMaSP) {
+        Map<String, Object> result = new HashMap<>();
+        result.put("status", "OK"); 
+        result.put("message", "");
+        result.put("soLo", "");
+        result.put("hsd", "");
+        result.put("soNgay", 9999);
+        result.put("tonKho", 0);
+        result.put("danhMuc", "");
+        result.put("tenThuc", tenHoacMaSP);
 
-    public List<Map<String, Object>> layDanhSachGoiYKhuyenMaiVoiLogic() {
-        List<Map<String, Object>> goiyList = new ArrayList<>();
-        
-        List<Object[]> dsLoCanDate = daoLoHang.layDuLieuLoHangCanDateTho();
-        
-        if (dsLoCanDate != null && !dsLoCanDate.isEmpty()) {
-            for (Object[] dongDuLieu : dsLoCanDate) {
-                String soLoHang = (String) dongDuLieu[0];
-                String tenSP = (String) dongDuLieu[1];
-                double giaBan = (Double) dongDuLieu[2];
-                double giaNhap = (Double) dongDuLieu[3];
-                int soNgay = (Integer) dongDuLieu[4];
-                
-                double phanTramMax = ((giaBan - giaNhap) / giaBan) * 100.0;
-                
-                if (phanTramMax <= 5) continue; 
-                
-                int mucGiamGoiY = 5;
-                if (phanTramMax >= 40) mucGiamGoiY = 30;
-                else if (phanTramMax >= 30) mucGiamGoiY = 20;
-                else if (phanTramMax >= 20) mucGiamGoiY = 15;
-                else mucGiamGoiY = 10;
-                
-                double loiNhuanDuKien = giaBan - (giaBan * mucGiamGoiY / 100.0) - giaNhap;
-                
-                Map<String, Object> item = new HashMap<>();
-                item.put("title", "Xả hàng lô: " + soLoHang);
-                item.put("desc", "Còn <b>" + soNgay + " ngày</b> hết hạn. Khuyên dùng: Giảm <b>" + mucGiamGoiY + "%</b> cho <b>" + tenSP + "</b> (Lãi: " + String.format("%,.0fđ", loiNhuanDuKien) + "/SP).");
-                item.put("icon", "ALERT");
-                item.put("color", "#E1304C"); 
-                
-                Map<String, Object> autoData = new HashMap<>();
-                autoData.put("isAutoFill", true);
-                autoData.put("1", "Xả hàng lô " + soLoHang + " (" + tenSP + ")"); 
-                autoData.put("2", "Giảm theo phần trăm (%)"); 
-                autoData.put("5", "Sản phẩm"); 
-                autoData.put("10", String.valueOf(mucGiamGoiY)); 
-                autoData.put("12", tenSP); 
-                
-                LocalDate now = LocalDate.now();
-                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-                autoData.put("6", now.format(formatter) + " - " + now.plusDays(soNgay).format(formatter));
-                
-                item.put("autoData", autoData);
-                goiyList.add(item);
+        if (tenHoacMaSP == null || tenHoacMaSP.trim().isEmpty() || tenHoacMaSP.startsWith("VD:")) {
+            return result;
+        }
+
+        Map<String, Object> dbData = daoKhuyenMai.layThongTinSanPhamVaLoHangGoiY(tenHoacMaSP.trim());
+
+        if (!dbData.isEmpty()) {
+            String danhMuc = (String) dbData.get("danhMuc");
+            String tenThuc = (String) dbData.get("tenThuc");
+            String soLo = (String) dbData.get("soLo");
+            java.util.Date ngayHetHan = (java.util.Date) dbData.get("ngayHetHan");
+            int soNgay = (int) dbData.get("soNgay");
+            int tonKho = (int) dbData.get("tonKho");
+
+            result.put("danhMuc", danhMuc != null ? danhMuc : "KHÁC");
+            result.put("tenThuc", tenThuc);
+            result.put("tonKho", tonKho);
+
+            if (soLo != null && ngayHetHan != null) {
+                result.put("soLo", soLo);
+                result.put("soNgay", soNgay);
+                java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("dd/MM/yyyy");
+                result.put("hsd", sdf.format(ngayHetHan));
+            }
+
+            if (tonKho <= 0) {
+                result.put("status", "WARNING");
+                result.put("message", "Sản phẩm đã hết hàng trong kho.");
+                return result;
+            }
+
+            if (soLo != null && soNgay < 0) {
+                result.put("status", "WARNING");
+                result.put("message", "Lô hàng cận nhất đã HẾT HẠN SỬ DỤNG. Cần hủy.");
+                return result;
+            }
+
+            if ("THUOC_KE_DON".equalsIgnoreCase(danhMuc)) {
+                result.put("status", "WARNING");
+                String msg = "VI PHẠM: Thuốc kê đơn (Rx) không được phép khuyến mãi theo Luật Dược 2016!";
+                if (soLo != null && soNgay <= 180) {
+                    msg += " Thuốc cận date (Còn " + soNgay + " ngày), yêu cầu làm thủ tục trả NPP hoặc tiêu hủy!";
+                }
+                result.put("message", msg);
+                return result;
+            }
+
+            if (soLo != null) {
+                if ("THUC_PHAM_CHUC_NANG".equalsIgnoreCase(danhMuc) && soNgay < 90) {
+                    result.put("status", "WARNING");
+                    result.put("message", "TPCN cận date dưới 3 tháng. Không kịp 1 liệu trình an toàn.");
+                } else if ("THUOC_KHONG_KE_DON".equalsIgnoreCase(danhMuc) && soNgay < 180) {
+                    result.put("status", "WARNING");
+                    result.put("message", "Thuốc OTC cận date dưới 6 tháng. Nguy hiểm khi tích trữ tại nhà.");
+                } else if ("THUC_PHAM_CHUC_NANG".equalsIgnoreCase(danhMuc) && soNgay <= 180) {
+                    result.put("status", "WARNING");
+                    result.put("message", "Thời điểm vàng xả kho TPCN (3-6 tháng). Hãy ưu tiên giảm sâu.");
+                } else if ("THUOC_KHONG_KE_DON".equalsIgnoreCase(danhMuc) && soNgay <= 270) {
+                    result.put("status", "WARNING");
+                    result.put("message", "Thời điểm vàng đẩy hàng OTC (6-9 tháng). Khuyên dùng Combo.");
+                }
             }
         }
+        return result;
+    }
 
-        if (goiyList.isEmpty()) {
-            LocalDate today = LocalDate.now();
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-            String ngayBatDau = today.format(formatter);
-            String ngayKetThuc = today.plusDays(30).format(formatter);
-
-            Map<String, Object> data2 = new HashMap<>();
-            Map<String, Object> autoData2 = new HashMap<>();
-            autoData2.put("isAutoFill", true);
-            autoData2.put("6", ngayBatDau + " - " + ngayKetThuc);
-            
-            data2.put("title", "Ngày hội Khách hàng thân thiết");
-            data2.put("desc", "Giảm 10% cho toàn bộ hóa đơn từ 500,000đ trở lên.");
-            data2.put("icon", "USERS");
-            data2.put("color", "#00A76F");
-            
-            autoData2.put("1", "Ngày hội Thành viên");
-            autoData2.put("2", "Giảm theo phần trăm (%)");
-            autoData2.put("5", "Hóa đơn");
-            autoData2.put("10", "10"); 
-            autoData2.put("11", "500000"); 
-            
-            data2.put("autoData", autoData2);
-            goiyList.add(data2);
-        }
-        
-        return goiyList;
+    public boolean kiemTraTrungKhuyenMai(String tenSP, int loaiHinhThucStr, double mucGiam, String currentKMId) {
+        return daoKhuyenMai.kiemTraTrungKhuyenMai(tenSP, loaiHinhThucStr, mucGiam, currentKMId);
     }
     
-    // ==============================================================
-    // LỚP HỖ TRỢ TRẢ VỀ KẾT QUẢ KHUYẾN MÃI
-    // ==============================================================
     public static class KetQuaApDungKhuyenMai {
         private long tongTienGiam;
         private List<Object[]> danhSachQuaTang;
@@ -377,16 +361,12 @@ public class BUS_KhuyenMai {
         public List<String> getDanhSachMaDaDuyet() { return danhSachMaDaDuyet; }
     }
 
-    // ==============================================================
-    // HÀM TỰ ĐỘNG TÍNH TOÁN QUÀ TẶNG & TIỀN GIẢM CHO TẦNG GUI
-    // ==============================================================
     public KetQuaApDungKhuyenMai tinhToanKhuyenMaiTuDong(long tongTienBill, int tongSoLuongSPThucTe, Map<String, Integer> gioHangHienTai) {
         long tongTienGiamDoc = 0;
         List<Object[]> danhSachQuaTang = new ArrayList<>();
         List<String> danhSachMaDaDuyet = new ArrayList<>();
         
-        // Gọi DAO lấy tất cả Khuyến mãi đang có hiệu lực
-        List<Object[]> dsKM = layDanhSachKhuyenMaiChoTable(); 
+        List<Object[]> dsKM = layDanhSachKhuyenMaiChoTable(false); 
         
         if (dsKM != null) {
             for (Object[] kmRow : dsKM) {
@@ -395,17 +375,15 @@ public class BUS_KhuyenMai {
                 
                 if (!dangHoatDong) continue;
 
-                String loaiKM = (String) kmRow[2]; // Hình thức khuyến mãi
+                String loaiKM = (String) kmRow[2]; 
                 double donToiThieu = (Double) kmRow[11];
                 
-                // 1. Nếu khuyến mãi yêu cầu đơn tối thiểu (Ví dụ hóa đơn > 500k)
                 if (donToiThieu > 0 && tongTienBill < donToiThieu) {
                     continue; 
                 }
 
-                // 2. Phân loại và xử lý từng loại Khuyến mãi
                 if (loaiKM.contains("phần trăm")) {
-                    String apDungCho = (String) kmRow[5]; // "Hóa đơn" hoặc Tên sản phẩm
+                    String apDungCho = (String) kmRow[5]; 
                     double mucGiamTreo = (Double) kmRow[10];
                     double giamToiDa = (Double) kmRow[18];
                     
@@ -418,14 +396,11 @@ public class BUS_KhuyenMai {
                         danhSachMaDaDuyet.add(maKM);
                     } 
                     else {
-                        // Áp dụng cho 1 sản phẩm cụ thể
-                        String tenSPYeuCau = (String) kmRow[12]; // db lưu ID sản phẩm
+                        String tenSPYeuCau = (String) kmRow[12]; 
                         Entity.SanPham sp = daoSanPham.getSanPhamTheoMa(tenSPYeuCau);
                         String tenSpCheck = sp != null ? sp.getTen() : tenSPYeuCau;
 
                         if (gioHangHienTai.containsKey(tenSpCheck)) {
-                            // Ghi chú: Chỗ này thường phải biết Đơn giá của SP đó để tính tiền giảm. 
-                            // Tạm thời nếu có trong giỏ thì add mã vào để GUI biết là đã kích hoạt.
                             danhSachMaDaDuyet.add(maKM);
                         }
                     }
@@ -439,7 +414,7 @@ public class BUS_KhuyenMai {
                     
                     int slTrongGio = gioHangHienTai.getOrDefault(tenSpCheck, 0);
                     if (slTrongGio >= slYeuCau) {
-                        int soLanApDung = slTrongGio / slYeuCau; // Khách mua gấp đôi yêu cầu thì giảm gấp đôi
+                        int soLanApDung = slTrongGio / slYeuCau; 
                         tongTienGiamDoc += (tienGiam * soLanApDung);
                         danhSachMaDaDuyet.add(maKM);
                     }
@@ -474,6 +449,7 @@ public class BUS_KhuyenMai {
         }
         return new KetQuaApDungKhuyenMai(tongTienGiamDoc, danhSachQuaTang, danhSachMaDaDuyet);
     }
+    
     public static class PromoValidationResult {
         public boolean isValid;
         public String message;
