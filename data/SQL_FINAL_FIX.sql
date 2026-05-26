@@ -1399,10 +1399,10 @@ BEGIN
         comboId NVARCHAR(50) NOT NULL,
         sanPhamId NVARCHAR(50) NOT NULL,
         dvt NVARCHAR(50) NULL,
-        sang FLOAT NOT NULL DEFAULT 0,
-        trua FLOAT NOT NULL DEFAULT 0,
-        chieu FLOAT NOT NULL DEFAULT 0,
-        toi FLOAT NOT NULL DEFAULT 0,
+        sang INT NOT NULL DEFAULT 0,
+        trua INT NOT NULL DEFAULT 0,
+        chieu INT NOT NULL DEFAULT 0,
+        toi INT NOT NULL DEFAULT 0,
         cachDung NVARCHAR(255) NULL,
         soNgay INT NOT NULL DEFAULT 1,
         tongSoLuong FLOAT NOT NULL DEFAULT 0,
@@ -1443,25 +1443,25 @@ GO
 
 IF COL_LENGTH('dbo.ChiTietMauLieu', 'sang') IS NULL
 BEGIN
-    ALTER TABLE dbo.ChiTietMauLieu ADD sang FLOAT NOT NULL CONSTRAINT DF_CTML_sang DEFAULT 0;
+    ALTER TABLE dbo.ChiTietMauLieu ADD sang INT NOT NULL CONSTRAINT DF_CTML_sang DEFAULT 0;
 END
 GO
 
 IF COL_LENGTH('dbo.ChiTietMauLieu', 'trua') IS NULL
 BEGIN
-    ALTER TABLE dbo.ChiTietMauLieu ADD trua FLOAT NOT NULL CONSTRAINT DF_CTML_trua DEFAULT 0;
+    ALTER TABLE dbo.ChiTietMauLieu ADD trua INT NOT NULL CONSTRAINT DF_CTML_trua DEFAULT 0;
 END
 GO
 
 IF COL_LENGTH('dbo.ChiTietMauLieu', 'chieu') IS NULL
 BEGIN
-    ALTER TABLE dbo.ChiTietMauLieu ADD chieu FLOAT NOT NULL CONSTRAINT DF_CTML_chieu DEFAULT 0;
+    ALTER TABLE dbo.ChiTietMauLieu ADD chieu INT NOT NULL CONSTRAINT DF_CTML_chieu DEFAULT 0;
 END
 GO
 
 IF COL_LENGTH('dbo.ChiTietMauLieu', 'toi') IS NULL
 BEGIN
-    ALTER TABLE dbo.ChiTietMauLieu ADD toi FLOAT NOT NULL CONSTRAINT DF_CTML_toi DEFAULT 0;
+    ALTER TABLE dbo.ChiTietMauLieu ADD toi INT NOT NULL CONSTRAINT DF_CTML_toi DEFAULT 0;
 END
 GO
 
@@ -2203,3 +2203,68 @@ FROM [dbo].[PhieuNhapHang] pn
 JOIN [dbo].[ChiTietPhieuNhapHang] ct ON ct.phieuNhapId = pn.id
 WHERE pn.nhaCungCapId IS NULL;
 GO
+USE MYCAREPHARMACY;
+GO
+
+-- Bước 1: Xóa cái luật cũ đang chặn chữ 'AN'
+ALTER TABLE KhuyenMai DROP CONSTRAINT CK_KhuyenMai_TrangThai;
+GO
+
+-- Bước 2: Tạo lại luật mới, cho phép thêm trạng thái 'AN'
+ALTER TABLE KhuyenMai ADD CONSTRAINT CK_KhuyenMai_TrangThai 
+CHECK (trangThai IN ('HOAT_DONG', 'KHONG_HOAT_DONG', 'AN'));
+GO
+CREATE TABLE [dbo].[LichSuDiem] (
+    [id]          NVARCHAR(50)  NOT NULL PRIMARY KEY,
+    [khachHangId] NVARCHAR(50)  NOT NULL,
+    [hoaDonId]    NVARCHAR(50)  NULL,
+    [loai]        NVARCHAR(10)  NOT NULL,
+    [soDiem]      INT           NOT NULL,
+    [ghiChu]      NVARCHAR(255) NULL,
+    [thoiGian]    DATETIME2(7)  NOT NULL DEFAULT SYSDATETIME(),
+    CONSTRAINT [FK_LichSuDiem_KhachHang]
+        FOREIGN KEY ([khachHangId]) REFERENCES [dbo].[KhachHang]([id]) ON DELETE CASCADE,
+    CONSTRAINT [FK_LichSuDiem_HoaDon]
+        FOREIGN KEY ([hoaDonId]) REFERENCES [dbo].[HoaDon]([id]) ON DELETE SET NULL
+)INSERT INTO [dbo].[LichSuDiem] VALUES (N'LS-00001', N'KH-0001', N'HD2024-0001', N'TICH', 8, N'Tích điểm từ hóa đơn HD2024-0001', CAST(N'2024-01-05 08:30:00.0000000' AS DateTime2));
+INSERT INTO [dbo].[LichSuDiem] VALUES (N'LS-00002', N'KH-0002', N'HD2024-0002', N'TICH', 6, N'Tích điểm từ hóa đơn HD2024-0002', CAST(N'2024-01-10 09:00:00.0000000' AS DateTime2));
+INSERT INTO [dbo].[LichSuDiem] VALUES (N'LS-00003', N'KH-0003', N'HD2024-0003', N'TICH', 5, N'Tích điểm từ hóa đơn HD2024-0003', CAST(N'2024-02-14 10:15:00.0000000' AS DateTime2));
+INSERT INTO [dbo].[LichSuDiem] VALUES (N'LS-00004', N'KH-0004', N'HD2024-0004', N'TICH', 15, N'Tích điểm từ hóa đơn HD2024-0004', CAST(N'2024-02-20 11:00:00.0000000' AS DateTime2));
+INSERT INTO [dbo].[LichSuDiem] VALUES (N'LS-00005', N'KH-0005', N'HD2024-0005', N'TICH', 60, N'Tích điểm từ hóa đơn HD2024-0005', CAST(N'2024-03-05 08:45:00.0000000' AS DateTime2));
+INSERT INTO [dbo].[LichSuDiem] VALUES (N'LS-00006', N'KH-0006', N'HD2024-0006', N'TICH', 3, N'Tích điểm từ hóa đơn HD2024-0006', CAST(N'2024-03-15 13:30:00.0000000' AS DateTime2));
+INSERT INTO [dbo].[LichSuDiem] VALUES (N'LS-00007', N'KH-0007', N'HD2024-0007', N'TICH', 103, N'Tích điểm từ hóa đơn HD2024-0007', CAST(N'2024-04-10 09:00:00.0000000' AS DateTime2));
+INSERT INTO [dbo].[LichSuDiem] VALUES (N'LS-00008', N'KH-0008', N'HD2024-0008', N'TICH', 141, N'Tích điểm từ hóa đơn HD2024-0008', CAST(N'2024-04-20 14:00:00.0000000' AS DateTime2));
+INSERT INTO [dbo].[LichSuDiem] VALUES (N'LS-00009', N'KH-0009', N'HD2024-0009', N'TICH', 12, N'Tích điểm từ hóa đơn HD2024-0009', CAST(N'2024-05-05 10:30:00.0000000' AS DateTime2));
+INSERT INTO [dbo].[LichSuDiem] VALUES (N'LS-00010', N'KH-0010', N'HD2024-0010', N'TICH', 18, N'Tích điểm từ hóa đơn HD2024-0010', CAST(N'2024-05-18 11:15:00.0000000' AS DateTime2));
+INSERT INTO [dbo].[LichSuDiem] VALUES (N'LS-00011', N'KH-0001', N'HD-2025-1', N'TICH', 8, N'Tích điểm từ hóa đơn HD-2025-1', CAST(N'2025-01-05 08:30:00.0000000' AS DateTime2));
+INSERT INTO [dbo].[LichSuDiem] VALUES (N'LS-00012', N'KH-0002', N'HD-2025-2', N'TICH', 5, N'Tích điểm từ hóa đơn HD-2025-2', CAST(N'2025-02-14 09:00:00.0000000' AS DateTime2));
+INSERT INTO [dbo].[LichSuDiem] VALUES (N'LS-00013', N'KH-0003', N'HD-2025-3', N'TICH', 8, N'Tích điểm từ hóa đơn HD-2025-3', CAST(N'2025-03-20 10:15:00.0000000' AS DateTime2));
+INSERT INTO [dbo].[LichSuDiem] VALUES (N'LS-00014', N'KH-0004', N'HD-2025-4', N'TICH', 5, N'Tích điểm từ hóa đơn HD-2025-4', CAST(N'2025-04-10 11:00:00.0000000' AS DateTime2));
+INSERT INTO [dbo].[LichSuDiem] VALUES (N'LS-00015', N'KH-0005', N'HD-2025-5', N'TICH', 32, N'Tích điểm từ hóa đơn HD-2025-5', CAST(N'2025-05-05 08:45:00.0000000' AS DateTime2));
+INSERT INTO [dbo].[LichSuDiem] VALUES (N'LS-00016', N'KH-0006', N'HD-2025-6', N'TICH', 3, N'Tích điểm từ hóa đơn HD-2025-6', CAST(N'2025-06-15 13:30:00.0000000' AS DateTime2));
+INSERT INTO [dbo].[LichSuDiem] VALUES (N'LS-00017', N'KH-0007', N'HD-2025-7', N'TICH', 84, N'Tích điểm từ hóa đơn HD-2025-7', CAST(N'2025-07-20 09:00:00.0000000' AS DateTime2));
+INSERT INTO [dbo].[LichSuDiem] VALUES (N'LS-00018', N'KH-0008', N'HD-2025-8', N'TICH', 1, N'Tích điểm từ hóa đơn HD-2025-8', CAST(N'2025-08-10 14:00:00.0000000' AS DateTime2));
+INSERT INTO [dbo].[LichSuDiem] VALUES (N'LS-00019', N'KH-0009', N'HD-2025-9', N'TICH', 11, N'Tích điểm từ hóa đơn HD-2025-9', CAST(N'2025-09-25 10:30:00.0000000' AS DateTime2));
+INSERT INTO [dbo].[LichSuDiem] VALUES (N'LS-00020', N'KH-0010', N'HD-2025-10', N'TICH', 7, N'Tích điểm từ hóa đơn HD-2025-10', CAST(N'2025-10-18 11:15:00.0000000' AS DateTime2));
+INSERT INTO [dbo].[LichSuDiem] VALUES (N'LS-00021', N'KH-0002', N'HD-2025-12', N'TICH', 3, N'Tích điểm từ hóa đơn HD-2025-12', CAST(N'2025-12-20 09:00:00.0000000' AS DateTime2));
+INSERT INTO [dbo].[LichSuDiem] VALUES (N'LS-00022', N'KH-0003', N'HD-2026-1', N'TICH', 4, N'Tích điểm từ hóa đơn HD-2026-1', CAST(N'2026-01-10 08:30:00.0000000' AS DateTime2));
+INSERT INTO [dbo].[LichSuDiem] VALUES (N'LS-00023', N'KH-0004', N'HD-2026-2', N'TICH', 5, N'Tích điểm từ hóa đơn HD-2026-2', CAST(N'2026-02-14 09:00:00.0000000' AS DateTime2));
+INSERT INTO [dbo].[LichSuDiem] VALUES (N'LS-00024', N'KH-0005', N'HD-2026-3', N'TICH', 28, N'Tích điểm từ hóa đơn HD-2026-3', CAST(N'2026-03-05 10:15:00.0000000' AS DateTime2));
+INSERT INTO [dbo].[LichSuDiem] VALUES (N'LS-00025', N'KH-0006', N'HD-2026-4', N'TICH', 32, N'Tích điểm từ hóa đơn HD-2026-4', CAST(N'2026-04-20 11:00:00.0000000' AS DateTime2));
+INSERT INTO [dbo].[LichSuDiem] VALUES (N'LS-00026', N'KH-0001', N'HD2024-0004', N'TIEU', 50, N'Dùng điểm giảm giá', CAST(N'2024-03-01 10:00:00.0000000' AS DateTime2));
+INSERT INTO [dbo].[LichSuDiem] VALUES (N'LS-00027', N'KH-0002', N'HD2024-0007', N'TIEU', 100, N'Dùng điểm thanh toán', CAST(N'2024-06-10 14:00:00.0000000' AS DateTime2));
+INSERT INTO [dbo].[LichSuDiem] VALUES (N'LS-00028', N'KH-0004', N'HD-2025-4', N'TIEU', 200, N'Dùng điểm đổi thưởng', CAST(N'2025-05-20 09:30:00.0000000' AS DateTime2));
+INSERT INTO [dbo].[LichSuDiem] VALUES (N'LS-00029', N'KH-0006', NULL, N'TIEU', 80, N'Điều chỉnh thủ công', CAST(N'2025-08-01 15:00:00.0000000' AS DateTime2));
+INSERT INTO [dbo].[LichSuDiem] VALUES (N'LS-00030', N'KH-0007', N'HD-2025-7', N'TIEU', 187, N'Dùng điểm thanh toán', CAST(N'2025-08-15 11:00:00.0000000' AS DateTime2));
+INSERT INTO [dbo].[LichSuDiem] VALUES (N'LS-00031', N'KH-0009', N'HD-2025-9', N'TIEU', 500, N'Dùng điểm đổi thưởng', CAST(N'2025-10-10 16:00:00.0000000' AS DateTime2));
+
+GO
+INSERT INTO [dbo].[LichSuDiem] VALUES (N'LS-00032', N'KH-0001', NULL, N'TICH', 534, N'Số dư tích lũy trước hệ thống', CAST(N'2024-01-10 08:00:00.0000000' AS DateTime2));
+INSERT INTO [dbo].[LichSuDiem] VALUES (N'LS-00033', N'KH-0002', NULL, N'TICH', 1286, N'Số dư tích lũy trước hệ thống', CAST(N'2024-02-15 09:30:00.0000000' AS DateTime2));
+INSERT INTO [dbo].[LichSuDiem] VALUES (N'LS-00034', N'KH-0003', NULL, N'TICH', 333, N'Số dư tích lũy trước hệ thống', CAST(N'2024-03-20 10:00:00.0000000' AS DateTime2));
+INSERT INTO [dbo].[LichSuDiem] VALUES (N'LS-00035', N'KH-0004', NULL, N'TICH', 2175, N'Số dư tích lũy trước hệ thống', CAST(N'2024-04-05 11:00:00.0000000' AS DateTime2));
+INSERT INTO [dbo].[LichSuDiem] VALUES (N'LS-00036', N'KH-0005', NULL, N'TICH', 30, N'Số dư tích lũy trước hệ thống', CAST(N'2024-05-12 13:00:00.0000000' AS DateTime2));
+INSERT INTO [dbo].[LichSuDiem] VALUES (N'LS-00037', N'KH-0006', NULL, N'TICH', 842, N'Số dư tích lũy trước hệ thống', CAST(N'2024-06-18 14:30:00.0000000' AS DateTime2));
+INSERT INTO [dbo].[LichSuDiem] VALUES (N'LS-00038', N'KH-0008', NULL, N'TICH', 308, N'Số dư tích lũy trước hệ thống', CAST(N'2024-08-30 09:15:00.0000000' AS DateTime2));
+INSERT INTO [dbo].[LichSuDiem] VALUES (N'LS-00039', N'KH-0009', NULL, N'TICH', 3477, N'Số dư tích lũy trước hệ thống', CAST(N'2024-09-14 10:30:00.0000000' AS DateTime2));
+INSERT INTO [dbo].[LichSuDiem] VALUES (N'LS-00040', N'KH-0010', NULL, N'TICH', 75, N'Số dư tích lũy trước hệ thống', CAST(N'2024-10-25 15:00:00.0000000' AS DateTime2));

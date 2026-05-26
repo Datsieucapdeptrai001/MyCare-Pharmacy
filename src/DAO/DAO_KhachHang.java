@@ -249,6 +249,49 @@ public class DAO_KhachHang {
         }
         return ds;
     }
+ // Lấy lịch sử điểm của khách hàng
+ // Mỗi phần tử String[]: [0]=hoaDonId, [1]=loai, [2]=soDiem, [3]=ghiChu, [4]=thoiGian
+ public List<String[]> getLichSuDiem(String khachHangId) {
+     List<String[]> ds = new ArrayList<>();
+     String sql = "SELECT hoaDonId, loai, soDiem, ghiChu, thoiGian FROM LichSuDiem WHERE khachHangId = ? ORDER BY thoiGian DESC";
+     try {
+         Connection con = ConnectDB.getInstance().getConnection();
+         PreparedStatement pst = con.prepareStatement(sql);
+         pst.setString(1, khachHangId);
+         ResultSet rs = pst.executeQuery();
+         while (rs.next()) {
+             String[] row = new String[5];
+             row[0] = rs.getString("hoaDonId") != null ? rs.getString("hoaDonId") : "Thủ công";
+             row[1] = rs.getString("loai");
+             row[2] = String.valueOf(rs.getInt("soDiem"));
+             row[3] = rs.getString("ghiChu") != null ? rs.getString("ghiChu") : "";
+             row[4] = rs.getTimestamp("thoiGian") != null
+                     ? rs.getTimestamp("thoiGian").toLocalDateTime()
+                        .format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
+                     : "-";
+             ds.add(row);
+         }
+     } catch (SQLException e) { e.printStackTrace(); }
+     return ds;
+ }
+
+ // Ghi một dòng lịch sử điểm
+ public boolean ghiLichSuDiem(String khachHangId, String hoaDonId, String loai, int soDiem, String ghiChu) {
+     String sql = "INSERT INTO LichSuDiem (id, khachHangId, hoaDonId, loai, soDiem, ghiChu, thoiGian) VALUES (?,?,?,?,?,?,?)";
+     try {
+         Connection con = ConnectDB.getInstance().getConnection();
+         PreparedStatement pst = con.prepareStatement(sql);
+         pst.setString(1, "LS-" + java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase());
+         pst.setString(2, khachHangId);
+         pst.setString(3, hoaDonId);
+         pst.setString(4, loai);
+         pst.setInt(5, soDiem);
+         pst.setString(6, ghiChu);
+         pst.setTimestamp(7, Timestamp.valueOf(LocalDateTime.now()));
+         return pst.executeUpdate() > 0;
+     } catch (SQLException e) { e.printStackTrace(); }
+     return false;
+ }
     // Cập nhật điểm tích lũy
     public boolean capNhatDiemTichLuy(String id, int diemMoi) {
         String sql = "UPDATE KhachHang SET diemTichLuy = ? WHERE id = ?";
