@@ -347,4 +347,171 @@ public class BUS_Kho {
         }
         return daoLoHang.getLoHangTheoMaVachNoiBo(maVachNoiBo.trim());
     }
+    public static class KetQuaXuatKho {
+        private final boolean thanhCong;
+        private final String maPhieuXuat;
+        private final String ngayXuat;
+        private final String qrData;
+        private final String thongBao;
+
+        public KetQuaXuatKho(boolean thanhCong, String maPhieuXuat, String ngayXuat, String qrData, String thongBao) {
+            this.thanhCong = thanhCong;
+            this.maPhieuXuat = maPhieuXuat;
+            this.ngayXuat = ngayXuat;
+            this.qrData = qrData;
+            this.thongBao = thongBao;
+        }
+
+        public boolean isThanhCong() {
+            return thanhCong;
+        }
+
+        public String getMaPhieuXuat() {
+            return maPhieuXuat;
+        }
+
+        public String getNgayXuat() {
+            return ngayXuat;
+        }
+
+        public String getQrData() {
+            return qrData;
+        }
+
+        public String getThongBao() {
+            return thongBao;
+        }
+    }
+
+    public KetQuaXuatKho xuatHuyKhoVaTaoPhieu(List<Object[]> danhSachXuat, String nguoiThucHien) {
+        if (danhSachXuat == null || danhSachXuat.isEmpty()) {
+            return new KetQuaXuatKho(false, "", "", "", "Danh sách xuất kho đang trống.");
+        }
+
+        if (isBlank(nguoiThucHien)) {
+            return new KetQuaXuatKho(false, "", "", "", "Không xác định được người thực hiện.");
+        }
+
+        /*
+         * GUI có thể truyền thêm dữ liệu hiển thị sau index 3.
+         * DAO hiện chỉ cần 3 cột:
+         * 0: loHangId
+         * 1: soLuongQuyDoi
+         * 2: lyDo
+         */
+        List<Object[]> dsGhiDB = new ArrayList<>();
+
+        for (Object[] item : danhSachXuat) {
+            if (item == null || item.length < 3) {
+                return new KetQuaXuatKho(false, "", "", "", "Dữ liệu xuất kho không hợp lệ.");
+            }
+
+            String loHangId = item[0] == null ? "" : item[0].toString().trim();
+            String soLuongText = item[1] == null ? "" : item[1].toString().trim();
+            String lyDo = item[2] == null ? "" : item[2].toString().trim();
+
+            if (isBlank(loHangId) || isBlank(soLuongText) || isBlank(lyDo)) {
+                return new KetQuaXuatKho(false, "", "", "", "Thiếu mã lô, số lượng hoặc lý do xuất.");
+            }
+
+            int soLuong;
+
+            try {
+                soLuong = Integer.parseInt(soLuongText);
+            } catch (Exception e) {
+                return new KetQuaXuatKho(false, "", "", "", "Số lượng xuất không hợp lệ.");
+            }
+
+            if (soLuong <= 0) {
+                return new KetQuaXuatKho(false, "", "", "", "Số lượng xuất phải lớn hơn 0.");
+            }
+
+            LoHang lo = daoLoHang.getLoHangTheoId(loHangId);
+
+            if (lo == null) {
+                return new KetQuaXuatKho(false, "", "", "", "Không tìm thấy lô hàng: " + loHangId);
+            }
+
+            if (lo.getTrangThai() == TrangThaiLoHang.AN) {
+                return new KetQuaXuatKho(false, "", "", "", "Lô hàng đã ẩn, không thể xuất: " + loHangId);
+            }
+
+            if (lo.getSoLuongLoHang() < soLuong) {
+                return new KetQuaXuatKho(false, "", "", "", "Tồn kho không đủ cho lô: " + loHangId);
+            }
+
+            dsGhiDB.add(new Object[]{loHangId, soLuong, lyDo});
+        }
+
+        String maPhieuXuat = taoMaPhieuXuatTam();
+        String ngayXuat = LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+
+        boolean ok = daoLoHang.thucThiXuatHuyKhoBangTransaction(dsGhiDB, nguoiThucHien.trim());
+
+        if (!ok) {
+            return new KetQuaXuatKho(false, "", "", "", "Gặp sự cố khi lưu phiếu xuất kho vào database.");
+        }
+
+        String qrData = taoQrDataPhieuXuat(maPhieuXuat, ngayXuat, danhSachXuat);
+
+        return new KetQuaXuatKho(
+                true,
+                maPhieuXuat,
+                ngayXuat,
+                qrData,
+                "Đã xuất kho thành công."
+        );
+    }
+
+    private String taoMaPhieuXuatTam() {
+        return "PX" + System.currentTimeMillis();
+    }
+
+    private String taoQrDataPhieuXuat(String maPhieuXuat, String ngayXuat, List<Object[]> danhSachXuat) {
+        StringBuilder qrData = new StringBuilder();
+
+        qrData.append("PHIẾU XUẤT: ").append(maPhieuXuat).append("\n");
+        qrData.append("NGÀY XUẤT: ").append(ngayXuat).append("\n");
+        qrData.append("--- CHI TIẾT HÀNG ---\n");
+
+        for (Object[] item : danhSachXuat) {
+            String loHangId = layGiaTriItem(item, 0);
+            String soLuongQuyDoi = layGiaTriItem(item, 1);
+            String lyDo = layGiaTriItem(item, 2);
+
+            String maLoHienThi = layGiaTriItem(item, 3);
+            String khoHienThi = layGiaTriItem(item, 4);
+            String tenSanPham = layGiaTriItem(item, 5);
+            String soLuongNhap = layGiaTriItem(item, 6);
+            String donVi = layGiaTriItem(item, 7);
+
+            if (isBlank(maLoHienThi)) {
+                maLoHienThi = loHangId;
+            }
+
+            qrData.append("• ")
+                    .append(maLoHienThi)
+                    .append(" | Kho: ")
+                    .append(khoHienThi)
+                    .append(" | ")
+                    .append(tenSanPham)
+                    .append(" | ")
+                    .append(isBlank(soLuongNhap) ? soLuongQuyDoi : soLuongNhap)
+                    .append(" ")
+                    .append(donVi)
+                    .append(" | ")
+                    .append(lyDo)
+                    .append("\n");
+        }
+
+        return qrData.toString();
+    }
+
+    private String layGiaTriItem(Object[] item, int index) {
+        if (item == null || index < 0 || index >= item.length || item[index] == null) {
+            return "";
+        }
+
+        return item[index].toString().trim();
+    }
 }
