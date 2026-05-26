@@ -84,7 +84,8 @@ public class ManHinhKiemKeKho extends JDialog {
         setBackground(BG_TRANSPARENT);
         setContentPane(createMainUI());
 
-        setSize(1180, 760);
+        setSize(1450, 760);
+        setMinimumSize(new Dimension(1280, 720));
         setLocationRelativeTo(owner);
         setShape(new RoundRectangle2D.Double(0, 0, getWidth(), getHeight(), 16, 16));
 
@@ -187,8 +188,8 @@ public class ManHinhKiemKeKho extends JDialog {
         lblSearch.setForeground(TEXT_PRIMARY);
 
         txtSearch = new JTextField();
-        txtSearch.setPreferredSize(new Dimension(300, 38));
-        txtSearch.setMaximumSize(new Dimension(300, 38));
+        txtSearch.setPreferredSize(new Dimension(280, 38));
+        txtSearch.setMaximumSize(new Dimension(280, 38));
         txtSearch.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         txtSearch.setToolTipText("F2: tìm lô đã quét bằng điện thoại");
         txtSearch.setBorder(BorderFactory.createCompoundBorder(
@@ -201,15 +202,15 @@ public class ManHinhKiemKeKho extends JDialog {
         btnTimLo = createModernButton("Tìm lô [F2]", PRIMARY);
         btnTimLo.setIcon(new MenuIcon("SEARCH", 18, Color.WHITE));
         btnTimLo.setIconTextGap(8);
-        btnTimLo.setPreferredSize(new Dimension(145, 38));
-        btnTimLo.setMaximumSize(new Dimension(145, 38));
+        btnTimLo.setPreferredSize(new Dimension(165, 38));
+        btnTimLo.setMaximumSize(new Dimension(165, 38));
         btnTimLo.addActionListener(e -> focusTimLo());
 
         btnLamMoi = createModernButton("Làm mới [F6]", new Color(71, 85, 105));
         btnLamMoi.setIcon(new MenuIcon("REFRESH", 18, Color.WHITE));
         btnLamMoi.setIconTextGap(8);
-        btnLamMoi.setPreferredSize(new Dimension(145, 38));
-        btnLamMoi.setMaximumSize(new Dimension(145, 38));
+        btnLamMoi.setPreferredSize(new Dimension(165, 38));
+        btnLamMoi.setMaximumSize(new Dimension(165, 38));
         btnLamMoi.addActionListener(e -> loadDataTheoKho());
 
         row1.add(lblKho);
@@ -231,15 +232,15 @@ public class ManHinhKiemKeKho extends JDialog {
         btnNhapExcel = createModernButton("Nhập Excel [F3]", new Color(37, 99, 235));
         btnNhapExcel.setIcon(new MenuIcon("IMPORT", 18, Color.WHITE));
         btnNhapExcel.setIconTextGap(8);
-        btnNhapExcel.setPreferredSize(new Dimension(165, 38));
-        btnNhapExcel.setMaximumSize(new Dimension(165, 38));
+        btnNhapExcel.setPreferredSize(new Dimension(190, 38));
+        btnNhapExcel.setMaximumSize(new Dimension(190, 38));
         btnNhapExcel.addActionListener(e -> nhapExcelKiemKe());
 
         btnXuatMau = createModernButton("Xuất mẫu [F4]", new Color(14, 116, 144));
         btnXuatMau.setIcon(new MenuIcon("EXPORT", 18, Color.WHITE));
         btnXuatMau.setIconTextGap(8);
-        btnXuatMau.setPreferredSize(new Dimension(155, 38));
-        btnXuatMau.setMaximumSize(new Dimension(155, 38));
+        btnXuatMau.setPreferredSize(new Dimension(175, 38));
+        btnXuatMau.setMaximumSize(new Dimension(175, 38));
         btnXuatMau.addActionListener(e -> xuatMauExcelKiemKe());
 
         row2.add(lblExcel);
@@ -322,15 +323,15 @@ public class ManHinhKiemKeKho extends JDialog {
     }
 
     private void setupTableColumns() {
-        table.getColumnModel().getColumn(0).setPreferredWidth(45);
-        table.getColumnModel().getColumn(1).setPreferredWidth(135);
-        table.getColumnModel().getColumn(2).setPreferredWidth(300);
-        table.getColumnModel().getColumn(3).setPreferredWidth(90);
-        table.getColumnModel().getColumn(4).setPreferredWidth(110);
-        table.getColumnModel().getColumn(5).setPreferredWidth(110);
-        table.getColumnModel().getColumn(6).setPreferredWidth(100);
-        table.getColumnModel().getColumn(7).setPreferredWidth(135);
-        table.getColumnModel().getColumn(8).setPreferredWidth(260);
+        table.getColumnModel().getColumn(0).setPreferredWidth(55);   // STT
+        table.getColumnModel().getColumn(1).setPreferredWidth(165);  // Mã lô
+        table.getColumnModel().getColumn(2).setPreferredWidth(380);  // Sản phẩm
+        table.getColumnModel().getColumn(3).setPreferredWidth(120);  // Kho
+        table.getColumnModel().getColumn(4).setPreferredWidth(125);  // Tồn hệ thống
+        table.getColumnModel().getColumn(5).setPreferredWidth(125);  // Tồn thực tế
+        table.getColumnModel().getColumn(6).setPreferredWidth(115);  // Chênh lệch
+        table.getColumnModel().getColumn(7).setPreferredWidth(150);  // Tình trạng
+        table.getColumnModel().getColumn(8).setPreferredWidth(300);  // Lý do / Ghi chú
 
         int hiddenCol = 9;
         table.getColumnModel().getColumn(hiddenCol).setMinWidth(0);
@@ -415,6 +416,7 @@ public class ManHinhKiemKeKho extends JDialog {
                 new EmptyBorder(8, 14, 8, 14)
         ));
         label.setOpaque(true);
+        label.setToolTipText(label.getText());
         label.setBackground(Color.WHITE);
         return label;
     }
@@ -878,7 +880,7 @@ public class ManHinhKiemKeKho extends JDialog {
 
                 String rowHtml = rowMatcher.group(1);
 
-                // Bỏ dòng tiêu đề <th>
+                // Bỏ dòng tiêu đề bảng
                 if (rowHtml.toLowerCase().contains("<th")) {
                     continue;
                 }
@@ -890,7 +892,13 @@ public class ManHinhKiemKeKho extends JDialog {
                     cols.add(cleanHtmlCell(cellMatcher.group(1)));
                 }
 
-                if (cols.isEmpty()) {
+                // Dòng rỗng / dòng phụ của WPS thì bỏ qua, không tính lỗi
+                if (cols.isEmpty() || laDongRongExcel(cols) || laDongHuongDanExcel(cols)) {
+                    continue;
+                }
+
+                // Chỉ xử lý dòng thật sự giống dữ liệu kiểm kê
+                if (!laDongDuLieuKiemKe(cols)) {
                     continue;
                 }
 
@@ -905,12 +913,6 @@ public class ManHinhKiemKeKho extends JDialog {
                 String tonText = getCol(cols, 4);
                 String tinhTrang = getCol(cols, 5);
                 String lyDo = getCol(cols, 6);
-
-                if (isBlank(maLoHoacMaVach)) {
-                    soDongLoi++;
-                    loi.add("Dòng " + rowIndex + ": mã lô/mã vạch rỗng");
-                    continue;
-                }
 
                 int tonThucTe;
 
@@ -970,6 +972,57 @@ public class ManHinhKiemKeKho extends JDialog {
             e.printStackTrace();
             showModernAlert("Lỗi", "Nhập file Excel mẫu thất bại: " + e.getMessage(), DANGER);
         }
+    }
+    private boolean laDongRongExcel(List<String> cols) {
+        if (cols == null || cols.isEmpty()) {
+            return true;
+        }
+
+        for (String col : cols) {
+            if (!isBlank(col)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private boolean laDongHuongDanExcel(List<String> cols) {
+        if (cols == null || cols.isEmpty()) {
+            return true;
+        }
+
+        String text = String.join(" ", cols).toLowerCase();
+
+        return text.contains("phiếu mẫu kiểm kê")
+                || text.contains("hướng dẫn")
+                || text.contains("chỉ sửa cột")
+                || text.contains("không sửa mã lô")
+                || text.contains("mã lô / mã vạch")
+                || text.contains("tồn hệ thống")
+                || text.contains("tồn thực tế");
+    }
+
+    private boolean laDongDuLieuKiemKe(List<String> cols) {
+        if (cols == null || cols.size() < 5) {
+            return false;
+        }
+
+        String ma = getCol(cols, 0);
+        String kho = getCol(cols, 1);
+        String tonThucTe = getCol(cols, 4);
+
+        if (isBlank(ma) || isBlank(kho) || isBlank(tonThucTe)) {
+            return false;
+        }
+
+        boolean maHopLe = ma.toUpperCase().startsWith("LOT-")
+                || ma.toUpperCase().startsWith("MVLH")
+                || ma.toUpperCase().startsWith("LH-");
+
+        boolean khoHopLe = kho.toUpperCase().startsWith("KHO-");
+
+        return maHopLe && khoHopLe;
     }
     private String cleanHtmlCell(String html) {
         if (html == null) {
@@ -1430,7 +1483,7 @@ public class ManHinhKiemKeKho extends JDialog {
         );
 
         if (printConfirm) {
-            inPhieuKiemKe(
+            xemTruocPhieuKiemKe(
                     ketQua.getPhieuKiemKeId(),
                     khoHangId,
                     nhanVienId,
@@ -1503,7 +1556,150 @@ public class ManHinhKiemKeKho extends JDialog {
             return defaultValue;
         }
     }
+    private void xemTruocPhieuKiemKe(
+            String maPhieu,
+            String khoHangId,
+            String nhanVienId,
+            String ghiChu,
+            List<KiemKeItem> dsIn
+    ) {
+        JDialog dialog = new JDialog(this, "Xem trước phiếu kiểm kê", Dialog.ModalityType.APPLICATION_MODAL);
+        dialog.setUndecorated(true);
+        dialog.setBackground(BG_TRANSPARENT);
 
+        JPanel root = new JPanel(new BorderLayout());
+        root.setBackground(Color.WHITE);
+        root.setBorder(BorderFactory.createLineBorder(PRIMARY, 2));
+
+        JPanel header = new JPanel(new BorderLayout());
+        header.setBackground(PRIMARY);
+        header.setBorder(new EmptyBorder(14, 20, 14, 18));
+
+        JLabel lblTitle = new JLabel("XEM TRƯỚC PHIẾU KIỂM KÊ");
+        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        lblTitle.setForeground(Color.WHITE);
+
+        JButton btnX = new JButton("×");
+        btnX.setFont(new Font("Segoe UI", Font.BOLD, 24));
+        btnX.setForeground(Color.WHITE);
+        btnX.setFocusPainted(false);
+        btnX.setBorderPainted(false);
+        btnX.setContentAreaFilled(false);
+        btnX.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btnX.addActionListener(e -> dialog.dispose());
+
+        header.add(lblTitle, BorderLayout.WEST);
+        header.add(btnX, BorderLayout.EAST);
+
+        JTextArea txtPreview = new JTextArea();
+        txtPreview.setEditable(false);
+        txtPreview.setFont(new Font("Consolas", Font.PLAIN, 13));
+        txtPreview.setForeground(TEXT_PRIMARY);
+        txtPreview.setBackground(Color.WHITE);
+        txtPreview.setMargin(new Insets(18, 22, 18, 22));
+        txtPreview.setText(buildNoiDungPhieuKiemKePreview(maPhieu, khoHangId, nhanVienId, ghiChu, dsIn));
+        txtPreview.setCaretPosition(0);
+
+        JScrollPane scroll = new JScrollPane(txtPreview);
+        scroll.setBorder(BorderFactory.createEmptyBorder());
+        scroll.getVerticalScrollBar().setUnitIncrement(18);
+
+        JPanel footer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 14));
+        footer.setBackground(new Color(248, 250, 252));
+        footer.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, BORDER));
+
+        JButton btnDong = createModernButton("Đóng", new Color(100, 116, 139));
+        btnDong.setPreferredSize(new Dimension(110, 40));
+        btnDong.addActionListener(e -> dialog.dispose());
+
+        JButton btnIn = createModernButton("In phiếu", PRIMARY);
+        btnIn.setPreferredSize(new Dimension(130, 40));
+        btnIn.addActionListener(e -> {
+            dialog.dispose();
+            inPhieuKiemKe(maPhieu, khoHangId, nhanVienId, ghiChu, dsIn);
+        });
+
+        footer.add(btnDong);
+        footer.add(btnIn);
+
+        root.add(header, BorderLayout.NORTH);
+        root.add(scroll, BorderLayout.CENTER);
+        root.add(footer, BorderLayout.SOUTH);
+
+        dialog.setContentPane(root);
+        dialog.setSize(720, 620);
+        dialog.setShape(new RoundRectangle2D.Double(0, 0, dialog.getWidth(), dialog.getHeight(), 16, 16));
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+    }
+    private String buildNoiDungPhieuKiemKePreview(
+            String maPhieu,
+            String khoHangId,
+            String nhanVienId,
+            String ghiChu,
+            List<KiemKeItem> dsIn
+    ) {
+        StringBuilder sb = new StringBuilder();
+
+        int tongChenhLech = 0;
+
+        for (KiemKeItem item : dsIn) {
+            if (item != null) {
+                tongChenhLech += item.getChenhLech();
+            }
+        }
+
+        sb.append("MYCARE PHARMACY\n");
+        sb.append("============================================================\n");
+        sb.append("                    PHIẾU KIỂM KÊ KHO\n");
+        sb.append("============================================================\n\n");
+
+        sb.append("Mã phiếu       : ").append(safe(maPhieu)).append("\n");
+        sb.append("Kho kiểm kê    : ").append(safe(khoHangId)).append("\n");
+        sb.append("Người thực hiện: ").append(safe(nhanVienId)).append("\n");
+        sb.append("Ngày lập       : ")
+                .append(new SimpleDateFormat("dd/MM/yyyy HH:mm").format(new Date()))
+                .append("\n");
+        sb.append("Số dòng        : ").append(dsIn == null ? 0 : dsIn.size()).append("\n");
+        sb.append("Tổng chênh lệch: ").append(tongChenhLech).append("\n");
+
+        if (!isBlank(ghiChu)) {
+            sb.append("Ghi chú        : ").append(ghiChu).append("\n");
+        }
+
+        sb.append("\n");
+        sb.append(String.format("%-4s %-16s %-28s %8s %8s %8s %-18s\n",
+                "STT", "Mã lô", "Sản phẩm", "Tồn HT", "Tồn TT", "Lệch", "Tình trạng"));
+
+        sb.append("------------------------------------------------------------\n");
+
+        int stt = 1;
+
+        for (KiemKeItem item : dsIn) {
+            if (item == null) {
+                continue;
+            }
+
+            String sanPham = safe(item.getSanPhamId()) + " - " + safe(item.getTenSanPham());
+            String tinhTrang = tachTinhTrang(item.getLyDo(), item.getChenhLech());
+
+            sb.append(String.format("%-4s %-16s %-28s %8s %8s %8s %-18s\n",
+                    stt++,
+                    catChuoi(item.getSoLoHang(), 15),
+                    catChuoi(sanPham, 27),
+                    item.getTonHeThong(),
+                    item.getTonThucTe(),
+                    item.getChenhLech(),
+                    catChuoi(tinhTrang, 17)
+            ));
+        }
+
+        sb.append("\n============================================================\n");
+        sb.append("Người kiểm kê        Dược sĩ phụ trách        Quản lý\n\n\n");
+        sb.append("(Ký, ghi rõ họ tên)  (Ký, ghi rõ họ tên)     (Ký, ghi rõ họ tên)\n");
+
+        return sb.toString();
+    }
     private void inPhieuKiemKe(
             String maPhieu,
             String khoHangId,
@@ -1726,7 +1922,7 @@ public class ManHinhKiemKeKho extends JDialog {
         int col3 = x + w - 150;
 
         g2.drawString("Người kiểm kê", col1, footerY);
-        g2.drawString("Thủ kho", col2, footerY);
+        g2.drawString("Dược sĩ phụ trách", col2, footerY);
         g2.drawString("Quản lý", col3, footerY);
 
         g2.setFont(new Font("Segoe UI", Font.ITALIC, 9));
@@ -1768,6 +1964,7 @@ public class ManHinhKiemKeKho extends JDialog {
         table.setIntercellSpacing(new Dimension(0, 0));
         table.setSurrendersFocusOnKeystroke(true);
         table.setFocusable(true);
+        table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
         table.enableInputMethods(false);
         table.putClientProperty("terminateEditOnFocusLost", Boolean.TRUE);
 
@@ -1910,20 +2107,37 @@ public class ManHinhKiemKeKho extends JDialog {
         dialog.setUndecorated(true);
         dialog.setBackground(new Color(0, 0, 0, 0));
 
+        boolean isSuccess = color.equals(SUCCESS);
+        boolean isDanger = color.equals(DANGER);
+        boolean isWarning = color.equals(WARNING);
+
+        Color themeColor = color;
+        Color softColor;
+
+        if (isSuccess) {
+            softColor = new Color(240, 253, 244);
+        } else if (isDanger) {
+            softColor = new Color(254, 242, 242);
+        } else if (isWarning) {
+            softColor = new Color(255, 247, 237);
+        } else {
+            softColor = new Color(240, 249, 255);
+        }
+
         JPanel root = new JPanel(new BorderLayout());
         root.setBackground(Color.WHITE);
-        root.setBorder(BorderFactory.createLineBorder(color, 2));
+        root.setBorder(BorderFactory.createLineBorder(themeColor, 2));
 
         JPanel header = new JPanel(new BorderLayout());
-        header.setBackground(color);
-        header.setBorder(new EmptyBorder(12, 18, 12, 18));
+        header.setBackground(themeColor);
+        header.setBorder(new EmptyBorder(14, 22, 14, 18));
 
-        JLabel lblTitle = new JLabel(title);
-        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 17));
+        JLabel lblTitle = new JLabel(title == null ? "Thông báo" : title);
+        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 18));
         lblTitle.setForeground(Color.WHITE);
 
         JButton btnX = new JButton("×");
-        btnX.setFont(new Font("Segoe UI", Font.BOLD, 22));
+        btnX.setFont(new Font("Segoe UI", Font.BOLD, 24));
         btnX.setForeground(Color.WHITE);
         btnX.setFocusPainted(false);
         btnX.setBorderPainted(false);
@@ -1934,28 +2148,30 @@ public class ManHinhKiemKeKho extends JDialog {
         header.add(lblTitle, BorderLayout.WEST);
         header.add(btnX, BorderLayout.EAST);
 
-        JPanel body = new JPanel(new BorderLayout(16, 0));
+        JPanel body = new JPanel(new BorderLayout(20, 0));
         body.setBackground(Color.WHITE);
-        body.setBorder(new EmptyBorder(22, 26, 18, 26));
+        body.setBorder(new EmptyBorder(28, 34, 24, 34));
 
-        JLabel icon = new JLabel(color == SUCCESS ? "✓" : "!");
-        icon.setHorizontalAlignment(SwingConstants.CENTER);
-        icon.setVerticalAlignment(SwingConstants.CENTER);
-        icon.setFont(new Font("Segoe UI", Font.BOLD, 30));
-        icon.setForeground(color);
-        icon.setPreferredSize(new Dimension(52, 52));
+        JPanel iconPanel = createAlertIconPanel(themeColor, softColor, isSuccess, isDanger, isWarning);
+        iconPanel.setPreferredSize(new Dimension(64, 64));
 
-        JLabel msg = new JLabel("<html><div style='width:380px; font-family:Segoe UI; font-size:13px; color:#0f172a;'>"
-                + escapeHtml(message).replace("\n", "<br>")
-                + "</div></html>");
+        JLabel msg = new JLabel(
+                "<html><div style='width:430px; font-family:Segoe UI; font-size:13px; color:#0f172a; line-height:1.5;'>"
+                        + escapeHtml(message).replace("\n", "<br>")
+                        + "</div></html>"
+        );
+        msg.setFont(new Font("Segoe UI", Font.PLAIN, 15));
+        msg.setForeground(TEXT_PRIMARY);
 
-        body.add(icon, BorderLayout.WEST);
+        body.add(iconPanel, BorderLayout.WEST);
         body.add(msg, BorderLayout.CENTER);
 
-        JPanel footer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 14));
-        footer.setBackground(Color.WHITE);
+        JPanel footer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 14, 16));
+        footer.setBackground(new Color(248, 250, 252));
+        footer.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, BORDER));
 
-        JButton btnClose = createModernButton("Đóng", color);
+        JButton btnClose = createModernButton("Đóng", themeColor);
+        btnClose.setPreferredSize(new Dimension(110, 42));
         btnClose.addActionListener(e -> dialog.dispose());
 
         footer.add(btnClose);
@@ -1966,10 +2182,18 @@ public class ManHinhKiemKeKho extends JDialog {
 
         dialog.setContentPane(root);
         dialog.pack();
+        dialog.setSize(Math.max(620, dialog.getWidth()), dialog.getHeight());
+        dialog.setShape(new RoundRectangle2D.Double(0, 0, dialog.getWidth(), dialog.getHeight(), 16, 16));
         dialog.setLocationRelativeTo(this);
+
+        if (isSuccess) {
+            Timer timer = new Timer(1800, e -> dialog.dispose());
+            timer.setRepeats(false);
+            timer.start();
+        }
+
         dialog.setVisible(true);
     }
-
     private String escapeHtml(String s) {
         if (s == null) {
             return "";
@@ -1980,7 +2204,50 @@ public class ManHinhKiemKeKho extends JDialog {
                 .replace("<", "&lt;")
                 .replace(">", "&gt;");
     }
+    private JPanel createAlertIconPanel(Color themeColor, Color softColor, boolean success, boolean danger, boolean warning) {
+        return new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
 
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
+
+                int size = 58;
+                int x = 3;
+                int y = 3;
+
+                g2.setColor(softColor);
+                g2.fillOval(x, y, size, size);
+
+                g2.setColor(themeColor);
+                g2.setStroke(new BasicStroke(3f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                g2.drawOval(x + 1, y + 1, size - 2, size - 2);
+
+                if (success) {
+                    g2.setStroke(new BasicStroke(5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                    g2.drawLine(x + 16, y + 31, x + 26, y + 41);
+                    g2.drawLine(x + 26, y + 41, x + 43, y + 20);
+                } else if (danger) {
+                    g2.setStroke(new BasicStroke(5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                    g2.drawLine(x + 19, y + 19, x + 39, y + 39);
+                    g2.drawLine(x + 39, y + 19, x + 19, y + 39);
+                } else {
+                    g2.setStroke(new BasicStroke(5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                    g2.drawLine(x + 29, y + 15, x + 29, y + 34);
+                    g2.fillOval(x + 26, y + 42, 7, 7);
+                }
+
+                g2.dispose();
+            }
+
+            @Override
+            public Dimension getPreferredSize() {
+                return new Dimension(64, 64);
+            }
+        };
+    }
     private class NumberCellEditor extends DefaultCellEditor {
         private final JTextField field;
 
@@ -2128,7 +2395,9 @@ public class ManHinhKiemKeKho extends JDialog {
                 label.setForeground(TEXT_PRIMARY);
             }
 
-            if (column == 0 || column == 3 || column == 4 || column == 5 || column == 6) {
+            if (column == 0 || column == 3) {
+                label.setHorizontalAlignment(SwingConstants.CENTER);
+            } else if (column == 4 || column == 5 || column == 6) {
                 label.setHorizontalAlignment(SwingConstants.RIGHT);
             } else {
                 label.setHorizontalAlignment(SwingConstants.LEFT);

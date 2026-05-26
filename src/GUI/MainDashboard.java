@@ -174,9 +174,9 @@ public class MainDashboard extends JFrame {
                 // Thêm tooltip để hướng dẫn người dùng khi rê chuột vào menu
                 btn.setToolTipText("Phím tắt nhanh: F" + hotkeyNum);
 
-                if (btn instanceof MenuShortcutButton) {
-                    ((MenuShortcutButton) btn).setShortcutText("F" + hotkeyNum);
-                }
+//                if (btn instanceof MenuShortcutButton) {
+//                    ((MenuShortcutButton) btn).setShortcutText("F" + hotkeyNum);
+//                }
             }
         }
 
@@ -801,9 +801,9 @@ public class MainDashboard extends JFrame {
         btnLogout.setIcon(new MenuIcon("LOGOUT"));
         btnLogout.setToolTipText("Phím tắt nhanh: F12");
 
-        if (btnLogout instanceof MenuShortcutButton) {
-            ((MenuShortcutButton) btnLogout).setShortcutText("F12");
-        }
+//        if (btnLogout instanceof MenuShortcutButton) {
+//            ((MenuShortcutButton) btnLogout).setShortcutText("F12");
+//        }
         btnLogout.addActionListener(e -> hienThiThongBaoDangXuat());
         JPanel wrapLogout = new JPanel(new BorderLayout());
         wrapLogout.setOpaque(false);
