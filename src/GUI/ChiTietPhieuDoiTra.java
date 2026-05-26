@@ -13,7 +13,10 @@ import com.google.zxing.oned.Code128Writer;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.common.BitMatrix;
 import java.awt.image.BufferedImage;
-
+import java.awt.print.PrinterJob;
+import java.awt.print.Printable;
+import java.awt.print.PageFormat;
+import java.awt.print.PrinterException;
 public class ChiTietPhieuDoiTra extends JDialog {
     
     private Color primaryBlue = Color.decode("#1967D2"); 
@@ -213,6 +216,9 @@ public class ChiTietPhieuDoiTra extends JDialog {
             new EmptyBorder(4, 12, 4, 12)
         ));
         btnPrint.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+        // THÊM DÒNG NÀY VÀO ĐỂ BẮT SỰ KIỆN CLICK NÚT IN
+        btnPrint.addActionListener(e -> inPhieuRaPDF());
 
         JButton btnClose = new JButton("X");
         btnClose.setForeground(Color.WHITE);
@@ -632,5 +638,37 @@ public class ChiTietPhieuDoiTra extends JDialog {
         pnl.add(l2);
 
         return pnl;
+    }
+    private void inPhieuRaPDF() {
+        PrinterJob job = PrinterJob.getPrinterJob();
+        job.setPrintable(new Printable() {
+            @Override
+            public int print(Graphics graphics, PageFormat pageFormat, int pageIndex) throws PrinterException {
+                if (pageIndex > 0) return NO_SUCH_PAGE;
+                
+                Graphics2D g2d = (Graphics2D) graphics;
+                // Dịch chuyển tọa độ để không bị lẹm viền giấy
+                g2d.translate(pageFormat.getImageableX(), pageFormat.getImageableY());
+                
+                // Tự động scale (thu nhỏ) toàn bộ giao diện JDialog để vừa khít bề ngang trang giấy (A4/A5)
+                double widthScale = pageFormat.getImageableWidth() / getContentPane().getWidth();
+                g2d.scale(widthScale, widthScale);
+                
+                // Vẽ toàn bộ giao diện hiện tại lên trang in
+                getContentPane().printAll(g2d);
+                return PAGE_EXISTS;
+            }
+        });
+        
+        // Mở hộp thoại Print Dialog của Windows/Mac
+        // Người dùng có thể chọn máy in thật hoặc chọn "Microsoft Print to PDF" để xuất ra file .pdf
+        if (job.printDialog()) {
+            try {
+                job.print();
+            } catch (PrinterException ex) {
+                ex.printStackTrace();
+                JOptionPane.showMessageDialog(this, "Lỗi khi in/xuất PDF: " + ex.getMessage());
+            }
+        }
     }
 }
