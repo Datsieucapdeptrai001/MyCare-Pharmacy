@@ -7,7 +7,6 @@ import java.sql.*;
 import java.time.LocalDateTime;
 import java.util.*;
 
-
 public class DAO_ThongKe {
 
     public DAO_ThongKe() {
@@ -82,12 +81,15 @@ public class DAO_ThongKe {
         int soLuong = 0;
         String sql = "SELECT COUNT(*) as TongSo FROM HoaDon WHERE ngayLapHD BETWEEN ? AND ? AND loaiHD = 'BAN_HANG'" +
                      " AND (ghiChu IS NULL OR (ghiChu NOT LIKE N'%Lưu nháp%' AND ghiChu NOT LIKE N'%Đã hủy%'))";
-        try (PreparedStatement pst = getConn().prepareStatement(sql)) {
+        try (Connection con = getConn();
+             PreparedStatement pst = con.prepareStatement(sql)) {
+             
             pst.setTimestamp(1, Timestamp.valueOf(tuNgay));
             pst.setTimestamp(2, Timestamp.valueOf(denNgay));
             try (ResultSet rs = pst.executeQuery()) {
-                if (rs.next())
+                if (rs.next()) {
                     soLuong = rs.getInt("TongSo");
+                }
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -117,13 +119,11 @@ public class DAO_ThongKe {
                 + "  AND hd.loaiHD IN ('BAN_HANG', 'TRA_HANG', 'DOI_HANG') "
                 + "  AND (hd.ghiChu IS NULL OR (hd.ghiChu NOT LIKE N'%Lưu nháp%' AND hd.ghiChu NOT LIKE N'%Đã hủy%')) "
                 + "GROUP BY hd.id, hd.ghiChu, hd.loaiHD";
-        try (PreparedStatement pst = getConn().prepareStatement(sql)) {
+        try (Connection con = getConn(); PreparedStatement pst = con.prepareStatement(sql)) {
             pst.setTimestamp(1, Timestamp.valueOf(tuNgay));
             pst.setTimestamp(2, Timestamp.valueOf(denNgay));
             try (ResultSet rs = pst.executeQuery()) {
                 while (rs.next()) {
-                    // DAO chỉ cộng dữ liệu thô từ DB.
-                    // Việc trừ điểm thưởng/KM từ ghiChu là nghiệp vụ → BUS_ThongKe.tinhTienThucTe()
                     doanhThu += rs.getDouble("dtThuanNet");
                 }
             }
@@ -132,9 +132,6 @@ public class DAO_ThongKe {
         }
         return doanhThu;
     }
-
-    // NOTE: tinhTienDiemTruInline đã bị XÓA — nghiệp vụ parse ghiChu thuộc tầng BUS.
-    // BUS_ThongKe.tinhTienThucTe() thực hiện chức năng tương đương.
 
     // Tính lợi nhuận = doanh thu thuần - giá vốn hàng bán (COGS) trong khoảng thời gian
     // COGS lấy từ PhanBoLoHang (giá vốn thực tế xuất bán), trừ đi giá vốn hàng nhận lại (TRA/DOI)
@@ -166,7 +163,7 @@ public class DAO_ThongKe {
             "WHERE hd.ngayLapHD BETWEEN ? AND ? " +
             "  AND hd.loaiHD IN ('BAN_HANG', 'TRA_HANG', 'DOI_HANG')" +
             "  AND (hd.ghiChu IS NULL OR (hd.ghiChu NOT LIKE N'%Lưu nháp%' AND hd.ghiChu NOT LIKE N'%Đã hủy%'))";
-        try (PreparedStatement pst = getConn().prepareStatement(sql)) {
+        try (Connection con = getConn(); PreparedStatement pst = con.prepareStatement(sql)) {
             pst.setTimestamp(1, Timestamp.valueOf(tuNgay));
             pst.setTimestamp(2, Timestamp.valueOf(denNgay));
             try (ResultSet rs = pst.executeQuery()) {
@@ -190,7 +187,7 @@ public class DAO_ThongKe {
         List<String[]> list = new ArrayList<>();
         String sql = "SELECT id, hoVaTen, chucVu FROM NhanVien "
                 + "WHERE trangThaiLamViec='DANG_LAM_VIEC' ORDER BY hoVaTen";
-        try (Statement st = getConn().createStatement(); ResultSet rs = st.executeQuery(sql)) {
+        try (Connection con = getConn(); Statement st = con.createStatement(); ResultSet rs = st.executeQuery(sql)) {
             while (rs.next())
                 list.add(new String[] { rs.getString("id"), rs.getString("hoVaTen"), rs.getString("chucVu") });
         } catch (Exception e) {
@@ -233,11 +230,12 @@ public class DAO_ThongKe {
         }
         applyFilter(filter, sql, params, "hd.ngayLapHD", "hd.nhanVienId");
         sql.append(" GROUP BY hd.id, hd.ghiChu");
-        try (PreparedStatement ps = getConn().prepareStatement(sql.toString())) {
+        try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql.toString())) {
             for (int i = 0; i < params.size(); i++) ps.setObject(i + 1, params.get(i));
-            ResultSet rs = ps.executeQuery();
-            while (rs.next())
-                result.add(new Object[] { "", rs.getDouble("tongGocCoVAT"), rs.getString("ghiChu"), rs.getDouble("tongGocChuaVAT") });
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next())
+                    result.add(new Object[] { "", rs.getDouble("tongGocCoVAT"), rs.getString("ghiChu"), rs.getDouble("tongGocChuaVAT") });
+            }
         } catch (Exception e) { e.printStackTrace(); }
         return result;
     }
@@ -261,12 +259,13 @@ public class DAO_ThongKe {
         }
         applyFilter(filter, sql, params, "hd.ngayLapHD", "hd.nhanVienId");
         sql.append(" GROUP BY hd.id, hd.ghiChu");
-        try (PreparedStatement ps = getConn().prepareStatement(sql.toString())) {
+        try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql.toString())) {
             for (int i = 0; i < params.size(); i++)
                 ps.setObject(i + 1, params.get(i));
-            ResultSet rs = ps.executeQuery();
-            while (rs.next())
-                result.add(new Object[] { rs.getString("id"), rs.getDouble("tongGocCoVAT"), rs.getString("ghiChu"), rs.getDouble("tongGocChuaVAT") });
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next())
+                    result.add(new Object[] { rs.getString("id"), rs.getDouble("tongGocCoVAT"), rs.getString("ghiChu"), rs.getDouble("tongGocChuaVAT") });
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -287,12 +286,13 @@ public class DAO_ThongKe {
                 + "WHERE hd.ngayLapHD BETWEEN ? AND ? AND hd.loaiHD = 'BAN_HANG' "
                 + "AND (hd.ghiChu IS NULL OR (hd.ghiChu NOT LIKE N'%Lưu nháp%' AND hd.ghiChu NOT LIKE N'%Đã hủy%')) "
                 + "GROUP BY hd.id, hd.ghiChu";
-        try (PreparedStatement ps = getConn().prepareStatement(sql)) {
+        try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setTimestamp(1, Timestamp.valueOf(tuNgay));
             ps.setTimestamp(2, Timestamp.valueOf(denNgay));
-            ResultSet rs = ps.executeQuery();
-            while (rs.next())
-                result.add(new Object[] { "", rs.getDouble("tongGocCoVAT"), rs.getString("ghiChu"), rs.getDouble("tongGocChuaVAT") });
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next())
+                    result.add(new Object[] { "", rs.getDouble("tongGocCoVAT"), rs.getString("ghiChu"), rs.getDouble("tongGocChuaVAT") });
+            }
         } catch (SQLException e) { e.printStackTrace(); }
         return result;
     }
@@ -312,12 +312,13 @@ public class DAO_ThongKe {
                 + "WHERE hd.nhanVienId=? AND hd.ngayLapHD>=? AND hd.loaiHD='BAN_HANG'" + ptttCond
                 + " AND (hd.ghiChu IS NULL OR (hd.ghiChu NOT LIKE N'%Lưu nháp%' AND hd.ghiChu NOT LIKE N'%Đã hủy%'))"
                 + " GROUP BY hd.id, hd.ghiChu";
-        try (PreparedStatement ps = getConn().prepareStatement(sql)) {
+        try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setString(1, maNV);
             ps.setTimestamp(2, Timestamp.valueOf(start));
-            ResultSet rs = ps.executeQuery();
-            while (rs.next())
-                result.add(new Object[] { rs.getString("id"), rs.getDouble("tongGocCoVAT"), rs.getString("ghiChu"), rs.getDouble("tongGocChuaVAT") });
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next())
+                    result.add(new Object[] { rs.getString("id"), rs.getDouble("tongGocCoVAT"), rs.getString("ghiChu"), rs.getDouble("tongGocChuaVAT") });
+            }
         } catch (Exception e) { e.printStackTrace(); }
         return result;
     }
@@ -337,10 +338,11 @@ public class DAO_ThongKe {
         params.add(year);
         applyFilter(filter, sql, params, "hd.ngayLapHD", "hd.nhanVienId");
         sql.append(" GROUP BY MONTH(hd.ngayLapHD)");
-        try (PreparedStatement ps = getConn().prepareStatement(sql.toString())) {
+        try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql.toString())) {
             for (int i = 0; i < params.size(); i++) ps.setObject(i + 1, params.get(i));
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) result.add(new Object[] { rs.getInt("m"), rs.getDouble("doanhThuThuan") });
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) result.add(new Object[] { rs.getInt("m"), rs.getDouble("doanhThuThuan") });
+            }
         } catch (Exception e) { e.printStackTrace(); }
         return result;
     }
@@ -362,12 +364,13 @@ public class DAO_ThongKe {
         List<Object> params = new ArrayList<>();
         applyFilter(filter, sql, params, "hd.ngayLapHD", "hd.nhanVienId");
         sql.append(" GROUP BY CAST(hd.ngayLapHD AS DATE), CONVERT(NVARCHAR,CAST(hd.ngayLapHD AS DATE),103), hd.id, hd.ghiChu ORDER BY CAST(hd.ngayLapHD AS DATE) ASC");
-        try (PreparedStatement ps = getConn().prepareStatement(sql.toString())) {
+        try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql.toString())) {
             for (int i = 0; i < params.size(); i++) ps.setObject(i + 1, params.get(i));
-            ResultSet rs = ps.executeQuery();
-            while (rs.next())
-                result.add(new Object[] { rs.getString("d"), rs.getString("id"),
-                        rs.getDouble("tongGocCoVAT"), rs.getString("ghiChu"), rs.getDouble("tongGocChuaVAT") });
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next())
+                    result.add(new Object[] { rs.getString("d"), rs.getString("id"),
+                            rs.getDouble("tongGocCoVAT"), rs.getString("ghiChu"), rs.getDouble("tongGocChuaVAT") });
+            }
         } catch (Exception e) { e.printStackTrace(); }
         return result;
     }
@@ -380,12 +383,13 @@ public class DAO_ThongKe {
                 + " AND hd.loaiHD IN ('TRA_HANG','DOI_HANG') AND hd.ghiChu LIKE N'%Hoàn thành%'");
         List<Object> params = new ArrayList<>();
         applyFilter(filter, sql, params, "hd.ngayLapHD", "hd.nhanVienId");
-        try (PreparedStatement ps = getConn().prepareStatement(sql.toString())) {
+        try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql.toString())) {
             for (int i = 0; i < params.size(); i++)
                 ps.setObject(i + 1, params.get(i));
-            ResultSet rs = ps.executeQuery();
-            while (rs.next())
-                result.add(new Object[] { rs.getString("loaiHD"), rs.getString("ghiChu") });
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next())
+                    result.add(new Object[] { rs.getString("loaiHD"), rs.getString("ghiChu") });
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -406,11 +410,12 @@ public class DAO_ThongKe {
         applyFilter(filter, sql, params, "hd.ngayLapHD", "hd.nhanVienId");
         sql.append(" GROUP BY DATEPART(HOUR, hd.ngayLapHD)");
 
-        try (PreparedStatement ps = getConn().prepareStatement(sql.toString())) {
+        try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql.toString())) {
             for (int i = 0; i < params.size(); i++) ps.setObject(i + 1, params.get(i));
-            ResultSet rs = ps.executeQuery();
-            while (rs.next())
-                result.add(new Object[]{rs.getInt("h"), rs.getDouble("tienThucThu")});
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next())
+                    result.add(new Object[]{rs.getInt("h"), rs.getDouble("tienThucThu")});
+            }
         } catch (Exception e) { e.printStackTrace(); }
         return result;
     }
@@ -431,11 +436,12 @@ public class DAO_ThongKe {
         params.add(dateYMD);
         applyFilter(filter, sql, params, "hd.ngayLapHD", "hd.nhanVienId");
         sql.append(" GROUP BY hd.id, hd.ghiChu");
-        try (PreparedStatement ps = getConn().prepareStatement(sql.toString())) {
+        try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql.toString())) {
             for (int i = 0; i < params.size(); i++) ps.setObject(i + 1, params.get(i));
-            ResultSet rs = ps.executeQuery();
-            while (rs.next())
-                result.add(new Object[] { rs.getString("id"), rs.getDouble("tongGocCoVAT"), rs.getString("ghiChu"), rs.getDouble("tongGocChuaVAT") });
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next())
+                    result.add(new Object[] { rs.getString("id"), rs.getDouble("tongGocCoVAT"), rs.getString("ghiChu"), rs.getDouble("tongGocChuaVAT") });
+            }
         } catch (Exception e) { e.printStackTrace(); }
         return result;
     }
@@ -456,11 +462,12 @@ public class DAO_ThongKe {
         params.add(dateYMD);
         applyFilter(filter, sql, params, "hd.ngayLapHD", "hd.nhanVienId");
         sql.append(" GROUP BY sp.ten");
-        try (PreparedStatement ps = getConn().prepareStatement(sql.toString())) {
+        try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql.toString())) {
             for (int i = 0; i < params.size(); i++) ps.setObject(i + 1, params.get(i));
-            ResultSet rs = ps.executeQuery();
-            while (rs.next())
-                result.add(new Object[]{rs.getString("ten"), rs.getInt("sl"), rs.getDouble("dtThuan")});
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next())
+                    result.add(new Object[]{rs.getString("ten"), rs.getInt("sl"), rs.getDouble("dtThuan")});
+            }
         } catch (Exception e) { e.printStackTrace(); }
         return result;
     }
@@ -476,11 +483,12 @@ public class DAO_ThongKe {
                 + "JOIN SanPham sp ON sp.id = ct.sanPhamId "
                 + "JOIN DonViDoLuong dvl ON dvl.sanPhamId = ct.sanPhamId AND dvl.id = ct.donViDoLuongId "
                 + "WHERE ct.hoaDonId = ?";
-        try (PreparedStatement ps = getConn().prepareStatement(sql)) {
+        try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setString(1, hdId);
-            ResultSet rs = ps.executeQuery();
-            while (rs.next())
-                result.add(new Object[] { rs.getString("ten"), rs.getInt("soLuong"), rs.getDouble("doanhThuThuan") });
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next())
+                    result.add(new Object[] { rs.getString("ten"), rs.getInt("soLuong"), rs.getDouble("doanhThuThuan") });
+            }
         } catch (Exception e) { e.printStackTrace(); }
         return result;
     }
@@ -505,11 +513,12 @@ public class DAO_ThongKe {
         params.add(nvId); params.add(year);
         applyFilter(filter, sql, params, "hd.ngayLapHD", "hd.nhanVienId");
         sql.append(" GROUP BY hd.id, hd.ghiChu");
-        try (PreparedStatement ps = getConn().prepareStatement(sql.toString())) {
+        try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql.toString())) {
             for (int i = 0; i < params.size(); i++) ps.setObject(i + 1, params.get(i));
-            ResultSet rs = ps.executeQuery();
-            while (rs.next())
-                result.add(new Object[] { rs.getString("id"), rs.getDouble("tongGocCoVAT"), rs.getString("ghiChu"), rs.getDouble("tongGocChuaVAT") });
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next())
+                    result.add(new Object[] { rs.getString("id"), rs.getDouble("tongGocCoVAT"), rs.getString("ghiChu"), rs.getDouble("tongGocChuaVAT") });
+            }
         } catch (Exception e) { e.printStackTrace(); }
         return result;
     }
@@ -531,12 +540,13 @@ public class DAO_ThongKe {
         params.add(year);
         applyFilter(filter, sql, params, "hd.ngayLapHD", "hd.nhanVienId");
         sql.append(" GROUP BY kh.hoVaTen, kh.diemTichLuy, hd.id, hd.ghiChu");
-        try (PreparedStatement ps = getConn().prepareStatement(sql.toString())) {
+        try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql.toString())) {
             for (int i = 0; i < params.size(); i++) ps.setObject(i + 1, params.get(i));
-            ResultSet rs = ps.executeQuery();
-            while (rs.next())
-                result.add(new Object[] { rs.getString("hoVaTen"), rs.getInt("diemTichLuy"),
-                        rs.getDouble("tongGocCoVAT"), rs.getString("ghiChu"), rs.getDouble("tongGocChuaVAT") });
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next())
+                    result.add(new Object[] { rs.getString("hoVaTen"), rs.getInt("diemTichLuy"),
+                            rs.getDouble("tongGocCoVAT"), rs.getString("ghiChu"), rs.getDouble("tongGocChuaVAT") });
+            }
         } catch (Exception e) { e.printStackTrace(); }
         return result;
     }
@@ -550,7 +560,7 @@ public class DAO_ThongKe {
         String gioCol = includeGio ? ", FORMAT(hd.ngayLapHD, 'HH:mm') AS gio" : "";
         boolean hasDateFilter = filter != null && (
             filter.getFromDate() != null ||
-            "THANG".equals(filter.getModeLocThoiGian()) || // bao gồm cả năm (month=null)
+            "THANG".equals(filter.getModeLocThoiGian()) || 
             ("QUY".equals(filter.getModeLocThoiGian())   && filter.getQuarter() != null) ||
             "CANAM".equals(filter.getModeLocThoiGian()));
 
@@ -572,14 +582,15 @@ public class DAO_ThongKe {
         sql.append(" GROUP BY hd.id, kh.hoVaTen, hd.phuongThucThanhToan, hd.ngayLapHD, hd.ghiChu, hd.loaiHD ");
         sql.append(" ORDER BY hd.ngayLapHD DESC");
 
-        try (PreparedStatement ps = getConn().prepareStatement(sql.toString())) {
+        try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql.toString())) {
             for (int i = 0; i < params.size(); i++) ps.setObject(i + 1, params.get(i));
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                String gio = includeGio ? rs.getString("gio") : null;
-                result.add(new Object[] { rs.getString("id"), rs.getString("kh"),
-                        rs.getDouble("tongGocCoVAT"), rs.getString("ghiChu"),
-                        rs.getString("pttt"), gio, rs.getString("loaiHD") });
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    String gio = includeGio ? rs.getString("gio") : null;
+                    result.add(new Object[] { rs.getString("id"), rs.getString("kh"),
+                            rs.getDouble("tongGocCoVAT"), rs.getString("ghiChu"),
+                            rs.getString("pttt"), gio, rs.getString("loaiHD") });
+                }
             }
         } catch (Exception e) { e.printStackTrace(); }
         return result;
@@ -587,7 +598,6 @@ public class DAO_ThongKe {
 
     // Lấy raw HĐ TRA_HANG/DOI_HANG theo điều kiện ngày, tính netRefund (có VAT) theo từng giờ
     // Trả về List<{loaiHD, ghiChu, gio(int), netRefund_coVAT(double)}>
-    // netRefund âm = tiền hoàn ra, dương = tiền bù thêm vào
     public List<Object[]> getRawHDDoiTraGio(String dateCondition, Entity.BoLocThongKe filter) {
         List<Object[]> result = new ArrayList<>();
         StringBuilder sql = new StringBuilder("SELECT hd.loaiHD, hd.ghiChu, DATEPART(HOUR, hd.ngayLapHD) AS h, "
@@ -605,11 +615,12 @@ public class DAO_ThongKe {
         applyFilter(filter, sql, params, "hd.ngayLapHD", "hd.nhanVienId");
         sql.append(" GROUP BY hd.id, hd.loaiHD, hd.ghiChu, DATEPART(HOUR, hd.ngayLapHD)");
 
-        try (PreparedStatement ps = getConn().prepareStatement(sql.toString())) {
+        try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql.toString())) {
             for (int i = 0; i < params.size(); i++) ps.setObject(i + 1, params.get(i));
-            ResultSet rs = ps.executeQuery();
-            while (rs.next())
-            	result.add(new Object[] { rs.getString("loaiHD"), rs.getString("ghiChu"), rs.getInt("h"), rs.getDouble("netRefund_coVAT") });
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next())
+                    result.add(new Object[] { rs.getString("loaiHD"), rs.getString("ghiChu"), rs.getInt("h"), rs.getDouble("netRefund_coVAT") });
+            }
         } catch (Exception e) { e.printStackTrace(); }
         return result;
     }
@@ -634,12 +645,13 @@ public class DAO_ThongKe {
             params.add(year);
             applyFilter(filter, sql, params, "hd.ngayLapHD", "hd.nhanVienId");
 
-            try (PreparedStatement ps = getConn().prepareStatement(sql.toString())) {
+            try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql.toString())) {
                 for (int p = 0; p < params.size(); p++)
                     ps.setObject(p + 1, params.get(p));
-                ResultSet rs = ps.executeQuery();
-                if (rs.next())
-                    catVals[i] = rs.getInt(1);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next())
+                        catVals[i] = rs.getInt(1);
+                }
             } catch (Exception e) {
                 catVals[i] = 0;
             }
@@ -674,12 +686,13 @@ public class DAO_ThongKe {
         applyFilter(filter, sqlBan, paramsBan, "hd.ngayLapHD", "hd.nhanVienId");
         sqlBan.append(" GROUP BY MONTH(hd.ngayLapHD)");
         
-        try (PreparedStatement ps = getConn().prepareStatement(sqlBan.toString())) {
+        try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sqlBan.toString())) {
             for (int i=0; i<paramsBan.size(); i++) ps.setObject(i+1, paramsBan.get(i));
-            ResultSet rs = ps.executeQuery();
-            while(rs.next()) {
-                int m = rs.getInt("m");
-                if (m >= 1 && m <= 12) data[m-1] += rs.getDouble("cp");
+            try (ResultSet rs = ps.executeQuery()) {
+                while(rs.next()) {
+                    int m = rs.getInt("m");
+                    if (m >= 1 && m <= 12) data[m-1] += rs.getDouble("cp");
+                }
             }
         } catch (Exception e) { e.printStackTrace(); }
 
@@ -701,12 +714,13 @@ public class DAO_ThongKe {
         applyFilter(filter, sqlTra, paramsTra, "hd.ngayLapHD", "hd.nhanVienId");
         sqlTra.append(" GROUP BY MONTH(hd.ngayLapHD)");
 
-        try (PreparedStatement ps = getConn().prepareStatement(sqlTra.toString())) {
+        try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sqlTra.toString())) {
             for (int i=0; i<paramsTra.size(); i++) ps.setObject(i+1, paramsTra.get(i));
-            ResultSet rs = ps.executeQuery();
-            while(rs.next()) {
-                int m = rs.getInt("m");
-                if (m >= 1 && m <= 12) data[m-1] -= rs.getDouble("cp");
+            try (ResultSet rs = ps.executeQuery()) {
+                while(rs.next()) {
+                    int m = rs.getInt("m");
+                    if (m >= 1 && m <= 12) data[m-1] -= rs.getDouble("cp");
+                }
             }
         } catch (Exception e) { e.printStackTrace(); }
 
@@ -726,12 +740,13 @@ public class DAO_ThongKe {
         params.add(year);
         applyFilter(filter, sql, params, "hd.ngayLapHD", "hd.nhanVienId");
         sql.append(" GROUP BY CAST(hd.ngayLapHD AS DATE) ORDER BY CAST(hd.ngayLapHD AS DATE) DESC");
-        try (PreparedStatement ps = getConn().prepareStatement(sql.toString())) {
+        try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql.toString())) {
             for (int i = 0; i < params.size(); i++)
                 ps.setObject(i + 1, params.get(i));
-            ResultSet rs = ps.executeQuery();
-            while (rs.next())
-                dates.add(0, rs.getString("d")); // đảo để tăng dần
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next())
+                    dates.add(0, rs.getString("d")); // đảo để tăng dần
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -746,12 +761,13 @@ public class DAO_ThongKe {
         params.add(nvId);
         params.add(date);
         applyFilter(filter, sql, params, "hd.ngayLapHD", "hd.nhanVienId");
-        try (PreparedStatement ps = getConn().prepareStatement(sql.toString())) {
+        try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql.toString())) {
             for (int p = 0; p < params.size(); p++)
                 ps.setObject(p + 1, params.get(p));
-            ResultSet rs = ps.executeQuery();
-            if (rs.next())
-                return rs.getInt(1);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next())
+                    return rs.getInt(1);
+            }
         } catch (Exception e) {
             /* ignored */ }
         return 0;
@@ -768,12 +784,13 @@ public class DAO_ThongKe {
         List<Object> params = new ArrayList<>();
         params.add(year);
         applyFilter(filter, sql, params, "hd.ngayLapHD", "hd.nhanVienId");
-        try (PreparedStatement ps = getConn().prepareStatement(sql.toString())) {
+        try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql.toString())) {
             for (int p = 0; p < params.size(); p++)
                 ps.setObject(p + 1, params.get(p));
-            ResultSet rs = ps.executeQuery();
-            if (rs.next())
-                return rs.getLong(1);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next())
+                    return rs.getLong(1);
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -806,12 +823,13 @@ public class DAO_ThongKe {
 
         try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql.toString())) {
             for (int p = 0; p < params.size(); p++) ps.setObject(p + 1, params.get(p));
-            ResultSet rs = ps.executeQuery();
-            int rank = 0;
-            while (rs.next() && rank < 10) {
-                result.add(new Object[] { rs.getString("ten"), rs.getString("danhMuc"), 
-                                          rs.getInt("sl"), rs.getDouble("dtThuan") });
-                rank++;
+            try (ResultSet rs = ps.executeQuery()) {
+                int rank = 0;
+                while (rs.next() && rank < 10) {
+                    result.add(new Object[] { rs.getString("ten"), rs.getString("danhMuc"), 
+                                              rs.getInt("sl"), rs.getDouble("dtThuan") });
+                    rank++;
+                }
             }
         } catch (Exception e) { e.printStackTrace(); }
         return result;
@@ -842,12 +860,13 @@ public class DAO_ThongKe {
 
         try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql.toString())) {
             for (int p = 0; p < params.size(); p++) ps.setObject(p + 1, params.get(p));
-            ResultSet rs = ps.executeQuery();
-            int count = 0;
-            while (rs.next() && count < 20) {
-                result.add(new Object[] { rs.getString("spId"), rs.getString("ten"), rs.getString("danhMuc"), 
-                                          rs.getInt("vatPct"), rs.getDouble("tienThue") });
-                count++;
+            try (ResultSet rs = ps.executeQuery()) {
+                int count = 0;
+                while (rs.next() && count < 20) {
+                    result.add(new Object[] { rs.getString("spId"), rs.getString("ten"), rs.getString("danhMuc"), 
+                                              rs.getInt("vatPct"), rs.getDouble("tienThue") });
+                    count++;
+                }
             }
         } catch (Exception e) { e.printStackTrace(); }
         return result;
@@ -864,8 +883,7 @@ public class DAO_ThongKe {
                 + "WHERE lh.trangThai = 'CON_HANG' "
                 + "AND lh.ngayHetHan <= DATEADD(MONTH, 6, GETDATE()) "
                 + "ORDER BY lh.ngayHetHan ASC";
-        try (PreparedStatement ps = getConn().prepareStatement(sql)) {
-            ResultSet rs = ps.executeQuery();
+        try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
             java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("dd/MM/yyyy");
             while (rs.next())
                 result.add(new Object[] { rs.getString("soLoHang"), rs.getString("ten"),
@@ -891,9 +909,10 @@ public class DAO_ThongKe {
                 + "WHERE hd.loaiHD = 'BAN_HANG' AND CAST(hd.ngayLapHD AS DATE) = ?";
         try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setString(1, dateYMD);
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                return new Object[] { rs.getInt("tongHD"), rs.getDouble("tongDT"), rs.getInt("tongKH"), rs.getInt("tongSP") };
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return new Object[] { rs.getInt("tongHD"), rs.getDouble("tongDT"), rs.getInt("tongKH"), rs.getInt("tongSP") };
+                }
             }
         } catch (Exception e) { e.printStackTrace(); }
         return new Object[] { 0, 0.0, 0, 0 };
@@ -913,9 +932,10 @@ public class DAO_ThongKe {
                 + "GROUP BY nv.hoVaTen ORDER BY dtThuan DESC";
         try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setString(1, dateYMD);
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                result.add(new Object[] { rs.getString("hoVaTen"), rs.getInt("soHD"), rs.getDouble("dtThuan") });
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    result.add(new Object[] { rs.getString("hoVaTen"), rs.getInt("soHD"), rs.getDouble("dtThuan") });
+                }
             }
         } catch (Exception e) { e.printStackTrace(); }
         return result;
@@ -938,18 +958,18 @@ public class DAO_ThongKe {
                 + "ORDER BY CAST(hd.ngayLapHD AS DATE), hd.id";
 
         Map<String, double[]> dayMap = new java.util.LinkedHashMap<>();
-        try (PreparedStatement ps = getConn().prepareStatement(sql)) {
+        try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setString(1, weekStartYMD);
             ps.setString(2, weekStartYMD);
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                String d = rs.getString("d");
-                double dtThuan = rs.getDouble("doanhThuThuan");
-                // NOTE: Trừ điểm thưởng từ ghiChu là nghiệp vụ, BUS xử lý sau khi lấy dữ liệu thô
-                double dt = dtThuan;
-                double[] cur = dayMap.computeIfAbsent(d, k -> new double[]{0, 0});
-                cur[0]++;       // soHD
-                cur[1] += dt;
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    String d = rs.getString("d");
+                    double dtThuan = rs.getDouble("doanhThuThuan");
+                    double dt = dtThuan;
+                    double[] cur = dayMap.computeIfAbsent(d, k -> new double[]{0, 0});
+                    cur[0]++;       // soHD
+                    cur[1] += dt;
+                }
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -966,13 +986,14 @@ public class DAO_ThongKe {
     public int[] getKHMoiTheoThang(int year) {
         int[] data = new int[12];
         String sql = "SELECT MONTH(ngayTao) m, COUNT(*) cnt FROM KhachHang WHERE YEAR(ngayTao)=? GROUP BY MONTH(ngayTao)";
-        try (PreparedStatement ps = getConn().prepareStatement(sql)) {
+        try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setInt(1, year);
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                int m = rs.getInt("m");
-                if (m >= 1 && m <= 12)
-                    data[m - 1] = rs.getInt("cnt");
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    int m = rs.getInt("m");
+                    if (m >= 1 && m <= 12)
+                        data[m - 1] = rs.getInt("cnt");
+                }
             }
         } catch (Exception e) {
             /* ngayTao có thể null */ }
@@ -983,9 +1004,8 @@ public class DAO_ThongKe {
     // Trả về Object[3]: {tongKH, khCoTK, tongDiem}
     public Object[] getKpiKhachHang() {
         Object[] result = { 0, 0, 0 };
-        try (Statement st = getConn().createStatement()) {
-            ResultSet rs = st.executeQuery(
-                    "SELECT COUNT(*) tongKH, COUNT(sdt) khCoTK, ISNULL(SUM(diemTichLuy),0) tongDiem FROM KhachHang");
+        try (Connection con = getConn(); Statement st = con.createStatement(); 
+             ResultSet rs = st.executeQuery("SELECT COUNT(*) tongKH, COUNT(sdt) khCoTK, ISNULL(SUM(diemTichLuy),0) tongDiem FROM KhachHang")) {
             if (rs.next())
                 result = new Object[] { rs.getInt("tongKH"), rs.getInt("khCoTK"), rs.getInt("tongDiem") };
         } catch (Exception e) {
@@ -999,7 +1019,6 @@ public class DAO_ThongKe {
     public List<Object[]> getTopKhachHangTheoDiem(int limit) {
         List<Object[]> result = new ArrayList<>();
         try (Connection con = getConn()) {
-        	// Bước 1: Tính doanh thu thực tế từng KH (per-HĐ, trừ điểm thưởng)
         	Map<String, double[]> purchaseMap = new HashMap<>();
         	String sqlP = "SELECT kh.id AS khId, hd.id AS hdId, hd.ghiChu, "
         	        + "ISNULL(SUM(ROUND(ABS(ct.thanhTien) / (1 + ISNULL(sp.thueVAT, 0)/100.0), 0)),0) AS doanhThuThuan "
@@ -1013,14 +1032,12 @@ public class DAO_ThongKe {
         	    while (rs.next()) {
         	        String khId = rs.getString("khId");
         	        double dtThuan = rs.getDouble("doanhThuThuan");
-        	        // NOTE: Trừ điểm thưởng từ ghiChu là nghiệp vụ, BUS xử lý sau khi lấy dữ liệu thô
         	        double dt = dtThuan;
         	        double[] cur = purchaseMap.computeIfAbsent(khId, k -> new double[]{0, 0});
         	        cur[0]++; // soHD
         	        cur[1] += dt;
         	    }
         	}
-        	// Bước 2: Query top KH theo điểm rồi merge với dữ liệu doanh thu ở bước 1
             String sqlKH = "SELECT TOP " + limit + " id, hoVaTen, ISNULL(sdt,'') AS sdt, diemTichLuy "
                     + "FROM KhachHang ORDER BY diemTichLuy DESC";
             try (java.sql.Statement st = con.createStatement(); ResultSet rs = st.executeQuery(sqlKH)) {
@@ -1044,7 +1061,7 @@ public class DAO_ThongKe {
     // Tổng giá trị tồn kho (lô CON_HANG): SUM(soLuongLoHang * gia)
     public double getTongGiaTriTonKho() {
         String sql = "SELECT ISNULL(SUM(lh.soLuongLoHang*lh.gia),0) FROM LoHang lh WHERE lh.trangThai='CON_HANG'";
-        try (Statement st = getConn().createStatement(); ResultSet rs = st.executeQuery(sql)) {
+        try (Connection con = getConn(); Statement st = con.createStatement(); ResultSet rs = st.executeQuery(sql)) {
             if (rs.next())
                 return rs.getDouble(1);
         } catch (Exception e) {
@@ -1057,12 +1074,11 @@ public class DAO_ThongKe {
     // Trả về Object[3]: {conHang, hetHang, hetHan}
     public Object[] getSoLoTheoTrangThai() {
         Object[] result = { 0, 0, 0 };
-        try (Statement st = getConn().createStatement()) {
-            ResultSet rs = st.executeQuery(
-                    "SELECT SUM(CASE WHEN trangThai='CON_HANG' THEN 1 ELSE 0 END) conHang, "
+        try (Connection con = getConn(); Statement st = con.createStatement();
+             ResultSet rs = st.executeQuery("SELECT SUM(CASE WHEN trangThai='CON_HANG' THEN 1 ELSE 0 END) conHang, "
                             + "SUM(CASE WHEN trangThai='HET_HANG' THEN 1 ELSE 0 END) hetHang, "
                             + "SUM(CASE WHEN trangThai='HET_HAN' THEN 1 ELSE 0 END) hetHan "
-                            + "FROM LoHang");
+                            + "FROM LoHang")) {
             if (rs.next())
                 result = new Object[] { rs.getInt("conHang"), rs.getInt("hetHang"), rs.getInt("hetHan") };
         } catch (Exception e) {
@@ -1078,7 +1094,7 @@ public class DAO_ThongKe {
         String sql = "SELECT kh.id, ISNULL(SUM(lh.soLuongLoHang),0) sl, ISNULL(SUM(lh.soLuongLoHang*lh.gia),0)/1000000.0 gt "
                 + "FROM KhoHang kh LEFT JOIN LoHang lh ON lh.khoHangId=kh.id AND lh.trangThai='CON_HANG' "
                 + "GROUP BY kh.id ORDER BY gt DESC";
-        try (Statement st = getConn().createStatement(); ResultSet rs = st.executeQuery(sql)) {
+        try (Connection con = getConn(); Statement st = con.createStatement(); ResultSet rs = st.executeQuery(sql)) {
             while (rs.next())
                 result.add(new Object[] { rs.getString("id"), rs.getInt("sl"), rs.getDouble("gt") });
         } catch (Exception e) {
@@ -1095,7 +1111,7 @@ public class DAO_ThongKe {
                 + "ISNULL(SUM(lh.soLuongLoHang*lh.gia),0)/1000000.0 gt "
                 + "FROM SanPham sp LEFT JOIN LoHang lh ON sp.id=lh.sanPhamId AND lh.trangThai='CON_HANG' "
                 + "GROUP BY sp.ten ORDER BY sl DESC";
-        try (Statement st = getConn().createStatement(); ResultSet rs = st.executeQuery(sql)) {
+        try (Connection con = getConn(); Statement st = con.createStatement(); ResultSet rs = st.executeQuery(sql)) {
             while (rs.next())
                 result.add(new Object[] { rs.getString("ten"), rs.getInt("sl"), rs.getDouble("gt") });
         } catch (Exception e) {
@@ -1110,13 +1126,14 @@ public class DAO_ThongKe {
         double[] data = new double[12];
         String sql = "SELECT MONTH(ngayNhap) m, ISNULL(SUM(soLuongLoHang*gia),0)/1000000.0 gt "
                 + "FROM LoHang WHERE YEAR(ngayNhap)=? GROUP BY MONTH(ngayNhap)";
-        try (PreparedStatement ps = getConn().prepareStatement(sql)) {
+        try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setInt(1, year);
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                int m = rs.getInt("m");
-                if (m >= 1 && m <= 12)
-                    data[m - 1] = rs.getDouble("gt");
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    int m = rs.getInt("m");
+                    if (m >= 1 && m <= 12)
+                        data[m - 1] = rs.getDouble("gt");
+                }
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -1130,8 +1147,8 @@ public class DAO_ThongKe {
 
     // Tổng số sản phẩm (tất cả) trong bảng SanPham
     public int getTongSanPham() {
-        try (Statement st = getConn().createStatement();
-                ResultSet rs = st.executeQuery("SELECT COUNT(*) FROM SanPham")) {
+        try (Connection con = getConn(); Statement st = con.createStatement();
+             ResultSet rs = st.executeQuery("SELECT COUNT(*) FROM SanPham")) {
             if (rs.next())
                 return rs.getInt(1);
         } catch (SQLException e) {
@@ -1142,8 +1159,8 @@ public class DAO_ThongKe {
 
     // Tổng số khách hàng trong bảng KhachHang
     public int getTongKhachHang() {
-        try (Statement st = getConn().createStatement();
-                ResultSet rs = st.executeQuery("SELECT COUNT(*) FROM KhachHang")) {
+        try (Connection con = getConn(); Statement st = con.createStatement();
+             ResultSet rs = st.executeQuery("SELECT COUNT(*) FROM KhachHang")) {
             if (rs.next())
                 return rs.getInt(1);
         } catch (SQLException e) {
@@ -1155,12 +1172,13 @@ public class DAO_ThongKe {
     // Đếm số HĐ BAN_HANG của 1 NV từ thời điểm start (dùng cho kết ca)
     public int getSoHoaDonTheoCa(String maNV, LocalDateTime start) {
         String sql = "SELECT COUNT(*) FROM HoaDon WHERE nhanVienId=? AND ngayLapHD>=? AND loaiHD='BAN_HANG'";
-        try (PreparedStatement ps = getConn().prepareStatement(sql)) {
+        try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setString(1, maNV);
             ps.setTimestamp(2, Timestamp.valueOf(start));
-            ResultSet rs = ps.executeQuery();
-            if (rs.next())
-                return rs.getInt(1);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next())
+                    return rs.getInt(1);
+            }
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -1177,7 +1195,7 @@ public class DAO_ThongKe {
             "         AND hd.ghiChu LIKE N'%Hoàn thành%' THEN ct.soLuong " +
             "    WHEN (hd.loaiHD = 'TRA_HANG' " +
             "          OR (hd.loaiHD = 'DOI_HANG' AND ct.soLuong < 0)) " +
-            "         AND hd.ghiChu LIKE N'%Hoàn thành%' THEN ct.soLuong " + // soLuong < 0 nên trừ tự nhiên
+            "         AND hd.ghiChu LIKE N'%Hoàn thành%' THEN ct.soLuong " + 
             "    ELSE 0 " +
             "  END" +
             "), 0) AS tongSL " +
@@ -1190,10 +1208,11 @@ public class DAO_ThongKe {
             ")");
         List<Object> params = new ArrayList<>();
         applyFilter(filter, sql, params, "hd.ngayLapHD", "hd.nhanVienId");
-        try (PreparedStatement ps = getConn().prepareStatement(sql.toString())) {
+        try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql.toString())) {
             for (int i = 0; i < params.size(); i++) ps.setObject(i + 1, params.get(i));
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) return rs.getInt("tongSL");
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return rs.getInt("tongSL");
+            }
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -1206,12 +1225,13 @@ public class DAO_ThongKe {
                 "SELECT COUNT(*) FROM HoaDon hd WHERE CAST(hd.ngayLapHD AS DATE) = CAST(GETDATE() AS DATE) AND hd.loaiHD = 'BAN_HANG'");
         List<Object> params = new ArrayList<>();
         applyFilter(filter, sql, params, "hd.ngayLapHD", "hd.nhanVienId");
-        try (PreparedStatement ps = getConn().prepareStatement(sql.toString())) {
+        try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql.toString())) {
             for (int i = 0; i < params.size(); i++)
                 ps.setObject(i + 1, params.get(i));
-            ResultSet rs = ps.executeQuery();
-            if (rs.next())
-                return rs.getInt(1);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next())
+                    return rs.getInt(1);
+            }
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -1225,10 +1245,11 @@ public class DAO_ThongKe {
             "AND hd.loaiHD IN ('BAN_HANG', 'TRA_HANG', 'DOI_HANG')");
         List<Object> params = new ArrayList<>();
         applyFilter(filter, sql, params, "hd.ngayLapHD", "hd.nhanVienId");
-        try (PreparedStatement ps = getConn().prepareStatement(sql.toString())) {
+        try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql.toString())) {
             for (int i = 0; i < params.size(); i++) ps.setObject(i + 1, params.get(i));
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) return rs.getInt(1);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return rs.getInt(1);
+            }
         } catch (SQLException e) { e.printStackTrace(); }
         return 0;
     }
@@ -1239,12 +1260,13 @@ public class DAO_ThongKe {
                 "SELECT COUNT(*) FROM HoaDon hd WHERE hd.ngayLapHD >= DATEADD(DAY, -7, GETDATE()) AND hd.loaiHD = 'BAN_HANG'");
         List<Object> params = new ArrayList<>();
         applyFilter(filter, sql, params, "hd.ngayLapHD", "hd.nhanVienId");
-        try (PreparedStatement ps = getConn().prepareStatement(sql.toString())) {
+        try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql.toString())) {
             for (int i = 0; i < params.size(); i++)
                 ps.setObject(i + 1, params.get(i));
-            ResultSet rs = ps.executeQuery();
-            if (rs.next())
-                return rs.getInt(1);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next())
+                    return rs.getInt(1);
+            }
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -1256,10 +1278,11 @@ public class DAO_ThongKe {
         StringBuilder sql = new StringBuilder("SELECT COUNT(*) FROM HoaDon hd WHERE hd.loaiHD IN ('TRA_HANG', 'DOI_HANG') AND hd.ghiChu LIKE N'%Hoàn thành%'");
         List<Object> params = new ArrayList<>();
         applyFilter(filter, sql, params, "hd.ngayLapHD", "hd.nhanVienId");
-        try (PreparedStatement ps = getConn().prepareStatement(sql.toString())) {
+        try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql.toString())) {
             for (int p = 0; p < params.size(); p++) ps.setObject(p + 1, params.get(p));
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) return rs.getInt(1);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return rs.getInt(1);
+            }
         } catch (SQLException e) { e.printStackTrace(); }
         return 0;
     }
@@ -1271,10 +1294,11 @@ public class DAO_ThongKe {
         StringBuilder sql = new StringBuilder(sqlStr);
         List<Object> params = new ArrayList<>();
         applyFilter(filter, sql, params, "hd.ngayLapHD", "hd.nhanVienId");
-        try (PreparedStatement ps = getConn().prepareStatement(sql.toString())) {
+        try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql.toString())) {
             for (int p = 0; p < params.size(); p++) ps.setObject(p + 1, params.get(p));
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) return rs.getInt(1);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return rs.getInt(1);
+            }
         } catch (SQLException e) { e.printStackTrace(); }
         return 0;
     }
@@ -1285,7 +1309,7 @@ public class DAO_ThongKe {
         List<Object[]> list = new ArrayList<>();
         String sql = "SELECT TOP 4 sp.ten, ISNULL(SUM(lh.soLuongLoHang),0) ton FROM SanPham sp "
                 + "LEFT JOIN LoHang lh ON sp.id=lh.sanPhamId GROUP BY sp.ten ORDER BY ton ASC";
-        try (Statement st = getConn().createStatement(); ResultSet rs = st.executeQuery(sql)) {
+        try (Connection con = getConn(); Statement st = con.createStatement(); ResultSet rs = st.executeQuery(sql)) {
             while (rs.next())
                 list.add(new Object[] { rs.getString("ten"), rs.getInt("ton"), 50 });
         } catch (SQLException e) {
@@ -1296,9 +1320,8 @@ public class DAO_ThongKe {
 
     // Đếm số SP còn tồn kho (có ít nhất 1 lô)
     public int getSoSanPhamDuTon() {
-        try (Statement st = getConn().createStatement();
-                ResultSet rs = st.executeQuery(
-                        "SELECT COUNT(DISTINCT sp.id) FROM SanPham sp JOIN LoHang lh ON sp.id=lh.sanPhamId")) {
+        try (Connection con = getConn(); Statement st = con.createStatement();
+             ResultSet rs = st.executeQuery("SELECT COUNT(DISTINCT sp.id) FROM SanPham sp JOIN LoHang lh ON sp.id=lh.sanPhamId")) {
             if (rs.next())
                 return rs.getInt(1);
         } catch (SQLException e) {
@@ -1309,10 +1332,8 @@ public class DAO_ThongKe {
 
     // Đếm số lô hàng sắp hết hạn trong vòng days ngày
     public int getSoLoHangSapHetHanKhoang(int days) {
-        try (Statement st = getConn().createStatement();
-                ResultSet rs = st.executeQuery(
-                        "SELECT COUNT(*) FROM LoHang WHERE ngayHetHan IS NOT NULL AND DATEDIFF(DAY,GETDATE(),ngayHetHan)<="
-                                + days)) {
+        try (Connection con = getConn(); Statement st = con.createStatement();
+             ResultSet rs = st.executeQuery("SELECT COUNT(*) FROM LoHang WHERE ngayHetHan IS NOT NULL AND DATEDIFF(DAY,GETDATE(),ngayHetHan)<=" + days)) {
             if (rs.next())
                 return rs.getInt(1);
         } catch (SQLException e) {
@@ -1330,12 +1351,13 @@ public class DAO_ThongKe {
                 + "WHERE lh.ngayHetHan IS NOT NULL AND DATEDIFF(DAY,GETDATE(),lh.ngayHetHan)<=? "
                 + "AND lh.soLuongLoHang > 0 "
                 + "ORDER BY lh.ngayHetHan ASC";
-        try (PreparedStatement ps = getConn().prepareStatement(sql)) {
+        try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setInt(1, days);
-            ResultSet rs = ps.executeQuery();
-            while (rs.next())
-                list.add(new Object[] { rs.getString("ten"), rs.getString("soLoHang"),
-                        rs.getInt("soLuongLoHang"), rs.getTimestamp("ngayHetHan"), rs.getInt("cl") });
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next())
+                    list.add(new Object[] { rs.getString("ten"), rs.getString("soLoHang"),
+                            rs.getInt("soLuongLoHang"), rs.getTimestamp("ngayHetHan"), rs.getInt("cl") });
+            }
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -1358,12 +1380,13 @@ public class DAO_ThongKe {
         params.add(dateYMD);
         applyFilter(filter, sql, params, "hd.ngayLapHD", "hd.nhanVienId");
         sql.append(" GROUP BY hd.id, hd.ghiChu");
-        try (PreparedStatement ps = getConn().prepareStatement(sql.toString())) {
+        try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql.toString())) {
             for (int i = 0; i < params.size(); i++)
                 ps.setObject(i + 1, params.get(i));
-            ResultSet rs = ps.executeQuery();
-            while (rs.next())
-                result.add(new Object[] { rs.getString("id"), rs.getDouble("tongGocCoVAT"), rs.getString("ghiChu"), rs.getDouble("tongGocChuaVAT") });
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next())
+                    result.add(new Object[] { rs.getString("id"), rs.getDouble("tongGocCoVAT"), rs.getString("ghiChu"), rs.getDouble("tongGocChuaVAT") });
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -1374,7 +1397,7 @@ public class DAO_ThongKe {
     public List<String[]> getDanhSachNhanVien() {
         List<String[]> list = new ArrayList<>();
         String sql = "SELECT id, hoVaTen FROM NhanVien WHERE trangThaiLamViec='DANG_LAM_VIEC'";
-        try (Statement st = getConn().createStatement(); ResultSet rs = st.executeQuery(sql)) {
+        try (Connection con = getConn(); Statement st = con.createStatement(); ResultSet rs = st.executeQuery(sql)) {
             while (rs.next())
                 list.add(new String[] { rs.getString("id"), rs.getString("hoVaTen") });
         } catch (Exception e) {
@@ -1389,8 +1412,6 @@ public class DAO_ThongKe {
 
     // Lấy top 10 SP bán chạy nhất để phân tích gợi ý KM (biên LN, số lượng, giá vốn)
     // Trả về List<{tenSP, danhMuc, slBan, doanhThu, giaVon}>
-    // Trả về raw data top SP bán chạy: {tenSP, danhMuc, slBan, doanhThu, giaVon}
-    // Mọi tính toán nghiệp vụ (biên LN, loại KM, gợi ý) thực hiện ở BUS_ThongKe.getGoiYKhuyenMai()
     public List<Object[]> getRawTopSanPhamBanChay(int year) {
         List<Object[]> list = new ArrayList<>();
         String sql = "SELECT TOP 10 sp.ten, sp.danhMuc, "
@@ -1417,18 +1438,18 @@ public class DAO_ThongKe {
                 + "WHERE YEAR(hd.ngayLapHD) = ? AND hd.loaiHD = 'BAN_HANG' "
                 + "GROUP BY sp.ten, sp.danhMuc "
                 + "ORDER BY soLuongBan DESC";
-        try (PreparedStatement ps = getConn().prepareStatement(sql)) {
+        try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setInt(1, year);
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                // Trả về dữ liệu thô — BUS sẽ tính biên LN và quyết định loại KM
-                list.add(new Object[] {
-                    rs.getString("ten"),
-                    rs.getString("danhMuc") != null ? rs.getString("danhMuc") : "Khác",
-                    rs.getInt("soLuongBan"),
-                    rs.getDouble("doanhThu"),
-                    rs.getDouble("giaVon")
-                });
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    list.add(new Object[] {
+                        rs.getString("ten"),
+                        rs.getString("danhMuc") != null ? rs.getString("danhMuc") : "Khác",
+                        rs.getInt("soLuongBan"),
+                        rs.getDouble("doanhThu"),
+                        rs.getDouble("giaVon")
+                    });
+                }
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -1448,8 +1469,7 @@ public class DAO_ThongKe {
                 + "AND hd.loaiHD = 'BAN_HANG' AND kh.diemTichLuy >= 500 "
                 + "GROUP BY kh.hoVaTen, kh.diemTichLuy "
                 + "ORDER BY kh.diemTichLuy DESC";
-        try (PreparedStatement ps = getConn().prepareStatement(sql)) {
-            ResultSet rs = ps.executeQuery();
+        try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
             while (rs.next())
                 list.add(new Object[] { rs.getString("hoVaTen"), rs.getInt("diemTichLuy"), rs.getInt("soSP") });
         } catch (Exception e) {
@@ -1479,14 +1499,15 @@ public class DAO_ThongKe {
         List<Object> params = new ArrayList<>();
         applyFilter(filter, sql, params, "hd.ngayLapHD", "hd.nhanVienId");
 
-        try (PreparedStatement ps = getConn().prepareStatement(sql.toString())) {
+        try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql.toString())) {
             for (int i = 0; i < params.size(); i++) {
                 ps.setObject(i + 1, params.get(i));
             }
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                res[0] = rs.getDouble("tienCoVAT");
-                res[1] = rs.getDouble("tienChuaVAT");
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    res[0] = rs.getDouble("tienCoVAT");
+                    res[1] = rs.getDouble("tienChuaVAT");
+                }
             }
         } catch (Exception e) { e.printStackTrace(); }
         return res;
@@ -1497,10 +1518,11 @@ public class DAO_ThongKe {
     	String sql = "SELECT ISNULL(MAX(ht.giaTri), 0) FROM HoaDon hd " +
                   "JOIN HinhThucKhuyenMai ht ON hd.khuyenMaiId = ht.khuyenMaiId " +
                   "WHERE hd.id = ? AND ht.loaiHinhThuc = 'GIAM_THEO_PHAN_TRAM'";
-    	try (PreparedStatement ps = getConn().prepareStatement(sql)) {
+    	try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql)) {
     		ps.setString(1, hdId);
-    		ResultSet rs = ps.executeQuery();
-    		if (rs.next()) return rs.getDouble(1);
+    		try (ResultSet rs = ps.executeQuery()) {
+    		    if (rs.next()) return rs.getDouble(1);
+            }
     	}catch (Exception e) { e.printStackTrace(); }
     	return 0;
     }
@@ -1514,17 +1536,18 @@ public class DAO_ThongKe {
 	                  "JOIN DonViDoLuong dvl ON ct.donViDoLuongId = dvl.id AND ct.sanPhamId = dvl.sanPhamId " +
 	                  "JOIN SanPham sp ON ct.sanPhamId = sp.id " +
 	                  "WHERE ct.hoaDonId = ?";
-	     try (PreparedStatement ps = getConn().prepareStatement(sql)) {
+	     try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql)) {
 	         ps.setString(1, hdId);
-	         ResultSet rs = ps.executeQuery();
-	         while (rs.next()) {
-	             list.add(new Object[] { 
-	                 rs.getInt("soLuong"), 
-	                 rs.getDouble("gia"), 
-	                 rs.getDouble("thueVAT"),
-	                 rs.getDouble("thanhTien")
-	             });
-	         }
+	         try (ResultSet rs = ps.executeQuery()) {
+	             while (rs.next()) {
+	                 list.add(new Object[] { 
+	                     rs.getInt("soLuong"), 
+	                     rs.getDouble("gia"), 
+	                     rs.getDouble("thueVAT"),
+	                     rs.getDouble("thanhTien")
+	                 });
+	             }
+             }
 	     } catch (Exception e) { e.printStackTrace(); }
 	     return list;
     }
@@ -1545,11 +1568,12 @@ public class DAO_ThongKe {
         params.add(dateYMD);
         applyFilter(filter, sql, params, "hd.ngayLapHD", "hd.nhanVienId");
 
-        try (PreparedStatement ps = getConn().prepareStatement(sql.toString())) {
+        try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql.toString())) {
             for (int i = 0; i < params.size(); i++) ps.setObject(i + 1, params.get(i));
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                result.add(new Object[] { rs.getString("ten"), rs.getInt("sl"), rs.getDouble("chuaVAT") });
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    result.add(new Object[] { rs.getString("ten"), rs.getInt("sl"), rs.getDouble("chuaVAT") });
+                }
             }
         } catch (Exception e) { e.printStackTrace(); }
         return result;
@@ -1576,10 +1600,11 @@ public class DAO_ThongKe {
         applyFilter(filter, sql, params, "hd.ngayLapHD", "hd.nhanVienId");
         sql.append(" GROUP BY MONTH(hd.ngayLapHD)");
 
-        try (PreparedStatement ps = getConn().prepareStatement(sql.toString())) {
+        try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql.toString())) {
             for (int i = 0; i < params.size(); i++) ps.setObject(i + 1, params.get(i));
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) result.add(new Object[] { rs.getInt("m"), rs.getDouble("netRefund_chuaVAT") });
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) result.add(new Object[] { rs.getInt("m"), rs.getDouble("netRefund_chuaVAT") });
+            }
         } catch (Exception e) { e.printStackTrace(); }
         return result;
     }
@@ -1607,7 +1632,6 @@ public class DAO_ThongKe {
 	    StringBuilder sql = new StringBuilder("SELECT hd.id, hd.ghiChu FROM HoaDon hd WHERE hd.loaiHD = 'BAN_HANG' ");
 	    List<Object> params = new ArrayList<>();
 	    
-	    // Lọc theo mode thời gian trước
 	    if (filter.getModeLocThoiGian() != null) {
 	        if (filter.getModeLocThoiGian().equals("THANG")) {
 	        	int yr = (filter.getYear() != null) ? filter.getYear() : java.time.LocalDate.now().getYear();
@@ -1616,7 +1640,6 @@ public class DAO_ThongKe {
 	        	    params.add(yr);
 	        	    params.add(filter.getMonth());
 	        	} else {
-	        	    // Cả năm: chỉ lọc theo năm
 	        	    sql.append(" AND YEAR(hd.ngayLapHD) = ?");
 	        	    params.add(yr);
 	        	}
@@ -1628,13 +1651,13 @@ public class DAO_ThongKe {
 	            params.add(filter.getFromDate()); params.add(filter.getToDate());
 	        }
 	    }
-	    // Rồi gắn thêm filter NV/Ca
 	    applyFilter(filter, sql, params, "hd.ngayLapHD", "hd.nhanVienId");
 	
-	    try (PreparedStatement ps = getConn().prepareStatement(sql.toString())) {
+	    try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql.toString())) {
 	        for (int i = 0; i < params.size(); i++) ps.setObject(i + 1, params.get(i));
-	        ResultSet rs = ps.executeQuery();
-	        while (rs.next()) result.add(new Object[] { rs.getString("id"), "", rs.getString("ghiChu") });
+	        try (ResultSet rs = ps.executeQuery()) {
+	            while (rs.next()) result.add(new Object[] { rs.getString("id"), "", rs.getString("ghiChu") });
+            }
 	    } catch (Exception e) { e.printStackTrace(); }
 	    return result;
 	}
@@ -1652,13 +1675,14 @@ public class DAO_ThongKe {
         
         applyFilter(filter, sql, params, "hd.ngayLapHD", "hd.nhanVienId");
 
-        try (PreparedStatement ps = getConn().prepareStatement(sql.toString())) {
+        try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql.toString())) {
             for (int i = 0; i < params.size(); i++) {
                 ps.setObject(i + 1, params.get(i));
             }
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                result.add(new Object[] { rs.getInt("thang"), rs.getString("id"), rs.getString("ghiChu") });
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    result.add(new Object[] { rs.getInt("thang"), rs.getString("id"), rs.getString("ghiChu") });
+                }
             }
         } catch (Exception e) { 
             e.printStackTrace(); 
@@ -1686,10 +1710,11 @@ public class DAO_ThongKe {
         List<Object> params = new ArrayList<>();
         applyFilter(filter, sql, params, "hd.ngayLapHD", "hd.nhanVienId");
         sql.append(" GROUP BY CAST(hd.ngayLapHD AS DATE), CONVERT(NVARCHAR,CAST(hd.ngayLapHD AS DATE),103)");
-        try (PreparedStatement ps = getConn().prepareStatement(sql.toString())) {
+        try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql.toString())) {
             for (int i = 0; i < params.size(); i++) ps.setObject(i + 1, params.get(i));
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) result.add(new Object[] { rs.getString("d"), rs.getDouble("netRefund_chuaVAT") });
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) result.add(new Object[] { rs.getString("d"), rs.getDouble("netRefund_chuaVAT") });
+            }
         } catch (Exception e) { e.printStackTrace(); }
         return result;
     }
@@ -1728,13 +1753,14 @@ public class DAO_ThongKe {
         List<Object> params = new ArrayList<>();
         applyFilter(filter, sql, params, "hd.ngayLapHD", "hd.nhanVienId");
 
-        try (PreparedStatement ps = getConn().prepareStatement(sql.toString())) {
+        try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql.toString())) {
             for (int i = 0; i < params.size(); i++) ps.setObject(i + 1, params.get(i));
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                kq[0] = rs.getDouble("tienHoanCoVAT");
-                kq[1] = rs.getDouble("tienHoanChuaVAT");
-                kq[2] = rs.getDouble("giaVonHoan");
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    kq[0] = rs.getDouble("tienHoanCoVAT");
+                    kq[1] = rs.getDouble("tienHoanChuaVAT");
+                    kq[2] = rs.getDouble("giaVonHoan");
+                }
             }
         } catch (Exception e) { e.printStackTrace(); }
         return kq;
@@ -1751,20 +1777,21 @@ public class DAO_ThongKe {
         try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setString(1, maNV);
             ps.setTimestamp(2, Timestamp.valueOf(start));
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                String loai = rs.getString("loaiHD");
-                String ghiChu = rs.getString("ghiChu");
-                if (ghiChu != null && ghiChu.contains("|")) {
-                    String[] parts = ghiChu.split("\\|");
-                    if ("TRA_HANG".equals(loai) && parts.length >= 3) {
-                        String s = parts[2].trim().replaceAll("[^0-9]", "");
-                        if (!s.isEmpty()) tongHoanTra += Double.parseDouble(s);
-                    } else if ("DOI_HANG".equals(loai) && parts.length >= 4) {
-                        String chenhLech = parts[3].trim();
-                        if (chenhLech.contains("Hoàn")) {
-                            String s = chenhLech.replaceAll("[^0-9]", "");
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    String loai = rs.getString("loaiHD");
+                    String ghiChu = rs.getString("ghiChu");
+                    if (ghiChu != null && ghiChu.contains("|")) {
+                        String[] parts = ghiChu.split("\\|");
+                        if ("TRA_HANG".equals(loai) && parts.length >= 3) {
+                            String s = parts[2].trim().replaceAll("[^0-9]", "");
                             if (!s.isEmpty()) tongHoanTra += Double.parseDouble(s);
+                        } else if ("DOI_HANG".equals(loai) && parts.length >= 4) {
+                            String chenhLech = parts[3].trim();
+                            if (chenhLech.contains("Hoàn")) {
+                                String s = chenhLech.replaceAll("[^0-9]", "");
+                                if (!s.isEmpty()) tongHoanTra += Double.parseDouble(s);
+                            }
                         }
                     }
                 }
@@ -1791,18 +1818,18 @@ public class DAO_ThongKe {
             "AND hd.loaiHD IN ('TRA_HANG', 'DOI_HANG') AND hd.ghiChu LIKE N'%Hoàn thành%' " +
             "AND (hd.loaiHD = 'TRA_HANG' OR (hd.loaiHD = 'DOI_HANG' AND ct.soLuong < 0))"
         );
-        // Thứ tự params: [nvId(subquery), year(subquery), nvId(main), year(main), ...filterParams]
         List<Object> params = new ArrayList<>();
         params.add(nvId); params.add(year); // cho subquery soHD
         params.add(nvId); params.add(year); // cho main query tienHoan
         applyFilter(filter, sql, params, "hd.ngayLapHD", "hd.nhanVienId");
         
-        try (PreparedStatement ps = getConn().prepareStatement(sql.toString())) {
+        try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql.toString())) {
             for (int i=0; i<params.size(); i++) ps.setObject(i+1, params.get(i));
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                res[0] = rs.getInt("soHD");
-                res[1] = rs.getDouble("tienHoan");
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    res[0] = rs.getInt("soHD");
+                    res[1] = rs.getDouble("tienHoan");
+                }
             }
         } catch (Exception e) { e.printStackTrace(); }
         return res;
@@ -1831,7 +1858,7 @@ public class DAO_ThongKe {
             "  AND hd.ngayLapHD >= ? " +
             "  AND hd.loaiHD = 'DOI_HANG' " +
             "  AND hd.ghiChu LIKE N'Hoàn thành%'";
-        try (PreparedStatement ps = getConn().prepareStatement(sql)) {
+        try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setString(1, maNV);
             ps.setTimestamp(2, Timestamp.valueOf(start));
             try (ResultSet rs = ps.executeQuery()) {
@@ -1867,7 +1894,7 @@ public class DAO_ThongKe {
             "  AND hd.loaiHD = 'DOI_HANG' " +
             "  AND hd.ghiChu LIKE N'Hoàn thành%' " +
             "  AND hd.phuongThucThanhToan = 'TIEN_MAT'";
-        try (PreparedStatement ps = getConn().prepareStatement(sql)) {
+        try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setString(1, maNV);
             ps.setTimestamp(2, Timestamp.valueOf(start));
             try (ResultSet rs = ps.executeQuery()) {
@@ -1988,7 +2015,7 @@ public class DAO_ThongKe {
          List<Object> allParams = new ArrayList<>(paramsRevenue);
          allParams.addAll(paramsCogs);
          List<Object[]> result = new ArrayList<>();
-         try (PreparedStatement ps = getConn().prepareStatement(sql)) {
+         try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql)) {
              for (int i = 0; i < allParams.size(); i++) {
                  ps.setObject(i + 1, allParams.get(i));
              }
@@ -2057,7 +2084,7 @@ public class DAO_ThongKe {
                + "WHERE hd.loaiHD IN ('BAN_HANG', 'TRA_HANG', 'DOI_HANG')\n"
                + filterSb.toString();
 
-         try (PreparedStatement ps = getConn().prepareStatement(sql)) {
+         try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql)) {
              for (int i = 0; i < params.size(); i++) ps.setObject(i + 1, params.get(i));
              try (ResultSet rs = ps.executeQuery()) {
                  if (rs.next()) {
@@ -2085,10 +2112,11 @@ public class DAO_ThongKe {
                  + "  AND km.trangThai = 'HOAT_DONG' "
                  + "  AND km.ngayBatDau <= GETDATE() "
                  + "  AND (km.ngayKetThuc IS NULL OR km.ngayKetThuc >= GETDATE())";
-         try (PreparedStatement ps = getConn().prepareStatement(sql)) {
+         try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql)) {
              ps.setString(1, tenSP);
-             ResultSet rs = ps.executeQuery();
-             if (rs.next()) return rs.getInt(1) > 0;
+             try (ResultSet rs = ps.executeQuery()) {
+                 if (rs.next()) return rs.getInt(1) > 0;
+             }
          } catch (Exception e) { e.printStackTrace(); }
          return false;
      }
@@ -2113,14 +2141,15 @@ public class DAO_ThongKe {
                  + "JOIN SanPham sp ON ct.sanPhamId = sp.id "
                  + "WHERE sp.ten = ? AND hd.loaiHD = 'BAN_HANG'" +
                  " AND (hd.ghiChu IS NULL OR (hd.ghiChu NOT LIKE N'%Lưu nháp%' AND hd.ghiChu NOT LIKE N'%Đã hủy%'))";
-         try (PreparedStatement ps = getConn().prepareStatement(sql)) {
+         try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql)) {
              ps.setInt(1, currentQ);
              ps.setInt(2, year);
              ps.setInt(3, prevQ);
              ps.setInt(4, prevYear);
              ps.setString(5, tenSP);
-             ResultSet rs = ps.executeQuery();
-             if (rs.next()) return new int[]{ rs.getInt("slQuyNay"), rs.getInt("slQuyCu") };
+             try (ResultSet rs = ps.executeQuery()) {
+                 if (rs.next()) return new int[]{ rs.getInt("slQuyNay"), rs.getInt("slQuyCu") };
+             }
          } catch (Exception e) { e.printStackTrace(); }
          return new int[]{0, 0};
      }
@@ -2137,12 +2166,13 @@ public class DAO_ThongKe {
                  + "  AND YEAR(hd.ngayLapHD)  = ? "
                  + "  AND hd.loaiHD = 'BAN_HANG'"
                  + "  AND (hd.ghiChu IS NULL OR (hd.ghiChu NOT LIKE N'%Lưu nháp%' AND hd.ghiChu NOT LIKE N'%Đã hủy%'))";
-         try (PreparedStatement ps = getConn().prepareStatement(sql)) {
+         try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql)) {
              ps.setString(1, tenSP);
              ps.setInt(2, thang);
              ps.setInt(3, year - 1);
-             ResultSet rs = ps.executeQuery();
-             if (rs.next()) return rs.getInt(1);
+             try (ResultSet rs = ps.executeQuery()) {
+                 if (rs.next()) return rs.getInt(1);
+             }
          } catch (Exception e) { e.printStackTrace(); }
          return 0;
      }
@@ -2192,7 +2222,7 @@ public class DAO_ThongKe {
     	        }
     	    }
 
-    	    try (java.sql.PreparedStatement ps = getConn().prepareStatement(sql.toString())) {
+    	    try (Connection con = getConn(); java.sql.PreparedStatement ps = con.prepareStatement(sql.toString())) {
     	        if (filter != null && filter.getStartTime() != null) {
     	            ps.setTimestamp(1, java.sql.Timestamp.valueOf(filter.getStartTime()));
     	        }
@@ -2217,7 +2247,7 @@ public class DAO_ThongKe {
     	}
      
      /** Phân bổ doanh thu theo giờ (0-23) theo bất kỳ filter kỳ nào (THANG/QUY/TUYCHINH).
-      *  Trả về List<{h(int), tienThucThu(double)}> */
+      * Trả về List<{h(int), tienThucThu(double)}> */
      public List<Object[]> getRawHDGioTheoFilter(Entity.BoLocThongKe filter) {
          List<Object[]> result = new ArrayList<>();
          StringBuilder sql = new StringBuilder(
@@ -2256,10 +2286,11 @@ public class DAO_ThongKe {
          }
          sql.append(" GROUP BY DATEPART(HOUR, hd.ngayLapHD)");
 
-         try (PreparedStatement ps = getConn().prepareStatement(sql.toString())) {
+         try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql.toString())) {
              for (int i = 0; i < params.size(); i++) ps.setObject(i + 1, params.get(i));
-             ResultSet rs = ps.executeQuery();
-             while (rs.next()) result.add(new Object[]{ rs.getInt("h"), rs.getDouble("tienThucThu") });
+             try (ResultSet rs = ps.executeQuery()) {
+                 while (rs.next()) result.add(new Object[]{ rs.getInt("h"), rs.getDouble("tienThucThu") });
+             }
          } catch (Exception e) { e.printStackTrace(); }
          return result;
      }
