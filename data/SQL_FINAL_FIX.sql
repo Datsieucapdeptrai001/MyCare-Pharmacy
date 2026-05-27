@@ -387,12 +387,12 @@ GO
 -- 5. CHÈN DỮ LIỆU ĐÚNG THỨ TỰ CHA - CON
 -- ==============================================================================
 -- A. BẢNG KHÔNG CHỨA KHÓA NGOẠI
-INSERT [dbo].[NhanVien] VALUES (N'DS-0001', N'Nguyễn Tuấn Đạt', N'CCHN-DS-2021-001', N'0912345678', N'dat@mycarepharmacy.vn', N'DUOC_SI', N'DANG_LAM_VIEC', N'Nam', CAST(N'1990-01-01' AS Date), N'TP.HCM', N'079090000001')
-INSERT [dbo].[NhanVien] VALUES (N'DS-0002', N'Mai Trung Kiên', N'CCHN-DS-2021-002', N'0923456789', N'kien@mycarepharmacy.vn', N'DUOC_SI', N'DANG_LAM_VIEC', N'Nam', CAST(N'1992-05-10' AS Date), N'TP.HCM', N'079092000002')
-INSERT [dbo].[NhanVien] VALUES (N'DS-0003', N'Nguyễn Văn Phương Nam', N'CCHN-DS-2021-003', N'0934567890', N'nam@mycarepharmacy.vn', N'DUOC_SI', N'DANG_LAM_VIEC', N'Nam', CAST(N'1995-08-15' AS Date), N'TP.HCM', N'079095000003')
+INSERT [dbo].[NhanVien] VALUES (N'DS-0001', N'Nguyễn Tuấn Đạt', N'CCHN-DS-2021-001', N'0912345678', N'nguyentuandat03102005@gmail.com', N'DUOC_SI', N'DANG_LAM_VIEC', N'Nam', CAST(N'1990-01-01' AS Date), N'TP.HCM', N'079090000001')
+INSERT [dbo].[NhanVien] VALUES (N'DS-0002', N'Mai Trung Kiên', N'CCHN-DS-2021-002', N'0923456789', N'kien67065@gmail.com', N'DUOC_SI', N'DANG_LAM_VIEC', N'Nam', CAST(N'1992-05-10' AS Date), N'TP.HCM', N'079092000002')
+INSERT [dbo].[NhanVien] VALUES (N'DS-0003', N'Nguyễn Văn Phương Nam', N'CCHN-DS-2021-003', N'0934567890', N'nguyenvanphuongnam1310@gmail.com', N'DUOC_SI', N'DANG_LAM_VIEC', N'Nam', CAST(N'1995-08-15' AS Date), N'TP.HCM', N'079095000003')
 INSERT [dbo].[NhanVien] VALUES (N'DS-0004', N'Trần Long Thuận', N'CCHN-DS-2022-001', N'0945678901', N'thuan@mycarepharmacy.vn', N'DUOC_SI', N'DANG_LAM_VIEC', N'Nam', CAST(N'1993-11-20' AS Date), N'TP.HCM', N'079093000004')
 INSERT [dbo].[NhanVien] VALUES (N'DS-0005', N'Võ Anh Kiệt', N'CCHN-DS-2022-002', N'0956789012', N'kiet@mycarepharmacy.vn', N'DUOC_SI', N'DANG_LAM_VIEC', N'Nam', CAST(N'1996-03-25' AS Date), N'TP.HCM', N'079096000005')
-INSERT [dbo].[NhanVien] VALUES (N'QL-0001', N'Nguyễn Quản Lý', N'CCHN-QL-2020-001', N'0901234567', N'admin@mycarepharmacy.vn', N'NGUOI_QUAN_LY', N'DANG_LAM_VIEC', N'Nam', CAST(N'1985-12-12' AS Date), N'TP.HCM', N'079085000006')
+INSERT [dbo].[NhanVien] VALUES (N'QL-0001', N'Quản Lý', N'CCHN-QL-2020-001', N'0901234567', N'admin@mycarepharmacy.vn', N'NGUOI_QUAN_LY', N'DANG_LAM_VIEC', N'Nam', CAST(N'1985-12-12' AS Date), N'TP.HCM', N'079085000006')
 
 -- CHÈN DỮ LIỆU BẢNG KHACH HANG (ĐÃ RÚT GỌN 5 CỘT)
 INSERT [dbo].[KhachHang] ([id], [sdt], [hoVaTen], [ngayTao], [diemTichLuy]) 
@@ -2284,67 +2284,3 @@ INSERT INTO [dbo].[LichSuDiem] VALUES (N'LS-00037', N'KH-0006', NULL, N'TICH', 8
 INSERT INTO [dbo].[LichSuDiem] VALUES (N'LS-00038', N'KH-0008', NULL, N'TICH', 308, N'Số dư tích lũy trước hệ thống', CAST(N'2024-08-30 09:15:00.0000000' AS DateTime2));
 INSERT INTO [dbo].[LichSuDiem] VALUES (N'LS-00039', N'KH-0009', NULL, N'TICH', 3477, N'Số dư tích lũy trước hệ thống', CAST(N'2024-09-14 10:30:00.0000000' AS DateTime2));
 INSERT INTO [dbo].[LichSuDiem] VALUES (N'LS-00040', N'KH-0010', NULL, N'TICH', 75, N'Số dư tích lũy trước hệ thống', CAST(N'2024-10-25 15:00:00.0000000' AS DateTime2));
-
-/* =========================================================
-   PATCH: CHUẨN HÓA LỢI NHUẬN "NHẬP 5 BÁN 10" VÀ CẬP NHẬT TRIGGER TỰ ĐỘNG
-   (Chỉ dán vào cuối file, chạy một lần là tự động xử lý toàn bộ)
-   ========================================================= */
-
-USE [MYCAREPHARMACY];
-GO
-
-PRINT N'===== BẮT ĐẦU CHUẨN HÓA DỮ LIỆU GIÁ BÁN =====';
-
--- 1. CẬP NHẬT GIÁ BÁN SẢN PHẨM = GIÁ NHẬP x 2 
--- Lấy giá nhập của lô hàng mới nhất làm mốc để nhân đôi giá bán.
-WITH LatestLoHang AS (
-    SELECT sanPhamId, gia,
-           ROW_NUMBER() OVER(PARTITION BY sanPhamId ORDER BY ngayNhap DESC) as rn
-    FROM dbo.LoHang
-)
-UPDATE sp
-SET sp.giaBan = lh.gia * 2
-FROM dbo.SanPham sp
-JOIN LatestLoHang lh ON sp.id = lh.sanPhamId AND lh.rn = 1;
-GO
-
--- 2. ĐỒNG BỘ GIÁ BÁN CHO ĐƠN VỊ ĐO LƯỜNG CƠ BẢN (Ví dụ: Viên, Gói, Chai)
-UPDATE dvl
-SET dvl.gia = sp.giaBan
-FROM dbo.DonViDoLuong dvl
-JOIN dbo.SanPham sp ON sp.id = dvl.sanPhamId AND dvl.ten = sp.donViDoCoBan;
-GO
-
--- 3. TÍNH LẠI GIÁ BÁN CHO ĐƠN VỊ LỚN (Ví dụ: Hộp = Giá Viên x Số lượng viên/hộp)
-UPDATE dvl
-SET dvl.gia = dvl.chuyenDoiDonViCoBan * sp.giaBan
-FROM dbo.DonViDoLuong dvl
-JOIN dbo.SanPham sp ON sp.id = dvl.sanPhamId AND dvl.ten <> sp.donViDoCoBan;
-GO
-
-PRINT N'===== CẬP NHẬT TRIGGER TỰ ĐỘNG CHO HỆ THỐNG =====';
-
--- 4. TẠO LẠI TRIGGER (Bạn có thể Ctrl+F xóa cái trigger cũ ở dòng 1221 đi, hoặc để đoạn này chạy đè lên đều được)
-DROP TRIGGER IF EXISTS [dbo].[TRG_DongBoGiaBan_LoHang];
-GO
-
-CREATE TRIGGER [dbo].[TRG_DongBoGiaBan_LoHang]
-ON [dbo].[LoHang]
-AFTER INSERT
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    -- LOGIC CHUẨN: Chỉ tự động thiết lập giá bán (Giá nhập x 2) cho các sản phẩm 
-    -- MỚI TINH chưa có giá (giaBan = 0). Sản phẩm cũ (giaBan > 0) giữ nguyên 
-    -- để không làm loạn giá niêm yết trên kệ khi nhập lô mới.
-    UPDATE SP
-    SET SP.giaBan = I.gia * 2
-    FROM SanPham SP
-    JOIN inserted I ON SP.id = I.sanPhamId
-    WHERE SP.giaBan = 0;
-END;
-GO
-
-PRINT N'===== PATCH HOÀN TẤT =====';
-GO
