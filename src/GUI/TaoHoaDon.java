@@ -1265,8 +1265,8 @@ public class TaoHoaDon extends JDialog {
     private boolean kiemTraLichSuGiaoDichTuAPI(String maGiaoDich, long soTien) {
         try {
             // =============== ĐIỀN LẠI MÃ CỦA BẠN VÀO ĐÂY ===============
-        	String clientId = "";
-            String apiKey = "";
+        	String clientId = "1afb5cca-f110-470d-a073-9f10bbfcd24b";
+            String apiKey = "85b2b6fa-b442-4ea8-9800-9947e218417d";
             // =========================================================
 
             String apiUrl = "https://api-merchant.payos.vn/v2/payment-requests/" + maGiaoDich;
@@ -1312,9 +1312,9 @@ public class TaoHoaDon extends JDialog {
             @Override
             protected ImageIcon doInBackground() throws Exception {
                 // =============== ĐIỀN MÃ CỦA BẠN VÀO ĐÂY ===============
-                String clientId = "";
-                String apiKey = "";
-                String checksumKey = "";
+                String clientId = "1afb5cca-f110-470d-a073-9f10bbfcd24b";
+                String apiKey = "85b2b6fa-b442-4ea8-9800-9947e218417d";
+                String checksumKey = "7a28013866c8bed8e8fd10557599cebf5ef61232a2e1f7b50637c24b7fd934de";
                 // =========================================================
 
                 String cancelUrl = "https://localhost";
@@ -3498,9 +3498,7 @@ public class TaoHoaDon extends JDialog {
             }
         }
 
-        // =========================================================
-        // KHÓA MẮT LISTENER ĐỂ CHỐNG LOOP & LAG CPU
-        // =========================================================
+
         isTableUpdating = true; 
         try {
             if (daTonTai) {
@@ -3515,7 +3513,7 @@ public class TaoHoaDon extends JDialog {
                 long thanhTien = Math.round(giaBan * currentQty * (1.0 - kmV));
                 productModel.setValueAt(String.format("%,d", thanhTien).replace(',', '.') + "đ", rowIndex, 6);
             } else {
-                long thanhTien = giaBan; 
+                long thanhTien = giaBan*10; 
                 String thanhTienFormatted = String.format("%,d", thanhTien).replace(',', '.') + "đ"; 
                 String giaFormatted = String.format("%,d", giaBan).replace(',', '.') + "đ";
 
