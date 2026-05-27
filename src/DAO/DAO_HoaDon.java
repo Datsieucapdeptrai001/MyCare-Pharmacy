@@ -729,12 +729,12 @@ try { if (con != null) con.setAutoCommit(true); } catch (SQLException e) { e.pri
             return pst.executeUpdate() > 0;
         }
     }
- // Thêm vào class DAO_HoaDon.java
     public boolean capNhatTrangThaiVaGhiChu(String maPhieu, String trangThaiMoi, String ghiChuMoi) {
-        // Logic: Cập nhật cột ghiChu để các hàm layDanhSach có thể nhận diện trạng thái
         String sql = "UPDATE HoaDon SET ghiChu = ? WHERE id = ?";
-        Connection con = ConnectDB.getInstance().getConnection();
-        try (PreparedStatement pst = con.prepareStatement(sql)) {
+        // Đưa Connection vào khối try()
+        try (Connection con = ConnectDB.getInstance().getConnection();
+             PreparedStatement pst = con.prepareStatement(sql)) {
+             
             pst.setString(1, trangThaiMoi + " | " + ghiChuMoi);
             pst.setString(2, maPhieu);
             return pst.executeUpdate() > 0;

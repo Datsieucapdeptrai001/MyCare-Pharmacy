@@ -301,37 +301,40 @@ public class DAO_KhachHang {
     }
 
  // Ghi một dòng lịch sử điểm
- public boolean ghiLichSuDiem(String khachHangId, String hoaDonId, String loai, int soDiem, String ghiChu) {
-     String sql = "INSERT INTO LichSuDiem (id, khachHangId, hoaDonId, loai, soDiem, ghiChu, thoiGian) VALUES (?,?,?,?,?,?,?)";
-     try {
-         Connection con = ConnectDB.getInstance().getConnection();
-         PreparedStatement pst = con.prepareStatement(sql);
-         pst.setString(1, "LS-" + java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase());
-         pst.setString(2, khachHangId);
-         pst.setString(3, hoaDonId);
-         pst.setString(4, loai);
-         pst.setInt(5, soDiem);
-         pst.setString(6, ghiChu);
-         pst.setTimestamp(7, Timestamp.valueOf(LocalDateTime.now()));
-         return pst.executeUpdate() > 0;
-     } catch (SQLException e) { e.printStackTrace(); }
-     return false;
- }
-    // Cập nhật điểm tích lũy
+ // Sửa hàm ghiLichSuDiem
+    public boolean ghiLichSuDiem(String khachHangId, String hoaDonId, String loai, int soDiem, String ghiChu) {
+        String sql = "INSERT INTO LichSuDiem (id, khachHangId, hoaDonId, loai, soDiem, ghiChu, thoiGian) VALUES (?,?,?,?,?,?,?)";
+        // Đưa Connection vào trong khối try() để tự động close()
+        try (Connection con = ConnectDB.getInstance().getConnection();
+             PreparedStatement pst = con.prepareStatement(sql)) {
+             
+            pst.setString(1, "LS-" + java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase());
+            pst.setString(2, khachHangId);
+            pst.setString(3, hoaDonId);
+            pst.setString(4, loai);
+            pst.setInt(5, soDiem);
+            pst.setString(6, ghiChu);
+            pst.setTimestamp(7, Timestamp.valueOf(LocalDateTime.now()));
+            return pst.executeUpdate() > 0;
+        } catch (SQLException e) { 
+            e.printStackTrace(); 
+        }
+        return false;
+    }
+
+    // Sửa hàm capNhatDiemTichLuy
     public boolean capNhatDiemTichLuy(String id, int diemMoi) {
         String sql = "UPDATE KhachHang SET diemTichLuy = ? WHERE id = ?";
-        int n = 0;
-        Connection con = ConnectDB.getInstance().getConnection();
-
-        try (PreparedStatement pst = con.prepareStatement(sql)) {
+        // Đưa Connection vào trong khối try()
+        try (Connection con = ConnectDB.getInstance().getConnection();
+             PreparedStatement pst = con.prepareStatement(sql)) {
+             
             pst.setInt(1, diemMoi);
             pst.setString(2, id);
-
-            n = pst.executeUpdate();
+            return pst.executeUpdate() > 0;
         } catch (SQLException e) {
             e.printStackTrace();
         }
-
-        return n > 0;
+        return false;
     }
 }

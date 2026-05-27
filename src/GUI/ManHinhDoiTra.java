@@ -19,7 +19,6 @@ public class ManHinhDoiTra extends JPanel {
 	private Timer autoCancelTimer;
 	private java.util.Map<String, java.time.LocalDateTime> mapThoiGianTao = new java.util.HashMap<>();
     /** Dùng để điều hướng từ Live Notification — set trước khi switchTabAndFilter */
-    public static String pendingDoiTraIdToOpen = null;
     private JTable table;
     private DefaultTableModel model;
     private TableRowSorter<DefaultTableModel> sorter;
@@ -42,25 +41,7 @@ public class ManHinhDoiTra extends JPanel {
         // Kích hoạt đồng hồ đếm ngược trên bảng
         khoiDongBoDemNguoc(); 
 
-        // ── Timer tự động mở phiếu khi điều hướng từ Live Notification ─────────
-        // Hoạt động giống ManHinhBanHang.autoOpenTimer: poll 500ms, chờ isShowing()
-        javax.swing.Timer autoOpenDoiTraTimer = new javax.swing.Timer(500, evt -> {
-            if (ManHinhDoiTra.pendingDoiTraIdToOpen != null
-                    && !ManHinhDoiTra.pendingDoiTraIdToOpen.isEmpty()
-                    && this.isShowing()) {
-                String maPhieu = ManHinhDoiTra.pendingDoiTraIdToOpen;
-                ManHinhDoiTra.pendingDoiTraIdToOpen = null;
-                ((javax.swing.Timer) evt.getSource()).stop();
-                SwingUtilities.invokeLater(() -> {
-                    try {
-                        moLaiPhieuDoiTra(maPhieu);
-                    } finally {
-                        ((javax.swing.Timer) evt.getSource()).start();
-                    }
-                });
-            }
-        });
-        autoOpenDoiTraTimer.start();
+       
 
         this.addComponentListener(new java.awt.event.ComponentAdapter() {
             @Override
