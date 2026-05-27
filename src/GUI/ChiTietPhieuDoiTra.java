@@ -51,6 +51,10 @@ public class ChiTietPhieuDoiTra extends JDialog {
 
                 String ghiChu = hd.getGhiChu() != null ? hd.getGhiChu() : "";
                 String[] parts = ghiChu.split("\\|");
+                
+                // FIX LỖI: Lấy trạng thái thật từ phần tử đầu tiên của chuỗi Ghi Chú
+                this.trangThai = parts.length > 0 ? parts[0].trim() : "Hoàn thành"; 
+                
                 this.lyDo = parts.length > 1 ? parts[1].trim() : (!ghiChu.isEmpty() ? ghiChu : "Không có ghi chú");
 
                 this.tienHoanThucTe  = "";

@@ -16,6 +16,7 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 public class ManHinhDoiTra extends JPanel {
+	protected static String pendingDoiTraIdToOpen;
 	private Timer autoCancelTimer;
 	private java.util.Map<String, java.time.LocalDateTime> mapThoiGianTao = new java.util.HashMap<>();
     /** Dùng để điều hướng từ Live Notification — set trước khi switchTabAndFilter */

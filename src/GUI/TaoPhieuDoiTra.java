@@ -1669,6 +1669,7 @@ public class TaoPhieuDoiTra extends JDialog {
         // ==========================================================
 
         String lyDo = cboLyDo.getSelectedItem().toString();
+
         String colHoanTien = "0đ";
         String colChenhLech = "0đ";
 
@@ -1728,7 +1729,13 @@ public class TaoPhieuDoiTra extends JDialog {
             String lyDoFull = lyDo + (ghiChu.isEmpty() ? "" : " - " + ghiChu);
             
             // XÁC ĐỊNH TRẠNG THÁI: Nếu lưu nháp là "Lưu nháp", nếu xác nhận đổi/trả thì "Hoàn thành"
-            String trangThaiPhieu = isLuuNhap ? "Lưu nháp" : "Hoàn thành";
+            String trangThaiPhieu = "Hoàn thành";
+            if (isLuuNhap) {
+                trangThaiPhieu = "Lưu nháp";
+            } else if (lyDo.contains("Từ chối")) {
+                trangThaiPhieu = "Từ chối"; // Đánh dấu phiếu này là phiếu bị từ chối
+            }
+            
             String formatGhiChu = trangThaiPhieu + " | " + lyDoFull + " | " + colHoanTien + " | " + colChenhLech + " | " + strSPTra + " | " + strSPDoi;
             
             // NẾU ĐANG SỬA THÌ DÙNG LẠI MÃ CŨ, NẾU TẠO MỚI THÌ DÙNG MÃ MỚI
@@ -1836,11 +1843,12 @@ public class TaoPhieuDoiTra extends JDialog {
                 // HIỆN THÔNG BÁO IN MÁY IN (NẾU HOÀN THÀNH) HOẶC ĐÓNG (NẾU LƯU NHÁP)
                 // =========================================================
                 if (!isLuuNhap) {
-                    showCustomNotification("THÀNH CÔNG", "Đổi/Trả hàng thành công! Mã phiếu: " + maPhieu, "SUCCESS");
+                    if (trangThaiPhieu.equals("Từ chối")) {
+                         showCustomNotification("ĐÃ LẬP BIÊN BẢN", "Đã lưu biên bản TỪ CHỐI đổi trả. Mã: " + maPhieu, "WARNING");
+                    } else {
+                         showCustomNotification("THÀNH CÔNG", "Đổi/Trả hàng thành công! Mã phiếu: " + maPhieu, "SUCCESS");
+                    }
                     dispose();
-                } else {
-                    showCustomNotification("THÀNH CÔNG", "Đã lưu nháp phiếu thành công!", "SUCCESS");
-                    dispose(); 
                 }
                 
             } else {
@@ -2064,9 +2072,9 @@ public class TaoPhieuDoiTra extends JDialog {
             @Override
             protected ImageIcon doInBackground() throws Exception {
                 // =============== ĐIỀN MÃ CỦA BẠN VÀO ĐÂY ===============
-                String clientId = "1afb5cca-f110-470d-a073-9f10bbfcd24b";
-                String apiKey = "85b2b6fa-b442-4ea8-9800-9947e218417d";
-                String checksumKey = "7a28013866c8bed8e8fd10557599cebf5ef61232a2e1f7b50637c24b7fd934de";
+                String clientId = "";
+                String apiKey = "";
+                String checksumKey = "";
                 // =========================================================
 
                 String cancelUrl = "https://localhost";
