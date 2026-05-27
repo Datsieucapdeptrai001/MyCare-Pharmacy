@@ -621,6 +621,7 @@ public class DialogChonLieuMau extends JDialog {
 
             spnSoLuong = new JSpinner(new SpinnerNumberModel(sl, 1, 999, 1));
             spnSoLuong.setFont(new Font("Segoe UI", Font.BOLD, 12));
+            spnSoLuong.setEnabled(false);
             spnSoLuong.addChangeListener(e -> {
                 this.soLuongGoc = (int) spnSoLuong.getValue(); 
                 capNhatTongTienCombo(); 
