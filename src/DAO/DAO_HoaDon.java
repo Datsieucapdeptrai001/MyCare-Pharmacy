@@ -1235,22 +1235,28 @@ try { if (con != null) con.setAutoCommit(true); } catch (SQLException e) { e.pri
     }
 
     public String[] layPhieuDoiTraTheoHDGoc(String maHDGoc) {
-        // [FIX] Bỏ qua các phiếu đổi/trả đã bị Từ chối hoặc Đã hủy để cho phép nhân viên tạo lại phiếu mới
-        String sql = "SELECT id, loaiHD FROM HoaDon WHERE hoaDonGocId = ? " +
-                     "AND (ghiChu IS NULL OR (ghiChu NOT LIKE N'%Từ chối%' AND ghiChu NOT LIKE N'%Đã hủy%'))";
+        String sql = "SELECT id, loaiHD, ghiChu FROM HoaDon WHERE hoaDonGocId = ?";
         
         try (Connection con = ConnectDB.getInstance().getConnection();
              PreparedStatement pst = con.prepareStatement(sql)) {
              
             pst.setString(1, maHDGoc);
             try (ResultSet rs = pst.executeQuery()) {
-                if (rs.next()) {
-                    return new String[]{rs.getString("id"), rs.getString("loaiHD")};
+                while (rs.next()) {
+                    String ghiChu = rs.getString("ghiChu");
+                    if (ghiChu == null) ghiChu = "";
+                    
+                    // CHỈ BỎ QUA NẾU LÀ PHIẾU "ĐÃ HỦY" (Do nhân viên hủy nháp)
+                    // NẾU LÀ "TỪ CHỐI", VẪN TRẢ VỀ ĐỂ GIAO DIỆN KHÓA TÌM KIẾM
+                    if (!ghiChu.contains("Đã hủy")) {
+                        return new String[]{rs.getString("id"), rs.getString("loaiHD")};
+                    }
                 }
             }
         } catch (Exception e) {
             System.err.println("Lỗi DAO_HoaDon (layPhieuDoiTraTheoHDGoc): " + e.getMessage());
         }
+        
         return null;
     }
 

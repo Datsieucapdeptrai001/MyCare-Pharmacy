@@ -608,7 +608,7 @@ public class DialogChonLieuMau extends JDialog {
             
             // FIX: Chữ nhỏ lại, bỏ in đậm, và loại bỏ hoàn toàn phần "cách dùng" bên dưới
             String htmlTen = "<html><div style='width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;'><span style='font-weight:normal; font-size:11px; color:#111827;'>" + ten + "</span></div></html>";
-            JLabel lblTen = new JLabel(htmlTen);
+            final JLabel lblTen = new JLabel(htmlTen);
             
             pnlTen.add(chkChon, BorderLayout.WEST); pnlTen.add(lblTen, BorderLayout.CENTER);
             
@@ -635,10 +635,70 @@ public class DialogChonLieuMau extends JDialog {
             try {
                 List<Object[]> ketQua = busSanPham.timKiemSanPhamBan(id); 
                 if (ketQua != null && !ketQua.isEmpty()) {
+                    // Cờ để đánh dấu thuốc có bị cận/hết hạn hay không
+                    boolean isCanHan = false;
+                    boolean isHetHan = false;
+                    String hsdCanhBao = "";
+
                     for (Object[] row : ketQua) {
                         String soLo = (row.length > 7 && row[7] != null) ? row[7].toString() : "";
                         String hsd = (row.length > 8 && row[8] != null) ? row[8].toString() : "";
                         if (!soLo.isEmpty()) cboLo.addItem(soLo + (hsd.isEmpty() ? "" : " — " + hsd));
+                    }
+
+                    // --- BỔ SUNG LOGIC KIỂM TRA CẬN HẠN SAU KHI ĐÃ ĐỔ DỮ LIỆU VÀO COMBOBOX ---
+                    if (cboLo.getItemCount() > 0) {
+                        String selectedLo = cboLo.getItemAt(0); // Lấy lô tốt nhất (FEFO) đang được chọn
+                        if (selectedLo.contains(" — ")) {
+                            String hsd = selectedLo.split(" — ")[1].trim();
+                            if (!hsd.equalsIgnoreCase("N/A")) {
+                                java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy");
+                                java.time.LocalDate expiryDate = java.time.LocalDate.parse(hsd, formatter);
+                                java.time.LocalDate today = java.time.LocalDate.now();
+                                if (expiryDate.isBefore(today.plusMonths(6))) {
+                                    // KHÔNG CẦN CÁC LỆNH ĐỔI MÀU CỦA CBO (Bỏ qua đoạn cboLo.setForeground...)
+                                    
+                                    // THAY VÀO ĐÓ, HIỆN THÔNG BÁO MẠNH MẼ ĐỂ NHÂN VIÊN PHẢI BẤM ĐÓNG
+                                    if (expiryDate.isBefore(today)) {
+                                        // Trường hợp thuốc đã hết hạn
+                                        Utils.ThongBao.show(parentForm, "CẢNH BÁO: THUỐC HẾT HẠN", 
+                                            "Thuốc [" + ten + "] trong liều này ĐÃ HẾT HẠN (HSD: " + hsd + ").\n" +
+                                            "Hệ thống không cho phép bán sản phẩm này!", "ERROR");
+                                    } else {
+                                        // Trường hợp thuốc cận hạn (dưới 6 tháng)
+                                        Utils.ThongBao.show(parentForm, "LƯU Ý: THUỐC CẬN HẠN", 
+                                            "Thuốc [" + ten + "] trong liều này còn dưới 6 tháng là hết hạn (HSD: " + hsd + ").\n" +
+                                            "Vui lòng kiểm tra kỹ trước khi thêm vào đơn!", "WARNING");
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // NẾU CÓ CẢNH BÁO -> ĐỔI MÀU GIAO DIỆN & HIỂN THỊ ICON NGUY HIỂM 
+                    if (isCanHan) {
+                        cboLo.setForeground(Color.decode("#DC2626")); // Chữ màu đỏ
+                        cboLo.setBorder(BorderFactory.createLineBorder(Color.decode("#FCA5A5"))); // Viền đỏ nhạt
+
+                        // Thêm tooltip báo hiệu cho bác sĩ/người bán
+                        String tooltipMsg = isHetHan ? "THUỐC ĐÃ HẾT HẠN!" : "THUỐC CẬN HẠN (Dưới 6 tháng)";
+                        cboLo.setToolTipText(tooltipMsg);
+
+                        // Thêm một icon cảnh báo nhỏ kế bên Tên Thuốc để gây sự chú ý
+                        String htmlTenCu = lblTen.getText();
+                        String htmlTenMoi = htmlTenCu.replace("</div></html>", 
+                                "<span style='color:red; font-size:14px; font-weight:bold;'> ⚠</span></div></html>");
+                        lblTen.setText(htmlTenMoi);
+                        
+                        // Chủ động hiện một thông báo Toast nổi lên (nếu muốn)
+                        if (isHetHan) {
+                            Utils.ThongBao.show(parentForm, "CẢNH BÁO LIỀU MẪU", 
+                                "Thuốc [" + ten + "] trong Liều này ĐÃ HẾT HẠN SỬ DỤNG (HSD: " + hsdCanhBao + ").\n" +
+                                "Khuyến cáo KHÔNG bán liều này hoặc thay bằng thuốc khác!", "ERROR");
+                        } else {
+                            Utils.ThongBao.show(parentForm, "LƯU Ý LIỀU MẪU", 
+                                "Thuốc [" + ten + "] trong Liều này SẮP HẾT HẠN (HSD: " + hsdCanhBao + ").", "WARNING");
+                        }
                     }
                 }
             } catch(Exception e) {}

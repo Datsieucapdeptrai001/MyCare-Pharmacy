@@ -1158,7 +1158,7 @@ public class TaoPhieuDoiTra extends JDialog {
             return;
         }
 
-        // =========================================================
+     // =========================================================
         // RÀNG BUỘC: KIỂM TRA ĐÃ TỪNG ĐỔI / TRẢ CHƯA 
         // =========================================================
         boolean daCoPhieu = false;
@@ -1167,12 +1167,27 @@ public class TaoPhieuDoiTra extends JDialog {
 
         String[] phieuCu = busHD.layPhieuDoiTraTheoHDGoc(hd.getId());
         if (phieuCu != null) {
-            daCoPhieu = true;
             maPhieuCu = phieuCu[0];
             String loai = phieuCu[1];
-            if (loai != null) {
-                if (loai.contains("TRA_HANG")) loaiPhieuCu = "Trả hàng";
-                else if (loai.contains("DOI_HANG")) loaiPhieuCu = "Đổi hàng";
+            
+            String ghiChuPhieuCu = busHD.layGhiChuHoaDon(maPhieuCu);
+            if (ghiChuPhieuCu == null) ghiChuPhieuCu = "";
+            
+            // CHỈ MỞ KHÓA TÌM KIẾM LẠI NẾU PHIẾU CŨ BỊ "ĐÃ HỦY"
+            if (ghiChuPhieuCu.contains("Đã hủy")) {
+                daCoPhieu = false; 
+            } else {
+                // NẾU LÀ "TỪ CHỐI" HOẶC "HOÀN THÀNH" ĐỀU KHÓA CHẶT LẠI
+                daCoPhieu = true;
+                if (loai != null) {
+                    if (loai.contains("TRA_HANG")) loaiPhieuCu = "Trả hàng";
+                    else if (loai.contains("DOI_HANG")) loaiPhieuCu = "Đổi hàng";
+                }
+                
+                // Thêm chữ để thông báo báo lỗi rõ ràng hơn cho nhân viên
+                if (ghiChuPhieuCu.contains("Từ chối")) {
+                    loaiPhieuCu += " (nhưng đã bị TỪ CHỐI)";
+                }
             }
         }
 
@@ -1183,7 +1198,7 @@ public class TaoPhieuDoiTra extends JDialog {
                 lblError.setText(" Hóa đơn này đã được " + loaiPhieuCu + " trước đó (Mã: " + maPhieuCu + ")!"); 
                 lblError.setVisible(true);
                 if (pnlFoundData != null && pnlFoundData.isVisible()) { pnlFoundData.setVisible(false); setSize(1000, 400); setLocationRelativeTo(getOwner()); }
-                if (btnTaoPhieu != null) btnTaoPhieu.setEnabled(false); if (btnLuuNhap != null) btnLuuNhap.setEnabled(false); if (btnLuuNhap != null) btnLuuNhap.setEnabled(false); if (btnLuuNhap != null) btnLuuNhap.setEnabled(false); 
+                if (btnTaoPhieu != null) btnTaoPhieu.setEnabled(false); if (btnLuuNhap != null) btnLuuNhap.setEnabled(false);
                 return;
             }
         }
@@ -2072,9 +2087,9 @@ public class TaoPhieuDoiTra extends JDialog {
             @Override
             protected ImageIcon doInBackground() throws Exception {
                 // =============== ĐIỀN MÃ CỦA BẠN VÀO ĐÂY ===============
-                String clientId = "";
-                String apiKey = "";
-                String checksumKey = "";
+                String clientId = "1afb5cca-f110-470d-a073-9f10bbfcd24b";
+                String apiKey = "85b2b6fa-b442-4ea8-9800-9947e218417d";
+                String checksumKey = "7a28013866c8bed8e8fd10557599cebf5ef61232a2e1f7b50637c24b7fd934de";
                 // =========================================================
 
                 String cancelUrl = "https://localhost";
