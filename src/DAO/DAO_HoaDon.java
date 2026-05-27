@@ -629,15 +629,20 @@ con.setAutoCommit(false);
 // Xóa nháp cũ theo đúng thứ tự FK: PhanBoLoHang → ChiTietHoaDon → HoaDon
 // (Nếu xóa ChiTietHoaDon trước khi xóa PhanBoLoHang sẽ bị lỗi FK bị bắt im lặng, khiến bản ghi cũ còn lại)
 try (PreparedStatement pDelPB  = con.prepareStatement("DELETE FROM PhanBoLoHang WHERE hoaDonId = ?");
-     PreparedStatement pDelCT  = con.prepareStatement("DELETE FROM ChiTietHoaDon WHERE hoaDonId = ?");
-     PreparedStatement pDelHD  = con.prepareStatement("DELETE FROM HoaDon WHERE id = ?")) {
-    pDelPB.setString(1, hd.getId());  pDelPB.executeUpdate();
-    pDelCT.setString(1, hd.getId());  pDelCT.executeUpdate();
-    pDelHD.setString(1, hd.getId());  pDelHD.executeUpdate();
-} catch (Exception eDel) {
-    // Ghi log để dễ debug nếu có vấn đề với việc xóa nháp
-    System.err.println("[luuGiaoDich] Xóa nháp cũ: " + eDel.getMessage());
-}
+	     PreparedStatement pDelCT  = con.prepareStatement("DELETE FROM ChiTietHoaDon WHERE hoaDonId = ?");
+	     PreparedStatement pDelHD  = con.prepareStatement("DELETE FROM HoaDon WHERE id = ?")) {
+	    pDelPB.setString(1, hd.getId());  pDelPB.executeUpdate();
+	    pDelCT.setString(1, hd.getId());  pDelCT.executeUpdate();
+	    pDelHD.setString(1, hd.getId());  pDelHD.executeUpdate();
+	} catch (Exception eDel) {
+	    // ==========================================
+	    // [FIX BƯỚC 3]: BẮT BUỘC ROLLBACK, KHÔNG NUỐT LỖI
+	    // ==========================================
+	    System.err.println("[luuGiaoDich] Xóa nháp cũ thất bại: " + eDel.getMessage());
+	    con.rollback(); // Dừng ngay giao dịch
+	    return false;   // Trả về false để tầng BUS và GUI biết quá trình đã tịt ngòi
+	    // ==========================================
+	}
 
 if (!themHoaDon(con, hd)) throw new Exception("Lỗi lưu hóa đơn");
 

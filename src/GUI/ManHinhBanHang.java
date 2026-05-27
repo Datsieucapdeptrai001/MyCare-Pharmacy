@@ -146,8 +146,22 @@ public class ManHinhBanHang extends JPanel {
         btnReset.addActionListener(e -> {
             txtSearch.setForeground(Color.GRAY);
             txtSearch.setText(placeholder);
-            xuLyStatus(statusBtns[0]);
-            xuLyCat(categoryBtns[0]); // Đã hết bị lỗi NullPointerException ở đây
+            
+            // 1. Đưa trạng thái về "Tất cả"
+            if (statusBtns != null && statusBtns.length > 0) {
+                xuLyStatus(statusBtns[0]); 
+            }
+            
+            // 2. [FIX BUG]: Kiểm tra mảng categoryBtns trước khi gọi để chống sập (NullPointerException)
+            if (categoryBtns != null && categoryBtns.length > 0) {
+                xuLyCat(categoryBtns[0]); 
+            } else {
+                filterCat = "Tất cả";
+            }
+            
+            // 3. Tải lại dữ liệu mới nhất và làm mới bộ lọc
+            loadData(); 
+            applyFilter();
             pnlHeader.requestFocus(); 
         });
 
@@ -323,10 +337,40 @@ public class ManHinhBanHang extends JPanel {
 
     public void moLaiHoaDonNhap(String maHD) {
         SwingUtilities.invokeLater(() -> {
+            
+            // ==========================================
+            // 1. MỞ HÓA ĐƠN MỚI TINH (Trường hợp giỏ hàng trống)
+            // ==========================================
+            if (maHD.equals("NEW_INVOICE")) {
+                Window p = SwingUtilities.getWindowAncestor(this);
+                TaoHoaDon dialogTao = new TaoHoaDon((Frame) p, model);
+                dialogTao.setVisible(true);
+                
+                // [FIX LỖI MẤT HÓA ĐƠN]: Tắt xong phải Load lại bảng ngay lập tức
+                loadData(); 
+                return; 
+            }
+
+            // ==========================================
+            // 2. MỞ HÓA ĐƠN ĐÃ LƯU NHÁP
+            // ==========================================
+            Entity.HoaDon hdCheck = busHoaDon.layHoaDonTheoMa(maHD);
+            if (hdCheck == null) {
+                Utils.ThongBao.show(this, "LỖI DỮ LIỆU", "Không tìm thấy hóa đơn " + maHD, "ERROR");
+                return; 
+            }
+
+            // [FIX TRỌNG TÂM]: Reset lại bộ lọc về trạng thái "Tất cả" trước khi gõ ID vào tìm kiếm
+            if (statusBtns != null && statusBtns.length > 0) {
+                xuLyStatus(statusBtns[0]); 
+            }
+
             if (txtSearch != null) {
                 txtSearch.setText(maHD);
+                txtSearch.setForeground(Color.BLACK);
                 applyFilter();
             }
+            
             boolean found = false;
             for (int i = 0; i < model.getRowCount(); i++) {
                 if (model.getValueAt(i, 0).toString().equals(maHD)) {
@@ -350,6 +394,13 @@ public class ManHinhBanHang extends JPanel {
                         );
                         dialogChiTiet.setVisible(true);
                     }
+                    
+                    // [FIX LỖI MẤT HÓA ĐƠN]: Sau khi đóng form, phải Load lại bảng và xóa tìm kiếm
+                    loadData();
+                    txtSearch.setText("Mã HD, khách hàng, SĐT...");
+                    txtSearch.setForeground(Color.GRAY);
+                    applyFilter();
+                    
                     found = true;
                     break;
                 }
@@ -553,10 +604,22 @@ public class ManHinhBanHang extends JPanel {
 
     private void applyFilter() {
         List<RowFilter<Object, Object>> filters = new ArrayList<>();
-        if (!filterStatus.equals("Tất cả")) filters.add(RowFilter.regexFilter("^" + filterStatus + "$", 6)); 
+        
+        // [FIX BƯỚC 1]: Mở rộng bộ lọc Đang xử lý
+        if (!filterStatus.equals("Tất cả")) {
+            if (filterStatus.equals("Đang xử lý")) {
+                // Gom chung cả 3 trạng thái vào tab Đang xử lý
+                filters.add(RowFilter.regexFilter("^(Đang xử lý|Lưu nháp|Chờ xử lý)$", 6));
+            } else {
+                filters.add(RowFilter.regexFilter("^" + filterStatus + "$", 6)); 
+            }
+        }
+        
         if (!filterCat.equals("Tất cả")) filters.add(RowFilter.regexFilter("^" + filterCat + "$", 8)); 
         String search = txtSearch.getText().trim();
-        if (!search.isEmpty() && !search.equals("Mã HD, khách hàng, SĐT...")) filters.add(RowFilter.regexFilter("(?i)" + java.util.regex.Pattern.quote(search)));
+        if (!search.isEmpty() && !search.equals("Mã HD, khách hàng, SĐT...")) {
+            filters.add(RowFilter.regexFilter("(?i)" + java.util.regex.Pattern.quote(search)));
+        }
         sorter.setRowFilter(filters.isEmpty() ? null : RowFilter.andFilter(filters));
     }
 
