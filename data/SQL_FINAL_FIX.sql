@@ -2284,3 +2284,67 @@ INSERT INTO [dbo].[LichSuDiem] VALUES (N'LS-00037', N'KH-0006', NULL, N'TICH', 8
 INSERT INTO [dbo].[LichSuDiem] VALUES (N'LS-00038', N'KH-0008', NULL, N'TICH', 308, N'Số dư tích lũy trước hệ thống', CAST(N'2024-08-30 09:15:00.0000000' AS DateTime2));
 INSERT INTO [dbo].[LichSuDiem] VALUES (N'LS-00039', N'KH-0009', NULL, N'TICH', 3477, N'Số dư tích lũy trước hệ thống', CAST(N'2024-09-14 10:30:00.0000000' AS DateTime2));
 INSERT INTO [dbo].[LichSuDiem] VALUES (N'LS-00040', N'KH-0010', NULL, N'TICH', 75, N'Số dư tích lũy trước hệ thống', CAST(N'2024-10-25 15:00:00.0000000' AS DateTime2));
+
+/* =========================================================
+   PATCH: CHUẨN HÓA LỢI NHUẬN "NHẬP 5 BÁN 10" VÀ CẬP NHẬT TRIGGER TỰ ĐỘNG
+   (Chỉ dán vào cuối file, chạy một lần là tự động xử lý toàn bộ)
+   ========================================================= */
+
+USE [MYCAREPHARMACY];
+GO
+
+PRINT N'===== BẮT ĐẦU CHUẨN HÓA DỮ LIỆU GIÁ BÁN =====';
+
+-- 1. CẬP NHẬT GIÁ BÁN SẢN PHẨM = GIÁ NHẬP x 2 
+-- Lấy giá nhập của lô hàng mới nhất làm mốc để nhân đôi giá bán.
+WITH LatestLoHang AS (
+    SELECT sanPhamId, gia,
+           ROW_NUMBER() OVER(PARTITION BY sanPhamId ORDER BY ngayNhap DESC) as rn
+    FROM dbo.LoHang
+)
+UPDATE sp
+SET sp.giaBan = lh.gia * 2
+FROM dbo.SanPham sp
+JOIN LatestLoHang lh ON sp.id = lh.sanPhamId AND lh.rn = 1;
+GO
+
+-- 2. ĐỒNG BỘ GIÁ BÁN CHO ĐƠN VỊ ĐO LƯỜNG CƠ BẢN (Ví dụ: Viên, Gói, Chai)
+UPDATE dvl
+SET dvl.gia = sp.giaBan
+FROM dbo.DonViDoLuong dvl
+JOIN dbo.SanPham sp ON sp.id = dvl.sanPhamId AND dvl.ten = sp.donViDoCoBan;
+GO
+
+-- 3. TÍNH LẠI GIÁ BÁN CHO ĐƠN VỊ LỚN (Ví dụ: Hộp = Giá Viên x Số lượng viên/hộp)
+UPDATE dvl
+SET dvl.gia = dvl.chuyenDoiDonViCoBan * sp.giaBan
+FROM dbo.DonViDoLuong dvl
+JOIN dbo.SanPham sp ON sp.id = dvl.sanPhamId AND dvl.ten <> sp.donViDoCoBan;
+GO
+
+PRINT N'===== CẬP NHẬT TRIGGER TỰ ĐỘNG CHO HỆ THỐNG =====';
+
+-- 4. TẠO LẠI TRIGGER (Bạn có thể Ctrl+F xóa cái trigger cũ ở dòng 1221 đi, hoặc để đoạn này chạy đè lên đều được)
+DROP TRIGGER IF EXISTS [dbo].[TRG_DongBoGiaBan_LoHang];
+GO
+
+CREATE TRIGGER [dbo].[TRG_DongBoGiaBan_LoHang]
+ON [dbo].[LoHang]
+AFTER INSERT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    -- LOGIC CHUẨN: Chỉ tự động thiết lập giá bán (Giá nhập x 2) cho các sản phẩm 
+    -- MỚI TINH chưa có giá (giaBan = 0). Sản phẩm cũ (giaBan > 0) giữ nguyên 
+    -- để không làm loạn giá niêm yết trên kệ khi nhập lô mới.
+    UPDATE SP
+    SET SP.giaBan = I.gia * 2
+    FROM SanPham SP
+    JOIN inserted I ON SP.id = I.sanPhamId
+    WHERE SP.giaBan = 0;
+END;
+GO
+
+PRINT N'===== PATCH HOÀN TẤT =====';
+GO
