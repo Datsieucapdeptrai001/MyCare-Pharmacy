@@ -1343,59 +1343,222 @@ public class ManHinhXuatKho extends JPanel {
         boolean confirmed = showCustomConfirmDialog(
                 "XÁC NHẬN XUẤT KHO",
                 "Xuất <b>" + tableModel.getRowCount()
-                        + "</b> lô hàng. Hệ thống sẽ trừ trực tiếp vào kho hiện tại.<br>Bạn chắc chắn thực hiện?");
+                        + "</b> lô hàng. Hệ thống sẽ trừ trực tiếp vào kho hiện tại.<br>Bạn chắc chắn thực hiện?"
+        );
 
-        if (confirmed) {
-            List<Object[]> ds = new ArrayList<>();
-
-            for (int i = 0; i < tableModel.getRowCount(); i++) {
-            	ds.add(new Object[] {
-            	        tableModel.getValueAt(i, 9),
-            	        tableModel.getValueAt(i, 8),
-            	        tableModel.getValueAt(i, 5)
-            	});
-            }
-
-            String maNhanVienDangNhap = SessionDangNhap.getMaNhanVienOrDefault();
-
-            if (busKho.xuatHuyKho(ds, maNhanVienDangNhap)) {
-                showCustomNotification("THÀNH CÔNG", "Đã trừ kho thành công!", "SUCCESS");
-
-                String maPhieuXuat = "PX" + (System.currentTimeMillis() % 100000);
-                String ngayXuat = java.time.LocalDate.now()
-                        .format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"));
-
-                StringBuilder qrData = new StringBuilder();
-                qrData.append("PHIẾU XUẤT: ").append(maPhieuXuat).append("\n");
-                qrData.append("NGÀY XUẤT: ").append(ngayXuat).append("\n");
-                qrData.append("--- CHI TIẾT HÀNG ---\n");
-
-                for (int i = 0; i < tableModel.getRowCount(); i++) {
-                    qrData.append("• ").append(tableModel.getValueAt(i, 0)).append(" | ");
-                    qrData.append("Kho: ").append(tableModel.getValueAt(i, 1)).append(" | ");
-                    qrData.append(tableModel.getValueAt(i, 2)).append(" | ");
-                    qrData.append(tableModel.getValueAt(i, 3)).append(" ");
-                    qrData.append(tableModel.getValueAt(i, 4)).append("\n");
-                }
-
-                String tenHienThi = "KIỆN HÀNG XUẤT (" + tableModel.getRowCount() + " Món)";
-                Window owner = SwingUtilities.getWindowAncestor(this);
-
-                DialogInQRCode dialogQR = new DialogInQRCode(
-                        owner,
-                        qrData.toString(),
-                        maPhieuXuat,
-                        "Ngày: " + ngayXuat,
-                        tenHienThi);
-
-                dialogQR.setVisible(true);
-                reloadCacheLoHangCoTheXuat();
-                resetFormToanBo();
-
-            } else {
-                showCustomNotification("THẤT BẠI", "Gặp sự cố khi lưu vào Database.", "ERROR");
-            }
+        if (!confirmed) {
+            return;
         }
+
+        List<Object[]> ds = new ArrayList<>();
+
+        for (int i = 0; i < tableModel.getRowCount(); i++) {
+            ds.add(new Object[]{
+                    tableModel.getValueAt(i, 9), // 0 - loHangId để BUS/DAO xử lý
+                    tableModel.getValueAt(i, 8), // 1 - số lượng quy đổi
+                    tableModel.getValueAt(i, 5), // 2 - lý do xuất
+
+                    tableModel.getValueAt(i, 0), // 3 - mã lô hiển thị
+                    tableModel.getValueAt(i, 1), // 4 - kho hiển thị
+                    tableModel.getValueAt(i, 2), // 5 - tên sản phẩm
+                    tableModel.getValueAt(i, 3), // 6 - số lượng nhập
+                    tableModel.getValueAt(i, 4), // 7 - đơn vị
+                    tableModel.getValueAt(i, 6)  // 8 - ghi chú
+            });
+        }
+
+        String maNhanVienDangNhap = SessionDangNhap.getMaNhanVienOrDefault();
+
+        BUS_Kho.KetQuaXuatKho ketQua = busKho.xuatHuyKhoVaTaoPhieu(ds, maNhanVienDangNhap);
+
+        if (!ketQua.isThanhCong()) {
+            showCustomNotification("THẤT BẠI", ketQua.getThongBao(), "ERROR");
+            return;
+        }
+
+        showCustomNotification("THÀNH CÔNG", ketQua.getThongBao(), "SUCCESS");
+
+        String tenHienThi = "KIỆN HÀNG XUẤT (" + tableModel.getRowCount() + " Món)";
+
+        xemTruocPhieuXuatKho(
+                ketQua.getMaPhieuXuat(),
+                ketQua.getNgayXuat(),
+                ketQua.getQrData(),
+                tenHienThi
+        );
+
+        reloadCacheLoHangCoTheXuat();
+        resetFormToanBo();
+    }
+    private void xemTruocPhieuXuatKho(
+            String maPhieuXuat,
+            String ngayXuat,
+            String qrData,
+            String tenHienThi
+    ) {
+        JDialog dialog = new JDialog(
+                SwingUtilities.getWindowAncestor(this),
+                "Xem trước phiếu xuất",
+                Dialog.ModalityType.APPLICATION_MODAL
+        );
+
+        dialog.setUndecorated(true);
+        dialog.setBackground(new Color(0, 0, 0, 0));
+
+        JPanel root = new JPanel(new BorderLayout());
+        root.setBackground(Color.WHITE);
+        root.setBorder(BorderFactory.createLineBorder(new Color(30, 64, 105), 2));
+
+        JPanel header = new JPanel(new BorderLayout());
+        header.setBackground(new Color(30, 64, 105));
+        header.setBorder(new EmptyBorder(14, 20, 14, 18));
+
+        JLabel lblTitle = new JLabel("XEM TRƯỚC PHIẾU XUẤT / HỦY KHO");
+        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        lblTitle.setForeground(Color.WHITE);
+
+        JButton btnX = new JButton("×");
+        btnX.setFont(new Font("Segoe UI", Font.BOLD, 24));
+        btnX.setForeground(Color.WHITE);
+        btnX.setFocusPainted(false);
+        btnX.setBorderPainted(false);
+        btnX.setContentAreaFilled(false);
+        btnX.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btnX.addActionListener(e -> dialog.dispose());
+
+        header.add(lblTitle, BorderLayout.WEST);
+        header.add(btnX, BorderLayout.EAST);
+
+        JTextArea txtPreview = new JTextArea();
+        txtPreview.setEditable(false);
+        txtPreview.setFont(new Font("Consolas", Font.PLAIN, 14));
+        txtPreview.setForeground(TEXT_PRIMARY);
+        txtPreview.setBackground(Color.WHITE);
+        txtPreview.setMargin(new Insets(18, 22, 18, 22));
+        txtPreview.setText(buildNoiDungPhieuXuatPreview(maPhieuXuat, ngayXuat));
+        txtPreview.setCaretPosition(0);
+
+        JScrollPane scroll = new JScrollPane(txtPreview);
+        scroll.setBorder(BorderFactory.createEmptyBorder());
+        scroll.getVerticalScrollBar().setUnitIncrement(18);
+
+        JPanel footer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 14));
+        footer.setBackground(new Color(248, 250, 252));
+        footer.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(226, 232, 240)));
+
+        JButton btnDong = new JButton("Đóng");
+        btnDong.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btnDong.setForeground(new Color(100, 116, 139));
+        btnDong.setBackground(Color.WHITE);
+        btnDong.setFocusPainted(false);
+        btnDong.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(226, 232, 240)),
+                new EmptyBorder(9, 20, 9, 20)
+        ));
+        btnDong.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btnDong.setPreferredSize(new Dimension(110, 40));
+        btnDong.addActionListener(e -> dialog.dispose());
+
+        JButton btnIn = new JButton("In phiếu");
+        btnIn.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btnIn.setForeground(Color.WHITE);
+        btnIn.setBackground(new Color(30, 64, 105));
+        btnIn.setFocusPainted(false);
+        btnIn.setBorder(new EmptyBorder(10, 20, 10, 20));
+        btnIn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btnIn.setPreferredSize(new Dimension(130, 40));
+        btnIn.addActionListener(e -> {
+            dialog.dispose();
+
+            Window owner = SwingUtilities.getWindowAncestor(this);
+
+            DialogInQRCode dialogQR = new DialogInQRCode(
+                    owner,
+                    qrData,
+                    maPhieuXuat,
+                    "Ngày: " + ngayXuat,
+                    tenHienThi
+            );
+
+            dialogQR.setVisible(true);
+        });
+
+        footer.add(btnDong);
+        footer.add(btnIn);
+
+        root.add(header, BorderLayout.NORTH);
+        root.add(scroll, BorderLayout.CENTER);
+        root.add(footer, BorderLayout.SOUTH);
+
+        dialog.setContentPane(root);
+        dialog.setSize(700, 620);
+        dialog.setShape(new RoundRectangle2D.Double(0, 0, dialog.getWidth(), dialog.getHeight(), 16, 16));
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+    }
+    private String buildNoiDungPhieuXuatPreview(String maPhieuXuat, String ngayXuat) {
+        StringBuilder sb = new StringBuilder();
+
+        sb.append("MYCARE PHARMACY\n");
+        sb.append("============================================================\n");
+        sb.append("                 PHIẾU XUẤT / HỦY KHO\n");
+        sb.append("============================================================\n\n");
+
+        sb.append("Mã phiếu xuất : ").append(maPhieuXuat).append("\n");
+        sb.append("Ngày xuất     : ").append(ngayXuat).append("\n");
+        sb.append("Số dòng xuất  : ").append(tableModel.getRowCount()).append("\n\n");
+
+        sb.append(String.format("%-4s %-16s %-10s %-28s %-8s %-12s\n",
+                "STT", "Mã lô", "Kho", "Sản phẩm", "SL", "Lý do"));
+
+        sb.append("------------------------------------------------------------\n");
+
+        for (int i = 0; i < tableModel.getRowCount(); i++) {
+            String maLo = safeCell(i, 0);
+            String kho = safeCell(i, 1);
+            String tenSP = safeCell(i, 2);
+            String soLuong = safeCell(i, 3);
+            String lyDo = safeCell(i, 5);
+            String ghiChu = safeCell(i, 6);
+
+            sb.append(String.format("%-4s %-16s %-10s %-28s %-8s %-12s\n",
+                    i + 1,
+                    catChuoiPreview(maLo, 15),
+                    catChuoiPreview(kho, 9),
+                    catChuoiPreview(tenSP, 27),
+                    soLuong,
+                    catChuoiPreview(lyDo, 11)
+            ));
+        }
+
+        sb.append("\n============================================================\n");
+        sb.append("Người lập phiếu       Dược sũ phụ trách        Quản lý\n\n\n");
+        sb.append("(Ký, ghi rõ họ tên)       (Ký tên)              (Ký tên)\n");
+
+        return sb.toString();
+    }
+
+    private String safeCell(int row, int col) {
+        try {
+            Object value = tableModel.getValueAt(row, col);
+            return value == null ? "" : value.toString();
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    private String catChuoiPreview(String text, int max) {
+        if (text == null) {
+            return "";
+        }
+
+        String value = text.trim();
+
+        if (value.length() <= max) {
+            return value;
+        }
+
+        return value.substring(0, Math.max(0, max - 3)) + "...";
     }
     private void reloadCacheLoHangCoTheXuatSync() {
         List<LoHang> tempData = busKho.layDSLoHang(false);

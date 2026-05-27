@@ -135,10 +135,6 @@ CREATE TABLE [dbo].[KhachHang](
 	[hoVaTen] [nvarchar](100) NOT NULL,
 	[ngayTao] [datetime2](7) NOT NULL,
 	[diemTichLuy] [int] DEFAULT ((0)) NOT NULL,
-	[gioiTinh] [nvarchar](10) NULL,
-	[ngaySinh] [date] NULL,
-	[diaChi] [nvarchar](255) NULL,
-	[email] [nvarchar](100) NULL
 )
 GO
 
@@ -398,16 +394,36 @@ INSERT [dbo].[NhanVien] VALUES (N'DS-0004', N'Trần Long Thuận', N'CCHN-DS-20
 INSERT [dbo].[NhanVien] VALUES (N'DS-0005', N'Võ Anh Kiệt', N'CCHN-DS-2022-002', N'0956789012', N'kiet@mycarepharmacy.vn', N'DUOC_SI', N'DANG_LAM_VIEC', N'Nam', CAST(N'1996-03-25' AS Date), N'TP.HCM', N'079096000005')
 INSERT [dbo].[NhanVien] VALUES (N'QL-0001', N'Nguyễn Quản Lý', N'CCHN-QL-2020-001', N'0901234567', N'admin@mycarepharmacy.vn', N'NGUOI_QUAN_LY', N'DANG_LAM_VIEC', N'Nam', CAST(N'1985-12-12' AS Date), N'TP.HCM', N'079085000006')
 
-INSERT [dbo].[KhachHang] VALUES (N'KH-0001', N'0311223344', N'Nguyễn Thị Lan', CAST(N'2024-01-10T08:00:00.0000000' AS DateTime2), 500, NULL, NULL, NULL, NULL)
-INSERT [dbo].[KhachHang] VALUES (N'KH-0002', N'0322334455', N'Trần Văn Bình', CAST(N'2024-02-15T09:30:00.0000000' AS DateTime2), 1200, NULL, NULL, NULL, NULL)
-INSERT [dbo].[KhachHang] VALUES (N'KH-0003', N'0333445566', N'Lê Thị Hoa', CAST(N'2024-03-20T10:00:00.0000000' AS DateTime2), 350, NULL, NULL, NULL, NULL)
-INSERT [dbo].[KhachHang] VALUES (N'KH-0004', N'0344556677', N'Phạm Thanh Tùng', CAST(N'2024-04-05T11:00:00.0000000' AS DateTime2), 2000, NULL, NULL, NULL, NULL)
-INSERT [dbo].[KhachHang] VALUES (N'KH-0005', N'0355667788', N'Võ Thị Mai', CAST(N'2024-05-12T13:00:00.0000000' AS DateTime2), 150, NULL, NULL, NULL, NULL)
-INSERT [dbo].[KhachHang] VALUES (N'KH-0006', N'0366778899', N'Đặng Minh Khoa', CAST(N'2024-06-18T14:30:00.0000000' AS DateTime2), 800, NULL, NULL, NULL, NULL)
-INSERT [dbo].[KhachHang] VALUES (N'KH-0007', N'0377889900', N'Hoàng Thị Thu', CAST(N'2024-07-22T08:45:00.0000000' AS DateTime2), 0, NULL, NULL, NULL, NULL)
-INSERT [dbo].[KhachHang] VALUES (N'KH-0008', N'0388990011', N'Bùi Văn Long', CAST(N'2024-08-30T09:15:00.0000000' AS DateTime2), 450, NULL, NULL, NULL, NULL)
-INSERT [dbo].[KhachHang] VALUES (N'KH-0009', N'0399001122', N'Ngô Thị Thanh', CAST(N'2024-09-14T10:30:00.0000000' AS DateTime2), 3000, NULL, NULL, NULL, NULL)
-INSERT [dbo].[KhachHang] VALUES (N'KH-0010', N'0310112233', N'Dương Quốc Hùng', CAST(N'2024-10-25T15:00:00.0000000' AS DateTime2), 100, NULL, NULL, NULL, NULL)
+-- CHÈN DỮ LIỆU BẢNG KHACH HANG (ĐÃ RÚT GỌN 5 CỘT)
+INSERT [dbo].[KhachHang] ([id], [sdt], [hoVaTen], [ngayTao], [diemTichLuy]) 
+VALUES (N'KH-0001', N'0311223344', N'Nguyễn Thị Lan', CAST(N'2024-01-10T08:00:00.0000000' AS DateTime2), 500);
+
+INSERT [dbo].[KhachHang] ([id], [sdt], [hoVaTen], [ngayTao], [diemTichLuy]) 
+VALUES (N'KH-0002', N'0322334455', N'Trần Văn Bình', CAST(N'2024-02-15T09:30:00.0000000' AS DateTime2), 1200);
+
+INSERT [dbo].[KhachHang] ([id], [sdt], [hoVaTen], [ngayTao], [diemTichLuy]) 
+VALUES (N'KH-0003', N'0333445566', N'Lê Thị Hoa', CAST(N'2024-03-20T10:00:00.0000000' AS DateTime2), 350);
+
+INSERT [dbo].[KhachHang] ([id], [sdt], [hoVaTen], [ngayTao], [diemTichLuy]) 
+VALUES (N'KH-0004', N'0344556677', N'Phạm Thanh Tùng', CAST(N'2024-04-05T11:00:00.0000000' AS DateTime2), 2000);
+
+INSERT [dbo].[KhachHang] ([id], [sdt], [hoVaTen], [ngayTao], [diemTichLuy]) 
+VALUES (N'KH-0005', N'0355667788', N'Võ Thị Mai', CAST(N'2024-05-12T13:00:00.0000000' AS DateTime2), 150);
+
+INSERT [dbo].[KhachHang] ([id], [sdt], [hoVaTen], [ngayTao], [diemTichLuy]) 
+VALUES (N'KH-0006', N'0366778899', N'Đặng Minh Khoa', CAST(N'2024-06-18T14:30:00.0000000' AS DateTime2), 800);
+
+INSERT [dbo].[KhachHang] ([id], [sdt], [hoVaTen], [ngayTao], [diemTichLuy]) 
+VALUES (N'KH-0007', N'0377889900', N'Hoàng Thị Thu', CAST(N'2024-07-22T08:45:00.0000000' AS DateTime2), 0);
+
+INSERT [dbo].[KhachHang] ([id], [sdt], [hoVaTen], [ngayTao], [diemTichLuy]) 
+VALUES (N'KH-0008', N'0388990011', N'Bùi Văn Long', CAST(N'2024-08-30T09:15:00.0000000' AS DateTime2), 450);
+
+INSERT [dbo].[KhachHang] ([id], [sdt], [hoVaTen], [ngayTao], [diemTichLuy]) 
+VALUES (N'KH-0009', N'0399001122', N'Ngô Thị Thanh', CAST(N'2024-09-14T10:30:00.0000000' AS DateTime2), 3000);
+
+INSERT [dbo].[KhachHang] ([id], [sdt], [hoVaTen], [ngayTao], [diemTichLuy]) 
+VALUES (N'KH-0010', N'0310112233', N'Dương Quốc Hùng', CAST(N'2024-10-25T15:00:00.0000000' AS DateTime2), 100);
 
 INSERT [dbo].[KhoHang] VALUES (N'KHO-0001', 5000)
 INSERT [dbo].[KhoHang] VALUES (N'KHO-0002', 3000)

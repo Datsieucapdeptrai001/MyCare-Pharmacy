@@ -480,8 +480,8 @@ public class ManHinhQuenMatKhauOTP extends JDialog {
         String matKhauMoi = new String(txtMatKhauMoi.getPassword()).trim();
         String nhapLai = new String(txtNhapLaiMatKhau.getPassword()).trim();
 
-        if (matKhauMoi.isEmpty() || matKhauMoi.length() < 6) {
-            showError("Mật khẩu mới phải có ít nhất 6 ký tự.");
+        if (!isValidNewPassword(matKhauMoi)) {
+            showError("Mật khẩu mới phải có ít nhất 8 ký tự, gồm chữ và số.");
             return;
         }
 
@@ -503,7 +503,27 @@ public class ManHinhQuenMatKhauOTP extends JDialog {
         t.setRepeats(false);
         t.start();
     }
+    private boolean isValidNewPassword(String password) {
+        if (password == null || password.length() < 8) {
+            return false;
+        }
 
+        boolean hasLetter = false;
+        boolean hasDigit = false;
+
+        for (char c : password.toCharArray()) {
+            if (Character.isLetter(c)) {
+                hasLetter = true;
+            }
+
+            if (Character.isDigit(c)) {
+                hasDigit = true;
+            }
+        }
+
+        return hasLetter && hasDigit;
+    }
+    
     private void startCountdown(int seconds) {
         stopCountdown();
         secondsLeft = seconds;

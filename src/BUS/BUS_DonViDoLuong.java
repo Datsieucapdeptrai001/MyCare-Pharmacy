@@ -12,7 +12,19 @@ public class BUS_DonViDoLuong {
     public BUS_DonViDoLuong() {
         daoDVDL = new DAO_DonViDoLuong();
     }
+    public int layHeSoQuyDoi(String tenSP, String tenDVT) {
+        if (tenSP == null || tenDVT == null || tenSP.trim().isEmpty() || tenDVT.trim().isEmpty()) {
+            return 1;
+        }
+        return daoDVDL.layHeSoQuyDoi(tenSP.trim(), tenDVT.trim());
+    }
 
+    public String layTenDonViCoBan(String tenSP) {
+        if (tenSP == null || tenSP.trim().isEmpty()) {
+            return "Viên";
+        }
+        return daoDVDL.layTenDonViCoBan(tenSP.trim());
+    }
     /**
      * Lấy danh sách các đơn vị tính và giá tiền của một sản phẩm theo MÃ SẢN PHẨM
      */

@@ -410,13 +410,27 @@ public class ChiTietHoaDon extends JDialog {
             pnlLeft.add(Box.createRigidArea(new Dimension(0, 10)));
             JPanel pnlGhiChu = createInfoBox("GHI CHÚ HÓA ĐƠN");
             pnlGhiChu.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-         // Đổi 260px thành 220px
             JLabel lblGhiChu = new JLabel("<html><div style='width:220px; line-height: 1.4;'>" + displayNote.replace("\n", "<br>") + "</div></html>");
             lblGhiChu.setFont(new Font("Segoe UI", Font.PLAIN, 12));
             lblGhiChu.setForeground(Color.decode("#1F2937"));
             pnlGhiChu.add(lblGhiChu);
             pnlLeft.add(pnlGhiChu);
+        }
+
+        // ĐƯA KÊ ĐƠN VÀO CỘT TRÁI VÀ ÉP CHẶT LỀ TRÁI
+        if (bacSi != null && !bacSi.isEmpty()) {
+            pnlLeft.add(Box.createRigidArea(new Dimension(0, 10)));
+            JPanel pnlKeDon = createInfoBox("THÔNG TIN KÊ ĐƠN");
+            pnlKeDon.setAlignmentX(Component.LEFT_ALIGNMENT); // Ép Panel sát lề trái
+
+            JLabel lblBS = new JLabel("<html><div style='width:220px; line-height: 1.5;'>"
+                                    + "Bác sĩ: <b>" + bacSi + "</b><br>"
+                                    + "Cơ sở: <b>" + coSo + "</b>"
+                                    + (chuanDoan.isEmpty() ? "" : "<br>Chuẩn đoán: <b>" + chuanDoan + "</b>")
+                                    + "</div></html>");
+            lblBS.setAlignmentX(Component.LEFT_ALIGNMENT); // Ép Label chữ sát lề trái
+            pnlKeDon.add(lblBS);
+            pnlLeft.add(pnlKeDon);
         }
 
         // ================= CỘT PHẢI =================
@@ -430,22 +444,7 @@ public class ChiTietHoaDon extends JDialog {
         pnlHoaDon.add(new JLabel("<html>Phương thức: <font color='#009643'><b>" + phuongThuc + "</b></font></html>"));
         pnlRight.add(pnlHoaDon);
 
-        if (bacSi != null && !bacSi.isEmpty()) {
-            pnlRight.add(Box.createRigidArea(new Dimension(0, 10)));
-            JPanel pnlKeDon = createInfoBox("THÔNG TIN KÊ ĐƠN");
-            pnlKeDon.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-            // Đã bóp width xuống 260px để vừa vặn Form nhỏ
-         // Đổi 260px thành 220px
-            JLabel lblBS = new JLabel("<html><div style='width:220px; line-height: 1.5;'>"
-                                    + "Bác sĩ: <b>" + bacSi + "</b><br>"
-                                    + "Cơ sở: <b>" + coSo + "</b>"
-                                    + (chuanDoan.isEmpty() ? "" : "<br>Chuẩn đoán: <b>" + chuanDoan + "</b>")
-                                    + "</div></html>");
-            pnlKeDon.add(lblBS);
-            pnlRight.add(pnlKeDon);
-        }
-
+        // ================= RÁP BỐ CỤC =================
         JPanel wrapLeft = new JPanel(new BorderLayout());
         wrapLeft.setBackground(Color.WHITE);
         wrapLeft.add(pnlLeft, BorderLayout.NORTH);
@@ -538,25 +537,44 @@ public class ChiTietHoaDon extends JDialog {
             headerLieu[3] = ""; headerLieu[4] = ""; headerLieu[5] = ""; headerLieu[6] = ""; 
             displayList.add(headerLieu);
 
+         // ...
             for (Object[] sp : itemsInLieu) {
                 Object[] childRow = sp.clone();
                 String name = sp[1].toString();
                 String hsdInfo = "";
-                
-                if (sp.length > 7 && sp[7] != null) {
+
+                // 1. Gọt bỏ cụm "Ngày hết hạn" bị dính liền từ Database đẩy lên
+                if (name.contains("Ngày hết hạn:")) {
+                    int idx = name.indexOf("Ngày hết hạn:");
+                    String hsdTuName = name.substring(idx + 13).trim(); 
+                    name = name.substring(0, idx).replace("<br>", "").trim(); 
+                    // Đổi màu xanh lá thành xám (#6B7280) và đổi "HSD:" thành "Ngày hết hạn:"
+                    hsdInfo = "<br><span style='color: #6B7280; font-size: 10.5px;'>Ngày hết hạn: " + hsdTuName + "</span>";
+                }
+                // 2. Nếu tên thuốc sạch, lấy HSD từ cột mảng như bình thường
+                else if (sp.length > 7 && sp[7] != null) {
                     String hsdRaw = sp[7].toString();
                     if (hsdRaw.startsWith("HSD_")) {
                         String[] splitHsd = hsdRaw.split("HSD_.*?(?=\\d{2}/)");
-                        if (splitHsd.length > 1) hsdInfo = "<br><span style='color: #059669; font-size: 10.5px;'>HSD: " + splitHsd[1] + "</span>";
+                        if (splitHsd.length > 1) {
+                            hsdInfo = "<br><span style='color: #6B7280; font-size: 10.5px;'>Ngày hết hạn: " + splitHsd[1] + "</span>";
+                        }
                     } else if (!hsdRaw.trim().isEmpty()) {
-                        hsdInfo = "<br><span style='color: #059669; font-size: 10.5px;'>HSD: " + hsdRaw + "</span>";
+                        String cleanHsd = hsdRaw.replace("Ngày hết hạn:", "").trim(); 
+                        hsdInfo = "<br><span style='color: #6B7280; font-size: 10.5px;'>Ngày hết hạn: " + cleanHsd + "</span>";
                     }
                 }
 
-                childRow[1] = "<html><div style='padding-top: 2px; margin-left: 15px;'>" 
-                           + "<span style='font-family: Segoe UI; font-size: 12px; color: #111827;'>- " + name + "</span>" + hsdInfo
-                           + "</div></html>";
-                displayList.add(childRow);
+                name = name.replaceAll("(?i)<br\\s*/?>", "").trim();
+
+             // Chèn thêm &nbsp; vào trước HSD để dòng Ngày hết hạn lùi vào thẳng hàng với chữ cái đầu của tên thuốc
+             String hsdLuiVao = hsdInfo.replace("<br>", "<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;");
+
+             childRow[1] = "<html>" 
+                        + "<span style='font-family: Segoe UI; font-size: 11px; color: #111827;'>&nbsp;&nbsp;&nbsp;- " + name + "</span>" 
+                        + hsdLuiVao
+                        + "</html>";
+             displayList.add(childRow);
             }
         }
 
@@ -569,9 +587,13 @@ public class ChiTietHoaDon extends JDialog {
                 String hsdRaw = sp[7].toString();
                 if (hsdRaw.startsWith("HSD_")) {
                     String[] splitHsd = hsdRaw.split("HSD_.*?(?=\\d{2}/)");
-                    if (splitHsd.length > 1) hsdInfo = "<br><span style='color: #059669; font-size: 10.5px;'>HSD: " + splitHsd[1] + "</span>";
+                    if (splitHsd.length > 1) {
+                        // Đổi thành "Ngày hết hạn" màu xám
+                        hsdInfo = "<br><span style='color: #6B7280; font-size: 10.5px;'>Ngày hết hạn: " + splitHsd[1] + "</span>";
+                    }
                 } else if (!hsdRaw.trim().isEmpty()) {
-                    hsdInfo = "<br><span style='color: #059669; font-size: 10.5px;'>HSD: " + hsdRaw + "</span>";
+                    String cleanHsd = hsdRaw.replace("Ngày hết hạn:", "").trim(); 
+                    hsdInfo = "<br><span style='color: #6B7280; font-size: 10.5px;'>Ngày hết hạn: " + cleanHsd + "</span>";
                 }
             }
 
@@ -589,7 +611,7 @@ public class ChiTietHoaDon extends JDialog {
 
         for (Object[] sp : giftItems) {
             Object[] giftRow = sp.clone();
-            giftRow[1] = "<html><span style='font-family: Segoe UI; font-size: 12px; color: #111827;'>" + sp[1].toString() + "</span></html>";
+            giftRow[1] = "<html><span style='font-family: Segoe UI; font-size: 11px; color: #111827;'>" + sp[1].toString() + "</span></html>";
             displayList.add(giftRow);
         }
 
@@ -607,16 +629,16 @@ public class ChiTietHoaDon extends JDialog {
         JTable table = new JTable(model);
         int totalTableHeight = 0;
         
-        // ==== CHIỀU CAO ĐÃ ĐƯỢC ÉP LẠI NHỎ HƠN ====
+     // ==== CHIỀU CAO ĐÃ ĐƯỢC TĂNG LÊN ĐỂ RỘNG RÃI HƠN ====
         for (int row = 0; row < table.getRowCount(); row++) {
-            int rowHeight = 24; // <-- Sửa xuống 24
+            int rowHeight = 36; // Tăng từ 24 lên 36 cho thoáng
             Object val = table.getValueAt(row, 0); 
             if (val != null) {
                 String valStr = val.toString().toLowerCase();
                 if (valStr.contains("[liều]")) {
-                    rowHeight = 22; // <-- Sửa xuống 22
+                    rowHeight = 30; // Tiêu đề liều
                 } else if (valStr.contains("<br")) {
-                    rowHeight = 32; // <-- Sửa xuống 32 (cho dòng có HSD)
+                    rowHeight = 50; // Thuốc có HSD (2 dòng) cần cao 50px mới đủ khoảng thở
                 }
             }
             table.setRowHeight(row, rowHeight);
@@ -663,7 +685,7 @@ public class ChiTietHoaDon extends JDialog {
         table.getColumnModel().getColumn(3).setMinWidth(75); table.getColumnModel().getColumn(3).setMaxWidth(85);
         table.getColumnModel().getColumn(4).setCellRenderer(center); table.getColumnModel().getColumn(4).setMinWidth(40); table.getColumnModel().getColumn(4).setMaxWidth(50);
         table.getColumnModel().getColumn(5).setCellRenderer(right); table.getColumnModel().getColumn(5).setMinWidth(85); table.getColumnModel().getColumn(5).setMaxWidth(95);
-        table.getColumnModel().getColumn(0).setMinWidth(150);
+        table.getColumnModel().getColumn(0).setMinWidth(280);
 
         JScrollPane sp = new JScrollPane(table); 
         sp.getViewport().setBackground(Color.WHITE); 

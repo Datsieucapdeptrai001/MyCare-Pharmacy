@@ -13,7 +13,48 @@ public class DAO_DonViDoLuong {
 
     public DAO_DonViDoLuong() {
     }
+    /**
+     * Lấy hệ số quy đổi ra đơn vị cơ bản
+     */
+    public int layHeSoQuyDoi(String tenSP, String tenDVT) {
+        int heSo = 1;
+        String sql = "SELECT dv.chuyenDoiDonViCoBan FROM DonViDoLuong dv JOIN SanPham sp ON dv.sanPhamId = sp.id WHERE sp.ten = ? AND dv.ten = ?";
+        try (Connection con = ConnectDB.getInstance().getConnection();
+             PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setString(1, tenSP);
+            pst.setString(2, tenDVT);
+            try (ResultSet rs = pst.executeQuery()) {
+                if (rs.next()) {
+                    heSo = (int) rs.getDouble(1);
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Lỗi SQL DAO_DonViDoLuong (layHeSoQuyDoi): " + e.getMessage());
+            e.printStackTrace();
+        }
+        return heSo > 0 ? heSo : 1;
+    }
 
+    /**
+     * Lấy tên của đơn vị nhỏ nhất (Hệ số = 1)
+     */
+    public String layTenDonViCoBan(String tenSP) {
+        String tenDV = "Viên"; // Mặc định
+        String sql = "SELECT dv.ten FROM DonViDoLuong dv JOIN SanPham sp ON dv.sanPhamId = sp.id WHERE sp.ten = ? AND dv.chuyenDoiDonViCoBan = 1";
+        try (Connection con = ConnectDB.getInstance().getConnection();
+             PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setString(1, tenSP);
+            try (ResultSet rs = pst.executeQuery()) {
+                if (rs.next()) {
+                    tenDV = rs.getString(1);
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Lỗi SQL DAO_DonViDoLuong (layTenDonViCoBan): " + e.getMessage());
+            e.printStackTrace();
+        }
+        return tenDV;
+    }
     /**
      * Lấy danh sách các đơn vị tính và giá tiền của một sản phẩm theo MÃ SẢN PHẨM
      */

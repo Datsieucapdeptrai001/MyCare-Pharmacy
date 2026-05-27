@@ -1,73 +1,75 @@
 package DAO;
+import Entity.BoLocThongKe;
+import Entity.DoiChieuCa;
 
 import ConnectDB.ConnectDB;
 import java.sql.*;
 import java.time.LocalDateTime;
 import java.util.*;
 
-import BUS.BUS_ThongKe.ThongKeFilter;
 
 public class DAO_ThongKe {
 
     public DAO_ThongKe() {
     }
 
+    // Lấy kết nối DB từ singleton ConnectDB
     private Connection getConn() {
         return ConnectDB.getInstance().getConnection();
     }
 
-    public void applyFilter(BUS.BUS_ThongKe.ThongKeFilter filter, StringBuilder sql, List<Object> params,
+    // Gắn thêm điều kiện WHERE vào câu SQL dựa trên filter (NV, ca, năm, tháng, quý, tùy chỉnh)
+    // dateCol = tên cột ngày (vd "hd.ngayLapHD"), nvCol = tên cột nhân viên
+    // Tự động loại trừ HĐ Lưu nháp và Đã hủy
+    public void applyFilter(Entity.BoLocThongKe filter, StringBuilder sql, List<Object> params,
             String dateCol, String nvCol) {
         if (filter == null)
             return;
         sql.append(" AND (hd.ghiChu IS NULL OR (hd.ghiChu NOT LIKE N'%Lưu nháp%' AND hd.ghiChu NOT LIKE N'%Đã hủy%'))");
 
-        // 1. Lọc theo nhân viên
-        if (filter.maNV != null && !filter.maNV.isEmpty()) {
+        // Lọc theo mã nhân viên nếu có
+        if (filter.getMaNV() != null && !filter.getMaNV().isEmpty()) {
             sql.append(" AND ").append(nvCol).append(" = ?");
-            params.add(filter.maNV);
+            params.add(filter.getMaNV());
         }
 
-        // 2. Lọc theo thời gian bắt đầu hoặc Ca làm việc
-        if (filter.startTime != null) {
+        // Lọc theo giờ bắt đầu ca (startTime) hoặc theo số ca (1=sáng 6-13, 2=chiều 14-21, 3=tối 22-6)
+        if (filter.getStartTime() != null) {
             sql.append(" AND ").append(dateCol).append(" >= ?");
-            params.add(Timestamp.valueOf(filter.startTime));
-        } else if (filter.ca != null && filter.ca > 0) {
-            if (filter.ca == 1)
+            params.add(Timestamp.valueOf(filter.getStartTime()));
+        } else if (filter.getCa() != null && filter.getCa() > 0) {
+            if (filter.getCa() == 1)
                 sql.append(" AND DATEPART(HOUR, ").append(dateCol).append(") BETWEEN 6 AND 13");
-            else if (filter.ca == 2)
+            else if (filter.getCa() == 2)
                 sql.append(" AND DATEPART(HOUR, ").append(dateCol).append(") BETWEEN 14 AND 21");
-            else if (filter.ca == 3)
+            else if (filter.getCa() == 3)
                 sql.append(" AND (DATEPART(HOUR, ").append(dateCol).append(") >= 22 OR DATEPART(HOUR, ").append(dateCol)
                         .append(") < 6)");
         }
 
-        // ----------------------------------------------------
-        // ĐÂY LÀ ĐOẠN MÌNH THÊM LỌC NĂM VÀO NÈ CẬU:
-        // ----------------------------------------------------
-        if (filter.year != null) {
+        // Lọc theo năm nếu có
+        if (filter.getYear() != null) {
             sql.append(" AND YEAR(").append(dateCol).append(") = ?");
-            params.add(filter.year);
+            params.add(filter.getYear());
         }
-        // ----------------------------------------------------
 
-        // 3. Lọc theo Tháng / Quý / Tùy chỉnh
-        if ("THANG".equals(filter.modeLocThoiGian) && filter.month != null) {
+        // Lọc theo tháng / quý / khoảng ngày tùy chỉnh (fromDate - toDate)
+        if ("THANG".equals(filter.getModeLocThoiGian()) && filter.getMonth() != null) {
             sql.append(" AND MONTH(").append(dateCol).append(") = ?");
-            params.add(filter.month);
-        } else if ("QUY".equals(filter.modeLocThoiGian) && filter.quarter != null) {
-            if (filter.quarter == 1)
+            params.add(filter.getMonth());
+        } else if ("QUY".equals(filter.getModeLocThoiGian()) && filter.getQuarter() != null) {
+            if (filter.getQuarter() == 1)
                 sql.append(" AND MONTH(").append(dateCol).append(") BETWEEN 1 AND 3");
-            else if (filter.quarter == 2)
+            else if (filter.getQuarter() == 2)
                 sql.append(" AND MONTH(").append(dateCol).append(") BETWEEN 4 AND 6");
-            else if (filter.quarter == 3)
+            else if (filter.getQuarter() == 3)
                 sql.append(" AND MONTH(").append(dateCol).append(") BETWEEN 7 AND 9");
-            else if (filter.quarter == 4)
+            else if (filter.getQuarter() == 4)
                 sql.append(" AND MONTH(").append(dateCol).append(") BETWEEN 10 AND 12");
-        } else if ("TUYCHINH".equals(filter.modeLocThoiGian) && filter.fromDate != null && filter.toDate != null) {
+        } else if ("TUYCHINH".equals(filter.getModeLocThoiGian()) && filter.getFromDate() != null && filter.getToDate() != null) {
             sql.append(" AND CAST(").append(dateCol).append(" AS DATE) BETWEEN ? AND ?");
-            params.add(filter.fromDate);
-            params.add(filter.toDate);
+            params.add(filter.getFromDate());
+            params.add(filter.getToDate());
         }
     }
 
@@ -75,6 +77,7 @@ public class DAO_ThongKe {
     // LEGACY METHODS — Vẫn giữ vì BUS_ThongKe vẫn dùng trực tiếp
     // =====================================================================
 
+    // Đếm số HĐ loại BAN_HANG trong khoảng tuNgay - denNgay (bỏ HĐ nháp/hủy)
     public int demSoLuongHoaDon(LocalDateTime tuNgay, LocalDateTime denNgay) {
         int soLuong = 0;
         String sql = "SELECT COUNT(*) as TongSo FROM HoaDon WHERE ngayLapHD BETWEEN ? AND ? AND loaiHD = 'BAN_HANG'" +
@@ -92,11 +95,13 @@ public class DAO_ThongKe {
         return soLuong;
     }
 
-    public double tinhDoanhThu(LocalDateTime tuNgay, LocalDateTime denNgay) {
+    // Tính doanh thu thuần trong khoảng tuNgay - denNgay
+    // Công thức: SUM(thanhTien / (1 + VAT%)) cho BAN_HANG và DOI_HANG xuất
+    //            trừ đi phần TRA_HANG và DOI_HANG nhận lại
+    //            rồi trừ thêm tiền giảm từ điểm thưởng (đọc từ ghiChu)
+    // Dùng nội bộ bởi getRawCogsData — không phải public API
+    private double tinhDoanhThu(LocalDateTime tuNgay, LocalDateTime denNgay) {
         double doanhThu = 0;
-        // BUG FIX: Tính đúng cả 3 loại hóa đơn:
-        //   BAN_HANG + DOI_HANG (xuất mới) cộng vào doanh thu
-        //   TRA_HANG + DOI_HANG (nhận lại) trừ khỏi doanh thu
         String sql = "SELECT hd.id, hd.ghiChu, hd.loaiHD, "
                 + "  SUM(CASE "
                 + "    WHEN hd.loaiHD = 'BAN_HANG' OR (hd.loaiHD = 'DOI_HANG' AND ct.soLuong > 0) "
@@ -117,13 +122,9 @@ public class DAO_ThongKe {
             pst.setTimestamp(2, Timestamp.valueOf(denNgay));
             try (ResultSet rs = pst.executeQuery()) {
                 while (rs.next()) {
-                    double dtNet = rs.getDouble("dtThuanNet");
-                    // Chỉ trừ điểm thưởng cho hóa đơn BAN_HANG (KM% đã baked vào ct.thanhTien)
-                    double tienDiemTru = 0;
-                    if ("BAN_HANG".equals(rs.getString("loaiHD"))) {
-                        tienDiemTru = tinhTienDiemTruInline(rs.getString("ghiChu"));
-                    }
-                    doanhThu += dtNet - tienDiemTru;
+                    // DAO chỉ cộng dữ liệu thô từ DB.
+                    // Việc trừ điểm thưởng/KM từ ghiChu là nghiệp vụ → BUS_ThongKe.tinhTienThucTe()
+                    doanhThu += rs.getDouble("dtThuanNet");
                 }
             }
         } catch (SQLException e) {
@@ -132,28 +133,15 @@ public class DAO_ThongKe {
         return doanhThu;
     }
 
-    private double tinhTienDiemTruInline(String ghiChu) {
-        double tienDiemTru = 0;
-        if (ghiChu == null || ghiChu.isEmpty()) return 0;
-        String[] parts = ghiChu.split("\\|");
-        for (String p : parts) {
-            p = p.trim();
-            if (p.startsWith("Dùng điểm: -") || p.contains("KM_GIAM:")) {
-                try {
-                    tienDiemTru += Long.parseLong(p.replaceAll("[^0-9]", ""));
-                } catch (Exception ignored) {}
-            }
-        }
-        return tienDiemTru;
-    }
+    // NOTE: tinhTienDiemTruInline đã bị XÓA — nghiệp vụ parse ghiChu thuộc tầng BUS.
+    // BUS_ThongKe.tinhTienThucTe() thực hiện chức năng tương đương.
 
-    public double tinhLoiNhuan(LocalDateTime tuNgay, LocalDateTime denNgay) {
-        // BUG FIX: Giá vốn (COGS) phải tính từ PhanBoLoHang (giá vốn hàng thực tế xuất bán),
-        // không phải từ LoHang.ngayNhap (có thể nhập trước/sau kỳ báo cáo).
-        double dt = tinhDoanhThu(tuNgay, denNgay);
-        double cp = 0;
-        // COGS = giá vốn xuất kho (BAN_HANG + DOI_HANG xuất mới)
-        //      - giá vốn hàng nhận lại kho (TRA_HANG + DOI_HANG nhận lại)
+    // Tính lợi nhuận = doanh thu thuần - giá vốn hàng bán (COGS) trong khoảng thời gian
+    // COGS lấy từ PhanBoLoHang (giá vốn thực tế xuất bán), trừ đi giá vốn hàng nhận lại (TRA/DOI)
+    // Trả về raw COGS từ DB: double[]{giaVonBan, giaVonHoan}
+    // BUS_ThongKe.getTongLoiNhuan() nhận mảng này rồi tính: loiNhuan = doanhThu - (giaVonBan - giaVonHoan)
+    public double[] getRawCogsData(LocalDateTime tuNgay, LocalDateTime denNgay) {
+        double[] result = {0, 0};
         String sql =
             "SELECT " +
             "  ISNULL(SUM(CASE " +
@@ -183,25 +171,21 @@ public class DAO_ThongKe {
             pst.setTimestamp(2, Timestamp.valueOf(denNgay));
             try (ResultSet rs = pst.executeQuery()) {
                 if (rs.next()) {
-                    double giaVonBan  = rs.getDouble("giaVonBan");
-                    double giaVonHoan = rs.getDouble("giaVonHoan");
-                    cp = giaVonBan - giaVonHoan;
+                    result[0] = rs.getDouble("giaVonBan");
+                    result[1] = rs.getDouble("giaVonHoan");
                 }
             }
         } catch (SQLException e) {
             e.printStackTrace();
         }
-        return dt - cp;
+        return result;
     }
 
     // =====================================================================
     // NHÂN VIÊN DƯỢC SĨ
     // =====================================================================
 
-    /**
-     * Trả về List<String[3]>: {id, hoVaTen, chucVu} của tất cả dược sĩ đang làm
-     * việc
-     */
+    // Lấy danh sách dược sĩ đang làm việc: trả về List<{id, hoVaTen, chucVu}>
     public List<String[]> getDuocSiList() {
         List<String[]> list = new ArrayList<>();
         String sql = "SELECT id, hoVaTen, chucVu FROM NhanVien "
@@ -215,6 +199,8 @@ public class DAO_ThongKe {
         return list;
     }
 
+    // Lấy phương thức thanh toán (phuongThucThanhToan) của 1 HĐ theo id
+    // Mặc định trả về "TIEN_MAT" nếu không tìm thấy
     public String getPTTT(String hdId) {
         String sql = "SELECT phuongThucThanhToan FROM HoaDon WHERE id=?";
         try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql)) {
@@ -228,7 +214,9 @@ public class DAO_ThongKe {
         return "TIEN_MAT";
     }
 
-    public List<Object[]> getRawHDHomNay(BUS.BUS_ThongKe.ThongKeFilter filter, String pttt) {
+    // Lấy raw HĐ BAN_HANG hôm nay, có thể lọc thêm theo pttt và filter
+    // Trả về List<{rỗng, tongGocCoVAT, ghiChu, tongGocChuaVAT}>
+    public List<Object[]> getRawHDHomNay(Entity.BoLocThongKe filter, String pttt) {
         List<Object[]> result = new ArrayList<>();
         StringBuilder sql = new StringBuilder("SELECT hd.id, hd.ghiChu, "
                 + "SUM(ABS(ct.thanhTien)) as tongGocCoVAT, "
@@ -249,21 +237,14 @@ public class DAO_ThongKe {
             for (int i = 0; i < params.size(); i++) ps.setObject(i + 1, params.get(i));
             ResultSet rs = ps.executeQuery();
             while (rs.next())
-                // TRẢ VỀ 4 PHẦN TỬ CHUẨN FORM
                 result.add(new Object[] { "", rs.getDouble("tongGocCoVAT"), rs.getString("ghiChu"), rs.getDouble("tongGocChuaVAT") });
         } catch (Exception e) { e.printStackTrace(); }
         return result;
     }
-    
-    // RAW DATA — NHÓM HĐ BÁN HÀNG 7 NGÀY QUA
-    // Trả về: List<Object[]> = { tongGocCoVAT(double), ghiChu(String) }
-    /**
-     * Raw HĐ bán hàng 7 ngày qua.
-     *
-     * @param maNV ID nhân viên (rỗng/null = tất cả)
-     * @param pttt phương thức thanh toán (null = tất cả)
-     */
-    public List<Object[]> getRawHD7NgayQua(BUS.BUS_ThongKe.ThongKeFilter filter, String pttt) {
+
+    // Lấy raw HĐ BAN_HANG 7 ngày qua, có thể lọc theo pttt và filter
+    // Trả về List<{id, tongGocCoVAT, ghiChu, tongGocChuaVAT}>
+    public List<Object[]> getRawHD7NgayQua(Entity.BoLocThongKe filter, String pttt) {
         List<Object[]> result = new ArrayList<>();
         StringBuilder sql = new StringBuilder("SELECT hd.id, hd.ghiChu, "
                 + "SUM(ABS(ct.thanhTien)) as tongGocCoVAT, "
@@ -285,7 +266,6 @@ public class DAO_ThongKe {
                 ps.setObject(i + 1, params.get(i));
             ResultSet rs = ps.executeQuery();
             while (rs.next())
-                // TRẢ VỀ MẢNG 4 PHẦN TỬ (Đồng bộ cấu trúc)
                 result.add(new Object[] { rs.getString("id"), rs.getDouble("tongGocCoVAT"), rs.getString("ghiChu"), rs.getDouble("tongGocChuaVAT") });
         } catch (Exception e) {
             e.printStackTrace();
@@ -293,6 +273,8 @@ public class DAO_ThongKe {
         return result;
     }
 
+    // Lấy raw HĐ BAN_HANG trong khoảng tuNgay - denNgay
+    // Trả về List<{rỗng, tongGocCoVAT, ghiChu, tongGocChuaVAT}>
     public List<Object[]> getRawHDByDateRange(LocalDateTime tuNgay, LocalDateTime denNgay) {
         List<Object[]> result = new ArrayList<>();
         String sql = "SELECT hd.ghiChu, "
@@ -315,6 +297,8 @@ public class DAO_ThongKe {
         return result;
     }
 
+    // Lấy raw HĐ BAN_HANG của 1 NV từ thời điểm start, lọc thêm theo pttt nếu có
+    // Trả về List<{id, tongGocCoVAT, ghiChu, tongGocChuaVAT}>
     public List<Object[]> getRawHDTheoCa(String maNV, LocalDateTime start, String pttt) {
         List<Object[]> result = new ArrayList<>();
         String ptttCond = (pttt != null && !pttt.isEmpty()) ? " AND hd.phuongThucThanhToan='" + pttt + "'" : "";
@@ -338,7 +322,9 @@ public class DAO_ThongKe {
         return result;
     }
 
-    public List<Object[]> getRawHD12Thang(int year, BUS.BUS_ThongKe.ThongKeFilter filter) {
+    // Lấy doanh thu thuần từng tháng (1-12) của năm year
+    // Trả về List<{thang(int), doanhThuThuan(double)}>
+    public List<Object[]> getRawHD12Thang(int year, Entity.BoLocThongKe filter) {
         List<Object[]> result = new ArrayList<>();
         StringBuilder sql = new StringBuilder("SELECT MONTH(hd.ngayLapHD) m, "
                 + "SUM(ROUND(ABS(ct.thanhTien) / (1 + ISNULL(sp.thueVAT, 0)/100.0), 0)) AS doanhThuThuan "
@@ -359,12 +345,14 @@ public class DAO_ThongKe {
         return result;
     }
 
-    public List<Object[]> getRawHD30Ngay(BUS.BUS_ThongKe.ThongKeFilter filter) {
+    // Lấy raw HĐ BAN_HANG 30 ngày gần nhất, nhóm theo ngày
+    // Trả về List<{ngay(dd/MM/yyyy), id, tongGocCoVAT, ghiChu, tongGocChuaVAT}>
+    public List<Object[]> getRawHD30Ngay(Entity.BoLocThongKe filter) {
         List<Object[]> result = new ArrayList<>();
         StringBuilder sql = new StringBuilder(
                 "SELECT CONVERT(NVARCHAR,CAST(hd.ngayLapHD AS DATE),103) d, hd.id, hd.ghiChu, "
                         + "SUM(ABS(ct.thanhTien)) as tongGocCoVAT, "
-                + "SUM(ROUND(ABS(ct.thanhTien) / (1 + ISNULL(sp.thueVAT, 0)/100.0), 0)) as tongGocChuaVAT " 
+                + "SUM(ROUND(ABS(ct.thanhTien) / (1 + ISNULL(sp.thueVAT, 0)/100.0), 0)) as tongGocChuaVAT "
                         + "FROM HoaDon hd "
                         + "JOIN ChiTietHoaDon ct ON ct.hoaDonId=hd.id "
                         + "JOIN DonViDoLuong dvl ON dvl.id=ct.donViDoLuongId AND dvl.sanPhamId=ct.sanPhamId "
@@ -383,19 +371,10 @@ public class DAO_ThongKe {
         } catch (Exception e) { e.printStackTrace(); }
         return result;
     }
-    // =====================================================================
-    // RAW DATA — NHÓM ĐỔI / TRẢ HÀNG (cho BUS.tinhDieuChinhDoiTra)
-    // Trả về: List<Object[]> = { loaiHD(String), ghiChu(String) }
-    // =====================================================================
 
-    /**
-     * Raw HĐ đổi/trả đã hoàn thành (BUS xử lý split chuỗi ghiChu).
-     *
-     * @param dateCondition điều kiện lọc ngày, VD
-     *                      "CONVERT(DATE,hd.ngayLapHD)=CONVERT(DATE,GETDATE())"
-     * @param extraCond     điều kiện bổ sung (NV, ca...)
-     */
-    public List<Object[]> getRawHDDoiTra(String dateCondition, BUS.BUS_ThongKe.ThongKeFilter filter) {
+    // Lấy raw HĐ đổi/trả đã hoàn thành theo điều kiện ngày và filter
+    // Trả về List<{loaiHD, ghiChu}> để BUS parse tiền hoàn/bù thêm
+    public List<Object[]> getRawHDDoiTra(String dateCondition, Entity.BoLocThongKe filter) {
         List<Object[]> result = new ArrayList<>();
         StringBuilder sql = new StringBuilder("SELECT loaiHD, ghiChu FROM HoaDon hd WHERE " + dateCondition
                 + " AND hd.loaiHD IN ('TRA_HANG','DOI_HANG') AND hd.ghiChu LIKE N'%Hoàn thành%'");
@@ -413,10 +392,11 @@ public class DAO_ThongKe {
         return result;
     }
 
-    public List<Object[]> getRawHDGioTrongNgay(String dateYMD, BUS.BUS_ThongKe.ThongKeFilter filter) {
+    // Lấy doanh thu thực thu (có VAT) từng giờ trong ngày dateYMD
+    // Trả về List<{gio(int 0-23), tienThucThu(double)}>
+    public List<Object[]> getRawHDGioTrongNgay(String dateYMD, Entity.BoLocThongKe filter) {
         List<Object[]> result = new ArrayList<>();
         StringBuilder sql = new StringBuilder("SELECT DATEPART(HOUR, hd.ngayLapHD) AS h, "
-                // SUM(ABS(ct.thanhTien)) = tiền thực thu có VAT, sau KM baked-in
                 + "SUM(ABS(ct.thanhTien)) AS tienThucThu "
                 + "FROM HoaDon hd "
                 + "JOIN ChiTietHoaDon ct ON hd.id = ct.hoaDonId "
@@ -435,7 +415,9 @@ public class DAO_ThongKe {
         return result;
     }
 
-    public List<Object[]> getRawHDForTopSP(String dateYMD, BUS.BUS_ThongKe.ThongKeFilter filter) {
+    // Lấy raw HĐ BAN_HANG trong ngày dateYMD để tính Top SP
+    // Trả về List<{id, tongGocCoVAT, ghiChu, tongGocChuaVAT}>
+    public List<Object[]> getRawHDForTopSP(String dateYMD, Entity.BoLocThongKe filter) {
         List<Object[]> result = new ArrayList<>();
         StringBuilder sql = new StringBuilder("SELECT hd.id, hd.ghiChu, "
                 + "SUM(ABS(ct.thanhTien)) as tongGocCoVAT, "
@@ -456,10 +438,11 @@ public class DAO_ThongKe {
                 result.add(new Object[] { rs.getString("id"), rs.getDouble("tongGocCoVAT"), rs.getString("ghiChu"), rs.getDouble("tongGocChuaVAT") });
         } catch (Exception e) { e.printStackTrace(); }
         return result;
-    }	
+    }
 
-    /** SP xuất ra từ DOI_HANG hôm nay (soLuong > 0) — dùng cho Top SP popup */
-    public List<Object[]> getSPDoiHangXuatRaTrongNgay(String dateYMD, BUS.BUS_ThongKe.ThongKeFilter filter) {
+    // Lấy SP xuất ra từ HĐ DOI_HANG hôm nay (chỉ dòng soLuong > 0 = hàng đổi mới cho khách)
+    // Trả về List<{tenSP, soLuong, dtThuan}>
+    public List<Object[]> getSPDoiHangXuatRaTrongNgay(String dateYMD, Entity.BoLocThongKe filter) {
         List<Object[]> result = new ArrayList<>();
         StringBuilder sql = new StringBuilder(
             "SELECT sp.ten, SUM(ct.soLuong) AS sl, " +
@@ -482,6 +465,8 @@ public class DAO_ThongKe {
         return result;
     }
 
+    // Lấy chi tiết các dòng sản phẩm trong 1 HĐ theo hdId
+    // Trả về List<{tenSP, soLuong, doanhThuThuan}>
     public List<Object[]> getRawCTHD(String hdId) {
         List<Object[]> result = new ArrayList<>();
         String sql = "SELECT sp.ten, ct.soLuong, "
@@ -500,7 +485,9 @@ public class DAO_ThongKe {
         return result;
     }
 
-    public List<Object[]> getRawHDCaByTime(String nvId, int year, BUS.BUS_ThongKe.ThongKeFilter filter, int startHour, int endHour) {
+    // Lấy raw HĐ BAN_HANG của 1 NV trong năm year, lọc theo khoảng giờ ca (startHour-endHour)
+    // Trả về List<{id, tongGocCoVAT, ghiChu, tongGocChuaVAT}>
+    public List<Object[]> getRawHDCaByTime(String nvId, int year, Entity.BoLocThongKe filter, int startHour, int endHour) {
         List<Object[]> result = new ArrayList<>();
         String timeCond = (startHour > endHour)
                 ? "AND (DATEPART(HOUR,hd.ngayLapHD) >= 22 OR DATEPART(HOUR,hd.ngayLapHD) < 6)"
@@ -527,7 +514,9 @@ public class DAO_ThongKe {
         return result;
     }
 
-    public List<Object[]> getRawKHHD(int year, BUS.BUS_ThongKe.ThongKeFilter filter) {
+    // Lấy raw HĐ BAN_HANG của KH có tài khoản (join KhachHang) trong năm year
+    // Trả về List<{hoVaTen, diemTichLuy, tongGocCoVAT, ghiChu, tongGocChuaVAT}>
+    public List<Object[]> getRawKHHD(int year, Entity.BoLocThongKe filter) {
         List<Object[]> result = new ArrayList<>();
         StringBuilder sql = new StringBuilder("SELECT kh.hoVaTen, kh.diemTichLuy, hd.ghiChu, "
                 + "SUM(ABS(ct.thanhTien)) as tongGocCoVAT, "
@@ -552,29 +541,31 @@ public class DAO_ThongKe {
         return result;
     }
 
-    // =====================================================================
-    // RAW DATA — NHÓM HĐ GẦN NHẤT / GIÁ TRỊ CAO
-    // Trả về: List<Object[]> = { hdId, tenKH, tongGocCoVAT, ghiChu, pttt, gio }
-    // gio = null nếu không cần
-    // =====================================================================
-
-    /**
-     * Raw data các hóa đơn bán hàng hôm nay, sắp xếp theo thời gian mới nhất.
-     */
-    public List<Object[]> getRawHDDashboard(BUS.BUS_ThongKe.ThongKeFilter filter, int limit, boolean includeGio) {
+    // Lấy danh sách HĐ hôm nay (BAN_HANG + TRA_HANG + DOI_HANG) để hiển thị dashboard
+    // limit > 0 sẽ lấy TOP n, includeGio=true sẽ thêm cột giờ HH:mm
+    // Trả về List<{id, tenKH, tongGocCoVAT, ghiChu, pttt, gio, loaiHD}>
+    public List<Object[]> getRawHDDashboard(Entity.BoLocThongKe filter, int limit, boolean includeGio) {
         List<Object[]> result = new ArrayList<>();
         String topStr = limit > 0 ? "TOP " + limit + " " : "";
         String gioCol = includeGio ? ", FORMAT(hd.ngayLapHD, 'HH:mm') AS gio" : "";
-        
+        boolean hasDateFilter = filter != null && (
+            filter.getFromDate() != null ||
+            "THANG".equals(filter.getModeLocThoiGian()) || // bao gồm cả năm (month=null)
+            ("QUY".equals(filter.getModeLocThoiGian())   && filter.getQuarter() != null) ||
+            "CANAM".equals(filter.getModeLocThoiGian()));
+
         StringBuilder sql = new StringBuilder("SELECT " + topStr + "hd.id, ISNULL(kh.hoVaTen, N'Khách lẻ') AS kh, "
                 + "ISNULL(SUM(ABS(ct.thanhTien)), 0) AS tongGocCoVAT, "
-                + "hd.ghiChu, hd.phuongThucThanhToan AS pttt " + gioCol + ", hd.loaiHD " 
+                + "hd.ghiChu, hd.phuongThucThanhToan AS pttt " + gioCol + ", hd.loaiHD "
                 + "FROM HoaDon hd "
                 + "LEFT JOIN KhachHang kh ON hd.khachHangId = kh.id "
                 + "LEFT JOIN ChiTietHoaDon ct ON hd.id = ct.hoaDonId "
                 + "LEFT JOIN DonViDoLuong dvl ON ct.donViDoLuongId = dvl.id AND ct.sanPhamId = dvl.sanPhamId "
                 + "LEFT JOIN SanPham sp ON ct.sanPhamId = sp.id "
-                + "WHERE hd.loaiHD IN ('BAN_HANG', 'TRA_HANG', 'DOI_HANG') AND CAST(hd.ngayLapHD AS DATE) = CAST(GETDATE() AS DATE) ");
+                + "WHERE hd.loaiHD IN ('BAN_HANG', 'TRA_HANG', 'DOI_HANG') ");
+        if (!hasDateFilter) {
+            sql.append("AND CAST(hd.ngayLapHD AS DATE) = CAST(GETDATE() AS DATE) ");
+        }
         
         List<Object> params = new ArrayList<>();
         applyFilter(filter, sql, params, "hd.ngayLapHD", "hd.nhanVienId");
@@ -586,7 +577,6 @@ public class DAO_ThongKe {
             ResultSet rs = ps.executeQuery();
             while (rs.next()) {
                 String gio = includeGio ? rs.getString("gio") : null;
-                // Add thêm loaiHD vào mảng trả về
                 result.add(new Object[] { rs.getString("id"), rs.getString("kh"),
                         rs.getDouble("tongGocCoVAT"), rs.getString("ghiChu"),
                         rs.getString("pttt"), gio, rs.getString("loaiHD") });
@@ -595,7 +585,10 @@ public class DAO_ThongKe {
         return result;
     }
 
-    public List<Object[]> getRawHDDoiTraGio(String dateCondition, BUS.BUS_ThongKe.ThongKeFilter filter) {
+    // Lấy raw HĐ TRA_HANG/DOI_HANG theo điều kiện ngày, tính netRefund (có VAT) theo từng giờ
+    // Trả về List<{loaiHD, ghiChu, gio(int), netRefund_coVAT(double)}>
+    // netRefund âm = tiền hoàn ra, dương = tiền bù thêm vào
+    public List<Object[]> getRawHDDoiTraGio(String dateCondition, Entity.BoLocThongKe filter) {
         List<Object[]> result = new ArrayList<>();
         StringBuilder sql = new StringBuilder("SELECT hd.loaiHD, hd.ghiChu, DATEPART(HOUR, hd.ngayLapHD) AS h, "
                 + "SUM(CASE "
@@ -622,13 +615,14 @@ public class DAO_ThongKe {
     }
 
     // =====================================================================
-    // DONUT - PHÂN LOẠI SẢN PHẨM (không cần tinhTienThucTe → giữ nguyên)
+    // DONUT - PHÂN LOẠI SẢN PHẨM
     // =====================================================================
 
-    public int[] getSoLuongTheoLoaiSP(int year, BUS.BUS_ThongKe.ThongKeFilter filter) {
+    // Tính % số lượng bán theo từng loại SP (THUOC_KE_DON, THUOC_KHONG_KE_DON, THUC_PHAM_CHUC_NANG, MY_PHAM)
+    // Trả về int[4] = phần trăm (tổng = ~100%)
+    public int[] getSoLuongTheoLoaiSP(int year, Entity.BoLocThongKe filter) {
         String[] catDB = { "THUOC_KE_DON", "THUOC_KHONG_KE_DON", "THUC_PHAM_CHUC_NANG", "MY_PHAM" };
         int[] catVals = new int[4];
-        int total = 0;
 
         for (int i = 0; i < 4; i++) {
             StringBuilder sql = new StringBuilder("SELECT ISNULL(SUM(ct.soLuong),0) FROM ChiTietHoaDon ct "
@@ -645,26 +639,25 @@ public class DAO_ThongKe {
                     ps.setObject(p + 1, params.get(p));
                 ResultSet rs = ps.executeQuery();
                 if (rs.next())
-                    catVals[i] = Math.max(1, rs.getInt(1));
+                    catVals[i] = rs.getInt(1);
             } catch (Exception e) {
-                catVals[i] = 1;
+                catVals[i] = 0;
             }
-            total += catVals[i];
         }
-        int[] result = new int[4];
-        for (int i = 0; i < 4; i++)
-            result[i] = Math.max(1, (int) Math.round(catVals[i] * 100.0 / total));
-        return result;
+        return catVals;
     }
 
     // =====================================================================
-    // CHI PHÍ 12 THÁNG (không cần tinhTienThucTe → giữ nguyên)
+    // CHI PHÍ 12 THÁNG
     // =====================================================================
 
-    public double[] getChiPhi12Thang(int year, BUS.BUS_ThongKe.ThongKeFilter filter) {
+    // Tính giá vốn hàng bán (COGS) từng tháng trong năm year, đơn vị triệu đồng
+    // = Tổng giá vốn BAN_HANG - giá vốn hàng Đổi/Trả nhận lại
+    // Trả về double[12]
+    public double[] getChiPhi12Thang(int year, Entity.BoLocThongKe filter) {
         double[] data = new double[12];
         
-        // A. Tính tổng giá vốn bán hàng
+        // A. Tổng giá vốn hàng bán ra
         StringBuilder sqlBan = new StringBuilder(
             "SELECT MONTH(hd.ngayLapHD) as m, SUM(ISNULL(pbl_cost.giaVon, 0)) as cp " +
             "FROM HoaDon hd " +
@@ -686,11 +679,11 @@ public class DAO_ThongKe {
             ResultSet rs = ps.executeQuery();
             while(rs.next()) {
                 int m = rs.getInt("m");
-                if (m >= 1 && m <= 12) data[m-1] += rs.getDouble("cp") / 1_000_000.0;
+                if (m >= 1 && m <= 12) data[m-1] += rs.getDouble("cp");
             }
         } catch (Exception e) { e.printStackTrace(); }
 
-        // B. Trừ đi giá vốn của hàng Đổi/Trả
+        // B. Trừ giá vốn hàng Đổi/Trả nhận lại (soLuong < 0, đã hoàn thành)
         StringBuilder sqlTra = new StringBuilder(
             "SELECT MONTH(hd.ngayLapHD) as m, SUM(ISNULL(pbl_cost.giaVon, 0)) as cp " +
             "FROM HoaDon hd " +
@@ -713,20 +706,19 @@ public class DAO_ThongKe {
             ResultSet rs = ps.executeQuery();
             while(rs.next()) {
                 int m = rs.getInt("m");
-                if (m >= 1 && m <= 12) data[m-1] -= rs.getDouble("cp") / 1_000_000.0;
+                if (m >= 1 && m <= 12) data[m-1] -= rs.getDouble("cp");
             }
         } catch (Exception e) { e.printStackTrace(); }
 
-        for (int i = 0; i < 12; i++) data[i] = Math.max(0, data[i]);
         return data;
     }
 
     // =====================================================================
-    // THỐNG KÊ THEO NGÀY (10 ngày, đếm HĐ, v.v.)
+    // THỐNG KÊ THEO NGÀY
     // =====================================================================
 
-    /** 10 ngày gần nhất có HĐ, sắp xếp tăng dần, định dạng dd/MM/yyyy */
-    public List<String> get10NgayGanNhat(int year, BUS.BUS_ThongKe.ThongKeFilter filter) {
+    // Lấy 10 ngày gần nhất có HĐ BAN_HANG trong năm year, định dạng dd/MM/yyyy, sắp xếp tăng dần
+    public List<String> get10NgayGanNhat(int year, Entity.BoLocThongKe filter) {
         List<String> dates = new ArrayList<>();
         StringBuilder sql = new StringBuilder("SELECT TOP 10 CONVERT(NVARCHAR, CAST(hd.ngayLapHD AS DATE), 103) AS d "
                 + "FROM HoaDon hd WHERE hd.loaiHD='BAN_HANG' AND YEAR(hd.ngayLapHD)=?");
@@ -746,8 +738,8 @@ public class DAO_ThongKe {
         return dates;
     }
 
-    /** Đếm số HĐ của 1 NV trong 1 ngày cụ thể (định dạng dd/MM/yyyy) */
-    public int getDailyHDCuaNV(String nvId, String date, BUS.BUS_ThongKe.ThongKeFilter filter) {
+    // Đếm số HĐ BAN_HANG của 1 NV trong 1 ngày cụ thể (định dạng dd/MM/yyyy)
+    public int getDailyHDCuaNV(String nvId, String date, Entity.BoLocThongKe filter) {
         StringBuilder sql = new StringBuilder("SELECT COUNT(*) FROM HoaDon hd WHERE hd.nhanVienId=? "
                 + "AND CONVERT(NVARCHAR,CONVERT(DATE,hd.ngayLapHD),103)=? AND hd.loaiHD='BAN_HANG'");
         List<Object> params = new ArrayList<>();
@@ -769,7 +761,8 @@ public class DAO_ThongKe {
     // TỔNG SỐ HÓA ĐƠN
     // =====================================================================
 
-    public long getTongHoaDon(int year, BUS.BUS_ThongKe.ThongKeFilter filter) {
+    // Đếm tổng HĐ BAN_HANG trong năm year có áp dụng filter
+    public long getTongHoaDon(int year, Entity.BoLocThongKe filter) {
         StringBuilder sql = new StringBuilder(
                 "SELECT COUNT(*) FROM HoaDon hd WHERE YEAR(hd.ngayLapHD)=? AND hd.loaiHD='BAN_HANG'");
         List<Object> params = new ArrayList<>();
@@ -787,7 +780,9 @@ public class DAO_ThongKe {
         return 0;
     }
 
-    public List<Object[]> getTopSanPham(int year, BUS.BUS_ThongKe.ThongKeFilter filter) {
+    // Top 10 SP bán chạy nhất theo doanh thu thuần (có trừ TRA/DOI), đơn vị triệu đồng
+    // Trả về List<{tenSP, danhMuc, soLuong, dtTrieu}>
+    public List<Object[]> getTopSanPham(int year, Entity.BoLocThongKe filter) {
         List<Object[]> result = new ArrayList<>();
         StringBuilder sql = new StringBuilder("SELECT sp.ten, sp.danhMuc, "
                 + "SUM(CASE WHEN hd.loaiHD = 'BAN_HANG' THEN ct.soLuong * dvl.chuyenDoiDonViCoBan ELSE -ABS(ct.soLuong * dvl.chuyenDoiDonViCoBan) END) AS sl, "
@@ -815,16 +810,17 @@ public class DAO_ThongKe {
             int rank = 0;
             while (rs.next() && rank < 10) {
                 result.add(new Object[] { rs.getString("ten"), rs.getString("danhMuc"), 
-                                          rs.getInt("sl"), rs.getDouble("dtThuan") / 1_000_000.0 });
+                                          rs.getInt("sl"), rs.getDouble("dtThuan") });
                 rank++;
             }
         } catch (Exception e) { e.printStackTrace(); }
         return result;
     }
 
-    public List<Object[]> getVATReport(int year, BUS.BUS_ThongKe.ThongKeFilter filter) {
+    // Top 20 SP có tiền thuế VAT cao nhất trong năm year (đã trừ TRA/DOI), đơn vị triệu
+    // Trả về List<{spId, tenSP, danhMuc, vatPct, tienThueTrieu}>
+    public List<Object[]> getVATReport(int year, Entity.BoLocThongKe filter) {
         List<Object[]> result = new ArrayList<>();
-        // Pủn Fix: Dùng CASE WHEN tương tự Top Sản Phẩm để bóc tách VAT bị trừ
         StringBuilder sql = new StringBuilder("SELECT sp.id AS spId, sp.ten, sp.danhMuc, ISNULL(sp.thueVAT, 0) AS vatPct, "
                 + "SUM(CASE WHEN hd.loaiHD = 'BAN_HANG' "
                 + "THEN ROUND(ABS(ct.thanhTien) * (ISNULL(sp.thueVAT,0)/100.0) / (1 + ISNULL(sp.thueVAT,0)/100.0), 0) "
@@ -850,13 +846,15 @@ public class DAO_ThongKe {
             int count = 0;
             while (rs.next() && count < 20) {
                 result.add(new Object[] { rs.getString("spId"), rs.getString("ten"), rs.getString("danhMuc"), 
-                                          rs.getInt("vatPct"), rs.getDouble("tienThue") / 1_000_000.0 });
+                                          rs.getInt("vatPct"), rs.getDouble("tienThue") });
                 count++;
             }
         } catch (Exception e) { e.printStackTrace(); }
         return result;
     }
 
+    // Lấy danh sách SP sắp hết hạn trong 6 tháng tới (trangThai = CON_HANG)
+    // Trả về List<{soLoHang, tenSP, kho, soLuongLoHang, ngayHetHan(dd/MM/yyyy)}>
     public List<Object[]> getSpSapHetHan() {
         List<Object[]> result = new ArrayList<>();
         String sql = "SELECT lh.soLoHang, sp.ten, kh.id AS Kho, lh.soLuongLoHang, lh.ngayHetHan "
@@ -879,6 +877,8 @@ public class DAO_ThongKe {
         return result;
     }
 
+    // Lấy thống kê tổng hợp của 1 ngày cụ thể (BAN_HANG): số HĐ, số KH, số SP, doanh thu thuần
+    // Trả về Object[4]: {tongHD, dtTrieu, tongKH, tongSP}
     public Object[] getThongKeNgayCuThe(String dateYMD) {
         String sql = "SELECT COUNT(DISTINCT hd.id) AS tongHD, "
                 + "COUNT(DISTINCT hd.khachHangId) AS tongKH, "
@@ -893,12 +893,14 @@ public class DAO_ThongKe {
             ps.setString(1, dateYMD);
             ResultSet rs = ps.executeQuery();
             if (rs.next()) {
-                return new Object[] { rs.getInt("tongHD"), rs.getDouble("tongDT") / 1_000_000.0, rs.getInt("tongKH"), rs.getInt("tongSP") };
+                return new Object[] { rs.getInt("tongHD"), rs.getDouble("tongDT"), rs.getInt("tongKH"), rs.getInt("tongSP") };
             }
         } catch (Exception e) { e.printStackTrace(); }
         return new Object[] { 0, 0.0, 0, 0 };
     }
 
+    // Lấy danh sách NV bán hàng trong ngày dateYMD: tên NV, số HĐ, doanh thu thuần (triệu)
+    // Sắp xếp theo doanh thu giảm dần
     public List<Object[]> getNVTrongNgay(String dateYMD) {
         List<Object[]> result = new ArrayList<>();
         String sql = "SELECT nv.hoVaTen, COUNT(DISTINCT hd.id) AS soHD, "
@@ -913,15 +915,17 @@ public class DAO_ThongKe {
             ps.setString(1, dateYMD);
             ResultSet rs = ps.executeQuery();
             while (rs.next()) {
-                result.add(new Object[] { rs.getString("hoVaTen"), rs.getInt("soHD"), rs.getDouble("dtThuan") / 1_000_000.0 });
+                result.add(new Object[] { rs.getString("hoVaTen"), rs.getInt("soHD"), rs.getDouble("dtThuan") });
             }
         } catch (Exception e) { e.printStackTrace(); }
         return result;
     }
 
+    // Lấy thống kê BAN_HANG theo từng ngày trong tuần bắt đầu từ weekStartYMD (7 ngày)
+    // Tính doanh thu sau khi trừ điểm thưởng, đơn vị triệu
+    // Trả về List<{ngay(dd/MM/yyyy), soHD(int), dtTrieu(double)}>
     public List<Object[]> getThongKeTuan(String weekStartYMD) {
         List<Object[]> result = new ArrayList<>();
-        // Dùng ct.thanhTien (đã baked KM) và bóc VAT đúng từng sản phẩm
         String sql = "SELECT CONVERT(NVARCHAR,CAST(hd.ngayLapHD AS DATE),103) AS d, "
                 + "hd.id AS hdId, hd.ghiChu, "
                 + "ISNULL(SUM(ROUND(ABS(ct.thanhTien) / (1 + ISNULL(sp.thueVAT, 0)/100.0), 0)),0) AS doanhThuThuan "
@@ -941,9 +945,8 @@ public class DAO_ThongKe {
             while (rs.next()) {
                 String d = rs.getString("d");
                 double dtThuan = rs.getDouble("doanhThuThuan");
-                // Chỉ trừ điểm thưởng — KHÔNG gọi tinhTongTienGiamInline (double KM)
-                double tienDiemTru = tinhTienDiemTruInline(rs.getString("ghiChu"));
-                double dt = Math.max(0, dtThuan - tienDiemTru);
+                // NOTE: Trừ điểm thưởng từ ghiChu là nghiệp vụ, BUS xử lý sau khi lấy dữ liệu thô
+                double dt = dtThuan;
                 double[] cur = dayMap.computeIfAbsent(d, k -> new double[]{0, 0});
                 cur[0]++;       // soHD
                 cur[1] += dt;
@@ -951,7 +954,7 @@ public class DAO_ThongKe {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        dayMap.forEach((d, v) -> result.add(new Object[]{d, (int) v[0], v[1] / 1_000_000.0}));
+        dayMap.forEach((d, v) -> result.add(new Object[]{d, (int) v[0], v[1]}));
         return result;
     }
 
@@ -959,7 +962,7 @@ public class DAO_ThongKe {
     // THỐNG KÊ KHÁCH HÀNG
     // =====================================================================
 
-    /** KH mới từng tháng trong năm. Trả về int[12] */
+    // Đếm KH mới đăng ký từng tháng trong năm year, trả về int[12]
     public int[] getKHMoiTheoThang(int year) {
         int[] data = new int[12];
         String sql = "SELECT MONTH(ngayTao) m, COUNT(*) cnt FROM KhachHang WHERE YEAR(ngayTao)=? GROUP BY MONTH(ngayTao)";
@@ -976,7 +979,8 @@ public class DAO_ThongKe {
         return data;
     }
 
-    /** KPI tổng hợp KH. Object[3]: {tongKH(int), khCoTK(int), tongDiem(int)} */
+    // KPI tổng hợp khách hàng: tổng KH, số KH có tài khoản (sdt), tổng điểm tích lũy
+    // Trả về Object[3]: {tongKH, khCoTK, tongDiem}
     public Object[] getKpiKhachHang() {
         Object[] result = { 0, 0, 0 };
         try (Statement st = getConn().createStatement()) {
@@ -990,18 +994,12 @@ public class DAO_ThongKe {
         return result;
     }
 
-    /**
-     * Top KH sắp xếp theo điểm tích lũy giảm dần.
-     * Mỗi Object[5]: {hoVaTen, sdt, soHD, tongDT_trieu, diemTichLuy}
-     *
-     * Công thức đúng: per-HĐ → trừ KM từ ghiChu → chia 1.1 → gom theo KH.
-     * Bước 1: tính dt chính xác per KH từ các HĐ (INNER JOIN HoaDon).
-     * Bước 2: query top KH theo diemTichLuy rồi merge (KH chưa mua → soHD=0, dt=0).
-     */
+    // Top KH sắp xếp theo điểm tích lũy giảm dần, tính doanh thu thực mua của từng KH
+    // Trả về List<{hoVaTen, sdt, soHD, dtTrieu, diemTichLuy}>
     public List<Object[]> getTopKhachHangTheoDiem(int limit) {
         List<Object[]> result = new ArrayList<>();
         try (Connection con = getConn()) {
-        	// Bước 1: tính per-HĐ doanh thu thuần, gom theo khachHangId
+        	// Bước 1: Tính doanh thu thực tế từng KH (per-HĐ, trừ điểm thưởng)
         	Map<String, double[]> purchaseMap = new HashMap<>();
         	String sqlP = "SELECT kh.id AS khId, hd.id AS hdId, hd.ghiChu, "
         	        + "ISNULL(SUM(ROUND(ABS(ct.thanhTien) / (1 + ISNULL(sp.thueVAT, 0)/100.0), 0)),0) AS doanhThuThuan "
@@ -1015,16 +1013,14 @@ public class DAO_ThongKe {
         	    while (rs.next()) {
         	        String khId = rs.getString("khId");
         	        double dtThuan = rs.getDouble("doanhThuThuan");
-        	        // Chỉ trừ điểm thưởng — KM% đã baked vào ct.thanhTien
-        	        double tienDiemTru = tinhTienDiemTruInline(rs.getString("ghiChu"));
-        	        double dt = Math.max(0, dtThuan - tienDiemTru);
+        	        // NOTE: Trừ điểm thưởng từ ghiChu là nghiệp vụ, BUS xử lý sau khi lấy dữ liệu thô
+        	        double dt = dtThuan;
         	        double[] cur = purchaseMap.computeIfAbsent(khId, k -> new double[]{0, 0});
         	        cur[0]++; // soHD
         	        cur[1] += dt;
         	    }
         	}
-        	// Bước 2: giữ nguyên — query top KH theo điểm rồi merge
-            // Bước 2: query top KH theo điểm, merge với dữ liệu mua hàng
+        	// Bước 2: Query top KH theo điểm rồi merge với dữ liệu doanh thu ở bước 1
             String sqlKH = "SELECT TOP " + limit + " id, hoVaTen, ISNULL(sdt,'') AS sdt, diemTichLuy "
                     + "FROM KhachHang ORDER BY diemTichLuy DESC";
             try (java.sql.Statement st = con.createStatement(); ResultSet rs = st.executeQuery(sqlKH)) {
@@ -1032,7 +1028,7 @@ public class DAO_ThongKe {
                     String khId = rs.getString("id");
                     double[] p = purchaseMap.getOrDefault(khId, new double[] { 0, 0 });
                     result.add(new Object[] { rs.getString("hoVaTen"), rs.getString("sdt"),
-                            (int) p[0], p[1] / 1_000_000.0, rs.getInt("diemTichLuy") });
+                            (int) p[0], p[1], rs.getInt("diemTichLuy") });
                 }
             }
         } catch (Exception e) {
@@ -1045,6 +1041,7 @@ public class DAO_ThongKe {
     // THỐNG KÊ KHO HÀNG
     // =====================================================================
 
+    // Tổng giá trị tồn kho (lô CON_HANG): SUM(soLuongLoHang * gia)
     public double getTongGiaTriTonKho() {
         String sql = "SELECT ISNULL(SUM(lh.soLuongLoHang*lh.gia),0) FROM LoHang lh WHERE lh.trangThai='CON_HANG'";
         try (Statement st = getConn().createStatement(); ResultSet rs = st.executeQuery(sql)) {
@@ -1056,6 +1053,8 @@ public class DAO_ThongKe {
         return 0;
     }
 
+    // Đếm số lô hàng theo trạng thái: CON_HANG, HET_HANG, HET_HAN
+    // Trả về Object[3]: {conHang, hetHang, hetHan}
     public Object[] getSoLoTheoTrangThai() {
         Object[] result = { 0, 0, 0 };
         try (Statement st = getConn().createStatement()) {
@@ -1072,10 +1071,8 @@ public class DAO_ThongKe {
         return result;
     }
 
-    /**
-     * Phân bổ tồn kho theo kho. Mỗi Object[3]: {maKho, soLuong(int),
-     * giaTriTrieu(double)}
-     */
+    // Phân bổ tồn kho theo từng kho, đơn vị triệu, sắp xếp theo giá trị giảm dần
+    // Trả về List<{maKho, soLuong, giaTriTrieu}>
     public List<Object[]> getTonKhoTheoKho() {
         List<Object[]> result = new ArrayList<>();
         String sql = "SELECT kh.id, ISNULL(SUM(lh.soLuongLoHang),0) sl, ISNULL(SUM(lh.soLuongLoHang*lh.gia),0)/1000000.0 gt "
@@ -1090,10 +1087,8 @@ public class DAO_ThongKe {
         return result;
     }
 
-    /**
-     * Top 10 SP tồn nhiều nhất. Mỗi Object[3]: {tenSP, soLuongTon(int),
-     * giaTriTrieu(double)}
-     */
+    // Top 10 SP tồn kho nhiều nhất, đơn vị triệu
+    // Trả về List<{tenSP, soLuongTon, giaTriTrieu}>
     public List<Object[]> getTopSPTonNhieu() {
         List<Object[]> result = new ArrayList<>();
         String sql = "SELECT TOP 10 sp.ten, ISNULL(SUM(lh.soLuongLoHang),0) sl, "
@@ -1109,6 +1104,8 @@ public class DAO_ThongKe {
         return result;
     }
 
+    // Giá trị nhập hàng (theo ngayNhap LoHang) từng tháng trong năm year, đơn vị triệu
+    // Trả về double[12]
     public double[] getNhapHang12Thang(int year) {
         double[] data = new double[12];
         String sql = "SELECT MONTH(ngayNhap) m, ISNULL(SUM(soLuongLoHang*gia),0)/1000000.0 gt "
@@ -1128,9 +1125,10 @@ public class DAO_ThongKe {
     }
 
     // =====================================================================
-    // DASHBOARD — CÁC HÀM ĐẾM ĐƠN GIẢN (không cần tinhTienThucTe)
+    // DASHBOARD — CÁC HÀM ĐẾM ĐƠN GIẢN
     // =====================================================================
 
+    // Tổng số sản phẩm (tất cả) trong bảng SanPham
     public int getTongSanPham() {
         try (Statement st = getConn().createStatement();
                 ResultSet rs = st.executeQuery("SELECT COUNT(*) FROM SanPham")) {
@@ -1142,6 +1140,7 @@ public class DAO_ThongKe {
         return 0;
     }
 
+    // Tổng số khách hàng trong bảng KhachHang
     public int getTongKhachHang() {
         try (Statement st = getConn().createStatement();
                 ResultSet rs = st.executeQuery("SELECT COUNT(*) FROM KhachHang")) {
@@ -1153,6 +1152,7 @@ public class DAO_ThongKe {
         return 0;
     }
 
+    // Đếm số HĐ BAN_HANG của 1 NV từ thời điểm start (dùng cho kết ca)
     public int getSoHoaDonTheoCa(String maNV, LocalDateTime start) {
         String sql = "SELECT COUNT(*) FROM HoaDon WHERE nhanVienId=? AND ngayLapHD>=? AND loaiHD='BAN_HANG'";
         try (PreparedStatement ps = getConn().prepareStatement(sql)) {
@@ -1167,14 +1167,8 @@ public class DAO_ThongKe {
         return 0;
     }
 
-    /**
-     * Tổng số lượng sản phẩm thực tế trong ngày, đã tính đổi/trả:
-     *   + BAN_HANG                    : SUM(ct.soLuong)        — hàng bán ra
-     *   + DOI_HANG hoàn thành, soLuong > 0 : SUM(ct.soLuong)  — SP xuất cho khách đổi
-     *   - TRA_HANG hoàn thành         : SUM(ABS(ct.soLuong))   — hàng khách trả lại
-     *   - DOI_HANG hoàn thành, soLuong < 0 : SUM(ABS(ct.soLuong)) — hàng bị lấy lại khi đổi
-     */
-    public int getTongSoLuongSPHomNay(BUS.BUS_ThongKe.ThongKeFilter filter) {
+    // Tổng số lượng SP thực tế hôm nay (BAN_HANG cộng + DOI_HANG xuất + TRA/DOI trừ)
+    public int getTongSoLuongSPHomNay(Entity.BoLocThongKe filter) {
         StringBuilder sql = new StringBuilder(
             "SELECT ISNULL(SUM(" +
             "  CASE " +
@@ -1199,15 +1193,15 @@ public class DAO_ThongKe {
         try (PreparedStatement ps = getConn().prepareStatement(sql.toString())) {
             for (int i = 0; i < params.size(); i++) ps.setObject(i + 1, params.get(i));
             ResultSet rs = ps.executeQuery();
-            if (rs.next()) return Math.max(0, rs.getInt("tongSL"));
+            if (rs.next()) return rs.getInt("tongSL");
         } catch (SQLException e) {
             e.printStackTrace();
         }
         return 0;
     }
 
-    /** Đếm số HĐ bán hàng hôm nay theo filter (NV, ca...) */
-    public int getSoHoaDonHomNay(BUS.BUS_ThongKe.ThongKeFilter filter) {
+    // Đếm số HĐ BAN_HANG hôm nay theo filter (NV, ca...)
+    public int getSoHoaDonHomNay(Entity.BoLocThongKe filter) {
         StringBuilder sql = new StringBuilder(
                 "SELECT COUNT(*) FROM HoaDon hd WHERE CAST(hd.ngayLapHD AS DATE) = CAST(GETDATE() AS DATE) AND hd.loaiHD = 'BAN_HANG'");
         List<Object> params = new ArrayList<>();
@@ -1224,8 +1218,8 @@ public class DAO_ThongKe {
         return 0;
     }
 
-    /** Đếm TẤT CẢ loại hóa đơn hôm nay (BAN_HANG + TRA_HANG + DOI_HANG) */
-    public int getSoTatCaHDHomNay(BUS.BUS_ThongKe.ThongKeFilter filter) {
+    // Đếm tất cả loại HĐ hôm nay (BAN_HANG + TRA_HANG + DOI_HANG) theo filter
+    public int getSoTatCaHDHomNay(Entity.BoLocThongKe filter) {
         StringBuilder sql = new StringBuilder(
             "SELECT COUNT(*) FROM HoaDon hd WHERE CAST(hd.ngayLapHD AS DATE) = CAST(GETDATE() AS DATE) " +
             "AND hd.loaiHD IN ('BAN_HANG', 'TRA_HANG', 'DOI_HANG')");
@@ -1239,7 +1233,8 @@ public class DAO_ThongKe {
         return 0;
     }
 
-    public int getSoHoaDon7NgayQua(BUS.BUS_ThongKe.ThongKeFilter filter) {
+    // Đếm số HĐ BAN_HANG trong 7 ngày qua theo filter
+    public int getSoHoaDon7NgayQua(Entity.BoLocThongKe filter) {
         StringBuilder sql = new StringBuilder(
                 "SELECT COUNT(*) FROM HoaDon hd WHERE hd.ngayLapHD >= DATEADD(DAY, -7, GETDATE()) AND hd.loaiHD = 'BAN_HANG'");
         List<Object> params = new ArrayList<>();
@@ -1256,7 +1251,8 @@ public class DAO_ThongKe {
         return 0;
     }
 
-    public int getTongPhieuDoiTra(BUS.BUS_ThongKe.ThongKeFilter filter) {
+    // Đếm tổng phiếu TRA_HANG/DOI_HANG đã hoàn thành theo filter
+    public int getTongPhieuDoiTra(Entity.BoLocThongKe filter) {
         StringBuilder sql = new StringBuilder("SELECT COUNT(*) FROM HoaDon hd WHERE hd.loaiHD IN ('TRA_HANG', 'DOI_HANG') AND hd.ghiChu LIKE N'%Hoàn thành%'");
         List<Object> params = new ArrayList<>();
         applyFilter(filter, sql, params, "hd.ngayLapHD", "hd.nhanVienId");
@@ -1268,7 +1264,8 @@ public class DAO_ThongKe {
         return 0;
     }
 
-    public int getPhieuDoiTraChoXuLy(BUS.BUS_ThongKe.ThongKeFilter filter) {
+    // Đếm phiếu TRA/DOI chưa xử lý (chưa Hoàn thành và chưa Từ chối)
+    public int getPhieuDoiTraChoXuLy(Entity.BoLocThongKe filter) {
         String sqlStr = "SELECT COUNT(*) FROM HoaDon hd WHERE hd.loaiHD IN ('TRA_HANG', 'DOI_HANG') "
                 + "AND (hd.ghiChu IS NULL OR (hd.ghiChu NOT LIKE N'%Hoàn thành%' AND hd.ghiChu NOT LIKE N'%Từ chối%'))";
         StringBuilder sql = new StringBuilder(sqlStr);
@@ -1282,6 +1279,8 @@ public class DAO_ThongKe {
         return 0;
     }
 
+    // Top 4 SP sắp hết hàng nhất (tồn ít nhất), hiển thị widget cảnh báo
+    // Trả về List<{tenSP, soLuongTon, 50}> (50 là ngưỡng giả định)
     public List<Object[]> getTop4SanPhamSapHetHang() {
         List<Object[]> list = new ArrayList<>();
         String sql = "SELECT TOP 4 sp.ten, ISNULL(SUM(lh.soLuongLoHang),0) ton FROM SanPham sp "
@@ -1295,6 +1294,7 @@ public class DAO_ThongKe {
         return list;
     }
 
+    // Đếm số SP còn tồn kho (có ít nhất 1 lô)
     public int getSoSanPhamDuTon() {
         try (Statement st = getConn().createStatement();
                 ResultSet rs = st.executeQuery(
@@ -1307,6 +1307,7 @@ public class DAO_ThongKe {
         return 0;
     }
 
+    // Đếm số lô hàng sắp hết hạn trong vòng days ngày
     public int getSoLoHangSapHetHanKhoang(int days) {
         try (Statement st = getConn().createStatement();
                 ResultSet rs = st.executeQuery(
@@ -1320,11 +1321,14 @@ public class DAO_ThongKe {
         return 0;
     }
 
+    // Lấy TOP 100 lô hàng còn tồn và sắp hết hạn trong vòng days ngày, sắp xếp theo ngày HH tăng dần
+    // Trả về List<{tenSP, soLoHang, soLuong, ngayHetHan(Timestamp), conLai(ngày)}>
     public List<Object[]> getLoHangSapHetHanNhanh(int days) {
         List<Object[]> list = new ArrayList<>();
-        String sql = "SELECT TOP 8 sp.ten, lh.soLoHang, lh.soLuongLoHang, lh.ngayHetHan, DATEDIFF(DAY,GETDATE(),lh.ngayHetHan) cl "
+        String sql = "SELECT TOP 100 sp.ten, lh.soLoHang, lh.soLuongLoHang, lh.ngayHetHan, DATEDIFF(DAY,GETDATE(),lh.ngayHetHan) cl "
                 + "FROM LoHang lh JOIN SanPham sp ON lh.sanPhamId=sp.id "
                 + "WHERE lh.ngayHetHan IS NOT NULL AND DATEDIFF(DAY,GETDATE(),lh.ngayHetHan)<=? "
+                + "AND lh.soLuongLoHang > 0 "
                 + "ORDER BY lh.ngayHetHan ASC";
         try (PreparedStatement ps = getConn().prepareStatement(sql)) {
             ps.setInt(1, days);
@@ -1338,11 +1342,9 @@ public class DAO_ThongKe {
         return list;
     }
 
-    /**
-     * Raw data HĐ bán hàng của 1 ngày cụ thể. Trả về: List<Object[]> = {
-     * id, tongGocCoVAT, ghiChu }
-     */
-    public List<Object[]> getRawHDByDay(String dateYMD, BUS.BUS_ThongKe.ThongKeFilter filter) {
+    // Lấy raw HĐ BAN_HANG của 1 ngày cụ thể dateYMD
+    // Trả về List<{id, tongGocCoVAT, ghiChu, tongGocChuaVAT}>
+    public List<Object[]> getRawHDByDay(String dateYMD, Entity.BoLocThongKe filter) {
         List<Object[]> result = new ArrayList<>();
         StringBuilder sql = new StringBuilder("SELECT hd.id, hd.ghiChu, "
                 + "SUM(ABS(ct.thanhTien)) as tongGocCoVAT, "
@@ -1361,7 +1363,6 @@ public class DAO_ThongKe {
                 ps.setObject(i + 1, params.get(i));
             ResultSet rs = ps.executeQuery();
             while (rs.next())
-                // TRẢ VỀ MẢNG 4 PHẦN TỬ (Thêm tongGocChuaVAT ở cuối)
                 result.add(new Object[] { rs.getString("id"), rs.getDouble("tongGocCoVAT"), rs.getString("ghiChu"), rs.getDouble("tongGocChuaVAT") });
         } catch (Exception e) {
             e.printStackTrace();
@@ -1369,7 +1370,7 @@ public class DAO_ThongKe {
         return result;
     }
 
-    // NHÂN VIÊN
+    // Lấy danh sách NV đang làm việc (id, hoVaTen)
     public List<String[]> getDanhSachNhanVien() {
         List<String[]> list = new ArrayList<>();
         String sql = "SELECT id, hoVaTen FROM NhanVien WHERE trangThaiLamViec='DANG_LAM_VIEC'";
@@ -1383,15 +1384,14 @@ public class DAO_ThongKe {
     }
 
     // =====================================================================
-    // GỢI Ý KHUYẾN MÃI (SQL-level analytics — không cần tinhTienThucTe)
+    // GỢI Ý KHUYẾN MÃI
     // =====================================================================
 
-    /**
-     * Phân tích top SP để gợi ý KM.
-     * Mỗi Object[10]: {tenSP, danhMuc, slBan, dtTrieu, giaVon, bienLN_pct, coKM,
-     * goiYLoai, lyDo, mucGiam}
-     */
-    public List<Object[]> getGoiYKhuyenMai(int year) {
+    // Lấy top 10 SP bán chạy nhất để phân tích gợi ý KM (biên LN, số lượng, giá vốn)
+    // Trả về List<{tenSP, danhMuc, slBan, doanhThu, giaVon}>
+    // Trả về raw data top SP bán chạy: {tenSP, danhMuc, slBan, doanhThu, giaVon}
+    // Mọi tính toán nghiệp vụ (biên LN, loại KM, gợi ý) thực hiện ở BUS_ThongKe.getGoiYKhuyenMai()
+    public List<Object[]> getRawTopSanPhamBanChay(int year) {
         List<Object[]> list = new ArrayList<>();
         String sql = "SELECT TOP 10 sp.ten, sp.danhMuc, "
                 + "SUM(ct.soLuong) AS soLuongBan, "
@@ -1421,30 +1421,14 @@ public class DAO_ThongKe {
             ps.setInt(1, year);
             ResultSet rs = ps.executeQuery();
             while (rs.next()) {
-                String tenSP = rs.getString("ten");
-                String danhMuc = rs.getString("danhMuc");
-                if (danhMuc == null)
-                    danhMuc = "Khác";
-                int slBan = rs.getInt("soLuongBan");
-                double doanhThu = rs.getDouble("doanhThu");
-                double dtTrieu = doanhThu / 1000000.0;
-                double giaVon = rs.getDouble("giaVon");
-                double giaBanTB = (slBan > 0) ? (doanhThu / slBan) : 0;
-                double bienLNPct = (giaBanTB > 0) ? ((giaBanTB - giaVon) / giaBanTB) * 100 : 0;
-                String goiYLoai = "Khuyến mãi giảm giá";
-                String lyDo = "Sản phẩm bán chạy";
-                String mucGiam = "5%";
-                if (bienLNPct > 40) {
-                    goiYLoai = "Mua 2 tặng 1";
-                    lyDo = "Biên lợi nhuận cao";
-                    mucGiam = "10%";
-                } else if (slBan > 100) {
-                    goiYLoai = "Tích điểm nhân đôi";
-                    lyDo = "Tăng tần suất mua lại";
-                    mucGiam = "Quà tặng";
-                }
-                list.add(new Object[] { tenSP, danhMuc, slBan, dtTrieu, giaVon, bienLNPct, "Không", goiYLoai, lyDo,
-                        mucGiam });
+                // Trả về dữ liệu thô — BUS sẽ tính biên LN và quyết định loại KM
+                list.add(new Object[] {
+                    rs.getString("ten"),
+                    rs.getString("danhMuc") != null ? rs.getString("danhMuc") : "Khác",
+                    rs.getInt("soLuongBan"),
+                    rs.getDouble("doanhThu"),
+                    rs.getDouble("giaVon")
+                });
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -1452,6 +1436,8 @@ public class DAO_ThongKe {
         return list;
     }
 
+    // Lấy top n KH VIP (diemTichLuy >= 500) mua hàng hôm nay, sắp xếp theo điểm giảm dần
+    // Trả về List<{hoVaTen, diemTichLuy, soSP}>
     public List<Object[]> getKhachHangVIPMuaHomNay(int limit) {
         List<Object[]> list = new ArrayList<>();
         String sql = "SELECT TOP " + limit + " kh.hoVaTen, kh.diemTichLuy, SUM(ct.soLuong) AS soSP "
@@ -1472,11 +1458,14 @@ public class DAO_ThongKe {
         return list;
     }
 
-    public List<Object[]> getRawHDGiaTriCao(int limit, BUS.BUS_ThongKe.ThongKeFilter filter) {
+    // Alias cho getRawHDDashboard với limit và includeGio=true (dùng cho tab HĐ giá trị cao)
+    public List<Object[]> getRawHDGiaTriCao(int limit, Entity.BoLocThongKe filter) {
         return getRawHDDashboard(filter, limit, true);
     }
     
-    public double[] getTienTraHangChinhXac(String dateCondition, BUS.BUS_ThongKe.ThongKeFilter filter) {
+    // Tính tổng tiền hoàn trả (có VAT và không VAT) của TRA_HANG/DOI_HANG hoàn thành theo điều kiện ngày
+    // Trả về double[2]: [0]=tienCoVAT, [1]=tienChuaVAT
+    public double[] getTienTraHangChinhXac(String dateCondition, Entity.BoLocThongKe filter) {
         double[] res = new double[]{0, 0};
         StringBuilder sql = new StringBuilder(
             "SELECT " +
@@ -1503,6 +1492,7 @@ public class DAO_ThongKe {
         return res;
     }
  
+    // Lấy % giảm giá theo phần trăm (loại GIAM_THEO_PHAN_TRAM) của 1 HĐ từ bảng HinhThucKhuyenMai
     public double getPercentKhuyenMai(String hdId) {
     	String sql = "SELECT ISNULL(MAX(ht.giaTri), 0) FROM HoaDon hd " +
                   "JOIN HinhThucKhuyenMai ht ON hd.khuyenMaiId = ht.khuyenMaiId " +
@@ -1515,7 +1505,9 @@ public class DAO_ThongKe {
     	return 0;
     }
     
-	 public List<Object[]> getRawLineItems(String hdId) {
+    // Lấy từng dòng sản phẩm của 1 HĐ: soLuong, giaNiemYet, thueVAT%, thanhTien (sau KM)
+    // Trả về List<{soLuong(int), gia(double), thueVAT(double), thanhTien(double)}>
+    public List<Object[]> getRawLineItems(String hdId) {
 	     List<Object[]> list = new ArrayList<>();
 	     String sql = "SELECT ct.soLuong, dvl.gia, ISNULL(sp.thueVAT,0) AS thueVAT, ABS(ct.thanhTien) AS thanhTien " +
 	                  "FROM ChiTietHoaDon ct " +
@@ -1535,91 +1527,108 @@ public class DAO_ThongKe {
 	         }
 	     } catch (Exception e) { e.printStackTrace(); }
 	     return list;
-	 }
-	 
-	 public List<Object[]> getTraHangChiTiet(String dateYMD, BUS.BUS_ThongKe.ThongKeFilter filter) {
-	        List<Object[]> result = new ArrayList<>();
-	        StringBuilder sql = new StringBuilder("SELECT sp.ten, ABS(ct.soLuong) AS sl, "
-	                + "ABS(ct.thanhTien / (1 + ISNULL(sp.thueVAT, 0) / 100.0)) AS chuaVAT "
-	                + "FROM ChiTietHoaDon ct "
-	                + "JOIN HoaDon hd ON ct.hoaDonId = hd.id "
-	                + "JOIN SanPham sp ON ct.sanPhamId = sp.id "
-	                + "WHERE (hd.loaiHD = 'TRA_HANG' OR ct.ghiChu = 'TRA_LAI' OR ct.soLuong < 0) "
-	                + "AND hd.ghiChu LIKE N'%Hoàn thành%' "
-	                + "AND CAST(hd.ngayLapHD AS DATE) = ? ");
-	        List<Object> params = new ArrayList<>();
-	        params.add(dateYMD);
-	        applyFilter(filter, sql, params, "hd.ngayLapHD", "hd.nhanVienId");
+    }
+    
+    // Lấy danh sách SP trong HĐ TRA_HANG trong ngày dateYMD: tên, số lượng, tiền chưa VAT
+    // Trả về List<{tenSP, sl(int), chuaVAT(double)}>
+    public List<Object[]> getTraHangChiTiet(String dateYMD, Entity.BoLocThongKe filter) {
+        List<Object[]> result = new ArrayList<>();
+        StringBuilder sql = new StringBuilder("SELECT sp.ten, ABS(ct.soLuong) AS sl, "
+                + "ABS(ct.thanhTien / (1 + ISNULL(sp.thueVAT, 0) / 100.0)) AS chuaVAT "
+                + "FROM ChiTietHoaDon ct "
+                + "JOIN HoaDon hd ON ct.hoaDonId = hd.id "
+                + "JOIN SanPham sp ON ct.sanPhamId = sp.id "
+	            + "WHERE (hd.loaiHD = 'TRA_HANG' OR ct.ghiChu = 'TRA_LAI' OR ct.soLuong < 0) "
+	            + "AND hd.ghiChu LIKE N'%Hoàn thành%' "
+	            + "AND CAST(hd.ngayLapHD AS DATE) = ? ");
+        List<Object> params = new ArrayList<>();
+        params.add(dateYMD);
+        applyFilter(filter, sql, params, "hd.ngayLapHD", "hd.nhanVienId");
 
-	        try (PreparedStatement ps = getConn().prepareStatement(sql.toString())) {
-	            for (int i = 0; i < params.size(); i++) ps.setObject(i + 1, params.get(i));
-	            ResultSet rs = ps.executeQuery();
-	            while (rs.next()) {
-	                result.add(new Object[] { rs.getString("ten"), rs.getInt("sl"), rs.getDouble("chuaVAT") });
-	            }
-	        } catch (Exception e) { e.printStackTrace(); }
-	        return result;
-	    }
-	 
-	 public List<Object[]> getRawHDDoiTra12Thang(int year, BUS.BUS_ThongKe.ThongKeFilter filter) {
-	        List<Object[]> result = new ArrayList<>();
-	        StringBuilder sql = new StringBuilder("SELECT MONTH(hd.ngayLapHD) AS m, "
-	                + "SUM(CASE WHEN ct.soLuong > 0 "
-	                + "         THEN  ABS(ct.thanhTien) / (1 + ISNULL(sp.thueVAT, 0) / 100.0) "
-	                + "         WHEN ct.soLuong < 0 "
-	                + "         THEN -ABS(ct.thanhTien) / (1 + ISNULL(sp.thueVAT, 0) / 100.0) "
-	                + "         ELSE 0 END) AS netRefund_chuaVAT "
-	                + "FROM HoaDon hd "
-	                + "JOIN ChiTietHoaDon ct ON hd.id = ct.hoaDonId "
-	                + "JOIN SanPham sp ON ct.sanPhamId = sp.id "
-	                + "WHERE YEAR(hd.ngayLapHD) = ? "
-	                + " AND hd.loaiHD = 'DOI_HANG' AND hd.ghiChu LIKE N'%Hoàn thành%'");
-	        List<Object> params = new ArrayList<>();
-	        params.add(year);
-	        applyFilter(filter, sql, params, "hd.ngayLapHD", "hd.nhanVienId");
-	        sql.append(" GROUP BY MONTH(hd.ngayLapHD)");
+        try (PreparedStatement ps = getConn().prepareStatement(sql.toString())) {
+            for (int i = 0; i < params.size(); i++) ps.setObject(i + 1, params.get(i));
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                result.add(new Object[] { rs.getString("ten"), rs.getInt("sl"), rs.getDouble("chuaVAT") });
+            }
+        } catch (Exception e) { e.printStackTrace(); }
+        return result;
+    }
+ 
+    // Lấy netRefund từng tháng của HĐ DOI_HANG hoàn thành trong năm year (chưa VAT)
+    // netRefund: dương = hàng mới đắt hơn (tăng DT), âm = hoàn nhiều hơn (giảm DT)
+    // Trả về List<{thang(int), netRefund_chuaVAT(double)}>
+    public List<Object[]> getRawHDDoiTra12Thang(int year, Entity.BoLocThongKe filter) {
+        List<Object[]> result = new ArrayList<>();
+        StringBuilder sql = new StringBuilder("SELECT MONTH(hd.ngayLapHD) AS m, "
+                + "SUM(CASE WHEN ct.soLuong > 0 "
+                + "         THEN  ABS(ct.thanhTien) / (1 + ISNULL(sp.thueVAT, 0) / 100.0) "
+                + "         WHEN ct.soLuong < 0 "
+                + "         THEN -ABS(ct.thanhTien) / (1 + ISNULL(sp.thueVAT, 0) / 100.0) "
+                + "         ELSE 0 END) AS netRefund_chuaVAT "
+                + "FROM HoaDon hd "
+                + "JOIN ChiTietHoaDon ct ON hd.id = ct.hoaDonId "
+                + "JOIN SanPham sp ON ct.sanPhamId = sp.id "
+                + "WHERE YEAR(hd.ngayLapHD) = ? "
+                + " AND hd.loaiHD = 'DOI_HANG' AND hd.ghiChu LIKE N'%Hoàn thành%'");
+        List<Object> params = new ArrayList<>();
+        params.add(year);
+        applyFilter(filter, sql, params, "hd.ngayLapHD", "hd.nhanVienId");
+        sql.append(" GROUP BY MONTH(hd.ngayLapHD)");
 
-	        try (PreparedStatement ps = getConn().prepareStatement(sql.toString())) {
-	            for (int i = 0; i < params.size(); i++) ps.setObject(i + 1, params.get(i));
-	            ResultSet rs = ps.executeQuery();
-	            while (rs.next()) result.add(new Object[] { rs.getInt("m"), rs.getDouble("netRefund_chuaVAT") });
-	        } catch (Exception e) { e.printStackTrace(); }
-	        return result;
-	    }
+        try (PreparedStatement ps = getConn().prepareStatement(sql.toString())) {
+            for (int i = 0; i < params.size(); i++) ps.setObject(i + 1, params.get(i));
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) result.add(new Object[] { rs.getInt("m"), rs.getDouble("netRefund_chuaVAT") });
+        } catch (Exception e) { e.printStackTrace(); }
+        return result;
+    }
 
-	public String buildConditionFromFilter(BUS.BUS_ThongKe.ThongKeFilter f) {
+    // Tạo chuỗi điều kiện WHERE từ filter (dùng cho các query xây chuỗi thủ công)
+    // Trả về chuỗi SQL bắt đầu bằng " 1=1 AND ..."
+    public String buildConditionFromFilter(Entity.BoLocThongKe f) {
 	    if (f == null) return " 1=1 ";
 	    StringBuilder sb = new StringBuilder(" 1=1 ");
-	    if (f.modeLocThoiGian != null) {
-	        if (f.modeLocThoiGian.equals("THANG")) 
-	            sb.append(" AND MONTH(hd.ngayLapHD) = ").append(f.month).append(" AND YEAR(hd.ngayLapHD) = YEAR(GETDATE())");
-	        else if (f.modeLocThoiGian.equals("QUY"))
-	            sb.append(" AND DATEPART(QUARTER, hd.ngayLapHD) = ").append(f.quarter).append(" AND YEAR(hd.ngayLapHD) = YEAR(GETDATE())");
-	        else if (f.modeLocThoiGian.equals("TUYCHINH") && f.fromDate != null && f.toDate != null)
-	            sb.append(" AND CAST(hd.ngayLapHD AS DATE) BETWEEN '").append(f.fromDate).append("' AND '").append(f.toDate).append("'");
+	    if (f.getModeLocThoiGian() != null) {
+	        if (f.getModeLocThoiGian().equals("THANG")) 
+	            sb.append(" AND MONTH(hd.ngayLapHD) = ").append(f.getMonth()).append(" AND YEAR(hd.ngayLapHD) = YEAR(GETDATE())");
+	        else if (f.getModeLocThoiGian().equals("QUY"))
+	            sb.append(" AND DATEPART(QUARTER, hd.ngayLapHD) = ").append(f.getQuarter()).append(" AND YEAR(hd.ngayLapHD) = YEAR(GETDATE())");
+	        else if (f.getModeLocThoiGian().equals("TUYCHINH") && f.getFromDate() != null && f.getToDate() != null)
+	            sb.append(" AND CAST(hd.ngayLapHD AS DATE) BETWEEN '").append(f.getFromDate()).append("' AND '").append(f.getToDate()).append("'");
 	    }
 	    return sb.toString();
 	}
 
-	public List<Object[]> getRawHDByFilter(BUS.BUS_ThongKe.ThongKeFilter filter) {
+    // Lấy raw HĐ BAN_HANG theo filter (Tháng/Quý/Tùy chỉnh + NV/Ca)
+    // Trả về List<{id, rỗng, ghiChu}>
+    public List<Object[]> getRawHDByFilter(Entity.BoLocThongKe filter) {
 	    List<Object[]> result = new ArrayList<>();
 	    StringBuilder sql = new StringBuilder("SELECT hd.id, hd.ghiChu FROM HoaDon hd WHERE hd.loaiHD = 'BAN_HANG' ");
 	    List<Object> params = new ArrayList<>();
 	    
-	    // Áp dụng bộ lọc thời gian (Tháng/Quý/Tùy chỉnh)
-	    if (filter.modeLocThoiGian != null) {
-	        if (filter.modeLocThoiGian.equals("THANG")) {
-	            sql.append(" AND MONTH(hd.ngayLapHD) = ? AND YEAR(hd.ngayLapHD) = YEAR(GETDATE())");
-	            params.add(filter.month);
-	        } else if (filter.modeLocThoiGian.equals("QUY")) {
+	    // Lọc theo mode thời gian trước
+	    if (filter.getModeLocThoiGian() != null) {
+	        if (filter.getModeLocThoiGian().equals("THANG")) {
+	        	int yr = (filter.getYear() != null) ? filter.getYear() : java.time.LocalDate.now().getYear();
+	        	if (filter.getMonth() != null) {
+	        	    sql.append(" AND YEAR(hd.ngayLapHD) = ? AND MONTH(hd.ngayLapHD) = ?");
+	        	    params.add(yr);
+	        	    params.add(filter.getMonth());
+	        	} else {
+	        	    // Cả năm: chỉ lọc theo năm
+	        	    sql.append(" AND YEAR(hd.ngayLapHD) = ?");
+	        	    params.add(yr);
+	        	}
+	        } else if (filter.getModeLocThoiGian().equals("QUY")) {
 	            sql.append(" AND DATEPART(QUARTER, hd.ngayLapHD) = ? AND YEAR(hd.ngayLapHD) = YEAR(GETDATE())");
-	            params.add(filter.quarter);
-	        } else if (filter.modeLocThoiGian.equals("TUYCHINH")) {
+	            params.add(filter.getQuarter());
+	        } else if (filter.getModeLocThoiGian().equals("TUYCHINH")) {
 	            sql.append(" AND CAST(hd.ngayLapHD AS DATE) BETWEEN ? AND ?");
-	            params.add(filter.fromDate); params.add(filter.toDate);
+	            params.add(filter.getFromDate()); params.add(filter.getToDate());
 	        }
 	    }
-	    // Áp dụng bộ lọc Nhân viên/Ca nếu có
+	    // Rồi gắn thêm filter NV/Ca
 	    applyFilter(filter, sql, params, "hd.ngayLapHD", "hd.nhanVienId");
 	
 	    try (PreparedStatement ps = getConn().prepareStatement(sql.toString())) {
@@ -1630,7 +1639,10 @@ public class DAO_ThongKe {
 	    return result;
 	}
 	
-    public List<Object[]> getRawHD12ThangChuan(int year, BUS.BUS_ThongKe.ThongKeFilter filter) {
+    // Lấy raw HĐ BAN_HANG của năm year theo filter: trả về từng HĐ kèm thang, id, ghiChu
+    // Dùng để BUS tính doanh thu 12 tháng (per-HĐ rồi bóc VAT + trừ điểm)
+    // Trả về List<{thang(int), id, ghiChu}>
+    public List<Object[]> getRawHD12ThangChuan(int year, Entity.BoLocThongKe filter) {
         List<Object[]> result = new ArrayList<>();
         StringBuilder sql = new StringBuilder("SELECT MONTH(hd.ngayLapHD) AS thang, hd.id, hd.ghiChu "
                 + "FROM HoaDon hd "
@@ -1654,7 +1666,10 @@ public class DAO_ThongKe {
         return result;
     }
     
-    public List<Object[]> getRawHDDoiTra30Ngay(BUS.BUS_ThongKe.ThongKeFilter filter) {
+    // Lấy netRefund từng ngày của HĐ DOI_HANG hoàn thành trong 30 ngày gần nhất (chưa VAT)
+    // netRefund: âm = hoàn trả nhiều (giảm DT), dương = hàng đổi mới đắt hơn (tăng DT)
+    // Trả về List<{ngay(dd/MM/yyyy), netRefund_chuaVAT(double)}>
+    public List<Object[]> getRawHDDoiTra30Ngay(Entity.BoLocThongKe filter) {
         List<Object[]> result = new ArrayList<>();
         StringBuilder sql = new StringBuilder(
             "SELECT CONVERT(NVARCHAR,CAST(hd.ngayLapHD AS DATE),103) d, "
@@ -1679,7 +1694,9 @@ public class DAO_ThongKe {
         return result;
     }
  
-    public double[] getTienVaGiaVonHangTra(BUS.BUS_ThongKe.ThongKeFilter filter) {
+    // Tổng tiền hoàn trả (có VAT, không VAT) và giá vốn hàng nhận lại của TRA_HANG/DOI_HANG đã hoàn thành
+    // Trả về double[3]: [0]=tienHoanCoVAT, [1]=tienHoanChuaVAT, [2]=giaVonHoan
+    public double[] getTienVaGiaVonHangTra(Entity.BoLocThongKe filter) {
         double[] kq = new double[]{0, 0, 0};
         StringBuilder sql = new StringBuilder(
                 "SELECT " +
@@ -1723,6 +1740,9 @@ public class DAO_ThongKe {
         return kq;
     }
     
+    // Tính tổng tiền hoàn trả trong ca của 1 NV bằng cách parse ghiChu TRA_HANG/DOI_HANG
+    // TRA_HANG: lấy phần [2] trong ghiChu split "|"
+    // DOI_HANG: lấy phần [3], kiểm tra từ khóa "Hoàn" để biết tiệm trả tiền lại cho khách
     public double getTienHoanTraTheoCa(String maNV, LocalDateTime start) {
         double tongHoanTra = 0;
         String sql = "SELECT id, loaiHD, ghiChu FROM HoaDon "
@@ -1753,10 +1773,10 @@ public class DAO_ThongKe {
         return tongHoanTra;
     }
     
-    public double[] getThongKeTraHangNV(String nvId, int year, BUS.BUS_ThongKe.ThongKeFilter filter) {
+    // Lấy số HĐ TRA/DOI hoàn thành và tổng tiền hoàn (chưa VAT) của 1 NV trong năm year
+    // Trả về double[2]: [0]=soHD, [1]=tienHoan
+    public double[] getThongKeTraHangNV(String nvId, int year, Entity.BoLocThongKe filter) {
         double[] res = {0, 0};
-        // soHD: đếm riêng qua subquery (không lọc theo ct.soLuong để tránh bỏ sót / đếm nhầm)
-        // tienHoan: chỉ SUM dòng TRA_HANG (toàn bộ) + dòng DOI_HANG có soLuong < 0 (hàng bị lấy lại)
         StringBuilder sql = new StringBuilder(
             "SELECT " +
             "  (SELECT COUNT(DISTINCT hd2.id) FROM HoaDon hd2 " +
@@ -1792,15 +1812,8 @@ public class DAO_ThongKe {
     // KẾT CA — TIỀN ĐỔI HÀNG
     // =====================================================================
 
-    /**
-     * Trả về double[2] tổng tiền đổi hàng trong ca (mọi phương thức thanh toán):
-     *   [0] = tổng tiền khách bù thêm  (ct.soLuong > 0, chưa VAT)
-     *   [1] = tổng tiền tiệm hoàn lại  (ct.soLuong < 0, chưa VAT)
-     *
-     * @param maNV  ID nhân viên phụ trách ca
-     * @param start Thời điểm bắt đầu ca (ngayLapHD >= start)
-     * @return double[2]; nếu không có dữ liệu trả về {0.0, 0.0}
-     */
+    // Tính tiền đổi hàng trong ca của 1 NV (TẤT CẢ phương thức), chưa VAT
+    // Trả về double[2]: [0]=tienBuThem (khách trả thêm), [1]=tienHoanLai (tiệm hoàn lại)
     public double[] getTienDoiHangTheoCa(String maNV, LocalDateTime start) {
         double[] kq = new double[]{0.0, 0.0};
         String sql =
@@ -1833,14 +1846,9 @@ public class DAO_ThongKe {
         return kq;
     }
 
-    /**
-     * Giống {@link #getTienDoiHangTheoCa} nhưng chỉ tính hóa đơn thanh toán TIEN_MAT.
-     * Dùng để đối soát tiền mặt thực tế trong quỹ khi kết ca.
-     *
-     * @param maNV  ID nhân viên phụ trách ca
-     * @param start Thời điểm bắt đầu ca (ngayLapHD >= start)
-     * @return double[2]; nếu không có dữ liệu trả về {0.0, 0.0}
-     */
+    // Giống getTienDoiHangTheoCa nhưng CHỈ tính HĐ thanh toán TIEN_MAT
+    // Dùng để đối soát quỹ tiền mặt khi kết ca
+    // Trả về double[2]: [0]=tienBuThem, [1]=tienHoanLai
     public double[] getTienDoiHangTheoCaMat(String maNV, LocalDateTime start) {
         double[] kq = new double[]{0.0, 0.0};
         String sql =
@@ -1874,8 +1882,11 @@ public class DAO_ThongKe {
         return kq;
     }
     
-     public List<Object[]> getBaoCaoTaiChinh(
-             BUS.BUS_ThongKe.ThongKeFilter filter, String groupBy) {
+    // Báo cáo tài chính nhóm theo ngày hoặc tháng (groupBy = "THANG" hoặc "NGAY")
+    // Dùng 2 CTE: CTE_Revenue (doanh thu gộp, VAT, hàng trả) và CTE_COGS (giá vốn bán, giá vốn hoàn)
+    // Trả về List<{thoiGian, dtGop, thueVAT, hangTra, giaVonBan, giaVonHoan}>
+    public List<Object[]> getBaoCaoTaiChinh(
+             Entity.BoLocThongKe filter, String groupBy) {
          final String groupExpr;
          if ("THANG".equalsIgnoreCase(groupBy)) {
              groupExpr = "CAST(YEAR(hd.ngayLapHD) AS NVARCHAR(4)) + N'-' "
@@ -1999,14 +2010,14 @@ public class DAO_ThongKe {
          return result;
      }
 
-     public double[] getCogsTheoFilter(BUS.BUS_ThongKe.ThongKeFilter filter) {
+    // Tính tổng COGS (giá vốn bán - giá vốn hoàn) theo filter
+    // Trả về double[2]: [0]=giaVonBan, [1]=giaVonHoan
+    public double[] getCogsTheoFilter(Entity.BoLocThongKe filter) {
          double[] kq = {0.0, 0.0};
 
          StringBuilder filterSb = new StringBuilder();
          List<Object>  params   = new ArrayList<>();
          applyFilter(filter, filterSb, params, "hd.ngayLapHD", "hd.nhanVienId");
-         if (filter != null && "THANG".equals(filter.modeLocThoiGian) && filter.month != null) {
-         }
 
          String sql =
                  "SELECT\n"
@@ -2061,13 +2072,11 @@ public class DAO_ThongKe {
      }
      
      // =====================================================================
-     // PHÂN TÍCH KM / XU HƯỚNG / MÙA VỤ — dùng cho getGoiYKhuyenMai
+     // PHÂN TÍCH KM / XU HƯỚNG / MÙA VỤ
      // =====================================================================
 
-     /**
-      * Trả về true nếu sản phẩm đang có chương trình KM hoạt động hôm nay.
-      * Link: SanPham → ApDungKhuyenMai → KhuyenMai.trangThai = 'HOAT_DONG'
-      */
+     // Kiểm tra SP (theo tên) có đang chạy KM hoạt động hôm nay không
+     // Link: SanPham → ApDungKhuyenMai → KhuyenMai.trangThai = 'HOAT_DONG'
      public boolean coKMDangChay(String tenSP) {
          String sql = "SELECT COUNT(*) FROM ApDungKhuyenMai akm "
                  + "JOIN KhuyenMai km ON akm.khuyenMaiId = km.id "
@@ -2084,12 +2093,8 @@ public class DAO_ThongKe {
          return false;
      }
 
-     /**
-      * Xu hướng bán: so sánh quý hiện tại vs quý trước của năm {@code year}.
-      * Nếu year = năm hiện tại, dùng quý thực tế; ngược lại dùng Q4 vs Q3.
-      *
-      * @return int[2] { slQuyHienTai, slQuyCu }
-      */
+     // So sánh số lượng bán quý này vs quý trước của năm year (nếu là năm hiện tại dùng quý thực tế)
+     // Trả về int[2]: [0]=slQuyHienTai, [1]=slQuyCu
      public int[] getXuHuongBanSP(String tenSP, int year) {
          int nowYear = java.time.LocalDate.now().getYear();
          int currentQ = (year == nowYear)
@@ -2120,10 +2125,8 @@ public class DAO_ThongKe {
          return new int[]{0, 0};
      }
 
-     /**
-      * Số lượng bán cùng tháng {@code thang} của năm trước ({@code year - 1}).
-      * Dùng để phát hiện mùa vụ: nếu cùng kỳ năm trước cũng thấp → bình thường theo mùa.
-      */
+     // Lấy số lượng bán của SP trong tháng thang, cùng kỳ năm ngoái (year - 1)
+     // Dùng để phát hiện mùa vụ: nếu cùng kỳ năm trước cũng thấp → bình thường theo mùa
      public int getSlBanCungKy(String tenSP, int thang, int year) {
          String sql = "SELECT ISNULL(SUM(ct.soLuong), 0) "
                  + "FROM ChiTietHoaDon ct "
@@ -2144,24 +2147,22 @@ public class DAO_ThongKe {
          return 0;
      }
 
-     public BUS.BUS_KetQuaDoiChieuCa layDoiChieuDoanhThuTheoCa(BUS.BUS_ThongKe.ThongKeFilter filter) {
-    	    BUS.BUS_KetQuaDoiChieuCa kq = new BUS.BUS_KetQuaDoiChieuCa();
+     // Lấy dữ liệu đối chiếu doanh thu theo ca (theo filter): đếm HĐ bán/trả, tính giá gốc, KM, VAT
+     // Trả về BUS_DoiChieuCa chứa các thông số tài chính chi tiết
+     public Entity.DoiChieuCa layDoiChieuDoanhThuTheoCa(Entity.BoLocThongKe filter) {
+    	    Entity.DoiChieuCa kq = new Entity.DoiChieuCa();
     	    StringBuilder sql = new StringBuilder(
     	        "SELECT "
-    	        // --- ĐẾM SỐ HÓA ĐƠN ---
     	        + "COUNT(DISTINCT CASE WHEN hd.loaiHD = 'BAN_HANG' THEN hd.id END) AS soHdBan, "
     	        + "COUNT(DISTINCT CASE WHEN hd.loaiHD IN ('TRA_HANG', 'DOI_HANG') AND hd.ghiChu LIKE N'%Hoàn thành%' THEN hd.id END) AS soHdTra, "
-    	        
-    	        // --- NHÓM A: BÁN HÀNG + DOI_HANG xuất mới (soLuong > 0) ---
+    	        // Nhóm A: BAN_HANG + DOI_HANG xuất mới (soLuong > 0)
     	        + "ISNULL(SUM(CASE WHEN hd.loaiHD = 'BAN_HANG' OR (hd.loaiHD = 'DOI_HANG' AND ct.soLuong > 0) THEN dvl.gia * ABS(ct.soLuong) ELSE 0 END), 0) AS a_giaGoc, "
     	        + "ISNULL(SUM(CASE WHEN hd.loaiHD = 'BAN_HANG' OR (hd.loaiHD = 'DOI_HANG' AND ct.soLuong > 0) THEN (dvl.gia * ABS(ct.soLuong)) - ROUND(ABS(ct.thanhTien) / (1.0 + ISNULL(sp.thueVAT, 0) / 100.0), 0) ELSE 0 END), 0) AS a_khuyenMai, "
     	        + "ISNULL(SUM(CASE WHEN hd.loaiHD = 'BAN_HANG' OR (hd.loaiHD = 'DOI_HANG' AND ct.soLuong > 0) THEN ABS(ct.thanhTien) - ROUND(ABS(ct.thanhTien) / (1.0 + ISNULL(sp.thueVAT, 0) / 100.0), 0) ELSE 0 END), 0) AS a_vat, "
-    	        
-    	        // --- NHÓM B: ĐỔI/TRẢ HÀNG ---
+    	        // Nhóm B: ĐỔI/TRẢ HÀNG (soLuong < 0, hoàn thành)
     	        + "ISNULL(SUM(CASE WHEN hd.loaiHD IN ('TRA_HANG', 'DOI_HANG') AND ct.soLuong < 0 AND hd.ghiChu LIKE N'%Hoàn thành%' THEN dvl.gia * ABS(ct.soLuong) ELSE 0 END), 0) AS b_giaGoc, "
     	        + "ISNULL(SUM(CASE WHEN hd.loaiHD IN ('TRA_HANG', 'DOI_HANG') AND ct.soLuong < 0 AND hd.ghiChu LIKE N'%Hoàn thành%' THEN (dvl.gia * ABS(ct.soLuong)) - ROUND(ABS(ct.thanhTien) / (1.0 + ISNULL(sp.thueVAT, 0) / 100.0), 0) ELSE 0 END), 0) AS b_khuyenMai, "
     	        + "ISNULL(SUM(CASE WHEN hd.loaiHD IN ('TRA_HANG', 'DOI_HANG') AND ct.soLuong < 0 AND hd.ghiChu LIKE N'%Hoàn thành%' THEN ABS(ct.thanhTien) - ROUND(ABS(ct.thanhTien) / (1.0 + ISNULL(sp.thueVAT, 0) / 100.0), 0) ELSE 0 END), 0) AS b_vat "
-    	        
     	        + "FROM HoaDon hd "
     	        + "LEFT JOIN ChiTietHoaDon ct ON hd.id = ct.hoaDonId "
     	        + "LEFT JOIN SanPham sp ON ct.sanPhamId = sp.id "
@@ -2170,21 +2171,21 @@ public class DAO_ThongKe {
     	        + "AND (hd.ghiChu IS NULL OR (hd.ghiChu NOT LIKE N'%Lưu nháp%' AND hd.ghiChu NOT LIKE N'%Đã hủy%')) "
     	    );
 
-    	    // Xây dựng câu lệnh WHERE dựa vào Filter
+    	    // Gắn điều kiện filter
     	    if (filter != null) {
-    	        if (filter.maNV != null && !filter.maNV.isEmpty()) {
-    	            sql.append(" AND hd.nhanVienId = '").append(filter.maNV).append("' ");
+    	        if (filter.getMaNV() != null && !filter.getMaNV().isEmpty()) {
+    	            sql.append(" AND hd.nhanVienId = '").append(filter.getMaNV()).append("' ");
     	        }
-    	        if (filter.fromDate != null) {
-    	            sql.append(" AND CAST(hd.ngayLapHD AS DATE) >= '").append(filter.fromDate.toString()).append("' ");
+    	        if (filter.getFromDate() != null) {
+    	            sql.append(" AND CAST(hd.ngayLapHD AS DATE) >= '").append(filter.getFromDate().toString()).append("' ");
     	        }
-    	        if (filter.toDate != null) {
-    	            sql.append(" AND CAST(hd.ngayLapHD AS DATE) <= '").append(filter.toDate.toString()).append("' ");
+    	        if (filter.getToDate() != null) {
+    	            sql.append(" AND CAST(hd.ngayLapHD AS DATE) <= '").append(filter.getToDate().toString()).append("' ");
     	        }
-    	        if (filter.startTime != null) {
+    	        if (filter.getStartTime() != null) {
     	            sql.append(" AND hd.ngayLapHD >= ? ");
-    	        } else if (filter.ca != null && filter.fromDate == null && filter.toDate == null) {
-    	            int ca = filter.ca;
+    	        } else if (filter.getCa() != null && filter.getFromDate() == null && filter.getToDate() == null) {
+    	            int ca = filter.getCa();
     	            if (ca == 1) sql.append(" AND DATEPART(HOUR, hd.ngayLapHD) BETWEEN 6 AND 13 ");
     	            else if (ca == 2) sql.append(" AND DATEPART(HOUR, hd.ngayLapHD) BETWEEN 14 AND 21 ");
     	            else if (ca == 3) sql.append(" AND (DATEPART(HOUR, hd.ngayLapHD) >= 22 OR DATEPART(HOUR, hd.ngayLapHD) < 6) ");
@@ -2192,21 +2193,21 @@ public class DAO_ThongKe {
     	    }
 
     	    try (java.sql.PreparedStatement ps = getConn().prepareStatement(sql.toString())) {
-    	        if (filter != null && filter.startTime != null) {
-    	            ps.setTimestamp(1, java.sql.Timestamp.valueOf(filter.startTime));
+    	        if (filter != null && filter.getStartTime() != null) {
+    	            ps.setTimestamp(1, java.sql.Timestamp.valueOf(filter.getStartTime()));
     	        }
     	        
     	        try (java.sql.ResultSet rs = ps.executeQuery()) {
     	            if (rs.next()) {
-    	                kq.soHdBan = rs.getInt("soHdBan");
-    	                kq.a_giaGocChuaThue = rs.getDouble("a_giaGoc");
-    	                kq.a_khuyenMai = rs.getDouble("a_khuyenMai");
-    	                kq.a_vat = rs.getDouble("a_vat");
+    	                kq.setSoHdBan(rs.getInt("soHdBan"));
+    	                kq.setA_giaGocChuaThue(rs.getDouble("a_giaGoc"));
+    	                kq.setA_khuyenMai(rs.getDouble("a_khuyenMai"));
+    	                kq.setA_vat(rs.getDouble("a_vat"));
 
-    	                kq.soHdTra = rs.getInt("soHdTra");
-    	                kq.b_giaGocMonTra = rs.getDouble("b_giaGoc");
-    	                kq.b_khuyenMaiHoanTra = rs.getDouble("b_khuyenMai");
-    	                kq.b_vatHoanTra = rs.getDouble("b_vat");
+    	                kq.setSoHdTra(rs.getInt("soHdTra"));
+    	                kq.setB_giaGocMonTra(rs.getDouble("b_giaGoc"));
+    	                kq.setB_khuyenMaiHoanTra(rs.getDouble("b_khuyenMai"));
+    	                kq.setB_vatHoanTra(rs.getDouble("b_vat"));
     	            }
     	        }
     	    } catch (Exception e) {
@@ -2214,4 +2215,52 @@ public class DAO_ThongKe {
     	    }
     	    return kq;
     	}
+     
+     /** Phân bổ doanh thu theo giờ (0-23) theo bất kỳ filter kỳ nào (THANG/QUY/TUYCHINH).
+      *  Trả về List<{h(int), tienThucThu(double)}> */
+     public List<Object[]> getRawHDGioTheoFilter(Entity.BoLocThongKe filter) {
+         List<Object[]> result = new ArrayList<>();
+         StringBuilder sql = new StringBuilder(
+             "SELECT DATEPART(HOUR, hd.ngayLapHD) AS h, SUM(ABS(ct.thanhTien)) AS tienThucThu "
+             + "FROM HoaDon hd JOIN ChiTietHoaDon ct ON hd.id = ct.hoaDonId "
+             + "WHERE hd.loaiHD = 'BAN_HANG' "
+             + "AND (hd.ghiChu IS NULL OR (hd.ghiChu NOT LIKE N'%Lưu nháp%' AND hd.ghiChu NOT LIKE N'%Đã hủy%')) ");
+         List<Object> params = new ArrayList<>();
+
+         int year = (filter != null && filter.getYear() != null)
+                    ? filter.getYear() : java.time.LocalDate.now().getYear();
+
+         if (filter != null && "THANG".equals(filter.getModeLocThoiGian()) && filter.getMonth() != null) {
+             sql.append(" AND YEAR(hd.ngayLapHD)=? AND MONTH(hd.ngayLapHD)=?");
+             params.add(year); params.add(filter.getMonth());
+         } else if (filter != null && "THANG".equals(filter.getModeLocThoiGian()) && filter.getMonth() == null) {
+             // Cả năm
+             sql.append(" AND YEAR(hd.ngayLapHD)=?");
+             params.add(year);
+         } else if (filter != null && "QUY".equals(filter.getModeLocThoiGian()) && filter.getQuarter() != null) {
+             sql.append(" AND YEAR(hd.ngayLapHD)=? AND DATEPART(QUARTER,hd.ngayLapHD)=?");
+             params.add(year); params.add(filter.getQuarter());
+         } else if (filter != null && "TUYCHINH".equals(filter.getModeLocThoiGian()) && filter.getFromDate() != null) {
+             sql.append(" AND CAST(hd.ngayLapHD AS DATE) BETWEEN ? AND ?");
+             params.add(filter.getFromDate()); params.add(filter.getToDate());
+         } else if (filter != null && "CANAM".equals(filter.getModeLocThoiGian())) {
+             sql.append(" AND YEAR(hd.ngayLapHD)=?");
+             params.add(year);
+         } else {
+             sql.append(" AND CAST(hd.ngayLapHD AS DATE) = CAST(GETDATE() AS DATE)");
+         }
+
+         if (filter != null && filter.getMaNV() != null && !filter.getMaNV().isEmpty()) {
+             sql.append(" AND hd.nhanVienId=?");
+             params.add(filter.getMaNV());
+         }
+         sql.append(" GROUP BY DATEPART(HOUR, hd.ngayLapHD)");
+
+         try (PreparedStatement ps = getConn().prepareStatement(sql.toString())) {
+             for (int i = 0; i < params.size(); i++) ps.setObject(i + 1, params.get(i));
+             ResultSet rs = ps.executeQuery();
+             while (rs.next()) result.add(new Object[]{ rs.getInt("h"), rs.getDouble("tienThucThu") });
+         } catch (Exception e) { e.printStackTrace(); }
+         return result;
+     }
 }

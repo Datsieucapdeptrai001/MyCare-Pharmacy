@@ -81,10 +81,9 @@ public class ManHinhLichSuKiemKeKho extends JPanel {
         txtSearch.getDocument().addDocumentListener(new SimpleDocumentListener(this::filterData));
 
         JButton btnRefresh = createModernButton("Làm mới", new Color(71, 85, 105));
-        btnRefresh.addActionListener(e -> {
-            loadData();
-            showModernAlert("Thành công", "Đã làm mới lịch sử kiểm kê.", SUCCESS);
-        });
+        btnRefresh.setPreferredSize(new Dimension(130, 38));
+        btnRefresh.setToolTipText("Tải lại dữ liệu lịch sử kiểm kê");
+        btnRefresh.addActionListener(e -> lamMoiKhongThongBao());
 
         right.add(lblSearch);
         right.add(txtSearch);
@@ -95,7 +94,25 @@ public class ManHinhLichSuKiemKeKho extends JPanel {
 
         return panel;
     }
+    private void lamMoiKhongThongBao() {
+        if (txtSearch != null) {
+            txtSearch.setText("");
+        }
 
+        loadData();
+
+        if (tablePhieu != null) {
+            tablePhieu.clearSelection();
+        }
+
+        if (tableChiTiet != null) {
+            modelChiTiet.setRowCount(0);
+        }
+
+        if (lblTitleChiTiet != null) {
+            lblTitleChiTiet.setText("Chi tiết phiếu kiểm kê");
+        }
+    }
     private JSplitPane createBody() {
         JPanel pnlPhieu = createPhieuPanel();
         JPanel pnlChiTiet = createChiTietPanel();

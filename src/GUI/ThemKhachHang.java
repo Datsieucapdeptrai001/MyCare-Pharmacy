@@ -9,7 +9,7 @@ import java.awt.event.*;
 
 public class ThemKhachHang extends JDialog {
 
-    private JTextField txtHoTen, txtNgayTao, txtSdt; 
+    private JTextField txtMaKH, txtHoTen, txtNgayTao, txtSdt; 
     private JComboBox<String> cboGioiTinh;
     private DefaultTableModel mainModel;
     
@@ -45,7 +45,7 @@ public class ThemKhachHang extends JDialog {
     }
 
     private void initUI(Frame parent) {
-        setSize(550, 400); // Đã thu nhỏ chiều cao vì bớt đi 2 trường nhập liệu
+        setSize(550, 450); // Tăng chút chiều cao để chứa thêm hàng Mã KH
         setLocationRelativeTo(parent);
         setUndecorated(true);
         setLayout(new BorderLayout());
@@ -80,22 +80,53 @@ public class ThemKhachHang extends JDialog {
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.insets = new Insets(5, 5, 5, 5); 
 
-        // Row 0: Nhập họ tên
-        gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 2;
+        // Row 0: Mã Khách Hàng & Số điện thoại
+        gbc.gridwidth = 1; gbc.weightx = 0.5;
+        gbc.gridx = 0; gbc.gridy = 0;
+        pnlBody.add(createLabel("Mã khách hàng", false), gbc);
+        
+        gbc.gridx = 1;
+        pnlBody.add(createLabel("Số điện thoại", true), gbc);
+
+        gbc.gridx = 0; gbc.gridy = 1;
+        txtMaKH = createTextField("Mã tự động");
+        txtMaKH.setEditable(false);
+        txtMaKH.setFocusable(false);
+        txtMaKH.setBackground(Color.decode("#F8F9FA"));
+        txtMaKH.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        
+        // Gọi BUS phát sinh mã nếu là thêm mới, ngược lại lấy mã từ bảng
+        if (editRow == -1) {
+            String maTuDong = new BUS.BUS_KhachHang().phatSinhMaKHTiepTheo();
+            txtMaKH.setText(maTuDong);
+            txtMaKH.setForeground(Color.decode("#DC2626")); // Màu đỏ cho mã mới nổi bật
+        } else {
+            txtMaKH.setText(mainModel.getValueAt(editRow, 0).toString());
+            txtMaKH.setForeground(Color.BLACK);
+        }
+        pnlBody.add(txtMaKH, gbc);
+
+        gbc.gridx = 1;
+        txtSdt = createTextField("0912345678");
+        pnlBody.add(txtSdt, gbc);
+
+        // Row 2: Họ và tên (Kéo dài hết 2 cột)
+        gbc.gridx = 0; gbc.gridy = 2; gbc.gridwidth = 2;
         pnlBody.add(createLabel("Họ và tên", true), gbc);
         
-        gbc.gridy = 1;
+        gbc.gridy = 3;
         txtHoTen = createTextField("Nhập họ và tên đầy đủ");
         pnlBody.add(txtHoTen, gbc);
 
-        // Row 1: Giới tính & Ngày tạo
-        gbc.gridwidth = 1; gbc.weightx = 0.5;
-        gbc.gridx = 0; gbc.gridy = 2;
+        // Row 4: Giới tính & Ngày tạo
+        gbc.gridwidth = 1;
+        gbc.gridx = 0; gbc.gridy = 4;
         pnlBody.add(createLabel("Giới tính", false), gbc);
+        
         gbc.gridx = 1;
         pnlBody.add(createLabel("Ngày tạo", false), gbc); 
 
-        gbc.gridx = 0; gbc.gridy = 3;
+        gbc.gridx = 0; gbc.gridy = 5;
         cboGioiTinh = new JComboBox<>(new String[]{"Nam", "Nữ", "Khác"});
         cboGioiTinh.setBackground(Color.WHITE);
         cboGioiTinh.setFont(new Font("Segoe UI", Font.PLAIN, 14));
@@ -113,14 +144,6 @@ public class ThemKhachHang extends JDialog {
             txtNgayTao.setForeground(Color.BLACK);
         }
         pnlBody.add(txtNgayTao, gbc);
-
-        // Row 2: Số điện thoại (Kéo dài hết 2 cột)
-        gbc.gridx = 0; gbc.gridy = 4; gbc.gridwidth = 2;
-        pnlBody.add(createLabel("Số điện thoại", true), gbc);
-
-        gbc.gridy = 5;
-        txtSdt = createTextField("0912345678");
-        pnlBody.add(txtSdt, gbc);
 
         add(pnlBody, BorderLayout.CENTER);
 
@@ -232,6 +255,7 @@ public class ThemKhachHang extends JDialog {
                     }
                     
                 } else {
+                    // Lấy mã phát sinh mới nhất ở thời điểm lưu để tránh trùng lặp
                     String maMoi = busKH.phatSinhMaKHTiepTheo();
                     Entity.KhachHang kh = new Entity.KhachHang();
                     kh.setId(maMoi);

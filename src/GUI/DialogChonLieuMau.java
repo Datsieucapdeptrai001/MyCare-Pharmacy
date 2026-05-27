@@ -27,7 +27,8 @@ public class DialogChonLieuMau extends JDialog {
         this.parentForm = parent;
 
         setUndecorated(true);
-        setSize(1280, 720);
+        // FIX: Tăng kích thước tổng của Dialog để bảng rộng rãi
+        setSize(1366, 720);
         setLocationRelativeTo(parent);
 
         // --- KHUNG BAO NGOÀI CÙNG ---
@@ -73,7 +74,8 @@ public class DialogChonLieuMau extends JDialog {
 
         // ===== CỘT TRÁI =====
         JPanel pnlLeft = new JPanel(new BorderLayout(0, 15));
-        pnlLeft.setPreferredSize(new Dimension(230, 0));
+        // FIX: Tăng kích thước cột trái để ComboBox thoải mái hơn
+        pnlLeft.setPreferredSize(new Dimension(280, 0));
         pnlLeft.setBackground(Color.WHITE);
         pnlLeft.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createMatteBorder(0, 0, 0, 1, Color.decode("#DFE3E8")),
@@ -114,23 +116,10 @@ public class DialogChonLieuMau extends JDialog {
             }
         });
 
-        JButton btnThemLieuMoi = new JButton("+");
-        btnThemLieuMoi.setFont(new Font("Segoe UI", Font.BOLD, 8));
-        btnThemLieuMoi.setBackground(Color.decode("#10B981")); 
-        btnThemLieuMoi.setForeground(Color.WHITE);
-        btnThemLieuMoi.setFocusPainted(false);
-        btnThemLieuMoi.setBorderPainted(false);
-        btnThemLieuMoi.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        btnThemLieuMoi.setPreferredSize(new Dimension(35, 30));
-
-        btnThemLieuMoi.addActionListener(e -> {
-            Utils.ThongBao.show(this, "Thông báo", "Tính năng tạo liều mới đang phát triển!", "WARNING");
-        });
-
         JPanel pnlComboAndBtn = new JPanel(new BorderLayout(5, 0));
         pnlComboAndBtn.setOpaque(false);
         pnlComboAndBtn.add(cboLieuMau, BorderLayout.CENTER);
-        pnlComboAndBtn.add(btnThemLieuMoi, BorderLayout.EAST);
+        // FIX: Đã xóa nút thêm liều mới khỏi giao diện
 
         lblThanhPhan = new JLabel("0 thành phần");
         lblThanhPhan.setFont(new Font("Segoe UI", Font.ITALIC, 12));
@@ -312,7 +301,8 @@ public class DialogChonLieuMau extends JDialog {
         gbcH.fill = GridBagConstraints.BOTH; gbcH.insets = new Insets(10, 5, 10, 5);
         
         String[] headers = {"Thuốc thành phần", "Vị trí kệ", "Số lượng/Ngày", "Lô & HSD", "Trạng thái"};
-        double[] weights = {3.2, 1.1, 1.0, 2.2, 2.5}; 
+        // FIX: Chỉnh tỷ lệ Header cân xứng
+        double[] weights = {4.5, 1.0, 1.0, 1.8, 1.7}; 
         
         for (int i = 0; i < headers.length; i++) {
             JLabel lbl = new JLabel(headers[i], i > 1 ? SwingConstants.CENTER : SwingConstants.LEFT);
@@ -607,23 +597,27 @@ public class DialogChonLieuMau extends JDialog {
 
             JPanel pnlTen = new JPanel(new BorderLayout(5, 0));
             pnlTen.setOpaque(false);
+            // FIX: Ngăn chặn layout bị vỡ khi tên thuốc dài
+            pnlTen.setPreferredSize(new Dimension(50, 50)); 
+            
             chkChon = new JCheckBox(); chkChon.setSelected(true); chkChon.setOpaque(false);
             chkChon.addActionListener(e -> {
                 capNhatTongTienCombo();
                 capNhatHuongDanSuDung(); 
             });
             
-            String htmlTen = "<html><div style='width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;'><span style='font-weight:bold; font-size:13px; color:#111827;'>" + ten + "</span><br>"
-                    + "<span style='font-size:11px; color:#6B7280;'>(" + (cachDung!=null?cachDung:"Thành phần") + ")</span></div></html>";
+            // FIX: Chữ nhỏ lại, bỏ in đậm, và loại bỏ hoàn toàn phần "cách dùng" bên dưới
+            String htmlTen = "<html><div style='width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;'><span style='font-weight:normal; font-size:11px; color:#111827;'>" + ten + "</span></div></html>";
             JLabel lblTen = new JLabel(htmlTen);
             
             pnlTen.add(chkChon, BorderLayout.WEST); pnlTen.add(lblTen, BorderLayout.CENTER);
-            gbc.gridx = 0; gbc.weightx = 3.2; pnlRow.add(pnlTen, gbc);
+            
+            // FIX: Chỉnh lại tỷ lệ chia của GridBagLayout cho chuẩn
+            gbc.gridx = 0; gbc.weightx = 4.5; pnlRow.add(pnlTen, gbc);
 
-            // SỬA Ở ĐÂY: Hiển thị biến viTriThuoc truyền vào thay vì fix cứng
             String viTriHienThi = (viTriThuoc != null && !viTriThuoc.trim().isEmpty() && !viTriThuoc.equals(" - ")) ? viTriThuoc : "Chưa xếp vị trí";
             JLabel lblViTri = new JLabel("<html><span style='color:#6B7280; font-size:10px;'>" + viTriHienThi + "</span></html>", SwingConstants.CENTER);
-            gbc.gridx = 1; gbc.weightx = 1.1; pnlRow.add(lblViTri, gbc);
+            gbc.gridx = 1; gbc.weightx = 1.0; pnlRow.add(lblViTri, gbc);
 
             spnSoLuong = new JSpinner(new SpinnerNumberModel(sl, 1, 999, 1));
             spnSoLuong.setFont(new Font("Segoe UI", Font.BOLD, 12));
@@ -649,7 +643,7 @@ public class DialogChonLieuMau extends JDialog {
                 }
             } catch(Exception e) {}
             if (cboLo.getItemCount() == 0) cboLo.addItem("Chưa có lô");
-            gbc.gridx = 3; gbc.weightx = 2.2; pnlRow.add(cboLo, gbc);
+            gbc.gridx = 3; gbc.weightx = 1.8; pnlRow.add(cboLo, gbc);
 
             lblStatus = new JLabel("Chưa quét", SwingConstants.CENTER);
             lblStatus.setFont(new Font("Segoe UI", Font.BOLD, 11));
@@ -665,7 +659,7 @@ public class DialogChonLieuMau extends JDialog {
             JPanel pnlStatusWrapper = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
             pnlStatusWrapper.setOpaque(false); 
             pnlStatusWrapper.add(lblStatus);
-            gbc.gridx = 4; gbc.weightx = 2.5; pnlRow.add(pnlStatusWrapper, gbc);
+            gbc.gridx = 4; gbc.weightx = 1.7; pnlRow.add(pnlStatusWrapper, gbc);
         }
     }
 }

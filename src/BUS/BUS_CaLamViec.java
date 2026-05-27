@@ -62,24 +62,46 @@ public class BUS_CaLamViec {
             return false;
         }
 
-        // Tính tienHeThongGhiNhan bằng SQL tổng hợp → set vào ca trước khi lưu
+        // Tính tienHeThongGhiNhan theo nghiệp vụ → set vào ca trước khi lưu
         tinhDoanhThuCa(ca);
 
         return daoCaLamViec.capNhatCa(ca);
     }
 
-    // Tính doanh thu ca 
+    /**
+     * Tính tienHeThongGhiNhan theo nghiệp vụ:
+     *   tienHeThong = tienDauCa
+     *               + Σ tongTienHienTai  (BAN_HANG)   ← tiền vào
+     *               + Σ (tongTienHienTai − tongTienGoc) (DOI_HANG) ← chênh lệch
+     *               − Σ tongTienHienTai  (TRA_HANG)   ← tiền ra
+     *
+     * DAO chỉ cung cấp dữ liệu thô (loaiHD, tongTienHienTai, tongTienGoc).
+     * Toàn bộ logic tính toán nằm ở đây (BUS).
+     */
     public void tinhDoanhThuCa(CaLamViec ca) {
         if (ca == null || ca.getId() == null || ca.getId().isBlank()) {
             System.out.println("Cảnh báo: tinhDoanhThuCa() nhận ca null hoặc thiếu id.");
             return;
         }
 
-        // Một lần gọi DB duy nhất — trả về tienDauCa + net cash flow trong ca
-        double tienHeThong = daoCaLamViec.tinhTienMatThucTeTrongCa(ca.getId());
-        ca.setTienHeThongGhiNhan(tienHeThong);
+        List<Object[]> dsHoaDon = daoCaLamViec.getHoaDonTienMatTrongCa(ca.getId());
+
+        double netFlow = 0;
+        for (Object[] row : dsHoaDon) {
+            String loaiHD          = (String) row[0];
+            double tongTienHienTai = (double) row[1];
+            double tongTienGoc     = (double) row[2];
+
+            switch (loaiHD) {
+                case "BAN_HANG" -> netFlow += tongTienHienTai;
+                case "TRA_HANG" -> netFlow -= tongTienHienTai;
+                case "DOI_HANG" -> netFlow += (tongTienHienTai - tongTienGoc);
+            }
+        }
+
+        ca.setTienHeThongGhiNhan(ca.getTienDauCa() + netFlow);
     }
-    
+
     // Đối soát
     public double doiSoatTienMat(CaLamViec ca) {
         return ca.getTienKetCa() - ca.getTienHeThongGhiNhan();
@@ -91,17 +113,5 @@ public class BUS_CaLamViec {
 
     public List<CaLamViec> getLichSuCa() {
         return daoCaLamViec.getLichSuCa();
-    }
-
-    /**
-     * Lấy ca làm việc đã đóng gần nhất của một nhân viên.
-     * Dùng cho tính năng xem lại Bill Kết Ca ở ManHinhThongKe.
-     *
-     * @param maNV  mã nhân viên
-     * @return      CaLamViec gần nhất đã đóng, hoặc null
-     */
-    public CaLamViec getCaDaKetThucGanNhat(String maNV) {
-        if (maNV == null || maNV.isBlank()) return null;
-        return daoCaLamViec.getCaDaKetThucGanNhat(maNV);
     }
 }

@@ -246,4 +246,17 @@ public class BUS_TaiKhoan {
 
         return tk; // Trả về tài khoản đã được nạp đầy đủ thông tin nhân viên
     }
+    public boolean datLaiMatKhauTheoEmail(String email, String matKhauMoi) {
+        if (email == null || email.trim().isEmpty()) {
+            return false;
+        }
+
+        if (matKhauMoi == null || matKhauMoi.trim().length() < 6) {
+            return false;
+        }
+
+        String matKhauDaBam = PasswordUtils.hashPassword(matKhauMoi.trim());
+
+        return daoTaiKhoan.capNhatMatKhauTheoEmail(email.trim(), matKhauDaBam);
+    }
 }

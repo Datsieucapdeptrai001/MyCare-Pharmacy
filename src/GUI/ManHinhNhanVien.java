@@ -322,19 +322,14 @@ public class ManHinhNhanVien extends JPanel {
         pnlDetHeader.add(btnCloseDet, BorderLayout.EAST);
 
         // TABS
-        JPanel pnlTabs = new JPanel(new GridLayout(1, 2));
+        JPanel pnlTabs = new JPanel(new GridLayout(1, 1)); // Đã xóa tab phân quyền
         pnlTabs.setBackground(Color.WHITE);
         pnlTabs.setPreferredSize(new Dimension(0, 35));
         JLabel lblTab1 = new JLabel("Thông tin", SwingConstants.CENTER);
         lblTab1.setFont(new Font("Segoe UI", Font.BOLD, 13));
         lblTab1.setForeground(Color.decode("#1967D2"));
         lblTab1.setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, Color.decode("#1967D2")));
-        JLabel lblTab2 = new JLabel("Phân quyền", SwingConstants.CENTER);
-        lblTab2.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        lblTab2.setForeground(Color.GRAY);
-        lblTab2.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, Color.decode("#DFE3E8")));
         pnlTabs.add(lblTab1);
-        pnlTabs.add(lblTab2);
 
         // BODY
         JPanel pnlBody = new JPanel();
@@ -794,6 +789,11 @@ class DialogThemNhanVien extends JDialog {
         JScrollPane scrollPane = new JScrollPane(pnlBody);
         scrollPane.setBorder(null);
         scrollPane.getVerticalScrollBar().setUnitIncrement(20);
+        
+        // Ẩn thanh cuộn nhưng vẫn cho phép cuộn bằng chuột
+        scrollPane.getVerticalScrollBar().setPreferredSize(new Dimension(0, 0));
+        scrollPane.getHorizontalScrollBar().setPreferredSize(new Dimension(0, 0));
+
         add(scrollPane, BorderLayout.CENTER);
 
         JPanel pnlFooter = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 15));
