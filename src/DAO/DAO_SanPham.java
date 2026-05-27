@@ -242,24 +242,28 @@ public class DAO_SanPham {
     }
 
     public boolean capNhatMaVachSanPham(String maSP, String maVachMoi) {
-        String sql = "UPDATE SanPham SET maVach = ? WHERE id = ?";
+        if (kiemTraMaVachTonTai(maVachMoi, maSP)) {
+            System.err.println("CẢNH BÁO: Mã vạch " + maVachMoi + " đã thuộc về sản phẩm khác!");
+            return false; 
+        }
 
+        String sql = "UPDATE SanPham " +
+                     "SET maVach = CASE " +
+                     "    WHEN maVach IS NULL OR LTRIM(RTRIM(maVach)) = '' THEN ? " +
+                     "    WHEN ',' + maVach + ',' LIKE '%,' + ? + ',%' THEN maVach " + 
+                     "    ELSE maVach + ',' + ? " + 
+                     "END " +
+                     "WHERE id = ?";
+                     
         try (Connection con = ConnectDB.getInstance().getConnection();
-                PreparedStatement pst = con.prepareStatement(sql)) {
-
-            System.out.println("=== DEBUG DAO_SanPham.capNhatMaVachSanPham ===");
-            System.out.println("maSP = [" + maSP + "]");
-            System.out.println("maVachMoi = [" + maVachMoi + "]");
-
+             PreparedStatement pst = con.prepareStatement(sql)) {
+             
             pst.setString(1, maVachMoi.trim());
-            pst.setString(2, maSP.trim());
-
-            int row = pst.executeUpdate();
-
-            System.out.println("row update SanPham.maVach = " + row);
-
-            return row > 0;
-
+            pst.setString(2, maVachMoi.trim());
+            pst.setString(3, maVachMoi.trim());
+            pst.setString(4, maSP.trim());
+            
+            return pst.executeUpdate() > 0;
         } catch (Exception e) {
             e.printStackTrace();
             return false;
