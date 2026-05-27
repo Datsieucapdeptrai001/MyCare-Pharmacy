@@ -24,7 +24,9 @@ public class BUS_KhachHang {
         }
         return daoKhachHang.getKhachHangTheoSDT(sdt);
     }
-    
+    public String layMaKHSuDungTiepTheo() {
+        return daoKhachHang.getMaKHTuDong();
+    }
     // ========================================================
     // FIX 1: Bổ sung Alias function để khớp với lệnh gọi trong TaoHoaDon.java
     // ========================================================

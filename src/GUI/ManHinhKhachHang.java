@@ -85,6 +85,19 @@ public class ManHinhKhachHang extends JPanel {
         pnlSearchWrapper.add(txtSearch, BorderLayout.CENTER);
 
         JButton btnReset = createActionBtn("Làm mới", "#6C757D", "REFRESH");
+        btnReset.addActionListener(e -> {
+            loadData(); // Tải lại dữ liệu lên bảng
+            
+            // Cập nhật lại thanh Detail Sidebar bên phải nếu nó đang được mở
+            if (pnlDetail != null && pnlDetail.isVisible()) {
+                int row = table.getSelectedRow();
+                if (row >= 0) {
+                    updateDetailSidebar(table.convertRowIndexToModel(row));
+                } else {
+                    pnlDetail.setVisible(false); // Ẩn đi nếu không chọn dòng nào
+                }
+            }
+        });
         btnAdd = createActionBtn("+ Thêm KH", "#E11D48", null);
         btnAdd.addActionListener(e -> {
             Window p = SwingUtilities.getWindowAncestor(this);
@@ -219,39 +232,49 @@ public class ManHinhKhachHang extends JPanel {
     }
 
     private JPanel createHistoryItem(String maHD, String ngay, String diemCong, String tongDiemLucDo) {
-        JPanel pnlRow = new JPanel(new BorderLayout());
+        JPanel pnlRow = new JPanel(new BorderLayout(5, 0)); // Thêm khoảng cách 5px giữa 2 bên
         pnlRow.setBackground(Color.WHITE);
         pnlRow.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, Color.decode("#F1F5F9")));
         pnlRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 55));
         pnlRow.setBorder(new EmptyBorder(10, 0, 10, 0));
 
+        // --- BÊN TRÁI: Mã HD & Điểm ---
         JPanel pnlLeft = new JPanel(new GridLayout(2, 1, 0, 4));
         pnlLeft.setBackground(Color.WHITE);
+        pnlLeft.setPreferredSize(new Dimension(75, 0)); // Cố định chiều rộng cột trái để nhường chỗ cho bên phải
+        
         JLabel lblMaHD = new JLabel(maHD);
-        lblMaHD.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        lblMaHD.setFont(new Font("Segoe UI", Font.BOLD, 11)); // Ép nhỏ chữ từ 13 xuống 11
         lblMaHD.setForeground(Color.decode("#1967D2"));
         
         JLabel lblDiemCong = new JLabel(diemCong); 
-        lblDiemCong.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        lblDiemCong.setFont(new Font("Segoe UI", Font.PLAIN, 11)); // Ép nhỏ từ 12 xuống 11
 
         pnlLeft.add(lblMaHD);
         pnlLeft.add(lblDiemCong);
 
+        // --- BÊN PHẢI: Ngày & Ghi chú ---
         JPanel pnlRight = new JPanel(new GridLayout(2, 1, 0, 4));
         pnlRight.setBackground(Color.WHITE);
+        
         JLabel lblNgay = new JLabel(ngay, SwingConstants.RIGHT);
-        lblNgay.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        lblNgay.setFont(new Font("Segoe UI", Font.PLAIN, 10)); // Ép nhỏ chữ Ngày từ 12 xuống 10
         lblNgay.setForeground(Color.decode("#9CA3AF"));
         
-        JLabel lblTong = new JLabel(tongDiemLucDo.isEmpty() ? "" : "→ " + tongDiemLucDo, SwingConstants.RIGHT);
-        lblTong.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        String textGhiChu = tongDiemLucDo.isEmpty() ? "" : "→ " + tongDiemLucDo;
+        JLabel lblTong = new JLabel(textGhiChu, SwingConstants.RIGHT);
+        lblTong.setFont(new Font("Segoe UI", Font.PLAIN, 10)); // Ép nhỏ chữ Ghi chú từ 12 xuống 10
         lblTong.setForeground(Color.decode("#6B7280"));
+        lblTong.setToolTipText(textGhiChu); // Vẫn giữ Tooltip để lỡ có chữ quá dài khách hàng rê chuột vào xem được
 
         pnlRight.add(lblNgay);
         pnlRight.add(lblTong);
 
         pnlRow.add(pnlLeft, BorderLayout.WEST);
-        pnlRow.add(pnlRight, BorderLayout.EAST);
+        
+        // QUAN TRỌNG: Phải dùng CENTER ở đây thì chữ mới tự động co lại cho vừa khung, dùng EAST sẽ sinh ra thanh cuộn
+        pnlRow.add(pnlRight, BorderLayout.CENTER); 
+        
         return pnlRow;
     }
 
@@ -445,6 +468,10 @@ public class ManHinhKhachHang extends JPanel {
         JScrollPane spHistory = new JScrollPane(pnlHistoryListWrapper);
         spHistory.setBorder(null);
         spHistory.getVerticalScrollBar().setUI(new Utils.ModernScrollBarUI());
+        
+        // --- THÊM DÒNG NÀY VÀO ĐỂ KHÓA THANH CUỘN NGANG ---
+        spHistory.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        
         pnlHistoryWrapper.add(pnlHisHeader, BorderLayout.NORTH);
         pnlHistoryWrapper.add(spHistory, BorderLayout.CENTER);
 
@@ -521,7 +548,7 @@ public class ManHinhKhachHang extends JPanel {
     }
 
     private void updateDetailSidebar(int modelRow) {
-        String id = model.getValueAt(modelRow, 0).toString();
+    	String id = model.getValueAt(modelRow, 0).toString().trim(); 
         String name = model.getValueAt(modelRow, 1).toString();
         String phone = model.getValueAt(modelRow, 2).toString();
         String orders = model.getValueAt(modelRow, 3).toString();
@@ -575,7 +602,6 @@ public class ManHinhKhachHang extends JPanel {
         pnlHistoryList.revalidate(); 
         pnlHistoryList.repaint();
 
-        // [Giữ nguyên đoạn SwingWorker truy vấn hóa đơn bên dưới...]
         SwingWorker<List<String[]>, Void> worker = new SwingWorker<List<String[]>, Void>() {
             @Override
             protected List<String[]> doInBackground() throws Exception {
@@ -585,9 +611,11 @@ public class ManHinhKhachHang extends JPanel {
 
             @Override
             protected void done() {
+                pnlHistoryList.removeAll(); 
+                
                 try {
-                    List<String[]> danhSach = get();
-                    pnlHistoryList.removeAll();
+                    List<String[]> danhSach = get(); 
+                    
                     if (danhSach == null || danhSach.isEmpty()) {
                         JLabel lbl = new JLabel("Chưa có lịch sử điểm nào.");
                         lbl.setFont(new Font("Segoe UI", Font.ITALIC, 12));
@@ -596,25 +624,35 @@ public class ManHinhKhachHang extends JPanel {
                         pnlHistoryList.add(lbl);
                     } else {
                         for (String[] row : danhSach) {
-                            // row: [0]=hoaDonId, [1]=loai, [2]=soDiem, [3]=ghiChu, [4]=thoiGian
                             boolean laTich = "TICH".equals(row[1]);
                             String diemHienThi = (laTich ? "+" : "-") + row[2] + " điểm";
                             JPanel item = createHistoryItem(row[0], row[4], diemHienThi, row[3]);
+                            
                             try {
                                 JPanel pnlLeft = (JPanel) item.getComponent(0);
                                 JLabel lblDiem = (JLabel) pnlLeft.getComponent(1);
-                                lblDiem.setForeground(laTich
-                                    ? Color.decode("#16A34A")
+                                lblDiem.setForeground(laTich 
+                                    ? Color.decode("#16A34A") 
                                     : Color.decode("#DC2626"));
                                 lblDiem.setFont(new Font("Segoe UI", Font.BOLD, 12));
                             } catch (Exception ignored) {}
+                            
                             pnlHistoryList.add(item);
                         }
                     }
-                    pnlHistoryList.revalidate();
-                    pnlHistoryList.repaint();
                 } catch (Exception ex) {
                     ex.printStackTrace();
+                    JLabel lblErr = new JLabel("Lỗi khi tải lịch sử điểm. Vui lòng xem Console!");
+                    lblErr.setForeground(Color.RED);
+                    pnlHistoryList.add(lblErr);
+                }
+                
+                // --- FIX 4: Ép Frame cha (Wrapper) phải vẽ lại để đánh thức JScrollPane ---
+                pnlHistoryList.revalidate();
+                pnlHistoryList.repaint();
+                if (pnlHistoryList.getParent() != null) {
+                    pnlHistoryList.getParent().revalidate();
+                    pnlHistoryList.getParent().repaint();
                 }
             }
         };
@@ -689,7 +727,8 @@ public class ManHinhKhachHang extends JPanel {
         else sorter.setRowFilter(RowFilter.regexFilter("(?i)" + search));
     }
 
-    private void loadData() {
+ // Sửa 'private' thành 'public'
+    public void loadData() {
         model.setRowCount(0);
         DAO.DAO_KhachHang daoKH = new DAO.DAO_KhachHang();
         List<Object[]> dsKhachHang = daoKH.layDanhSachKhachHangChoBang();

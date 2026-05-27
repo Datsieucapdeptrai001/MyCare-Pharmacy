@@ -18,6 +18,7 @@ public class DAO_KhachHang {
 
     public DAO_KhachHang() {
     }
+
     public KhachHang timKhachHangTheoSDT(String sdt) {
         KhachHang kh = null;
         Connection con = null;
@@ -149,9 +150,9 @@ public class DAO_KhachHang {
         }
         return n > 0;
     }
- // Thêm hàm này vào DAO_KhachHang.java
+ // Thay thế toàn bộ nội dung của hàm phatSinhMaKHTiepTheo bằng code này
     public String phatSinhMaKHTiepTheo() {
-        String maMoi = "KH1"; // Mặc định nếu CSDL chưa có khách hàng nào
+        String maMoi = "KH-0001"; 
         String sql = "SELECT id FROM KhachHang WHERE id LIKE 'KH%'";
         
         Connection con = ConnectDB.getInstance().getConnection();
@@ -160,24 +161,35 @@ public class DAO_KhachHang {
             
             int maxSo = 0;
             while (rs.next()) {
-                String id = rs.getString("id"); // Lấy mã, ví dụ: "KH7"
+                String id = rs.getString("id"); 
                 try {
-                    // Cắt bỏ 2 ký tự đầu ("KH") và ép phần còn lại sang số nguyên
-                    int so = Integer.parseInt(id.substring(2));
-                    if (so > maxSo) {
-                        maxSo = so; // Tìm số lớn nhất
+                    // Dùng Regex xóa tất cả ký tự không phải là số (xóa cả chữ KH và dấu -)
+                    // VD: "KH-0010" -> "0010", "KH5" -> "5"
+                    String numberOnly = id.replaceAll("[^0-9]", "");
+                    
+                    if (!numberOnly.isEmpty()) {
+                        int so = Integer.parseInt(numberOnly); // "0010" sẽ thành 10
+                        if (so > maxSo) {
+                            maxSo = so; // Tìm được số lớn nhất thực sự
+                        }
                     }
                 } catch (Exception ex) {
-                    // Bỏ qua những mã cũ sai định dạng (VD: KH2024-0001)
+                    // Bỏ qua nếu có mã rác không thể ép kiểu
                 }
             }
-            // Cộng thêm 1 vào số lớn nhất để ra mã mới
-            maMoi = "KH" + (maxSo + 1);
+            
+            // Cộng thêm 1 vào số lớn nhất để ra mã mới, format chuẩn 4 số
+            maMoi = String.format("KH-%04d", maxSo + 1);
             
         } catch (SQLException e) {
             e.printStackTrace();
         }
         return maMoi;
+    }
+
+    // Thay thế hàm getMaKHTuDong để trỏ về chung 1 logic, tránh xung đột
+    public String getMaKHTuDong() {
+        return phatSinhMaKHTiepTheo();
     }
     // Lấy thông tin khách hàng bằng số điện thoại
     public KhachHang getKhachHangTheoSDT(String sdt) {
@@ -208,14 +220,15 @@ public class DAO_KhachHang {
     public List<Object[]> layDanhSachKhachHangChoBang() {
         List<Object[]> ds = new ArrayList<>();
         
-        // Lệnh SQL: Lấy thông tin KH, đồng thời đếm số hóa đơn và tính tổng tiền đã mua
+        // [FIX]: Thay SUM(ct.soLuong * dv.gia) thành SUM(ct.thanhTien). 
+        // Vì ct.thanhTien trong CSDL hiện tại đã được tính gộp cả Thuế VAT và trừ Khuyến mãi.
+        // Đồng thời có thể bỏ LEFT JOIN với DonViDoLuong cho nhẹ truy vấn.
         String sql = "SELECT kh.id, kh.hoVaTen, kh.sdt, kh.diemTichLuy, kh.ngayTao, " +
                      "COUNT(DISTINCT hd.id) AS soDonHang, " +
-                     "ISNULL(SUM(ct.soLuong * dv.gia), 0) AS tongChiTieu " +
+                     "ISNULL(SUM(ct.thanhTien), 0) AS tongChiTieu " +
                      "FROM KhachHang kh " +
                      "LEFT JOIN HoaDon hd ON kh.id = hd.khachHangId AND hd.loaiHD = 'BAN_HANG' " +
                      "LEFT JOIN ChiTietHoaDon ct ON hd.id = ct.hoaDonId " +
-                     "LEFT JOIN DonViDoLuong dv ON ct.donViDoLuongId = dv.id " +
                      "GROUP BY kh.id, kh.hoVaTen, kh.sdt, kh.diemTichLuy, kh.ngayTao " +
                      "ORDER BY kh.ngayTao DESC";
 
@@ -233,7 +246,9 @@ public class DAO_KhachHang {
                 String sdt = rs.getString("sdt") != null ? rs.getString("sdt") : "";
                 
                 String soDon = String.valueOf(rs.getInt("soDonHang"));
-                String tongChiTieu = df.format(rs.getDouble("tongChiTieu"));
+                
+                // Tiền chi tiêu bây giờ đã tính cả VAT 100% chính xác
+                String tongChiTieu = df.format(rs.getDouble("tongChiTieu")); 
                 String diem = String.valueOf(rs.getInt("diemTichLuy"));
                 
                 String ngayTao = "";
@@ -241,7 +256,7 @@ public class DAO_KhachHang {
                     ngayTao = rs.getTimestamp("ngayTao").toLocalDateTime().format(dtf);
                 }
 
-                // Đưa vào mảng khớp với thứ tự 8 cột trên giao diện của bạn
+                // Đưa vào mảng khớp với thứ tự cột trên giao diện
                 ds.add(new Object[]{id, ten, sdt, soDon, tongChiTieu, diem, ngayTao, ""});
             }
         } catch (SQLException e) {
@@ -249,31 +264,41 @@ public class DAO_KhachHang {
         }
         return ds;
     }
- // Lấy lịch sử điểm của khách hàng
- // Mỗi phần tử String[]: [0]=hoaDonId, [1]=loai, [2]=soDiem, [3]=ghiChu, [4]=thoiGian
- public List<String[]> getLichSuDiem(String khachHangId) {
-     List<String[]> ds = new ArrayList<>();
-     String sql = "SELECT hoaDonId, loai, soDiem, ghiChu, thoiGian FROM LichSuDiem WHERE khachHangId = ? ORDER BY thoiGian DESC";
-     try {
-         Connection con = ConnectDB.getInstance().getConnection();
-         PreparedStatement pst = con.prepareStatement(sql);
-         pst.setString(1, khachHangId);
-         ResultSet rs = pst.executeQuery();
-         while (rs.next()) {
-             String[] row = new String[5];
-             row[0] = rs.getString("hoaDonId") != null ? rs.getString("hoaDonId") : "Thủ công";
-             row[1] = rs.getString("loai");
-             row[2] = String.valueOf(rs.getInt("soDiem"));
-             row[3] = rs.getString("ghiChu") != null ? rs.getString("ghiChu") : "";
-             row[4] = rs.getTimestamp("thoiGian") != null
-                     ? rs.getTimestamp("thoiGian").toLocalDateTime()
-                        .format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
-                     : "-";
-             ds.add(row);
-         }
-     } catch (SQLException e) { e.printStackTrace(); }
-     return ds;
- }
+    public List<String[]> getLichSuDiem(String khachHangId) {
+        List<String[]> dsLichSu = new ArrayList<>();
+        // Truy vấn sắp xếp từ mới nhất đến cũ nhất
+        String sql = "SELECT hoaDonId, loai, soDiem, ghiChu, thoiGian FROM LichSuDiem WHERE khachHangId = ? ORDER BY thoiGian DESC";
+        
+        try {
+            Connection con = ConnectDB.getInstance().getConnection();
+            PreparedStatement pst = con.prepareStatement(sql);
+            pst.setString(1, khachHangId);
+            ResultSet rs = pst.executeQuery();
+            
+            while (rs.next()) {
+                String hoaDonId = rs.getString("hoaDonId");
+                if (hoaDonId == null || hoaDonId.trim().isEmpty()) hoaDonId = "Hệ thống"; 
+                
+                String loai = rs.getString("loai");
+                String soDiem = String.valueOf(rs.getInt("soDiem"));
+                
+                String ghiChu = rs.getString("ghiChu");
+                if (ghiChu == null) ghiChu = "";
+                
+                java.sql.Timestamp ts = rs.getTimestamp("thoiGian");
+                String thoiGian = "";
+                if (ts != null) {
+                    thoiGian = new java.text.SimpleDateFormat("dd/MM/yyyy HH:mm").format(ts);
+                }
+                
+                // Mảng 5 phần tử khớp chính xác với những gì ManHinhKhachHang đang đợi
+                dsLichSu.add(new String[]{hoaDonId, loai, soDiem, ghiChu, thoiGian});
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return dsLichSu;
+    }
 
  // Ghi một dòng lịch sử điểm
  public boolean ghiLichSuDiem(String khachHangId, String hoaDonId, String loai, int soDiem, String ghiChu) {

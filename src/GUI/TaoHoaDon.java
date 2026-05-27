@@ -375,11 +375,6 @@ public class TaoHoaDon extends JDialog {
             String tenDVT = productModel.getValueAt(i, 1).toString().trim();
             int soLuongMua = Integer.parseInt(productModel.getValueAt(i, 3).toString());
             
-            // --- KHÔNG CẦN TÁCH DÒNG THEO LÔ Ở FORM NÀY ---
-            // Giữ nguyên logic cũ của bạn (Key chỉ gồm maSP + maDVT)
-            // Nghiệp vụ bóc Lô (FEFO) sẽ được hàm DAO_HoaDon.luuGiaoDichThanhToan()
-            // tự động tính toán và lưu vào bảng PhanBoLoHang.
-            
             String[] ids = busHD.layMaSPVaMaDVT(tenSP, tenDVT);
             if (ids == null) {
                 showCustomNotification("LỖI THANH TOÁN", "Mặt hàng bị sai tên: " + tenSP, "ERROR");
@@ -391,13 +386,12 @@ public class TaoHoaDon extends JDialog {
 
             if (isGift) {
                 strGifts.append(" | TANG:").append(tenSP).append(";").append(soLuongMua).append(";").append(tenDVT);
-                continue; // [FIX Bug 1]: Quà tặng chỉ ghi vào ghiChu, không lưu vào ChiTietHoaDon
+                continue; // Quà tặng chỉ ghi vào ghiChu
             }
 
             if (mapFinal.containsKey(key)) {
                 Entity.ChiTietHoaDon existing = mapFinal.get(key);
                 existing.setSoLuong(existing.getSoLuong() + soLuongMua);
-                // Cập nhật lại thanhTien khi gộp số lượng
                 long donGiaEx = 0;
                 double vatRateEx = 0;
                 try {
@@ -417,12 +411,10 @@ public class TaoHoaDon extends JDialog {
                 Entity.DonViDoLuong dv = new Entity.DonViDoLuong(); dv.setId(maDVT); ct.setDonViDoLuongId(dv);
                 ct.setSoLuong(soLuongMua);
 
-                // === LỖI 2 FIX: Set donGiaThucTe và thanhTien ===
                 long donGia = 0;
                 double vatRate = 0;
                 try {
                     donGia   = Long.parseLong(productModel.getValueAt(i, 4).toString().replaceAll("[^0-9]", ""));
-                    // Lấy VAT% từ cột ẩn (cột 8)
                     Object vatVal = productModel.getColumnCount() >= 9 ? productModel.getValueAt(i, 8) : null;
                     if (vatVal != null && !vatVal.toString().trim().isEmpty()) {
                         vatRate = Double.parseDouble(vatVal.toString().replace("%", "").trim());
@@ -432,7 +424,6 @@ public class TaoHoaDon extends JDialog {
                 long thanhTienRow  = Math.round(soLuongMua * donGiaSauKM * (1.0 + vatRate / 100.0));
                 ct.setDonGiaThucTe(donGiaSauKM);
                 ct.setThanhTien(thanhTienRow);
-                // ================================================
 
                 mapFinal.put(key, ct);
             }
@@ -447,21 +438,15 @@ public class TaoHoaDon extends JDialog {
             String tenRow = valObj.toString().trim();
             
             if (tenRow.contains("[LIỀU]")) {
-                // Bắt tên liều
                 tenLieuHienTai = tenRow.replace("[LIỀU]", "").trim(); 
             } else if (tenRow.contains("CHILD_ITEM")) {
-                // Gom tên thuốc con
                 String realName = tenRow.replace("CHILD_ITEM", "").trim();
-                
-                // Dùng dấu ~ để nối, tuyệt đối KHÔNG dùng dấu phẩy để tránh lỗi cắt chuỗi
                 if (strLieuMau.length() > 0) strLieuMau.append("~");
                 strLieuMau.append(realName).append("=").append(tenLieuHienTai); 
             }
         }
         String lieuMauPart = strLieuMau.length() > 0 ? " | LIEU_MAU:" + strLieuMau.toString() : "";
-        // ==================================
 
-        // --- ĐOẠN CODE THÊM MỚI: LẤY GHI CHÚ TỪ UI ---
         String userNote = txtNote.getText().trim();
         if (userNote.equals("Ghi chú thêm...")) userNote = "";
         String prefixUserNote = userNote.isEmpty() ? "" : (userNote + " | ");
@@ -474,7 +459,6 @@ public class TaoHoaDon extends JDialog {
             strKeDon = " | BS:" + bs + " | CS:" + cs + (cd.isEmpty() ? "" : " | CD:" + cd);
         }
         
-        // SỬA DÒNG SET GHI CHÚ (Thêm biến strKeDon vào giữa)
         hd.setGhiChu(prefixUserNote + (phuongThuc.equals("Tiền mặt") ? "CASH:" + tongTienMat : "BANK") + strKeDon + strKM + strDiem + strGifts.toString() + lieuMauPart + " | VAT_AMT:" + this.vat);
 
         Entity.NhanVien nv = new Entity.NhanVien();
@@ -482,9 +466,22 @@ public class TaoHoaDon extends JDialog {
         
         nv.setNhanVien(maNV != null && !maNV.trim().isEmpty() ? maNV : "NV001");
         hd.setNhanVienId(nv);
-        if (isCustomerLinked && !sdt.isEmpty()) {
-            hd.setKhachHangId(new BUS.BUS_KhachHang().timKhachHangTheoSdt(sdt));
+        if (!sdt.isEmpty()) {
+            BUS.BUS_KhachHang busKH = new BUS.BUS_KhachHang();
+            Entity.KhachHang khObj = busKH.timKhachHangTheoSdt(sdt);
+            if (khObj == null) {
+                // Nếu là khách mới hoàn toàn nhập qua Textbox -> Tự động tạo mới
+                khObj = new Entity.KhachHang();
+                khObj.setId(busKH.phatSinhMaKHTiepTheo());
+                khObj.setHoVaTen(khach);
+                khObj.setSdt(sdt);
+                khObj.setNgayTao(java.time.LocalDateTime.now());
+                khObj.setDiemTichLuy(0);
+                busKH.themKhachHang(khObj);
+            }
+            hd.setKhachHangId(khObj);
         }
+        
         hd.setPhuongThucThanhToan(phuongThuc.equals("Tiền mặt") ? Enumeration.PhuongThucThanhToan.TIEN_MAT : Enumeration.PhuongThucThanhToan.CHUYEN_KHOAN_NGAN_HANG);
         if (maKhuyenMaiApDung != null && !maKhuyenMaiApDung.isEmpty()) {
             Entity.KhuyenMai km = new Entity.KhuyenMai(); km.setId(maKhuyenMaiApDung.split(",")[0].trim());
@@ -500,21 +497,40 @@ public class TaoHoaDon extends JDialog {
 
         if (success) {
             if (boDemNguoc != null) boDemNguoc.stop();
-
-            if (isCustomerLinked && !sdt.isEmpty()) {
+            
+            // --- FIX 2: BỎ ĐIỀU KIỆN isCustomerLinked, LUÔN GHI ĐIỂM NẾU CÓ SĐT ---
+            if (!sdt.isEmpty()) {
+                BUS.BUS_KhachHang busKH = new BUS.BUS_KhachHang();
+                
                 int diemDung = isDungDiem ? (int)(tienGiamTuDiem / 100) : 0;
-                int diemMoi = (int) (tongHoaDon / 10000);
-                new BUS.BUS_KhachHang().capNhatDiemTichLuy(sdt, diemMoi - diemDung);
+                int diemMoi = (int) (tongHoaDon / 10000); 
+                
+                // 1. Cập nhật tổng điểm
+                busKH.capNhatDiemTichLuy(sdt, diemMoi - diemDung);
+                
+                // 2. Ghi lịch sử
+                Entity.KhachHang kh = busKH.timKhachHangTheoSdt(sdt);
+                if (kh != null) {
+                    DAO.DAO_KhachHang daoKH = new DAO.DAO_KhachHang();
+                    
+                    if (diemDung > 0) {
+                        String ghiChuTru = "Sử dụng điểm cho hóa đơn " + maHDMoi; 
+                        daoKH.ghiLichSuDiem(kh.getId(), maHDMoi, "TRU", diemDung, ghiChuTru);
+                    }
+                    
+                    // Chỉ ghi lịch sử nếu thực sự có điểm cộng vào (tránh rác DB)
+                    if (diemMoi > 0) {
+                        String ghiChuTich = "Tích điểm từ hóa đơn " + maHDMoi;
+                        daoKH.ghiLichSuDiem(kh.getId(), maHDMoi, "TICH", diemMoi, ghiChuTich);
+                    }
+                }
             }
 
-            // --- THÊM LOGIC KIỂM TRA IN HÓA ĐƠN Ở ĐÂY ---
             if (chkInHoaDon.isSelected()) {
                 showCustomNotification("HOÀN TẤT", "Thanh toán thành công!\nHệ thống đang xuất lệnh in hóa đơn...", "SUCCESS");
-                // GỌI HÀM IN CỦA BẠN VÀO ĐÂY (Ví dụ: Utils.InHoaDon.in(maHDMoi); )
             } else {
                 showCustomNotification("HOÀN TẤT", "Thanh toán thành công!", "SUCCESS");
             }
-            // ----------------------------------------------
 
             dispose();
         } else {
@@ -5017,41 +5033,75 @@ public class TaoHoaDon extends JDialog {
             long soLuongTangThucTe = 0;
             String unitToGive = dvdlTang;
 
+         // --- FIX ĐƠN VỊ TÍNH QUÀ TẶNG (CHUẨN 3 LỚP) ---
             if (!spYeuCau.isEmpty()) {
-                int slSanPhamYeuCauThucTe = 0;
-                String matchedUnit = "Hộp";
+                int slSanPhamYeuCauThucTeCoBan = 0; // Tính theo Đơn vị cơ bản
+                String tenDonViCoBan = "Viên"; // Mặc định
                 
+                // Khởi tạo BUS để gọi
+                BUS.BUS_DonViDoLuong busDVDL = new BUS.BUS_DonViDoLuong();
+
                 for (int i = 0; i < productModel.getRowCount(); i++) {
                     String tenSpTrongBang = productModel.getValueAt(i, 0).toString();
                     String dvtTrongBang = productModel.getValueAt(i, 1).toString();
                     
                     if (!tenSpTrongBang.startsWith("[QUÀ TẶNG]") && tenSpTrongBang.toLowerCase().contains(spYeuCau.toLowerCase())) {
-                        if (dvdlYeuCau.isEmpty() || dvtTrongBang.equalsIgnoreCase(dvdlYeuCau)) {
-                            // [FIX]: Lấy số lượng từ cột 3
-                            slSanPhamYeuCauThucTe += Integer.parseInt(productModel.getValueAt(i, 3).toString());
-                            matchedUnit = dvtTrongBang; 
-                        }
+                        int slTrenBang = Integer.parseInt(productModel.getValueAt(i, 3).toString());
+                        
+                        // 1. Lấy hệ số quy đổi qua BUS (Ví dụ: Hộp = 10, Viên = 1)
+                        int heSo = busDVDL.layHeSoQuyDoi(tenSpTrongBang, dvtTrongBang);
+                        slSanPhamYeuCauThucTeCoBan += (slTrenBang * heSo); // Cộng dồn số lượng theo đơn vị nhỏ nhất
+                        
+                        // 2. Tra cứu tên Đơn vị cơ bản qua BUS
+                        tenDonViCoBan = busDVDL.layTenDonViCoBan(tenSpTrongBang);
                     }
                 }
                 
-                if (slYeuCau > 0 && slSanPhamYeuCauThucTe >= slYeuCau) {
+                // 3. Quy đổi số lượng YÊU CẦU ra Đơn vị cơ bản
+                int heSoYeuCau = 1;
+                if (!dvdlYeuCau.isEmpty()) {
+                    String spChuanDeTra = spYeuCau;
+                    for (int i = 0; i < productModel.getRowCount(); i++) {
+                        String ten = productModel.getValueAt(i, 0).toString();
+                        if (!ten.startsWith("[QUÀ TẶNG]") && ten.toLowerCase().contains(spYeuCau.toLowerCase())) {
+                            spChuanDeTra = ten; break;
+                        }
+                    }
+                    heSoYeuCau = busDVDL.layHeSoQuyDoi(spChuanDeTra, dvdlYeuCau);
+                }
+                int slYeuCauCoBan = slYeuCau * heSoYeuCau;
+
+                // 4. Xét duyệt điều kiện
+                if (slYeuCauCoBan > 0 && slSanPhamYeuCauThucTeCoBan >= slYeuCauCoBan) {
                     duDieuKien = true;
-                    soLuongTangThucTe = (slSanPhamYeuCauThucTe / slYeuCau) * (slTang > 0 ? slTang : 1); 
-                    if (unitToGive.isEmpty()) unitToGive = matchedUnit; 
+                    
+                    int soLanDat = slSanPhamYeuCauThucTeCoBan / slYeuCauCoBan;
+
+                    if (!dvdlTang.isEmpty()) {
+                        unitToGive = dvdlTang;
+                    } else {
+                        unitToGive = tenDonViCoBan; // TẶNG THEO ĐƠN VỊ NHỎ NHẤT (Viên)
+                    }
+                    soLuongTangThucTe = soLanDat * (slTang > 0 ? slTang : 1);
                 }
             } else {
+                // Tương tự cho phần if (slYeuCau > 0)
+                BUS.BUS_DonViDoLuong busDVDL = new BUS.BUS_DonViDoLuong();
                 if (slYeuCau > 0 && tongSoLuongSP_ThucTe >= slYeuCau) {
                     duDieuKien = true;
                     soLuongTangThucTe = (tongSoLuongSP_ThucTe / slYeuCau) * (slTang > 0 ? slTang : 1);
-                    if (unitToGive.isEmpty()) unitToGive = "Hộp";
+                    if (unitToGive.isEmpty() && !spTang.isEmpty()) unitToGive = busDVDL.layTenDonViCoBan(spTang);
+                    else if (unitToGive.isEmpty()) unitToGive = "Cái";
                 } else if (donToiThieu > 0 && tongTienBill >= donToiThieu) {
                     duDieuKien = true;
                     soLuongTangThucTe = (slTang > 0 ? slTang : 1);
-                    if (unitToGive.isEmpty()) unitToGive = "Hộp";
+                    if (unitToGive.isEmpty() && !spTang.isEmpty()) unitToGive = busDVDL.layTenDonViCoBan(spTang);
+                    else if (unitToGive.isEmpty()) unitToGive = "Cái";
                 } else if (slYeuCau == 0 && donToiThieu == 0) {
                     duDieuKien = true; 
                     soLuongTangThucTe = (slTang > 0 ? slTang : 1);
-                    if (unitToGive.isEmpty()) unitToGive = "Hộp";
+                    if (unitToGive.isEmpty() && !spTang.isEmpty()) unitToGive = busDVDL.layTenDonViCoBan(spTang);
+                    else if (unitToGive.isEmpty()) unitToGive = "Cái";
                 }
             }
 
