@@ -118,6 +118,13 @@ public class ManHinhKhuyenMai extends JPanel {
         field.enableInputMethods(false);
         field.addKeyListener(new KeyAdapter() {
             @Override
+            public void keyTyped(KeyEvent e) {
+                if (!Character.isDigit(e.getKeyChar())) {
+                    e.consume();
+                }
+            }
+
+            @Override
             public void keyReleased(KeyEvent e) {
                 int code = e.getKeyCode();
                 if (code == KeyEvent.VK_LEFT || code == KeyEvent.VK_RIGHT || code == KeyEvent.VK_UP || code == KeyEvent.VK_DOWN) {
@@ -134,6 +141,43 @@ public class ManHinhKhuyenMai extends JPanel {
                     } catch (Exception ignored) {}
                 } else {
                     field.setText("");
+                }
+            }
+        });
+    }
+
+    private void addNumericOnly(JTextField field) {
+        field.enableInputMethods(false);
+        field.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyTyped(KeyEvent e) {
+                if (!Character.isDigit(e.getKeyChar())) {
+                    e.consume();
+                }
+            }
+
+            @Override
+            public void keyReleased(KeyEvent e) {
+                int code = e.getKeyCode();
+                if (code == KeyEvent.VK_LEFT || code == KeyEvent.VK_RIGHT || code == KeyEvent.VK_UP || code == KeyEvent.VK_DOWN) {
+                    return;
+                }
+                String text = field.getText().replaceAll("[^0-9]", "");
+                if (!field.getText().equals(text)) {
+                    field.setText(text);
+                }
+            }
+        });
+    }
+
+    private void addDecimalOnly(JTextField field) {
+        field.enableInputMethods(false);
+        field.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyTyped(KeyEvent e) {
+                char c = e.getKeyChar();
+                if (!Character.isDigit(c) && c != '.' && c != ',') {
+                    e.consume();
                 }
             }
         });
@@ -381,8 +425,8 @@ public class ManHinhKhuyenMai extends JPanel {
         
         addCurrencyFormatting(txtTienMua);
         addCurrencyFormatting(txtTienDoi);
-        txtDiemThuong.enableInputMethods(false);
-        txtDiemToiThieu.enableInputMethods(false);
+        addNumericOnly(txtDiemThuong);
+        addNumericOnly(txtDiemToiThieu);
 
         JLabel lblDiem1 = new JLabel("1 Điểm  =");
         lblDiem1.setFont(FONT_BOLD);
@@ -1049,7 +1093,7 @@ public class ManHinhKhuyenMai extends JPanel {
             pnlGiamGiaFields.setOpaque(false);
 
             fldMucGiam = new FloatingField("Mức giảm (%)", "VD: 15", "TAB_CHART");
-            fldMucGiam.getTextField().enableInputMethods(false);
+            addDecimalOnly(fldMucGiam.getTextField());
             fldMucGiam.getTextField().addKeyListener(new KeyAdapter() {
                 public void keyReleased(KeyEvent e) {
                     try {
@@ -1098,7 +1142,7 @@ public class ManHinhKhuyenMai extends JPanel {
             pnlGiamTien.setBorder(BorderFactory.createTitledBorder(new RoundedBorder(COLOR_BORDER, 1, 15), "Cấu hình Mua số lượng X giảm Tiền"));
             fldMaSPGiamTien = new SuggestionField("Sản phẩm áp dụng", "VD: Panadol", khoSanPham, "PACKAGE");
             fldSlGiamTien = new FloatingField("Số lượng", "VD: 3", "CART");
-            fldSlGiamTien.getTextField().enableInputMethods(false);
+            addNumericOnly(fldSlGiamTien.getTextField());
             cbDvdlGiamTien = new RoundedComboBox(new String[] { "Đơn vị" });
 
             fldMaSPGiamTien.getTextField().getDocument().addDocumentListener(new DocumentListener() {
@@ -1160,12 +1204,12 @@ public class ManHinhKhuyenMai extends JPanel {
             pnlFields.setOpaque(false);
             fldMaSPMua = new SuggestionField("Sản phẩm cần mua", "VD: Panadol", khoSanPham, "PACKAGE");
             fldSoLuongMua = new FloatingField("Số lượng", "VD: 3", "CART");
-            fldSoLuongMua.getTextField().enableInputMethods(false);
+            addNumericOnly(fldSoLuongMua.getTextField());
             cbDonViMua = new RoundedComboBox(new String[] { "Đơn vị" });
 
             fldMaSPTang = new SuggestionField("Sản phẩm được tặng", "VD: Khẩu trang", khoSanPham, "GIFT");
             fldSoLuongTang = new FloatingField("Số lượng tặng", "VD: 1", "GIFT");
-            fldSoLuongTang.getTextField().enableInputMethods(false); 
+            addNumericOnly(fldSoLuongTang.getTextField()); 
 
             cbDonViTang = new RoundedComboBox(new String[] { "Đơn vị" });
             fldMaSPMua.getTextField().getDocument().addDocumentListener(new DocumentListener() {
@@ -1303,6 +1347,10 @@ public class ManHinhKhuyenMai extends JPanel {
             fldGiaBanMoPhong = new FloatingField("Giá bán SP (Tự động)", "...", "CART");
             fldGiaNhapTangMoPhong = new FloatingField("Giá nhập SP Tặng", "...", "GIFT");
             
+            addCurrencyFormatting(fldGiaNhapMoPhong.getTextField());
+            addCurrencyFormatting(fldGiaBanMoPhong.getTextField());
+            addCurrencyFormatting(fldGiaNhapTangMoPhong.getTextField());
+            
             fldGiaNhapTangMoPhong.setVisible(false);
 
             pnlDuToanInputs.add(fldGiaNhapMoPhong);
@@ -1401,7 +1449,7 @@ public class ManHinhKhuyenMai extends JPanel {
             dpStart = new ModernDateField(dialog);
             dpEnd = new ModernDateField(dialog);
             fldSoNgay = new FloatingField("Số ngày hiệu lực", "VD: 7", "CLOCK");
-            fldSoNgay.getTextField().enableInputMethods(false); 
+            addNumericOnly(fldSoNgay.getTextField()); 
 
             JPanel pnlDates = new JPanel(new GridLayout(1, 3, 15, 0));
             pnlDates.setOpaque(false);
