@@ -66,16 +66,6 @@ public class ManHinhDoiTra extends JPanel {
             @Override
             public void componentShown(java.awt.event.ComponentEvent e) {
                 if (txtSearch != null) {
-                    txtSearch.setText("Mã phiếu, hóa đơn..."); // <-- Đã sửa cho khớp placeholder
-                    txtSearch.setForeground(Color.GRAY);
-                }
-                loadDataToTable(); 
-            }
-        });
-        this.addComponentListener(new java.awt.event.ComponentAdapter() {
-            @Override
-            public void componentShown(java.awt.event.ComponentEvent e) {
-                if (txtSearch != null) {
                     txtSearch.setText("Mã phiếu, mã HĐ gốc...");
                     txtSearch.setForeground(Color.GRAY);
                 }
@@ -968,14 +958,30 @@ public class ManHinhDoiTra extends JPanel {
     }
 
     private void applyFilter() {
+    	if (table == null || sorter == null) return;
         expandedMaPhieu = ""; 
         if(pnlDetail != null) pnlDetail.setVisible(false);
         updateRowHeights();
         
         List<RowFilter<Object, Object>> filters = new ArrayList<>();
-        if (!filterStatus.equals("Tất cả")) filters.add(RowFilter.regexFilter("^" + filterStatus + "$", 7));
+        
+        // 1. Lọc theo trạng thái nút bấm
+        if (!filterStatus.equals("Tất cả")) {
+            filters.add(RowFilter.regexFilter("^" + filterStatus + "$", 7));
+        }
+        
         String search = txtSearch.getText().trim();
-        if (!search.isEmpty() && !search.equals("Mã phiếu, hóa đơn...")) filters.add(RowFilter.regexFilter("(?i)" + search));
+        
+        // 2. --- ĐÃ FIX: Chặn triệt để mọi câu chữ mờ (Placeholder) ---
+        // Chỉ cần chuỗi có chứa chữ "Mã phiếu" là hệ thống tự hiểu đó là chữ mờ và bỏ qua
+        if (!search.isEmpty() && !search.contains("Mã phiếu")) {
+            try {
+                filters.add(RowFilter.regexFilter("(?i)" + search));
+            } catch (java.util.regex.PatternSyntaxException e) {
+                // Chống lỗi văng (crash) phần mềm nếu người dùng lỡ gõ ký tự regex đặc biệt
+            }
+        }
+        
         sorter.setRowFilter(filters.isEmpty() ? null : RowFilter.andFilter(filters));
     }
 
