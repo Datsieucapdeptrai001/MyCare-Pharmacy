@@ -1866,11 +1866,23 @@ public class ManHinhThongKe extends JPanel {
         root.add(Box.createVerticalStrut(12));
 
         // ─ CẢNH BÁO + GỢI Ý KM (điểm mới) ─
-        JPanel row3 = new JPanel(new GridLayout(1, 2, 12, 0));
+        JPanel row3 = new JPanel();
+        row3.setLayout(new BoxLayout(row3, BoxLayout.Y_AXIS));
         row3.setOpaque(false);
         row3.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
-        row3.add(buildSpSapHetHanTable());  // bảng cảnh báo hết hạn
-        row3.add(buildGoiYKMPanel());       // gợi ý KM thông minh
+
+        JPanel pnlHetHan = buildSpSapHetHanTable();
+        pnlHetHan.setMaximumSize(new Dimension(Integer.MAX_VALUE, 260));
+        pnlHetHan.setPreferredSize(new Dimension(0, 240));
+
+        JPanel pnlGoiYKM = buildGoiYKMPanel();
+        pnlGoiYKM.setMaximumSize(new Dimension(Integer.MAX_VALUE, 380));
+        pnlGoiYKM.setPreferredSize(new Dimension(0, 360));
+
+        row3.add(pnlHetHan);
+        row3.add(Box.createVerticalStrut(12));
+        row3.add(pnlGoiYKM);
+
         root.add(row3);
         root.add(Box.createVerticalStrut(12));
 
@@ -4582,93 +4594,219 @@ public class ManHinhThongKe extends JPanel {
         p.add(header, BorderLayout.NORTH);
 
         String[] cols = { "Sản phẩm", "Bán/năm", "Biên LN", "Gợi ý KM", "Lý do" };
+
         modelGoiYKM = new DefaultTableModel(cols, 0) {
             @Override
             public boolean isCellEditable(int r, int c) {
                 return false;
             }
         };
+
         JTable tbl = new JTable(modelGoiYKM);
-        tbl.setRowHeight(32);
+        tbl.setRowHeight(58);
         tbl.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        tbl.setShowHorizontalLines(true);
+        tbl.setShowVerticalLines(false);
+        tbl.setGridColor(Color.decode("#E5E7EB"));
+        tbl.setIntercellSpacing(new Dimension(0, 0));
+        tbl.setSelectionBackground(Color.decode("#FFE0B2"));
+        tbl.setSelectionForeground(Color.decode("#152A4B"));
+        tbl.setFillsViewportHeight(true);
+        tbl.setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN);
+
+        tbl.getTableHeader().setReorderingAllowed(false);
+        tbl.getTableHeader().setPreferredSize(new Dimension(0, 40));
         tbl.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 12));
         tbl.getTableHeader().setBackground(Color.decode("#FFF3E0"));
         tbl.getTableHeader().setForeground(Color.decode("#E65100"));
+        tbl.getTableHeader().setBorder(BorderFactory.createMatteBorder(
+                0, 0, 2, 0, Color.decode("#FFCC80")
+        ));
 
-        tbl.setDefaultRenderer(Object.class, new javax.swing.table.DefaultTableCellRenderer() {
+        class GoiYTextRenderer extends JTextArea implements TableCellRenderer {
+            GoiYTextRenderer() {
+                setLineWrap(true);
+                setWrapStyleWord(true);
+                setOpaque(true);
+                setBorder(new EmptyBorder(6, 8, 6, 8));
+            }
+
             @Override
-            public java.awt.Component getTableCellRendererComponent(
-                    JTable t, Object val, boolean sel, boolean foc, int row, int col) {
-                super.getTableCellRendererComponent(t, val, sel, foc, row, col);
-                if (!sel) {
-                    String lyDo = modelGoiYKM.getRowCount() > row
-                            ? String.valueOf(modelGoiYKM.getValueAt(row, 4))
-                            : "";
-                    String goiY = modelGoiYKM.getRowCount() > row
-                            ? String.valueOf(modelGoiYKM.getValueAt(row, 3))
-                            : "";
+            public Component getTableCellRendererComponent(
+                    JTable t, Object value, boolean isSelected, boolean hasFocus, int row, int col) {
+
+                String text = value != null ? value.toString() : "";
+                setText(text);
+
+                int modelRow = t.convertRowIndexToModel(row);
+                String goiY = "";
+                String lyDo = "";
+
+                if (modelGoiYKM.getRowCount() > modelRow) {
+                    goiY = String.valueOf(modelGoiYKM.getValueAt(modelRow, 3));
+                    lyDo = String.valueOf(modelGoiYKM.getValueAt(modelRow, 4));
+                }
+
+                if (isSelected) {
+                    setBackground(t.getSelectionBackground());
+                    setForeground(t.getSelectionForeground());
+                } else {
                     if (lyDo.contains("[Sắp HH]")) {
-                        setBackground(new Color(255, 235, 238)); // đỏ nhạt – hàng sắp HH
+                        setBackground(Color.decode("#FFF1F2"));
                         setForeground(Color.decode("#B71C1C"));
                     } else if (goiY.contains("[Giảm]")) {
-                        setBackground(new Color(255, 243, 224));
-                        setForeground(Color.decode("#152A4B"));
+                        setBackground(row % 2 == 0 ? Color.decode("#FFF7ED") : Color.WHITE);
+                        setForeground(col == 3 ? Color.decode("#B45309") : Color.decode("#152A4B"));
                     } else if (goiY.contains("[Quà]")) {
-                        setBackground(new Color(232, 245, 233));
-                        setForeground(Color.decode("#152A4B"));
+                        setBackground(row % 2 == 0 ? Color.decode("#ECFDF5") : Color.WHITE);
+                        setForeground(col == 3 ? Color.decode("#00875A") : Color.decode("#152A4B"));
                     } else {
-                        setBackground(Color.WHITE);
+                        setBackground(row % 2 == 0 ? Color.WHITE : Color.decode("#FAFAFA"));
                         setForeground(Color.decode("#152A4B"));
                     }
                 }
-                setBorder(new javax.swing.border.EmptyBorder(0, 6, 0, 6));
+
+                if (col == 0 || col == 3) {
+                    setFont(new Font("Segoe UI", Font.BOLD, 12));
+                } else {
+                    setFont(new Font("Segoe UI", Font.PLAIN, 12));
+                }
+
                 return this;
             }
-        });
+        }
 
-        tbl.getColumnModel().getColumn(2).setCellRenderer(new javax.swing.table.DefaultTableCellRenderer() {
+        DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer() {
             @Override
-            public java.awt.Component getTableCellRendererComponent(
-                    JTable t, Object val, boolean sel, boolean foc, int row, int col) {
-                String s = val != null ? val.toString() : "";
-                setText(s);
+            public Component getTableCellRendererComponent(
+                    JTable t, Object value, boolean isSelected, boolean hasFocus, int row, int col) {
+
+                super.getTableCellRendererComponent(t, value, isSelected, hasFocus, row, col);
+
+                int modelRow = t.convertRowIndexToModel(row);
+                String lyDo = "";
+                String goiY = "";
+
+                if (modelGoiYKM.getRowCount() > modelRow) {
+                    goiY = String.valueOf(modelGoiYKM.getValueAt(modelRow, 3));
+                    lyDo = String.valueOf(modelGoiYKM.getValueAt(modelRow, 4));
+                }
+
                 setHorizontalAlignment(CENTER);
+                setBorder(new EmptyBorder(0, 6, 0, 6));
                 setFont(new Font("Segoe UI", Font.BOLD, 12));
-                if (!sel) {
-                    // Hàng sắp HH: cột biên LN hiển thị "Sắp HH" thay vì %
-                    String lyDo = modelGoiYKM.getRowCount() > row
-                            ? String.valueOf(modelGoiYKM.getValueAt(row, 4)) : "";
+
+                if (!isSelected) {
                     if (lyDo.contains("[Sắp HH]")) {
+                        setBackground(Color.decode("#FFF1F2"));
                         setForeground(Color.decode("#B71C1C"));
-                        setBackground(new Color(255, 235, 238));
+                    } else if (goiY.contains("[Giảm]")) {
+                        setBackground(row % 2 == 0 ? Color.decode("#FFF7ED") : Color.WHITE);
+                        setForeground(Color.decode("#00875A"));
+                    } else if (goiY.contains("[Quà]")) {
+                        setBackground(row % 2 == 0 ? Color.decode("#ECFDF5") : Color.WHITE);
+                        setForeground(Color.decode("#00875A"));
+                    } else {
+                        setBackground(row % 2 == 0 ? Color.WHITE : Color.decode("#FAFAFA"));
+                        setForeground(Color.decode("#152A4B"));
+                    }
+                }
+
+                return this;
+            }
+        };
+
+        DefaultTableCellRenderer bienLNRenderer = new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(
+                    JTable t, Object value, boolean isSelected, boolean hasFocus, int row, int col) {
+
+                super.getTableCellRendererComponent(t, value, isSelected, hasFocus, row, col);
+
+                String s = value != null ? value.toString() : "";
+                int modelRow = t.convertRowIndexToModel(row);
+                String lyDo = "";
+
+                if (modelGoiYKM.getRowCount() > modelRow) {
+                    lyDo = String.valueOf(modelGoiYKM.getValueAt(modelRow, 4));
+                }
+
+                setHorizontalAlignment(CENTER);
+                setBorder(new EmptyBorder(0, 6, 0, 6));
+                setFont(new Font("Segoe UI", Font.BOLD, 12));
+
+                if (!isSelected) {
+                    if (lyDo.contains("[Sắp HH]")) {
+                        setBackground(Color.decode("#FFF1F2"));
+                        setForeground(Color.decode("#B71C1C"));
                     } else {
                         double pct = 0;
-                        try { pct = Double.parseDouble(s.replace("%", "").trim()); } catch (Exception ignored) {}
-                        if (pct >= 40) setForeground(Color.decode("#00875A"));
-                        else if (pct >= 20) setForeground(Color.decode("#B95000"));
-                        else setForeground(Color.decode("#BF2600"));
-                        setBackground(row % 2 == 0 ? new Color(255, 250, 245) : Color.WHITE);
+                        try {
+                            pct = Double.parseDouble(s.replace("%", "").trim());
+                        } catch (Exception ignored) {}
+
+                        if (pct >= 40) {
+                            setForeground(Color.decode("#00875A"));
+                        } else if (pct >= 20) {
+                            setForeground(Color.decode("#B45309"));
+                        } else {
+                            setForeground(Color.decode("#BF2600"));
+                        }
+
+                        setBackground(row % 2 == 0 ? Color.decode("#FFF7ED") : Color.WHITE);
                     }
                 }
-                setBorder(new javax.swing.border.EmptyBorder(0, 4, 0, 4));
+
                 return this;
             }
-        });
+        };
 
-        tbl.setFillsViewportHeight(false);
-        tbl.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
-        tbl.getColumnModel().getColumn(0).setPreferredWidth(200); // Sản phẩm – đủ thấy tên đầy đủ
-        tbl.getColumnModel().getColumn(1).setPreferredWidth(70);  // Bán/năm
-        tbl.getColumnModel().getColumn(2).setPreferredWidth(75);  // Biên LN
-        tbl.getColumnModel().getColumn(3).setPreferredWidth(160); // Gợi ý KM
-        tbl.getColumnModel().getColumn(4).setPreferredWidth(320); // Lý do – đủ thấy hết text
+        GoiYTextRenderer textRenderer = new GoiYTextRenderer();
+
+        tbl.getColumnModel().getColumn(0).setCellRenderer(textRenderer);
+        tbl.getColumnModel().getColumn(1).setCellRenderer(centerRenderer);
+        tbl.getColumnModel().getColumn(2).setCellRenderer(bienLNRenderer);
+        tbl.getColumnModel().getColumn(3).setCellRenderer(textRenderer);
+        tbl.getColumnModel().getColumn(4).setCellRenderer(textRenderer);
+
+        tbl.getColumnModel().getColumn(0).setPreferredWidth(220);
+        tbl.getColumnModel().getColumn(0).setMinWidth(170);
+
+        tbl.getColumnModel().getColumn(1).setPreferredWidth(75);
+        tbl.getColumnModel().getColumn(1).setMaxWidth(90);
+
+        tbl.getColumnModel().getColumn(2).setPreferredWidth(80);
+        tbl.getColumnModel().getColumn(2).setMaxWidth(95);
+
+        tbl.getColumnModel().getColumn(3).setPreferredWidth(230);
+        tbl.getColumnModel().getColumn(3).setMinWidth(180);
+
+        tbl.getColumnModel().getColumn(4).setPreferredWidth(420);
+        tbl.getColumnModel().getColumn(4).setMinWidth(260);
+
+        tbl.addMouseMotionListener(new MouseMotionAdapter() {
+            @Override
+            public void mouseMoved(MouseEvent e) {
+                int row = tbl.rowAtPoint(e.getPoint());
+                int col = tbl.columnAtPoint(e.getPoint());
+
+                if (row >= 0 && col >= 0) {
+                    Object value = tbl.getValueAt(row, col);
+                    tbl.setToolTipText(value != null ? value.toString() : "");
+                } else {
+                    tbl.setToolTipText(null);
+                }
+            }
+        });
 
         JScrollPane sp = new JScrollPane(tbl);
         sp.setBorder(BorderFactory.createEmptyBorder());
+        sp.getViewport().setBackground(Color.WHITE);
+        sp.getVerticalScrollBar().setUnitIncrement(18);
         sp.getVerticalScrollBar().setUI(new ModernScrollBarUI());
         sp.getHorizontalScrollBar().setUI(new ModernScrollBarUI());
-        p.add(sp, BorderLayout.CENTER);
-        btnTaoKM.addActionListener(e -> {
+
+        p.add(sp, BorderLayout.CENTER);        btnTaoKM.addActionListener(e -> {
             int row = tbl.getSelectedRow();
             if (row == -1) {
                 showCustomDialog("Vui lòng chọn 1 sản phẩm trong danh sách gợi ý\ntrước khi tạo chương trình khuyến mãi.", "WARNING");
