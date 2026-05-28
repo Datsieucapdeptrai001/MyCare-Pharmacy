@@ -129,6 +129,7 @@ public class ManHinhThongKe extends JPanel {
     private JLabel lblHDSang, lblHDChieu, lblHDToi;
     private JPanel pnlFilterDuocSi;
     private JPanel pnlFilter;
+    private JButton btnLamMoi;
 
     // Tab NHÂN VIÊN – shift filter + đang trực
     private JComboBox<String> cboCaFilter;        // Tất cả / Sáng / Chiều / Tối
@@ -253,7 +254,15 @@ public class ManHinhThongKe extends JPanel {
         JButton btnIn = makeActionBtn("In báo cáo", makeSimpleIcon("PRINT", 16, Color.WHITE),
                 Color.decode("#152A4B"));
         btnIn.addActionListener(e -> inBaoCao());
-
+        
+        // --- CHÈN THÊM NÚT LÀM MỚI Ở ĐÂY ---
+        JButton btnLamMoi = makeActionBtn("Làm mới", MenuIcon.of("REFRESH", 16, Color.WHITE), 
+                Color.decode("#FF9800")); // Màu cam cho nổi bật
+        btnLamMoi.addActionListener(e -> {
+            refreshAll(); // Gọi hàm ông đã viết sẵn để load lại DB
+        });
+        
+        pnlActions.add(btnLamMoi);
         pnlActions.add(btnXuatExcel);
         pnlActions.add(btnXuatPDF);
         pnlActions.add(btnIn);
@@ -714,7 +723,7 @@ public class ManHinhThongKe extends JPanel {
                 }
                 final String fChartSubtitle = chartSubtitleStr;
 
-                int[] tmp_DONUT = busThongKe.getSoLuongTheoLoaiSP(year, fCondHD);
+                int[] tmp_DONUT = busThongKe.getPhanTramDoanhThuTheoLoaiSP(year, fCondHD);
 
                 java.util.List<String> dateList = busThongKe.get10NgayGanNhat(year, fCondHD);
                 String[] tmp_DATES_10 = dateList.toArray(new String[0]);
