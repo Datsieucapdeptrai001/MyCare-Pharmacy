@@ -772,13 +772,22 @@ public class BUS_ThongKe {
     public long getTongHoaDon(int year, BoLocThongKe filter) { return dao.getTongHoaDon(year, filter); }
 
     // Tỉ lệ % số lượng bán theo loại SP: int[4] = {THUOC_KE_DON, THUOC_KHONG_KE_DON, THUC_PHAM, MY_PHAM}
+    // 1. MÀN HÌNH CHÍNH gọi hàm này (trả thẳng số lượng SP)
     public int[] getSoLuongTheoLoaiSP(int year, BoLocThongKe filter) {
-        int[] rawCounts = dao.getSoLuongTheoLoaiSP(year, filter);
-        int total = 0;
-        for (int v : rawCounts) total += Math.max(1, v);
+        return dao.getSoLuongTheoLoaiSP(year, filter);
+    }
+
+    // 2. MÀN HÌNH THỐNG KÊ gọi hàm này (để ép ra % doanh thu)
+    public int[] getPhanTramDoanhThuTheoLoaiSP(int year, BoLocThongKe filter) {
+        double[] rawDT = dao.getDoanhThuTheoLoaiSP(year, filter);
+        double total = 0;
+        for (double v : rawDT) total += v;
+        if (total == 0) total = 1; // tránh chia 0
+        
         int[] result = new int[4];
-        for (int i = 0; i < 4; i++)
-            result[i] = Math.max(1, (int) Math.round(Math.max(1, rawCounts[i]) * 100.0 / total));
+        for (int i = 0; i < 4; i++) {
+            result[i] = (int) Math.round((rawDT[i] / total) * 100.0);
+        }
         return result;
     }
 

@@ -631,12 +631,28 @@ public class DAO_ThongKe {
 
     // Tính % số lượng bán theo từng loại SP (THUOC_KE_DON, THUOC_KHONG_KE_DON, THUC_PHAM_CHUC_NANG, MY_PHAM)
     // Trả về int[4] = phần trăm (tổng = ~100%)
+ // 1. Dùng cho MÀN HÌNH CHÍNH (Đếm 60 sản phẩm)
     public int[] getSoLuongTheoLoaiSP(int year, Entity.BoLocThongKe filter) {
         String[] catDB = { "THUOC_KE_DON", "THUOC_KHONG_KE_DON", "THUC_PHAM_CHUC_NANG", "MY_PHAM" };
         int[] catVals = new int[4];
-
         for (int i = 0; i < 4; i++) {
-            StringBuilder sql = new StringBuilder("SELECT ISNULL(SUM(ct.soLuong),0) FROM ChiTietHoaDon ct "
+            String sql = "SELECT COUNT(id) FROM SanPham WHERE danhMuc = ?";
+            try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql)) {
+                ps.setString(1, catDB[i]);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) catVals[i] = rs.getInt(1);
+                }
+            } catch (Exception e) { catVals[i] = 0; }
+        }
+        return catVals;
+    }
+
+    // 2. Dùng cho MÀN HÌNH THỐNG KÊ (Tính doanh thu)
+    public double[] getDoanhThuTheoLoaiSP(int year, Entity.BoLocThongKe filter) {
+        String[] catDB = { "THUOC_KE_DON", "THUOC_KHONG_KE_DON", "THUC_PHAM_CHUC_NANG", "MY_PHAM" };
+        double[] catVals = new double[4];
+        for (int i = 0; i < 4; i++) {
+            StringBuilder sql = new StringBuilder("SELECT ISNULL(SUM(ABS(ct.thanhTien)), 0) FROM ChiTietHoaDon ct "
                     + "JOIN HoaDon hd ON hd.id=ct.hoaDonId "
                     + "JOIN SanPham sp ON sp.id=ct.sanPhamId "
                     + "WHERE sp.danhMuc=? AND YEAR(hd.ngayLapHD)=? AND hd.loaiHD='BAN_HANG'");
@@ -646,15 +662,11 @@ public class DAO_ThongKe {
             applyFilter(filter, sql, params, "hd.ngayLapHD", "hd.nhanVienId");
 
             try (Connection con = getConn(); PreparedStatement ps = con.prepareStatement(sql.toString())) {
-                for (int p = 0; p < params.size(); p++)
-                    ps.setObject(p + 1, params.get(p));
+                for (int p = 0; p < params.size(); p++) ps.setObject(p + 1, params.get(p));
                 try (ResultSet rs = ps.executeQuery()) {
-                    if (rs.next())
-                        catVals[i] = rs.getInt(1);
+                    if (rs.next()) catVals[i] = rs.getDouble(1);
                 }
-            } catch (Exception e) {
-                catVals[i] = 0;
-            }
+            } catch (Exception e) { catVals[i] = 0; }
         }
         return catVals;
     }
